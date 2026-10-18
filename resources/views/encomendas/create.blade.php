@@ -43,10 +43,32 @@
   <div class="flex items-center gap-x-4 gap-y-1 flex-wrap">
     <h1 class="text-lg font-extrabold" style="color:var(--cor1)">Nova encomenda</h1>
     {{-- datas no cabeçalho (compacto) --}}
-    <div x-show="viagemData" x-cloak class="flex items-center gap-1.5">
+    <div x-show="viagemData" x-cloak class="flex items-center gap-1.5 relative">
       <span class="lbl !mb-0 whitespace-nowrap">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></span>
-      <input type="date" class="field !min-h-0 !py-1 w-36 text-sm font-semibold" x-model="viagemDataPick" @change="escolherData()" :min="minData" :max="maxData">
-      <span class="text-[11px] whitespace-nowrap" :class="viagemData<hojeISO ? 'text-amber-600' : 'text-slate-500'" x-text="viagemLabel"></span>
+      <button type="button" @click="abrirCal()" class="field !min-h-0 !py-1 text-sm font-semibold whitespace-nowrap" style="width:auto">
+        📅 <span x-text="viagemLabel || 'escolher'"></span>
+      </button>
+      {{-- calendário próprio: só os dias de viagem da linha ficam clicáveis --}}
+      <div x-show="calAberto" x-cloak @click.outside="calAberto=false" class="absolute top-full left-0 mt-1 z-40 bg-white rounded-xl border shadow-xl p-2 w-64 text-slate-700">
+        <div class="flex items-center justify-between mb-1">
+          <button type="button" @click="mudarMes(-1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">‹</button>
+          <div class="text-sm font-bold capitalize" x-text="nomeMes"></div>
+          <button type="button" @click="mudarMes(1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">›</button>
+        </div>
+        <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1">
+          <template x-for="(d,i) in ['D','S','T','Q','Q','S','S']" :key="i"><div x-text="d"></div></template>
+        </div>
+        <div class="grid grid-cols-7 gap-0.5">
+          <template x-for="c in calDias" :key="c.iso">
+            <button type="button" :disabled="!c.valido" @click="c.valido && escolherDia(c.iso)"
+              class="h-8 rounded text-sm transition"
+              :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed'))"
+              :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : '')"
+              x-text="c.dia"></button>
+          </template>
+        </div>
+        <div class="text-[10px] text-slate-400 mt-1 text-center">Só os dias de viagem da linha ficam disponíveis.</div>
+      </div>
     </div>
     @if($podeRetroativo)
     <div class="flex items-center gap-1.5">
@@ -267,7 +289,7 @@ function novaEncomenda(){
     origemSel: @js(old('origem', ($pre['origem'] ?? '') ?: $ultimaOrigem)), destinoSel: @js(old('destino', $pre['destino'] ?? '')),
     lancamentoEm: @js(old('lancamento_em', now()->toDateString())),
     catalogo: @js($catalogo), buscaProduto:'', buscaAberta:false,
-    viagemData:'', viagemDataPick:'', viagemLabel:'', viagemDia:null, viagemHora:'', minData:'', maxData:'',
+    viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens: @js($pre['itens'] ?? []), desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
@@ -290,38 +312,52 @@ function novaEncomenda(){
     get hojeISO(){ return this.isoLocal(new Date()); },
     // próxima ocorrência (>= hoje) do dia-da-semana
     proximaViagem(dia){ const d=new Date(); d.setHours(0,0,0,0); while(d.getDay()!==dia) d.setDate(d.getDate()+1); return this.isoLocal(d); },
-    // encaixa uma data escolhida no dia-da-semana da linha (volta até achar o dia da partida)
-    snap(iso,dia){ const [y,m,day]=iso.split('-').map(Number); let d=new Date(y,m-1,day); d.setHours(0,0,0,0); for(let i=0;i<7 && d.getDay()!==dia;i++) d.setDate(d.getDate()-1); return this.isoLocal(d); },
-    rotulo(iso){ const [y,m,day]=iso.split('-').map(Number); const d=new Date(y,m-1,day); const tag = iso<this.hojeISO?' · anterior':(iso===this.hojeISO?' · hoje':''); return this.diasCurto[d.getDay()]+' '+this.fmtBr(d)+(this.viagemHora?' '+this.viagemHora:'')+tag; },
+    rotulo(iso){ if(!iso) return ''; const [y,m,day]=iso.split('-').map(Number); const d=new Date(y,m-1,day); const tag = iso<this.hojeISO?' · anterior':(iso===this.hojeISO?' · hoje':''); return this.diasCurto[d.getDay()]+' '+this.fmtBr(d)+(this.viagemHora?' '+this.viagemHora:'')+tag; },
     // monta a viagem a partir da ORIGEM (dia/hora em que o barco sai de lá)
     recalcularDatas(){
       let p = this.paradasInfo.find(x=>x.n===this.origemSel) || this.paradasInfo[0];
       // parada sem dia próprio (intermediária) usa o dia/hora da partida da linha
       if (!p || p.d===null||p.d===undefined||p.d==='') p = this.paradasInfo[0];
-      if (!p || p.d===null||p.d===undefined||p.d==='') { this.viagemDia=null; this.viagemData=''; this.viagemDataPick=''; this.viagemLabel=''; return; }
+      if (!p || p.d===null||p.d===undefined||p.d==='') { this.viagemDia=null; this.viagemData=''; this.viagemLabel=''; return; }
       this.viagemDia = Number(p.d); this.viagemHora = p.h || '';
-      const prox = this.proximaViagem(this.viagemDia);
-      const max=new Date(); max.setFullYear(max.getFullYear()+3); this.maxData=this.isoLocal(max);
-      this.minData = this.podeRetroativo ? '2023-01-01' : prox;   // sem retroativo não deixa escolher passado
-      this.viagemData = prox; this.viagemDataPick = prox;
+      this.viagemData = this.proximaViagem(this.viagemDia);   // já abre na próxima viagem
       this.$nextTick(()=>{ this.viagemLabel = this.rotulo(this.viagemData); });
     },
-    escolherData(){
-      if (this.viagemDia===null || !this.viagemDataPick) return;
-      let iso = this.snap(this.viagemDataPick, this.viagemDia);
-      if (!this.podeRetroativo && iso < this.hojeISO) iso = this.proximaViagem(this.viagemDia);
-      this.viagemData = iso; this.viagemDataPick = iso; this.viagemLabel = this.rotulo(iso);
+    // ---- calendário só com os dias de viagem (recorrente semanal) ----
+    abrirCal(){
+      if (this.viagemDia===null) return;
+      const base = this.viagemData || this.hojeISO;
+      const [y,m] = base.split('-').map(Number);
+      this.calMes = new Date(y, m-1, 1);
+      this.calAberto = true;
     },
+    mudarMes(n){ const d=new Date(this.calMes); d.setMonth(d.getMonth()+n); this.calMes=d; },
+    get nomeMes(){ return this.calMes ? this.calMes.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) : ''; },
+    get calDias(){
+      if (!this.calMes) return [];
+      const ano=this.calMes.getFullYear(), mes=this.calMes.getMonth();
+      const ini=new Date(ano,mes,1); ini.setDate(1-ini.getDay());   // começa no domingo da 1ª semana
+      const out=[];
+      for(let i=0;i<42;i++){
+        const d=new Date(ini); d.setDate(ini.getDate()+i);
+        const iso=this.isoLocal(d);
+        const outroMes = d.getMonth()!==mes;
+        const valido = !outroMes && d.getDay()===this.viagemDia && (this.podeRetroativo || iso>=this.hojeISO);
+        out.push({iso, dia:d.getDate(), valido, outroMes, sel: iso===this.viagemData});
+      }
+      return out;
+    },
+    escolherDia(iso){ this.viagemData=iso; this.viagemLabel=this.rotulo(iso); this.calAberto=false; },
     // acha a linha a partir da origem (e destino, se escolhido) e monta as datas
     resolverLinha(){
       this.rotaId=''; this.linhaNome=''; this.paradasInfo=[];
-      if (!this.origemSel) { this.viagemDia=null; this.viagemData=''; this.viagemDataPick=''; this.viagemLabel=''; return; }
+      if (!this.origemSel) { this.viagemDia=null; this.viagemData=''; this.viagemLabel=''; return; }
       const idx=(L,c)=>L.paradas.findIndex(p=>p.n===c);
       const linha =
            this.linhas.find(L=>{ const io=idx(L,this.origemSel), id=idx(L,this.destinoSel); return io>=0 && this.destinoSel && id>=0 && io<id; }) // direção certa (origem antes do destino)
         || this.linhas.find(L=>idx(L,this.origemSel)>=0 && (!this.destinoSel || idx(L,this.destinoSel)>=0))
         || this.linhas.find(L=>idx(L,this.origemSel)>=0);
-      if (!linha) { this.viagemDia=null; this.viagemData=''; this.viagemDataPick=''; this.viagemLabel=''; return; }  // cidade fora de linha = avulsa
+      if (!linha) { this.viagemDia=null; this.viagemData=''; this.viagemLabel=''; return; }  // cidade fora de linha = avulsa
       this.rotaId=String(linha.id); this.linhaNome=linha.nome; this.paradasInfo=linha.paradas;
       this.recalcularDatas();
     },
