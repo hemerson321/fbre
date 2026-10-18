@@ -59,11 +59,14 @@
           <label class="lbl">Linha</label>
           <select name="rota_id" class="field" x-model="rotaId" @change="aplicarRota()">
             <option value="">Avulsa (sem viagem)</option>
-            @foreach($rotas as $r)<option value="{{ $r->id }}"
+            @foreach($rotas as $r)
+              @php $pInfo = $r->paradas->map(fn($p)=>['n'=>$p->localidade,'d'=>$p->dia_semana,'h'=>$p->hora?substr($p->hora,0,5):null])->values(); @endphp
+              <option value="{{ $r->id }}"
               data-origem="{{ $r->paradas->first()?->localidade }}"
               data-destino="{{ $r->paradas->last()?->localidade }}"
-              data-locais='@json($r->paradas->pluck("localidade"))'
-              data-paradas='@json($r->paradas->map(fn($p)=>["n"=>$p->localidade,"d"=>$p->dia_semana,"h"=>$p->hora?substr($p->hora,0,5):null]))'>{{ $r->nome }} — {{ $r->resumoCalendario() }}</option>@endforeach
+              data-locais="{{ json_encode($r->paradas->pluck('localidade')->values()) }}"
+              data-paradas="{{ json_encode($pInfo) }}">{{ $r->nome }} — {{ $r->resumoCalendario() }}</option>
+            @endforeach
           </select>
         </div>
         <div x-show="rotaId && viagemDatas.length" x-cloak>
@@ -113,6 +116,11 @@
               <input name="setor" list="setores" class="field" value="{{ old('setor', auth()->user()->setor) }}">
             @endif
           </div>
+        </div>
+        <div>
+          <label class="lbl">Data do lançamento</label>
+          <input type="date" name="lancamento_em" class="field" x-model="lancamentoEm" :max="hojeISO">
+          <p class="text-[11px] text-amber-600 mt-0.5" x-show="lancamentoEm && lancamentoEm < hojeISO">Lançando em data anterior — entra no caixa/relatório nesse dia.</p>
         </div>
         <datalist id="locais">@foreach($localidades as $l)<option value="{{ $l }}">@endforeach</datalist>
         <datalist id="setores">@foreach($setores as $s)<option value="{{ $s }}">@endforeach</datalist>
@@ -257,7 +265,7 @@ function novaEncomenda(){
     salvando:false, volumes:1, forma:'avista', imprimir:'navegador',
     rotaId: @js((string) old('rota_id', optional($rotas->first())->id ?? '')),
     origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino')), paradasLinha: [], paradasInfo: [],
-    permCidades: @js($cidadesPerm ?? []),
+    permCidades: @js($cidadesPerm ?? []), lancamentoEm: @js(old('lancamento_em', now()->toDateString())),
     viagemData:'', viagemDatas:[], viagemHora:'',
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
@@ -267,20 +275,23 @@ function novaEncomenda(){
     // ---- datas de viagem a partir do dia da semana da linha ----
     isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
     fmtBr(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); },
-    gerarDatas(dia,hora,qtd){
-      const out=[]; const d=new Date(); d.setHours(0,0,0,0);
-      while(d.getDay()!==dia) d.setDate(d.getDate()+1);
-      for(let i=0;i<qtd;i++){ out.push({v:this.isoLocal(d), label:this.diasCurto[dia]+' '+this.fmtBr(d)+(hora?' · '+hora:'')}); d.setDate(d.getDate()+7); }
+    get hojeISO(){ return this.isoLocal(new Date()); },
+    gerarDatas(dia,hora,passadas,futuras){
+      const out=[]; const base=new Date(); base.setHours(0,0,0,0);
+      while(base.getDay()!==dia) base.setDate(base.getDate()+1);     // próxima ocorrência >= hoje
+      const d=new Date(base); d.setDate(d.getDate()-7*passadas);     // começa nas semanas anteriores
+      for(let i=0;i<passadas+futuras;i++){ out.push({v:this.isoLocal(d), label:this.diasCurto[dia]+' '+this.fmtBr(d)+(hora?' · '+hora:'')}); d.setDate(d.getDate()+7); }
       return out;
     },
-    // datas da viagem a partir da ORIGEM escolhida (dia/hora em que o barco sai de lá)
+    // datas da viagem a partir da ORIGEM escolhida (dia/hora em que o barco sai de lá); inclui viagens já saídas
     recalcularDatas(){
       if (!this.rotaId || !this.paradasInfo.length) { this.viagemDatas=[]; this.viagemData=''; return; }
       const p = this.paradasInfo.find(x=>x.n===this.origemSel) || this.paradasInfo[0];
       this.viagemHora = p.h || '';
       if (p.d===null||p.d===undefined||p.d==='') { this.viagemDatas=[]; this.viagemData=''; return; }
-      this.viagemDatas = this.gerarDatas(Number(p.d), this.viagemHora, 26);
-      this.viagemData = this.viagemDatas[0]?.v || '';
+      this.viagemDatas = this.gerarDatas(Number(p.d), this.viagemHora, 6, 26);   // 6 semanas atrás + 26 à frente
+      const hoje = this.isoLocal(new Date());
+      this.viagemData = (this.viagemDatas.find(d=>d.v>=hoje) || this.viagemDatas[this.viagemDatas.length-1]).v;
     },
     aplicarRota(){
       const opt = document.querySelector(`select[name=rota_id] option[value='${this.rotaId}']`);
@@ -306,7 +317,7 @@ function novaEncomenda(){
       this.salvando = true;
       const fd = new FormData(form);
       const dados = {
-        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, setor: fd.get('setor'),
+        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, lancamento_em: this.lancamentoEm || null, setor: fd.get('setor'),
         remetente_nome: fd.get('remetente_nome'), remetente_telefone: fd.get('remetente_telefone'), remetente_documento: fd.get('remetente_documento'),
         destinatario_nome: fd.get('destinatario_nome'), destinatario_telefone: fd.get('destinatario_telefone'), destinatario_documento: fd.get('destinatario_documento'),
         volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0,

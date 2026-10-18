@@ -36,7 +36,14 @@ class EncomendaService
             }
         }
 
-        return DB::transaction(function () use ($data, $userId, $uuid, $offline, $empresa, $viagemId, $rotaId) {
+        // data do lançamento (permite registrar encomenda feita em dia anterior) — mantém a hora atual
+        $quando = null;
+        if (! empty($data['lancamento_em'])) {
+            $quando = \Carbon\Carbon::parse($data['lancamento_em'])->setTimeFromTimeString(now()->format('H:i:s'));
+            if ($quando->isToday() || $quando->isFuture()) $quando = null; // só vale pra datas passadas
+        }
+
+        return DB::transaction(function () use ($data, $userId, $uuid, $offline, $empresa, $viagemId, $rotaId, $quando) {
             $enc = Encomenda::create([
                 'uuid' => $uuid,
                 'numero' => $empresa->proximoNumero(),
@@ -62,6 +69,10 @@ class EncomendaService
                 'criada_no_aparelho_em' => ! empty($data['criada_em']) ? \Carbon\Carbon::parse($data['criada_em'])->setTimezone(config('app.timezone')) : null,
             ]);
 
+            if ($quando) {
+                $enc->forceFill(['created_at' => $quando, 'updated_at' => $quando])->saveQuietly();
+            }
+
             foreach ($data['itens'] as $it) {
                 $enc->itens()->create([
                     'descricao' => $it['descricao'],
@@ -80,7 +91,7 @@ class EncomendaService
                     'valor' => $p['valor'],
                     'user_id' => $userId,
                     'momento' => 'cadastro',
-                ]);
+                ] + ($quando ? ['created_at' => $quando, 'updated_at' => $quando] : []));
             }
 
             $enc->recalcular();
