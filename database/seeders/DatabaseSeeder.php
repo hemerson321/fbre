@@ -152,15 +152,23 @@ class DatabaseSeeder extends Seeder
             // desativa a rota de exemplo antiga, se existir
             \App\Models\Rota::where('empresa_id', $empresa->id)->where('nome', 'Linha Tefé')->update(['ativo' => false]);
 
-            // Terça 11h (subida). Só a partida tem dia/hora; as demais o barco passa nos dias seguintes.
+            // Subida (Manaus → Uarini) — dias: 0=Dom 1=Seg 2=Ter 3=Qua 4=Qui 5=Sex 6=Sáb
             $this->criarRota($empresa, 'Subida — Manaus → Uarini', [
-                ['Manaus', 2, '11:00'], ['Codajás', null, null], ['Coari', null, null],
-                ['Tefé', null, null], ['Alvarães', null, null], ['Uarini', null, null],
+                ['Manaus', 2, '11:00'],   // Terça 11h (partida)
+                ['Codajás', 3, '06:30'],  // Quarta 6h-7h
+                ['Coari', 3, '16:00'],    // Quarta 16h-17h
+                ['Tefé', 4, '07:00'],     // Quinta 7h
+                ['Alvarães', 4, '19:00'], // Quinta 19h
+                ['Uarini', 5, '07:00'],   // Sexta 7h (chegada)
             ]);
-            // Sábado 7h (descida).
+            // Descida (Uarini → Manaus)
             $this->criarRota($empresa, 'Descida — Uarini → Manaus', [
-                ['Uarini', 6, '07:00'], ['Alvarães', null, null], ['Tefé', null, null],
-                ['Coari', null, null], ['Codajás', null, null], ['Manaus', null, null],
+                ['Uarini', 6, '07:00'],   // Sábado 7h (partida)
+                ['Alvarães', 6, '11:00'], // Sábado 11h
+                ['Tefé', 6, '17:30'],     // Sábado 15h passagem / 17h30 saída
+                ['Coari', 0, '08:30'],    // Domingo 6h chegada / 8h30 saída
+                ['Codajás', 0, '14:00'],  // Domingo 14h
+                ['Manaus', 1, '08:00'],   // Segunda de manhã (chegada)
             ]);
         }
 
