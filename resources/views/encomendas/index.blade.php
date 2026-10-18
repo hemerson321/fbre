@@ -14,17 +14,18 @@
 </div>
 
 {{-- FILTROS --}}
-<form method="get" class="card p-3 lg:p-4" :class="filtros?'':'hidden lg:block'">
-  <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
-    <div class="col-span-2"><label class="label">Buscar</label><input name="busca" value="{{ $f['busca'] ?? '' }}" class="input" placeholder="Nº, nome ou telefone"></div>
-    <div><label class="label">De</label><div class="flex gap-1"><input type="date" name="inicio" value="{{ $f['inicio'] ?? '' }}" class="input"><input type="time" name="hora_inicio" value="{{ $f['hora_inicio'] ?? '' }}" class="input !w-24" title="Hora inicial"></div></div>
-    <div><label class="label">Até</label><div class="flex gap-1"><input type="date" name="fim" value="{{ $f['fim'] ?? '' }}" class="input"><input type="time" name="hora_fim" value="{{ $f['hora_fim'] ?? '' }}" class="input !w-24" title="Hora final"></div></div>
-    <div><label class="label">Origem</label><input name="origem" list="locais" value="{{ $f['origem'] ?? '' }}" class="input"></div>
-    <div><label class="label">Destino</label><input name="destino" list="locais" value="{{ $f['destino'] ?? '' }}" class="input"></div>
-    <datalist id="locais">@foreach($localidades as $l)<option value="{{ $l }}">@endforeach</datalist>
-    <div><label class="label">Transporte</label>
-      <select name="embarcacao_id" class="input"><option value="">Todos</option>
-        @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(($f['embarcacao_id'] ?? '')==$b->id)>{{ $b->nome }}</option>@endforeach</select></div>
+<form method="get" class="card p-3 lg:p-4 space-y-3" :class="filtros?'':'hidden lg:block'">
+  <datalist id="locais">@foreach($localidades as $l)<option value="{{ $l }}">@endforeach</datalist>
+
+  {{-- período + busca --}}
+  <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="lg:col-span-2"><label class="label">Buscar</label><input name="busca" value="{{ $f['busca'] ?? '' }}" class="input" placeholder="Nº, nome ou telefone"></div>
+    <div><label class="label">De</label><div class="flex gap-1"><input type="date" name="inicio" value="{{ $f['inicio'] ?? '' }}" class="input"><input type="time" name="hora_inicio" value="{{ $f['hora_inicio'] ?? '' }}" class="input !w-[88px]" title="Hora inicial"></div></div>
+    <div><label class="label">Até</label><div class="flex gap-1"><input type="date" name="fim" value="{{ $f['fim'] ?? '' }}" class="input"><input type="time" name="hora_fim" value="{{ $f['hora_fim'] ?? '' }}" class="input !w-[88px]" title="Hora final"></div></div>
+  </div>
+
+  {{-- trajeto / viagem --}}
+  <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
     @if($viagens->count())
     <div><label class="label">Viagem</label>
       <select name="viagem_id" class="input"><option value="">Todas</option>
@@ -35,6 +36,15 @@
       <select name="rota_id" class="input"><option value="">Todas</option>
         @foreach($rotas as $r)<option value="{{ $r->id }}" @selected(($f['rota_id'] ?? '')==$r->id)>{{ $r->nome }}</option>@endforeach</select></div>
     @endif
+    <div><label class="label">Origem</label><input name="origem" list="locais" value="{{ $f['origem'] ?? '' }}" class="input"></div>
+    <div><label class="label">Destino</label><input name="destino" list="locais" value="{{ $f['destino'] ?? '' }}" class="input"></div>
+    <div><label class="label">Transporte</label>
+      <select name="embarcacao_id" class="input"><option value="">Todos</option>
+        @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(($f['embarcacao_id'] ?? '')==$b->id)>{{ $b->nome }}</option>@endforeach</select></div>
+  </div>
+
+  {{-- status --}}
+  <div class="grid gap-2 grid-cols-2 sm:grid-cols-3">
     <div><label class="label">Pagamento</label>
       <select name="status_pagamento" class="input"><option value="">Todos</option>
         @foreach(['pago'=>'Pago','parcial'=>'Parcial','pendente'=>'Não pago'] as $k=>$l)<option value="{{ $k }}" @selected(($f['status_pagamento'] ?? '')===$k)>{{ $l }}</option>@endforeach</select></div>
@@ -44,13 +54,15 @@
     <div><label class="label">Forma</label>
       <select name="forma" class="input"><option value="">Todas</option>
         @foreach(\App\Models\Encomenda::FORMAS as $k=>$l)<option value="{{ $k }}" @selected(($f['forma'] ?? '')===$k)>{{ $l }}</option>@endforeach</select></div>
-    <div class="col-span-2 md:col-span-4 xl:col-span-8 flex flex-wrap gap-2 pt-1">
-      <button class="btn btn-primary btn-sm">Filtrar</button>
-      <a href="{{ route('encomendas.index') }}" class="btn btn-ghost btn-sm">Limpar</a>
-      <span class="flex-1"></span>
-      <button type="submit" formtarget="_blank" formaction="{{ route('imprimir.protocolo') }}" class="btn btn-sm {{ request()->boolean('protocolo') ? 'btn-accent' : 'btn-ghost' }}">🖨 Protocolo (período acima)</button>
-      <button type="submit" formtarget="_blank" formaction="{{ route('imprimir.listagem') }}" class="btn btn-ghost btn-sm">🖨 Listagem</button>
-    </div>
+  </div>
+
+  {{-- ações --}}
+  <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+    <button class="btn btn-primary btn-sm">Filtrar</button>
+    <a href="{{ route('encomendas.index') }}" class="btn btn-ghost btn-sm">Limpar</a>
+    <span class="flex-1"></span>
+    <button type="submit" formtarget="_blank" formaction="{{ route('imprimir.protocolo') }}" class="btn btn-sm {{ request()->boolean('protocolo') ? 'btn-accent' : 'btn-ghost' }}">🖨 Protocolo</button>
+    <button type="submit" formtarget="_blank" formaction="{{ route('imprimir.listagem') }}" class="btn btn-ghost btn-sm">🖨 Listagem</button>
   </div>
 </form>
 

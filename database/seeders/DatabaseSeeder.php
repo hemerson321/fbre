@@ -90,6 +90,11 @@ class DatabaseSeeder extends Seeder
             default => ['nome' => ucfirst($slug), 'nome_fantasia' => ucfirst($slug), 'recursos' => ['print_agent'], 'ativo' => true],
         });
 
+        // garante os recursos ligados mesmo se a empresa já existia (firstOrCreate não atualiza)
+        $empresa->recursos = array_values(array_unique(array_merge($empresa->recursos ?? [], ['print_agent', 'viagens'])));
+        $empresa->ativo = true;
+        $empresa->save();
+
         // outras empresas que porventura existam ficam desativadas nesta instalação
         Empresa::where('id', '!=', $empresa->id)->update(['ativo' => false]);
 
