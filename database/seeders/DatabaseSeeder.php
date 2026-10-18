@@ -15,6 +15,11 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        if (config('fbre.single')) {
+            $this->empresaUnica();
+            return;
+        }
+
         // ------------------------------------------------------------
         // GERATEC — empresa de testes + super-admin
         // ------------------------------------------------------------
@@ -62,6 +67,45 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->dadosBase($oliveira);
+    }
+
+    /** Instalação dedicada a uma única empresa (config fbre.empresa). */
+    protected function empresaUnica(): void
+    {
+        $slug = config('fbre.empresa');
+
+        $empresa = Empresa::firstOrCreate(['slug' => $slug], match ($slug) {
+            'oliveira' => [
+                'nome' => 'E Oliveira Fernandes - Transportes Fluviais - ME',
+                'nome_fantasia' => 'Ferry Boat Rainha Esther',
+                'cnpj' => '05.967.900/0001-26',
+                'uf' => 'AM',
+                'logo' => 'img/empresas/oliveira.jpg',
+                'cor_primaria' => '#013155',
+                'cor_secundaria' => '#e0a630',
+                'recursos' => ['print_agent'],
+                'validade' => now()->addYear(),
+                'ativo' => true,
+            ],
+            default => ['nome' => ucfirst($slug), 'nome_fantasia' => ucfirst($slug), 'recursos' => ['print_agent'], 'ativo' => true],
+        });
+
+        // outras empresas que porventura existam ficam desativadas nesta instalação
+        Empresa::where('id', '!=', $empresa->id)->update(['ativo' => false]);
+
+        // GERATEC (super-admin) — vinculado à própria empresa do cliente
+        $this->usuario('hemerson321@gmail.com', [
+            'login' => 'hemerson', 'empresa_id' => $empresa->id, 'name' => 'Hemerson (GERATEC)',
+            'super_admin' => true, 'admin' => true, 'perm_cadastra' => true, 'perm_baixa' => true, 'perm_caixa' => true, 'setor' => 'Suporte',
+        ]);
+
+        // administrador do cliente
+        $this->usuario("admin@{$slug}.fbre", [
+            'login' => $slug, 'empresa_id' => $empresa->id, 'name' => 'Administrador',
+            'admin' => true, 'perm_cadastra' => true, 'perm_baixa' => true, 'perm_caixa' => true, 'setor' => 'Escritório',
+        ]);
+
+        $this->dadosBase($empresa);
     }
 
     /** Cria o usuário se não existir; se existir, só garante login/permissões (não mexe na senha). */

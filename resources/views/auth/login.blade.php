@@ -48,7 +48,7 @@
     </form>
 
     <p class="text-center text-white/40 text-[11px] mt-6">
-      @if($empresa && $empresa->slug !== 'geratec')<a href="/login" class="hover:text-white/70">Entrar em outra empresa</a> · @endif
+      @if($empresa && ! config('fbre.single'))<a href="/login" class="hover:text-white/70">Entrar em outra empresa</a> · @endif
       FBRE · GERATEC Soluções
     </p>
   </div>

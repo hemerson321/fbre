@@ -13,7 +13,8 @@ class AuthController extends Controller
     public function form(Request $request)
     {
         $empresa = null;
-        if ($slug = $request->cookie('fbre_empresa')) {
+        $slug = $request->cookie('fbre_empresa') ?: (config('fbre.single') ? config('fbre.empresa') : null);
+        if ($slug) {
             $empresa = Empresa::where('slug', $slug)->where('ativo', true)->first();
         }
         return view('auth.login', ['empresa' => $empresa]);

@@ -57,6 +57,7 @@ Route::middleware('auth')->group(function () {
 
     // ---------------- Super-admin (GERATEC) ----------------
     Route::prefix('super')->middleware('perm:super')->name('super.')->group(function () {
+        if (config('fbre.single')) { return; }
         Route::get('/empresas', [EmpresaController::class, 'index'])->name('empresas');
         Route::post('/empresas', [EmpresaController::class, 'store'])->name('empresas.store');
         Route::post('/empresas/{empresa}/toggle', [EmpresaController::class, 'toggle'])->name('empresas.toggle');
