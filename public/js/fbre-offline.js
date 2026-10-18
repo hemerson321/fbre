@@ -47,29 +47,32 @@
       if (!r.ok) throw new Error(r.status);
       const j = await r.json();
       await kvSet('bootstrap', j);
+      if (j.csrf) { const m = document.querySelector('meta[name=csrf-token]'); if (m) m.content = j.csrf; window.FBRE && (window.FBRE.csrf = j.csrf); }
       return j;
     } catch { return kvGet('bootstrap'); }
   }
 
   // ---------------------------------------------------------------- envio
-  async function enviarUm(item) {
+  async function enviarUm(item, tentativa = 0) {
     const url = item.tipo === 'encomenda' ? '/sync/encomenda' : '/sync/baixa';
     const r = await fetch(url, {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
       body: JSON.stringify({ ...item.dados, uuid: item.uuid, offline: true }),
     });
-    if (r.status === 419) { // sessão/CSRF expirou: renova e tenta de novo depois
-      await atualizarBootstrap(); throw new Error('csrf');
+    if (r.status === 419) { // CSRF venceu: renova e tenta de novo uma vez
+      await atualizarBootstrap();
+      if (tentativa === 0) return enviarUm(item, 1);
+      item.erro = 'Sessão expirada — faça login novamente'; await filaPut(item); throw new Error('csrf');
     }
-    if (r.status === 401) throw new Error('login');
+    if (r.status === 401 || r.redirected) { item.erro = 'Sessão expirada — faça login novamente'; await filaPut(item); throw new Error('login'); }
     if (r.status === 422) { // dado inválido: não fica preso na fila pra sempre
       const j = await r.json().catch(() => ({}));
-      item.erro = 'Rejeitada: ' + JSON.stringify(j.errors || j); item.falhas = (item.falhas || 0) + 1; await filaPut(item);
+      item.erro = 'Rejeitada pelo servidor: ' + Object.values(j.errors || {}).flat().join(' ') ; item.falhas = (item.falhas || 0) + 1; await filaPut(item);
       throw new Error('422');
     }
     if (r.status === 409) { const j = await r.json(); if (j.reter) { item.falhas = (item.falhas || 0) + 1; await filaPut(item); } throw new Error('409'); }
-    if (!r.ok) throw new Error(r.status);
+    if (!r.ok) { item.erro = 'Erro ' + r.status + ' no servidor'; item.falhas = (item.falhas || 0) + 1; await filaPut(item); throw new Error(r.status); }
     const j = await r.json();
     await enviadasPut({ uuid: item.uuid, tipo: item.tipo, resposta: j, em: Date.now(), dados: item.dados });
     await filaDel(item.uuid);
@@ -85,7 +88,7 @@
       // encomendas primeiro, depois baixas (a baixa pode depender da encomenda)
       for (const item of [...fila.filter((i) => i.tipo === 'encomenda'), ...fila.filter((i) => i.tipo !== 'encomenda')]) {
         if ((item.falhas || 0) >= 20) continue;
-        try { await enviarUm(item); } catch (e) { if (['login', 'csrf'].includes(e.message)) break; }
+        try { await enviarUm(item); } catch (e) { console.warn('[FBRE sync]', item.uuid, e.message, item.erro || ''); if (['login', 'csrf'].includes(e.message)) break; }
       }
     } finally { sincronizando = false; atualizarIndicador(); }
   }
@@ -94,6 +97,8 @@
   const FBREOffline = {
     uuid, moeda, online,
     pendentes: async () => (await filaTodos()).length,
+    descartar: async (uuid) => { await filaDel(uuid); atualizarIndicador(); },
+    reenviar: async (uuid) => { const it = (await filaTodos()).find((i) => i.uuid === uuid); if (it) { it.falhas = 0; delete it.erro; await filaPut(it); } await sincronizar(); },
     fila: filaTodos,
     bootstrap: () => kvGet('bootstrap'),
     sincronizar,
@@ -171,6 +176,36 @@
     el.title = on ? (n ? 'Enviando dados pendentes…' : 'Tudo sincronizado') : 'Sem internet: os cadastros ficam guardados neste aparelho e sobem quando a conexão voltar.';
   }
 
+  // ---------------------------------------------------------------- painel de pendências
+  async function mostrarPainel() {
+    const fila = (await filaTodos()).sort((a, b) => a.em - b.em);
+    let el = document.getElementById('fbre-painel');
+    if (!el) { el = document.createElement('div'); el.id = 'fbre-painel'; document.body.appendChild(el); }
+    const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const linhas = fila.map((i) => {
+      const d = i.dados; const titulo = i.tipo === 'encomenda' ? `Encomenda ${esc(d.numero_provisorio)} — ${esc(d.destinatario_nome)} (${esc(d.destino)})` : `Baixa — encomenda #${esc(d.encomenda_id || d.encomenda_uuid)}`;
+      return `<div class="rounded-xl border p-3 text-sm ${i.erro ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}">
+        <div class="font-semibold">${titulo}</div>
+        <div class="text-xs text-slate-500">${new Date(i.em).toLocaleString('pt-BR')} · ${i.falhas ? i.falhas + ' tentativa(s)' : 'aguardando envio'}</div>
+        ${i.erro ? `<div class="text-xs text-red-700 mt-1">${esc(i.erro)}</div>` : ''}
+        <div class="flex gap-2 mt-2">
+          ${i.tipo === 'encomenda' ? `<button data-print="${i.uuid}" class="rounded-lg border px-2 py-1 text-xs bg-white">🖨 Reimprimir</button>` : ''}
+          <button data-retry="${i.uuid}" class="rounded-lg border px-2 py-1 text-xs bg-white">Reenviar</button>
+          <button data-drop="${i.uuid}" class="rounded-lg px-2 py-1 text-xs text-red-600 ml-auto">Descartar…</button>
+        </div></div>`; }).join('');
+    el.innerHTML = `<div class="fixed inset-0 z-[60] bg-black/40 flex items-start justify-end p-3" data-close>
+      <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-4 space-y-3 max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between"><h3 class="font-bold">Sincronização ${online() ? '· online' : '· offline'}</h3><button data-close class="text-xl px-2">×</button></div>
+        <p class="text-xs text-slate-500">${fila.length ? fila.length + ' registro(s) guardado(s) neste aparelho aguardando o servidor.' : 'Tudo sincronizado. Nenhuma pendência.'}</p>
+        ${linhas}
+      </div></div>`;
+    el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', (ev) => { if (ev.target === b) el.remove(); }));
+    el.querySelectorAll('[data-retry]').forEach((b) => b.addEventListener('click', async () => { await FBREOffline.reenviar(b.dataset.retry); mostrarPainel(); }));
+    el.querySelectorAll('[data-print]').forEach((b) => b.addEventListener('click', async () => { const it = fila.find((i) => i.uuid === b.dataset.print); if (it) FBREOffline.imprimirComprovanteLocal(it); }));
+    el.querySelectorAll('[data-drop]').forEach((b) => b.addEventListener('click', async () => { if (confirm('Descartar este registro? Ele NÃO será enviado ao servidor e será apagado deste aparelho.')) { await FBREOffline.descartar(b.dataset.drop); mostrarPainel(); } }));
+  }
+  FBREOffline.painel = mostrarPainel;
+
   // ---------------------------------------------------------------- init
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   window.addEventListener('online', () => { atualizarIndicador(); sincronizar(); });
@@ -180,6 +215,6 @@
     atualizarIndicador();
     if (online()) { await atualizarBootstrap(); sincronizar(); }
     setInterval(() => { if (online()) sincronizar(); }, 15000);
-    document.getElementById('fbre-net')?.addEventListener('click', () => { atualizarBootstrap(); sincronizar(); });
+    document.getElementById('fbre-net')?.addEventListener('click', async () => { await atualizarBootstrap(); await sincronizar(); mostrarPainel(); });
   });
 })();
