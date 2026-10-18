@@ -12,6 +12,7 @@ import configparser
 import json
 import os
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -19,9 +20,14 @@ import urllib.request
 import urllib.error
 
 APP = "FBRE Print Agent"
-BASE = os.path.dirname(os.path.abspath(sys.argv[0]))
-INI = os.path.join(BASE, "fbre_agent.ini")
-LOG = os.path.join(BASE, "fbre_agent.log")
+# config/log numa pasta gravável (o instalador põe o .exe em Program Files, que é só leitura)
+DATA = os.path.join(os.environ.get("PROGRAMDATA", os.path.expanduser("~")), "FBRE")
+try:
+    os.makedirs(DATA, exist_ok=True)
+except Exception:
+    DATA = os.path.dirname(os.path.abspath(sys.argv[0]))
+INI = os.path.join(DATA, "fbre_agent.ini")
+LOG = os.path.join(DATA, "fbre_agent.log")
 
 INI_TEMPLATE = """[fbre]
 servidor = https://fbre.com.br
@@ -216,7 +222,7 @@ def enviar(cfg_sec, dados: bytes):
         finally:
             win32print.ClosePrinter(h)
     elif tipo == "arquivo":
-        with open(os.path.join(BASE, f"saida_{int(time.time()*1000)}.bin"), "wb") as f:
+        with open(os.path.join(DATA, f"saida_{int(time.time()*1000)}.bin"), "wb") as f:
             f.write(dados)
     else:
         raise RuntimeError(f"tipo de impressora desconhecido: {tipo}")
@@ -245,16 +251,21 @@ class Api:
     def error(self, j, msg): return self._req("POST", f"/{j}/error", {"erro": msg})
 
 
-# ---------------------------------------------------------------- loop
-def loop(cfg, parar: threading.Event):
-    api = Api(cfg["fbre"]["servidor"], cfg["fbre"]["token"])
-    col = int(cfg["escpos"].get("colunas", 48))
-    intervalo = float(cfg["fbre"].get("intervalo", 2))
-    try:
-        info = api.ping(); log(f"Conectado: {info['empresa']} / estação {info['estacao']}")
-    except Exception as ex:
-        log(f"Falha ao conectar: {ex}")
+# ---------------------------------------------------------------- loop (recarrega config a cada ciclo)
+def loop(parar: threading.Event):
+    api = None; token_atual = None
     while not parar.is_set():
+        cfg = carregar_config()
+        token = (cfg["fbre"].get("token", "") or "").strip()
+        servidor = cfg["fbre"].get("servidor", "https://fbre.com.br")
+        col = int(cfg["escpos"].get("colunas", 48))
+        intervalo = float(cfg["fbre"].get("intervalo", 2))
+        if "COLE_AQUI" in token or not token:
+            parar.wait(3); continue                       # ainda sem token
+        if api is None or token != token_atual:
+            api = Api(servidor, token); token_atual = token
+            try: info = api.ping(); log(f"Conectado: {info['empresa']} / estação {info['estacao']}")
+            except Exception as ex: log(f"Falha ao conectar: {ex}")
         try:
             for job in api.next():
                 try:
@@ -271,34 +282,138 @@ def loop(cfg, parar: threading.Event):
                     try: api.error(job["id"], str(ex))
                     except Exception: pass
         except urllib.error.HTTPError as ex:
-            log(f"HTTP {ex.code}: {ex.reason}"); time.sleep(10)
+            log(f"HTTP {ex.code}: {ex.reason}"); parar.wait(10); continue
         except Exception as ex:
-            log(f"Erro: {ex}"); time.sleep(5)
+            log(f"Erro: {ex}"); parar.wait(5); continue
         parar.wait(intervalo)
 
 
-def main():
-    cfg = carregar_config()
-    if "COLE_AQUI" in cfg["fbre"]["token"]:
-        log("Configure o token em fbre_agent.ini");
-        if os.name == "nt": os.startfile(INI)
-        return
-    parar = threading.Event()
-    t = threading.Thread(target=loop, args=(cfg, parar), daemon=True); t.start()
+# ---------------------------------------------------------------- configuração (ini + janela)
+def salvar_config(v):
+    cfg = configparser.ConfigParser()
+    if os.path.exists(INI): cfg.read(INI, encoding="utf-8")
+    for sec in ("fbre", "impressora_comprovante", "impressora_etiqueta", "escpos"):
+        if not cfg.has_section(sec): cfg.add_section(sec)
+    cfg["fbre"]["servidor"] = v.get("servidor") or "https://fbre.com.br"
+    cfg["fbre"]["token"] = v.get("token", "")
+    if not cfg["fbre"].get("intervalo"): cfg["fbre"]["intervalo"] = "2"
+    for sec, key in (("impressora_comprovante", "comprovante"), ("impressora_etiqueta", "etiqueta")):
+        cfg[sec]["tipo"] = "windows"
+        cfg[sec]["nome_windows"] = v.get(key, "padrao")
+    if not cfg["escpos"].get("colunas"): cfg["escpos"]["colunas"] = "48"
+    if not cfg["escpos"].get("cortar"): cfg["escpos"]["cortar"] = "1"
+    with open(INI, "w", encoding="utf-8") as f: cfg.write(f)
 
-    # ícone na bandeja (Windows) se pystray/Pillow estiverem disponíveis
+
+def janela_config():
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+
+    nomes, _ = listar_impressoras()
+    PADRAO = "Padrão do Windows"
+    opcoes = [PADRAO] + nomes
+
+    cfg = configparser.ConfigParser()
+    if os.path.exists(INI): cfg.read(INI, encoding="utf-8")
+    g = lambda s, k, d="": cfg[s].get(k, d) if cfg.has_section(s) else d
+    tok = g("fbre", "token"); tok = "" if "COLE_AQUI" in tok else tok
+    srv = g("fbre", "servidor", "https://fbre.com.br")
+    comp = g("impressora_comprovante", "nome_windows", "padrao")
+    etq = g("impressora_etiqueta", "nome_windows", "padrao")
+
+    def sel(atual):
+        if (atual or "padrao").lower() == "padrao": return PADRAO
+        return atual if atual in nomes else PADRAO
+
+    def val(c):
+        return "padrao" if c.get() == PADRAO else c.get()
+
+    root = tk.Tk(); root.title("FBRE Print Agent — Configuração"); root.resizable(False, False)
+    frm = ttk.Frame(root, padding=16); frm.grid()
+    ttk.Label(frm, text="FBRE Print Agent", font=("Segoe UI", 15, "bold")).grid(column=0, row=0, columnspan=2, sticky="w")
+    ttk.Label(frm, text="Impressão direta de comprovantes e etiquetas.").grid(column=0, row=1, columnspan=2, sticky="w", pady=(0, 12))
+
+    ttk.Label(frm, text="Token da estação:").grid(column=0, row=2, sticky="w", pady=4)
+    e_tok = ttk.Entry(frm, width=48); e_tok.insert(0, tok); e_tok.grid(column=1, row=2, pady=4)
+    ttk.Label(frm, text="Servidor:").grid(column=0, row=3, sticky="w", pady=4)
+    e_srv = ttk.Entry(frm, width=48); e_srv.insert(0, srv); e_srv.grid(column=1, row=3, pady=4)
+
+    ttk.Label(frm, text="Impressora do comprovante:").grid(column=0, row=4, sticky="w", pady=4)
+    c_comp = ttk.Combobox(frm, width=45, values=opcoes, state="readonly"); c_comp.set(sel(comp)); c_comp.grid(column=1, row=4, pady=4)
+    ttk.Label(frm, text="Impressora da etiqueta:").grid(column=0, row=5, sticky="w", pady=4)
+    c_etq = ttk.Combobox(frm, width=45, values=opcoes, state="readonly"); c_etq.set(sel(etq)); c_etq.grid(column=1, row=5, pady=4)
+
+    def coletar():
+        return {"token": e_tok.get().strip(), "servidor": e_srv.get().strip(),
+                "comprovante": val(c_comp), "etiqueta": val(c_etq)}
+
+    def salvar():
+        if not e_tok.get().strip():
+            messagebox.showwarning("FBRE", "Cole o token da estação (gerado no sistema em Cadastros gerais → Estações).")
+            return
+        salvar_config(coletar())
+        messagebox.showinfo("FBRE", "Configuração salva! O agente já passa a usar essas impressoras.")
+        root.destroy()
+
+    def testar(qual):
+        try:
+            salvar_config(coletar())
+            cfg2 = configparser.ConfigParser(); cfg2.read(INI, encoding="utf-8")
+            if qual == "etiqueta":
+                p = EscPos(48); p.txt("TESTE ETIQUETA", "c", True, 2); p.txt("FBRE", "c"); p.feed(2); p.cortar()
+                enviar(cfg2["impressora_etiqueta"], p.bytes())
+            else:
+                p = EscPos(48); p.txt("TESTE COMPROVANTE", "c", True, 2); p.txt("FBRE Print Agent OK", "c"); p.feed(3); p.cortar()
+                enviar(cfg2["impressora_comprovante"], p.bytes())
+            messagebox.showinfo("FBRE", "Enviado para a impressora. Confira o papel.")
+        except Exception as ex:
+            messagebox.showerror("FBRE", f"Falha no teste: {ex}")
+
+    bar = ttk.Frame(frm); bar.grid(column=0, row=6, columnspan=2, pady=(14, 0), sticky="e")
+    ttk.Button(bar, text="Testar comprovante", command=lambda: testar("comprovante")).grid(column=0, row=0, padx=4)
+    ttk.Button(bar, text="Testar etiqueta", command=lambda: testar("etiqueta")).grid(column=1, row=0, padx=4)
+    ttk.Button(bar, text="Salvar", command=salvar).grid(column=2, row=0, padx=4)
+    try: root.eval('tk::PlaceWindow . center')
+    except Exception: pass
+    root.mainloop()
+
+
+def _abrir_config():
+    """Abre a janela de config num processo separado (não trava a bandeja)."""
+    try:
+        if getattr(sys, "frozen", False):
+            subprocess.Popen([sys.executable, "--config"])
+        else:
+            subprocess.Popen([sys.executable, os.path.abspath(sys.argv[0]), "--config"])
+    except Exception as ex:
+        log(f"Falha ao abrir config: {ex}")
+
+
+def main():
+    if "--config" in sys.argv:
+        janela_config(); return
+
+    carregar_config()  # cria o ini se faltar
+    cfg = configparser.ConfigParser(); cfg.read(INI, encoding="utf-8")
+    tok = (cfg["fbre"].get("token", "") if cfg.has_section("fbre") else "")
+    if "COLE_AQUI" in tok or not tok.strip():
+        janela_config()  # primeira vez: abre a configuração (bloqueia até salvar/fechar)
+
+    parar = threading.Event()
+    threading.Thread(target=loop, args=(parar,), daemon=True).start()
+
     try:
         import pystray
         from PIL import Image, ImageDraw
         img = Image.new("RGB", (64, 64), "#0b1a33"); ImageDraw.Draw(img).rectangle((14, 20, 50, 44), fill="#00a8e8")
         menu = pystray.Menu(
-            pystray.MenuItem("Abrir configuração", lambda: os.startfile(INI)),
-            pystray.MenuItem("Ver log", lambda: os.startfile(LOG)),
+            pystray.MenuItem("Configurações (impressoras e token)", lambda: _abrir_config()),
+            pystray.MenuItem("Ver log", lambda: os.startfile(LOG) if os.path.exists(LOG) else None),
             pystray.MenuItem("Sair", lambda icon: (parar.set(), icon.stop())),
         )
         pystray.Icon("fbre", img, APP, menu).run()
     except ImportError:
-        log("Rodando em modo console (Ctrl+C para sair)")
+        log("Modo console (Ctrl+C para sair)")
         try:
             while True: time.sleep(1)
         except KeyboardInterrupt:
