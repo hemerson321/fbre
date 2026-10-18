@@ -147,14 +147,33 @@ class DatabaseSeeder extends Seeder
             Produto::firstOrCreate(['empresa_id' => $empresa->id, 'nome' => $nome], ['valor_padrao' => $valor]);
         }
 
-        // rota de exemplo (módulo viagens)
-        if (in_array('viagens', $empresa->recursos ?? [], true) && \App\Models\Rota::where('empresa_id', $empresa->id)->doesntExist()) {
-            $rota = \App\Models\Rota::create(['empresa_id' => $empresa->id, 'nome' => 'Linha Tefé']);
-            foreach ([['Manaus', 1, '18:00'], ['Coari', 2, '08:00'], ['Tefé', 5, '06:00']] as $i => [$loc, $dia, $hora]) {
-                $rota->paradas()->create(['ordem' => $i + 1, 'localidade' => $loc, 'dia_semana' => $dia, 'hora' => $hora]);
-            }
+        // rotas (módulo viagens) — Ferry Boat Rainha Esther
+        if (in_array('viagens', $empresa->recursos ?? [], true) && $empresa->slug === 'oliveira') {
+            // desativa a rota de exemplo antiga, se existir
+            \App\Models\Rota::where('empresa_id', $empresa->id)->where('nome', 'Linha Tefé')->update(['ativo' => false]);
+
+            // Terça 11h (subida). Só a partida tem dia/hora; as demais o barco passa nos dias seguintes.
+            $this->criarRota($empresa, 'Subida — Manaus → Uarini', [
+                ['Manaus', 2, '11:00'], ['Codajás', null, null], ['Coari', null, null],
+                ['Tefé', null, null], ['Alvarães', null, null], ['Uarini', null, null],
+            ]);
+            // Sábado 7h (descida).
+            $this->criarRota($empresa, 'Descida — Uarini → Manaus', [
+                ['Uarini', 6, '07:00'], ['Alvarães', null, null], ['Tefé', null, null],
+                ['Coari', null, null], ['Codajás', null, null], ['Manaus', null, null],
+            ]);
         }
 
         Tenant::clear();
+    }
+
+    /** Cria uma rota com suas paradas (idempotente pelo nome). */
+    protected function criarRota(Empresa $empresa, string $nome, array $paradas): void
+    {
+        $rota = \App\Models\Rota::firstOrCreate(['empresa_id' => $empresa->id, 'nome' => $nome], ['ativo' => true]);
+        if ($rota->paradas()->exists()) return;
+        foreach ($paradas as $i => [$loc, $dia, $hora]) {
+            $rota->paradas()->create(['ordem' => $i + 1, 'localidade' => $loc, 'dia_semana' => $dia, 'hora' => $hora]);
+        }
     }
 }

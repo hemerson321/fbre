@@ -268,7 +268,9 @@ function novaEncomenda(){
     rotulo(iso){ const [y,m,day]=iso.split('-').map(Number); const d=new Date(y,m-1,day); const tag = iso<this.hojeISO?' · anterior':(iso===this.hojeISO?' · hoje':''); return this.diasCurto[d.getDay()]+' '+this.fmtBr(d)+(this.viagemHora?' '+this.viagemHora:'')+tag; },
     // monta a viagem a partir da ORIGEM (dia/hora em que o barco sai de lá)
     recalcularDatas(){
-      const p = this.paradasInfo.find(x=>x.n===this.origemSel) || this.paradasInfo[0];
+      let p = this.paradasInfo.find(x=>x.n===this.origemSel) || this.paradasInfo[0];
+      // parada sem dia próprio (intermediária) usa o dia/hora da partida da linha
+      if (!p || p.d===null||p.d===undefined||p.d==='') p = this.paradasInfo[0];
       if (!p || p.d===null||p.d===undefined||p.d==='') { this.viagemDia=null; this.viagemData=''; this.viagemDataPick=''; this.viagemLabel=''; return; }
       this.viagemDia = Number(p.d); this.viagemHora = p.h || '';
       const prox = this.proximaViagem(this.viagemDia);
@@ -287,9 +289,11 @@ function novaEncomenda(){
     resolverLinha(){
       this.rotaId=''; this.linhaNome=''; this.paradasInfo=[];
       if (!this.origemSel) { this.viagemDia=null; this.viagemData=''; this.viagemDataPick=''; this.viagemLabel=''; return; }
-      const tem=(L,c)=>L.paradas.some(p=>p.n===c);
-      const linha = this.linhas.find(L=>tem(L,this.origemSel) && (!this.destinoSel || tem(L,this.destinoSel)))
-                 || this.linhas.find(L=>tem(L,this.origemSel));
+      const idx=(L,c)=>L.paradas.findIndex(p=>p.n===c);
+      const linha =
+           this.linhas.find(L=>{ const io=idx(L,this.origemSel), id=idx(L,this.destinoSel); return io>=0 && this.destinoSel && id>=0 && io<id; }) // direção certa (origem antes do destino)
+        || this.linhas.find(L=>idx(L,this.origemSel)>=0 && (!this.destinoSel || idx(L,this.destinoSel)>=0))
+        || this.linhas.find(L=>idx(L,this.origemSel)>=0);
       if (!linha) { this.viagemDia=null; this.viagemData=''; this.viagemDataPick=''; this.viagemLabel=''; return; }  // cidade fora de linha = avulsa
       this.rotaId=String(linha.id); this.linhaNome=linha.nome; this.paradasInfo=linha.paradas;
       this.recalcularDatas();
