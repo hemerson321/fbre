@@ -5,13 +5,21 @@ on:
     branches: [main]
     paths: ['print-agent/**', '.github/workflows/build-agent.yml']
 jobs:
-  build-exe:
+  build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: pip install pyinstaller pystray pillow pywin32
-      - run: pyinstaller --onefile --noconsole --name FBREPrintAgent print-agent/fbre_print_agent.py
+      - run: pyinstaller --onefile --noconsole --name FBREPrintAgent --distpath print-agent/dist --workpath build/w --specpath build print-agent/fbre_print_agent.py
+      - name: Instalar Inno Setup
+        run: choco install innosetup -y --no-progress
+      - name: Gerar instalador
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" print-agent\fbre-agent.iss'
       - uses: actions/upload-artifact@v4
-        with: { name: FBREPrintAgent, path: dist/FBREPrintAgent.exe }
+        with:
+          name: FBREPrintAgent-Instalador
+          path: |
+            print-agent/installer/FBREPrintAgentSetup.exe
+            print-agent/dist/FBREPrintAgent.exe
