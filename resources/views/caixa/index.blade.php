@@ -9,7 +9,13 @@
   <div><label class="label">Operador</label>
     <select name="user_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
       @foreach($usuarios as $us)<option value="{{ $us->id }}" @selected($userId==$us->id)>{{ $us->name }}</option>@endforeach</select></div>
+  @if($viagens->count())
+  <div><label class="label">Viagem</label>
+    <select name="viagem_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">— período —</option>
+      @foreach($viagens as $v)<option value="{{ $v->id }}" @selected($viagemId==$v->id)>{{ $v->numeroFormatado() }} · {{ $v->nome }}</option>@endforeach</select></div>
+  @endif
 </x-periodo>
+@if($viagemId)<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Mostrando o caixa da viagem selecionada (o período acima é ignorado).</div>@endif
 
 <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
   <div class="card p-3 text-white" style="background:var(--cor1)"><div class="text-[11px] uppercase opacity-70">Total no caixa</div><div class="text-2xl font-extrabold">R$ {{ number_format($total,2,',','.') }}</div></div>

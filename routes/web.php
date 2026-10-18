@@ -8,6 +8,8 @@ use App\Http\Controllers\Admin\EmpresaController;
 use App\Http\Controllers\Admin\CadastroController;
 use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\RelatorioController;
+use App\Http\Controllers\ViagemController;
+use App\Http\Controllers\Admin\RotaController;
 use App\Http\Controllers\SyncController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,6 +53,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/caixa', [CaixaController::class, 'index'])->name('caixa.index')->middleware('perm:caixa');
     Route::get('/meu-relatorio', [RelatorioController::class, 'meu'])->name('relatorio.meu')->middleware('perm:relatorio');
 
+    // ---------------- Viagens (módulo rotas) ----------------
+    Route::get('/viagens', [ViagemController::class, 'index'])->name('viagens.index')->middleware('perm:filtro');
+    Route::post('/viagens/{viagem}/status', [ViagemController::class, 'status'])->name('viagens.status')->middleware('perm:baixa');
+
     // ---------------- Admin da empresa ----------------
     Route::prefix('admin')->middleware('perm:admin')->name('admin.')->group(function () {
         Route::get('/empresa', [EmpresaController::class, 'editar'])->name('empresa');
@@ -60,6 +66,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/cadastros/{tipo}', [CadastroController::class, 'store'])->name('cadastros.store');
         Route::delete('/cadastros/{tipo}/{id}', [CadastroController::class, 'destroy'])->name('cadastros.destroy');
         Route::post('/estacoes', [CadastroController::class, 'novaEstacao'])->name('estacoes.store');
+        Route::get('/rotas', [RotaController::class, 'index'])->name('rotas');
+        Route::post('/rotas', [RotaController::class, 'store'])->name('rotas.store');
+        Route::put('/rotas/{rota}', [RotaController::class, 'update'])->name('rotas.update');
+        Route::post('/rotas/{rota}/toggle', [RotaController::class, 'toggle'])->name('rotas.toggle');
     });
 
     // ---------------- Super-admin (GERATEC) ----------------

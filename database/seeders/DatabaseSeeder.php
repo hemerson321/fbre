@@ -56,7 +56,7 @@ class DatabaseSeeder extends Seeder
             'logo' => 'img/empresas/oliveira.jpg',
             'cor_primaria' => '#013155',
             'cor_secundaria' => '#e0a630',
-            'recursos' => ['print_agent'],
+            'recursos' => ['print_agent', 'viagens'],
             'validade' => now()->addYear(),
             'ativo' => true,
         ]);
@@ -83,7 +83,7 @@ class DatabaseSeeder extends Seeder
                 'logo' => 'img/empresas/oliveira.jpg',
                 'cor_primaria' => '#013155',
                 'cor_secundaria' => '#e0a630',
-                'recursos' => ['print_agent'],
+                'recursos' => ['print_agent', 'viagens'],
                 'validade' => now()->addYear(),
                 'ativo' => true,
             ],
@@ -140,6 +140,14 @@ class DatabaseSeeder extends Seeder
             ['Saco / fardo', 25], ['Envelope / documento', 10], ['Eletrodoméstico', 80],
         ] as [$nome, $valor]) {
             Produto::firstOrCreate(['empresa_id' => $empresa->id, 'nome' => $nome], ['valor_padrao' => $valor]);
+        }
+
+        // rota de exemplo (módulo viagens)
+        if (in_array('viagens', $empresa->recursos ?? [], true) && \App\Models\Rota::where('empresa_id', $empresa->id)->doesntExist()) {
+            $rota = \App\Models\Rota::create(['empresa_id' => $empresa->id, 'nome' => 'Linha Tefé']);
+            foreach ([['Manaus', 1, '18:00'], ['Coari', 2, '08:00'], ['Tefé', 5, '06:00']] as $i => [$loc, $dia, $hora]) {
+                $rota->paradas()->create(['ordem' => $i + 1, 'localidade' => $loc, 'dia_semana' => $dia, 'hora' => $hora]);
+            }
         }
 
         Tenant::clear();

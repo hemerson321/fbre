@@ -22,12 +22,25 @@ class EncomendaService
 
         $empresa = Tenant::empresa();
 
-        return DB::transaction(function () use ($data, $userId, $uuid, $offline, $empresa) {
+        // viagem: se veio rota_id, cria/acha a viagem do ciclo; senão usa viagem_id explícito (ou avulso)
+        $viagemId = $data['viagem_id'] ?? null;
+        $rotaId = $data['rota_id'] ?? null;
+        if (! $viagemId && $rotaId) {
+            $rota = \App\Models\Rota::find($rotaId);
+            if ($rota) {
+                $dataRef = ! empty($data['criada_em']) ? \Carbon\Carbon::parse($data['criada_em']) : now();
+                $viagemId = $rota->viagemPara($dataRef)->id;
+            }
+        }
+
+        return DB::transaction(function () use ($data, $userId, $uuid, $offline, $empresa, $viagemId, $rotaId) {
             $enc = Encomenda::create([
                 'uuid' => $uuid,
                 'numero' => $empresa->proximoNumero(),
                 'numero_provisorio' => $data['numero_provisorio'] ?? null,
-                'embarcacao_id' => $data['embarcacao_id'] ?: null,
+                'embarcacao_id' => ($data['embarcacao_id'] ?? null) ?: null,
+                'viagem_id' => $viagemId,
+                'rota_id' => $rotaId,
                 'origem' => $data['origem'],
                 'destino' => $data['destino'],
                 'remetente_nome' => $data['remetente_nome'],

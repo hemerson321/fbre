@@ -134,7 +134,28 @@ caixa_movimentos    empresa_id, user_id, meio, valor, encomenda_id, created_at  
 
 ---
 
+## 7b. Decisão 18/10 — uma instalação por cliente
+- Hemerson optou por **instância separada por cliente** (medo de mexer no layout de um e afetar outro).
+- Código continua multiempresa, mas roda em **modo empresa única** (`config/fbre.php`: `FBRE_SINGLE=1`, `FBRE_EMPRESA=oliveira`).
+- Instalação atual (EasyPanel projeto `fbre`, app `app`, MariaDB `db`) = **Ferry Boat Rainha Esther** somente.
+  - URL provisória: https://fbre-app.bes0ms.easypanel.host · logins `hemerson` (GERATEC/super) e `oliveira` (admin do cliente)
+  - Repositório: github.com/hemerson321/fbre (público por enquanto — EasyPanel sem token GitHub)
+  - Deploy automático: GitHub Action chama o gatilho do EasyPanel a cada push na `main`
+- Novo cliente = novo projeto no EasyPanel (app + db) apontando pro mesmo repo (branch própria se precisar layout diferente).
+- Fluxo de trabalho: Claude edita → copia para `Documents\fbre` no PC do Hemerson → commit local → Hemerson faz `git push` no PowerShell.
+
+## 9. Módulo Viagens (rotas) + futuros — arquitetura
+
+**Rotas → Viagens → Encomendas.** A rota é o calendário (paradas com cidade + dia da semana + hora). A **viagem nasce sozinha**: ao cadastrar uma encomenda numa rota, `Rota::viagemPara($data)` acha/cria a viagem do ciclo (partida = dia-da-semana da 1ª parada na semana da data). Encomenda avulsa = sem viagem.
+- Tabelas: `rotas`, `rota_paradas`, `viagens`; `encomendas.viagem_id` e `rota_id` (nullable).
+- Ligado por flag `viagens` em `empresa.recursos` (Ferry Boat já tem). Menu mostra "Viagens" (Encomendas) e "Rotas e calendário" (Administração) só com a flag.
+- Filtro por viagem/rota na lista, e **caixa por viagem** (ignora o período quando uma viagem é escolhida).
+- Seed cria a rota exemplo "Linha Tefé" (Manaus seg 18h → Coari ter → Tefé sex).
+
+**Pré-pronto (scaffolding, sem tela ainda):** tabelas + models `camarotes`, `passagens`, `fretes`, `tabela_precos`. Ligar no futuro = flag em `empresa.recursos` (`fretes`, `passagens`, `camarotes`) + telas. Nada disso mexe no que já funciona.
+
 ## 8. Histórico
 
 - 17/10/2026 — Orçamento enviado; cliente E Oliveira fechou por R$ 5.000 + R$ 250/mês (12 meses). Contrato gerado.
 - 18/10/2026 — Definida stack Laravel + MariaDB + Docker/EasyPanel. Domínio fbre.com.br.
+- 18/10/2026 — v0.1 no ar no EasyPanel. Login por usuário (sem e-mail), tela de login com logo da empresa, permissões detalhadas, menu horizontal por módulo, cadastro em 3 colunas. Decisão: uma instalação por cliente.

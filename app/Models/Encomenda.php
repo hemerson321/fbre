@@ -36,6 +36,8 @@ class Encomenda extends Model
     public function pagamentos(): HasMany { return $this->hasMany(Pagamento::class)->where('estornado', false); }
     public function eventos(): HasMany { return $this->hasMany(Evento::class); }
     public function embarcacao(): BelongsTo { return $this->belongsTo(Embarcacao::class); }
+    public function viagem(): BelongsTo { return $this->belongsTo(Viagem::class); }
+    public function rota(): BelongsTo { return $this->belongsTo(Rota::class); }
     public function operador(): BelongsTo { return $this->belongsTo(User::class, 'user_id'); }
     public function entreguePor(): BelongsTo { return $this->belongsTo(User::class, 'entregue_por'); }
 
@@ -98,6 +100,8 @@ class Encomenda extends Model
             ->when($f['origem'] ?? null, fn ($q, $v) => $q->where('origem', $v))
             ->when($f['destino'] ?? null, fn ($q, $v) => $q->where('destino', $v))
             ->when($f['embarcacao_id'] ?? null, fn ($q, $v) => $q->where('embarcacao_id', $v))
+            ->when($f['viagem_id'] ?? null, fn ($q, $v) => $q->where('viagem_id', $v))
+            ->when($f['rota_id'] ?? null, fn ($q, $v) => $q->where('rota_id', $v))
             ->when($f['status_pagamento'] ?? null, fn ($q, $v) => $q->where('status_pagamento', $v))
             ->when(isset($f['entregue']) && $f['entregue'] !== '', fn ($q) => $q->where('entregue', (bool) $f['entregue']))
             ->when($f['forma'] ?? null, fn ($q, $v) => $q->where('forma', $v))

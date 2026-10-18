@@ -44,9 +44,19 @@
     <section class="sec shrink-0">
       <div class="sec-h"><span class="n">1</span><span class="t">Rota</span></div>
       <div class="sec-b">
+        @if($rotas->count())
+        <div>
+          <label class="lbl">Viagem / rota</label>
+          <select name="rota_id" class="field" x-model="rotaId" @change="aplicarRota()">
+            <option value="">Avulsa (sem viagem)</option>
+            @foreach($rotas as $r)<option value="{{ $r->id }}" data-origem="{{ $r->paradas->first()?->localidade }}" data-destino="{{ $r->paradas->last()?->localidade }}" data-locais='@json($r->paradas->pluck("localidade"))'>{{ $r->nome }} — {{ $r->resumoCalendario() }}</option>@endforeach
+          </select>
+          <p class="text-[11px] text-slate-400 mt-0.5" x-show="rotaId">A viagem do dia é criada/identificada automaticamente pela rota.</p>
+        </div>
+        @endif
         <div class="grid grid-cols-2 gap-2">
-          <div><label class="lbl">Origem</label><input name="origem" list="locais" class="field" required value="{{ old('origem', $ultimaOrigem) }}" autocomplete="off"></div>
-          <div><label class="lbl">Destino</label><input name="destino" list="locais" class="field" required value="{{ old('destino') }}" autocomplete="off" autofocus></div>
+          <div><label class="lbl">Origem</label><input name="origem" list="locais" class="field" required value="{{ old('origem', $ultimaOrigem) }}" autocomplete="off" x-ref="origem"></div>
+          <div><label class="lbl">Destino</label><input name="destino" list="locais" class="field" required value="{{ old('destino') }}" autocomplete="off" autofocus x-ref="destino"></div>
           <div><label class="lbl">Transporte</label>
             <select name="embarcacao_id" class="field"><option value="">—</option>
               @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(old('embarcacao_id')==$b->id)>{{ $b->nome }}</option>@endforeach
@@ -193,10 +203,17 @@
 <script>
 function novaEncomenda(){
   return {
-    salvando:false, volumes:1, forma:'avista', imprimir:'navegador',
+    salvando:false, volumes:1, forma:'avista', imprimir:'navegador', rotaId:'',
     itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
     addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); },
+    aplicarRota(){
+      const opt = document.querySelector(`select[name=rota_id] option[value='${this.rotaId}']`);
+      if (!opt || !this.rotaId) return;
+      if (opt.dataset.origem && !this.$refs.origem.value) this.$refs.origem.value = opt.dataset.origem;
+      if (opt.dataset.destino) this.$refs.destino.value = opt.dataset.destino;
+      try { const locais = JSON.parse(opt.dataset.locais||'[]'); const dl = document.getElementById('locais'); if (dl && locais.length) dl.innerHTML = locais.map(l=>`<option value="${l}">`).join(''); } catch(e){}
+    },
     get subtotal(){ return this.itens.reduce((s,i)=>s+(Number(i.quantidade)||0)*(Number(i.valor)||0),0); },
     get total(){ return Math.max(this.subtotal-(Number(this.desconto)||0),0); },
     get pago(){ return this.forma==='faturado'?0:Object.values(this.pag).reduce((s,v)=>s+(Number(v)||0),0); },
@@ -210,7 +227,7 @@ function novaEncomenda(){
       this.salvando = true;
       const fd = new FormData(form);
       const dados = {
-        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, setor: fd.get('setor'),
+        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, setor: fd.get('setor'),
         remetente_nome: fd.get('remetente_nome'), remetente_telefone: fd.get('remetente_telefone'), remetente_documento: fd.get('remetente_documento'),
         destinatario_nome: fd.get('destinatario_nome'), destinatario_telefone: fd.get('destinatario_telefone'), destinatario_documento: fd.get('destinatario_documento'),
         volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0,

@@ -6,6 +6,7 @@ use App\Models\Embarcacao;
 use App\Models\Encomenda;
 use App\Models\Localidade;
 use App\Models\Produto;
+use App\Models\Rota;
 use App\Models\Setor;
 use App\Services\EncomendaService;
 use App\Support\Tenant;
@@ -32,6 +33,7 @@ class SyncController extends Controller
             'produtos' => Produto::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'valor_padrao']),
             'localidades' => Localidade::where('ativo', true)->orderBy('nome')->pluck('nome'),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
+            'rotas' => $e->temRecurso('viagens') ? Rota::where('ativo', true)->with('paradas:id,rota_id,localidade,dia_semana,hora,ordem')->orderBy('nome')->get(['id', 'nome', 'embarcacao_id']) : [],
             'setores' => Setor::orderBy('nome')->pluck('nome'),
             'recentes' => Encomenda::orderByDesc('id')->limit(200)->get([
                 'id', 'uuid', 'numero', 'origem', 'destino', 'remetente_nome', 'remetente_telefone', 'destinatario_nome', 'destinatario_telefone',
@@ -54,6 +56,8 @@ class SyncController extends Controller
             'origem' => 'required|string|max:80',
             'destino' => 'required|string|max:80',
             'embarcacao_id' => 'nullable|integer',
+            'rota_id' => 'nullable|integer',
+            'viagem_id' => 'nullable|integer',
             'remetente_nome' => 'required|string|max:120',
             'remetente_telefone' => 'nullable|string|max:30',
             'remetente_documento' => 'nullable|string|max:20',

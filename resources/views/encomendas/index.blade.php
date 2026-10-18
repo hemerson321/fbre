@@ -25,6 +25,16 @@
     <div><label class="label">Transporte</label>
       <select name="embarcacao_id" class="input"><option value="">Todos</option>
         @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(($f['embarcacao_id'] ?? '')==$b->id)>{{ $b->nome }}</option>@endforeach</select></div>
+    @if($viagens->count())
+    <div><label class="label">Viagem</label>
+      <select name="viagem_id" class="input"><option value="">Todas</option>
+        @foreach($viagens as $v)<option value="{{ $v->id }}" @selected(($f['viagem_id'] ?? '')==$v->id)>{{ $v->numeroFormatado() }} · {{ $v->nome }}</option>@endforeach</select></div>
+    @endif
+    @if($rotas->count())
+    <div><label class="label">Rota</label>
+      <select name="rota_id" class="input"><option value="">Todas</option>
+        @foreach($rotas as $r)<option value="{{ $r->id }}" @selected(($f['rota_id'] ?? '')==$r->id)>{{ $r->nome }}</option>@endforeach</select></div>
+    @endif
     <div><label class="label">Pagamento</label>
       <select name="status_pagamento" class="input"><option value="">Todos</option>
         @foreach(['pago'=>'Pago','parcial'=>'Parcial','pendente'=>'Não pago'] as $k=>$l)<option value="{{ $k }}" @selected(($f['status_pagamento'] ?? '')===$k)>{{ $l }}</option>@endforeach</select></div>

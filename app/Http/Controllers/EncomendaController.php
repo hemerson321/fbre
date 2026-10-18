@@ -9,6 +9,8 @@ use App\Models\Localidade;
 use App\Models\Pagamento;
 use App\Models\Pessoa;
 use App\Models\Produto;
+use App\Models\Rota;
+use App\Models\Viagem;
 use App\Models\Setor;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
@@ -58,12 +60,14 @@ class EncomendaController extends Controller
             'f' => $f,
             'localidades' => Localidade::where('ativo', true)->orderBy('nome')->pluck('nome'),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
+            'rotas' => Tenant::empresa()->temRecurso('viagens') ? Rota::where('ativo', true)->orderBy('nome')->get() : collect(),
+            'viagens' => Tenant::empresa()->temRecurso('viagens') ? Viagem::whereIn('status', ['planejada', 'em_andamento'])->orderByDesc('data_partida')->limit(60)->get() : collect(),
         ]);
     }
 
     protected function filtros(Request $request): array
     {
-        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'status_pagamento', 'entregue', 'forma', 'busca', 'user_id']);
+        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'viagem_id', 'rota_id', 'status_pagamento', 'entregue', 'forma', 'busca', 'user_id']);
         if (! $request->has('inicio') && ! $request->filled('busca')) {
             $f['inicio'] = now()->subDays(7)->toDateString();
             $f['fim'] = now()->toDateString();
@@ -81,6 +85,7 @@ class EncomendaController extends Controller
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
             'produtos' => Produto::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'valor_padrao']),
             'setores' => Setor::orderBy('nome')->pluck('nome'),
+            'rotas' => Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect(),
             'ultimaOrigem' => session('ultima_origem', Tenant::empresa()->cidade),
         ]);
     }
@@ -91,6 +96,8 @@ class EncomendaController extends Controller
             'origem' => 'required|string|max:80',
             'destino' => 'required|string|max:80',
             'embarcacao_id' => 'nullable|integer',
+            'rota_id' => 'nullable|integer',
+            'viagem_id' => 'nullable|integer',
             'remetente_nome' => 'required|string|max:120',
             'remetente_telefone' => 'nullable|string|max:30',
             'remetente_documento' => 'nullable|string|max:20',

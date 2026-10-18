@@ -62,6 +62,7 @@ tailwind.config = { theme: { extend: {
   if ($u->podeCadastrar()) $g[] = ['r'=>route('encomendas.create'), 'l'=>'Nova encomenda', 'i'=>'➕'];
   if ($u->podeFiltrar())   { $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
                              $g[] = ['r'=>route('encomendas.index', ['inicio'=>now()->toDateString(),'fim'=>now()->toDateString(),'protocolo'=>1]), 'l'=>'Protocolo', 'i'=>'🖨']; }
+  if ($u->podeFiltrar() && $empresa?->temRecurso('viagens')) $g[] = ['r'=>route('viagens.index'), 'l'=>'Viagens', 'i'=>'🚢'];
   if ($g) $grupos['Encomendas'] = $g;
   $g = [];
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>'Caixa geral', 'i'=>'💰'];
@@ -70,6 +71,7 @@ tailwind.config = { theme: { extend: {
   if ($u->isAdmin() || $u->isSuper()) $grupos['Administração'] = [
       ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
       ['r'=>route('admin.cadastros'), 'l'=>'Barcos, locais, produtos', 'i'=>'🚢'],
+      ...($empresa?->temRecurso('viagens') ? [['r'=>route('admin.rotas'), 'l'=>'Rotas e calendário', 'i'=>'🗺️']] : []),
       ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'],
   ];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];

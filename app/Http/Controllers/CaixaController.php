@@ -6,6 +6,7 @@ use App\Models\Encomenda;
 use App\Models\Evento;
 use App\Models\Pagamento;
 use App\Models\User;
+use App\Models\Viagem;
 use Illuminate\Http\Request;
 
 class CaixaController extends Controller
@@ -14,10 +15,16 @@ class CaixaController extends Controller
     {
         [$inicio, $fim, $periodo] = $this->periodo($request);
         $userId = $request->input('user_id');
+        $viagemId = $request->input('viagem_id');
+        $viagens = \App\Support\Tenant::empresa()->temRecurso('viagens')
+            ? Viagem::orderByDesc('data_partida')->limit(60)->get() : collect();
+        // quando filtra por viagem, ignora o período (viagem é o recorte)
+        $encIds = $viagemId ? Encomenda::where('viagem_id', $viagemId)->pluck('id') : null;
 
         $base = Pagamento::where('estornado', false)
             ->where('meio', '!=', 'desconto')
-            ->whereBetween('created_at', [$inicio, $fim])
+            ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
+            ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId));
 
         $porMeio = (clone $base)->selectRaw('meio, SUM(valor) valor, COUNT(*) qtd')->groupBy('meio')->get()->keyBy('meio');
@@ -29,17 +36,21 @@ class CaixaController extends Controller
         $usuarios = User::where('empresa_id', auth()->user()->empresa_id)->orderBy('name')->get()->keyBy('id');
 
         $descontos = Pagamento::where('estornado', false)->where('meio', 'desconto')
-            ->whereBetween('created_at', [$inicio, $fim])
+            ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
+            ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))->sum('valor');
 
-        $entregas = Evento::where('tipo', 'entrega')->whereBetween('created_at', [$inicio, $fim])
+        $entregas = Evento::where('tipo', 'entrega')
+            ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
+            ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))->count();
-        $cadastros = Encomenda::whereBetween('created_at', [$inicio, $fim])
+        $cadastros = Encomenda::when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))->count();
 
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
 
-        return view('caixa.index', compact('porMeio', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId'))
+        return view('caixa.index', compact('porMeio', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId'))
             + ['meios' => Pagamento::MEIOS, 'total' => $porMeio->sum('valor')];
     }
 
