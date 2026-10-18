@@ -127,7 +127,9 @@ class EncomendaService
                 $enc->recalcular();
                 Evento::create(['uuid' => (! empty($data['entregar']) || $enc->entregue) ? null : $uuid, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'pagamento', 'dados' => ['valor' => $soma]]);
             }
-            if (! empty($data['entregar']) && ! $enc->entregue) {
+            // só entrega se estiver pago (faturado é a exceção: cobra na fatura)
+            $podeEntregar = $enc->devido <= 0.009 || $enc->forma === 'faturado';
+            if (! empty($data['entregar']) && ! $enc->entregue && $podeEntregar) {
                 $enc->forceFill(['entregue' => true, 'entregue_em' => ! empty($data['entregue_em']) ? \Carbon\Carbon::parse($data['entregue_em'])->setTimezone(config('app.timezone')) : now(), 'entregue_por' => $userId, 'entregue_para' => $data['entregue_para'] ?? null])->save();
                 Evento::create(['uuid' => $uuid, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'entrega', 'dados' => ['para' => $data['entregue_para'] ?? null]]);
             } elseif ($uuid) {

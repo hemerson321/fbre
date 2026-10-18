@@ -259,6 +259,7 @@ class EncomendaController extends Controller
     public function entregar(Request $request, Encomenda $encomenda)
     {
         abort_if($encomenda->cancelada, 422, 'Encomenda cancelada.');
+        abort_if($encomenda->devido > 0.009 && $encomenda->forma !== 'faturado', 422, 'Registre o pagamento antes de dar baixa na entrega.');
         $data = $request->validate(['entregue_para' => 'nullable|string|max:120', 'uuid' => 'nullable|uuid']);
 
         app(\App\Services\EncomendaService::class)->baixa($encomenda, $data + ['entregar' => true], auth()->id(), $request->input('uuid'));
@@ -267,12 +268,15 @@ class EncomendaController extends Controller
             ->with('ok', 'Entrega registrada.');
     }
 
-    public function cancelar(Encomenda $encomenda)
+    public function cancelar(Request $request, Encomenda $encomenda)
     {
-        $encomenda->forceFill(['cancelada' => true])->save();
+        $data = $request->validate(['motivo' => 'required|string|min:3|max:300'],
+            ['motivo.required' => 'Informe o motivo do cancelamento.']);
+
+        $encomenda->forceFill(['cancelada' => true, 'motivo_cancelamento' => $data['motivo']])->save();
         $encomenda->pagamentos()->update(['estornado' => true]);
         $encomenda->recalcular();
-        Evento::registrar('cancelamento', $encomenda);
-        return redirect()->route('encomendas.index')->with('ok', 'Encomenda cancelada.');
+        Evento::registrar('cancelamento', $encomenda, ['motivo' => $data['motivo']]);
+        return redirect()->route('encomendas.show', $encomenda)->with('ok', 'Encomenda cancelada.');
     }
 }

@@ -25,12 +25,19 @@
   <span class="flex-1"></span>
   @if($u->podeBaixar() && !$e->cancelada)
     @if($e->devido > 0)<button class="btn btn-accent btn-sm" @click="modal='pagar'">💵 Registrar pagamento</button>@endif
-    @if(!$e->entregue)<button class="btn btn-primary btn-sm" @click="modal='entregar'">📦 Dar baixa na entrega</button>@endif
+    @if(!$e->entregue && ($e->devido <= 0 || $e->forma === 'faturado'))<button class="btn btn-primary btn-sm" @click="modal='entregar'">📦 Dar baixa na entrega</button>@endif
+    @if(!$e->entregue && $e->devido > 0 && $e->forma !== 'faturado')<span class="text-xs text-amber-600 self-center">Receba o pagamento para liberar a entrega.</span>@endif
   @endif
   @if(($u->isAdmin()||$u->isSuper()) && !$e->cancelada)
-    <form method="post" action="{{ route('encomendas.cancelar',$e) }}" onsubmit="return confirm('Cancelar esta encomenda?')">@csrf<button class="btn btn-danger btn-sm">Cancelar</button></form>
+    <button class="btn btn-danger btn-sm" @click="modal='cancelar'">✖ Cancelar</button>
   @endif
 </div>
+
+@if($e->cancelada)
+<div class="rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm">
+  <b>Encomenda cancelada.</b>@if($e->motivo_cancelamento) Motivo: {{ $e->motivo_cancelamento }}@endif
+</div>
+@endif
 
 <div class="grid md:grid-cols-2 gap-4">
   <div class="card p-4 space-y-3">
@@ -100,11 +107,25 @@
   <form method="post" action="{{ route('encomendas.entregar',$e) }}" @submit="baixaOffline($event, false)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3">
     @csrf
     <h3 class="text-lg font-bold">Baixa na entrega</h3>
-    @if($e->devido>0)<div class="text-sm bg-red-50 border border-red-200 rounded-lg p-2">Atenção: ainda faltam <b>R$ {{ number_format($e->devido,2,',','.') }}</b>. Para receber e entregar, use "Registrar pagamento".</div>@endif
+    @if($e->devido>0 && $e->forma==='faturado')<div class="text-sm bg-amber-50 border border-amber-200 rounded-lg p-2">Faturado: será entregue agora e cobrado na fatura (<b>R$ {{ number_format($e->devido,2,',','.') }}</b> em aberto).</div>@endif
     <div><label class="label">Quem retirou</label><input name="entregue_para" class="input" placeholder="Nome de quem recebeu" autofocus></div>
     <div class="flex gap-2 pt-1">
       <button type="button" class="btn btn-ghost flex-1" @click="modal=null">Cancelar</button>
       <button class="btn btn-primary flex-1">Confirmar entrega</button>
+    </div>
+  </form>
+</div>
+
+{{-- MODAL CANCELAR --}}
+<div x-show="modal==='cancelar'" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" @click.self="modal=null">
+  <form method="post" action="{{ route('encomendas.cancelar',$e) }}" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3">
+    @csrf
+    <h3 class="text-lg font-bold text-red-600">Cancelar encomenda #{{ $e->numeroFormatado() }}</h3>
+    <p class="text-sm text-slate-500">Isso estorna os pagamentos e não pode ser desfeito. Diga o <b>motivo</b>:</p>
+    <textarea name="motivo" class="input !min-h-[90px] py-2" required minlength="3" maxlength="300" placeholder="Ex.: cliente desistiu, cadastro em duplicidade, erro de valor..." autofocus></textarea>
+    <div class="flex gap-2 pt-1">
+      <button type="button" class="btn btn-ghost flex-1" @click="modal=null">Voltar</button>
+      <button class="btn btn-danger flex-1">Confirmar cancelamento</button>
     </div>
   </form>
 </div>
