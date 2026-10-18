@@ -23,28 +23,45 @@ BASE = os.path.dirname(os.path.abspath(sys.argv[0]))
 INI = os.path.join(BASE, "fbre_agent.ini")
 LOG = os.path.join(BASE, "fbre_agent.log")
 
-DEFAULT_INI = """[fbre]
+INI_TEMPLATE = """[fbre]
 servidor = https://fbre.com.br
 token = COLE_AQUI_O_TOKEN_DA_ESTACAO
 intervalo = 2
 
+# Impressoras instaladas neste computador:
+{lista}
+#
+# nome_windows = padrao  -> usa a impressora PADRAO do Windows (a mesma que o operador usa)
+# ou troque por um nome exato da lista acima.
+
 [impressora_comprovante]
-# tipo: rede | windows | arquivo
-tipo = rede
-host = 192.168.0.50
-porta = 9100
-nome_windows = POS-80
+# tipo: windows (impressora instalada) | rede (IP:9100) | arquivo (teste)
+tipo = windows
+nome_windows = padrao
 
 [impressora_etiqueta]
-tipo = rede
-host = 192.168.0.50
-porta = 9100
-nome_windows = POS-80
+tipo = windows
+nome_windows = padrao
 
 [escpos]
 colunas = 48
 cortar = 1
 """
+
+
+def listar_impressoras():
+    """Nomes das impressoras instaladas no Windows + a padrao."""
+    try:
+        import win32print
+        flags = win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
+        nomes = [p[2] for p in win32print.EnumPrinters(flags)]
+        try:
+            padrao = win32print.GetDefaultPrinter()
+        except Exception:
+            padrao = None
+        return nomes, padrao
+    except Exception:
+        return [], None
 
 # ---------------------------------------------------------------- util
 def log(msg):
@@ -59,9 +76,14 @@ def log(msg):
 
 def carregar_config():
     if not os.path.exists(INI):
+        nomes, padrao = listar_impressoras()
+        lista = "\n".join("#   - " + n for n in nomes) if nomes else "#   (nenhuma detectada)"
         with open(INI, "w", encoding="utf-8") as f:
-            f.write(DEFAULT_INI)
-        log(f"Config criada em {INI}. Edite o token e a impressora e reinicie.")
+            f.write(INI_TEMPLATE.format(lista=lista))
+        log(f"Config criada em {INI}.")
+        if padrao:
+            log(f"Impressora padrao do Windows: {padrao} (sera usada automaticamente).")
+        log("Falta colar o TOKEN da estacao no arquivo e reiniciar.")
     cfg = configparser.ConfigParser()
     cfg.read(INI, encoding="utf-8")
     return cfg
@@ -174,13 +196,19 @@ def montar_etiqueta(d, col):
 
 # ---------------------------------------------------------------- saída
 def enviar(cfg_sec, dados: bytes):
-    tipo = cfg_sec.get("tipo", "rede")
+    tipo = cfg_sec.get("tipo", "windows")
     if tipo == "rede":
-        with socket.create_connection((cfg_sec["host"], int(cfg_sec.get("porta", 9100))), timeout=10) as s:
+        host = cfg_sec.get("host")
+        if not host:
+            raise RuntimeError("tipo=rede exige 'host' (IP da impressora) no fbre_agent.ini")
+        with socket.create_connection((host, int(cfg_sec.get("porta", 9100))), timeout=10) as s:
             s.sendall(dados)
     elif tipo == "windows":
         import win32print  # pywin32
-        h = win32print.OpenPrinter(cfg_sec["nome_windows"])
+        nome = (cfg_sec.get("nome_windows") or "").strip()
+        if not nome or nome.lower() in ("padrao", "padrão", "default", "auto"):
+            nome = win32print.GetDefaultPrinter()   # mesma impressora que o operador usa
+        h = win32print.OpenPrinter(nome)
         try:
             win32print.StartDocPrinter(h, 1, ("FBRE", None, "RAW"))
             win32print.StartPagePrinter(h); win32print.WritePrinter(h, dados); win32print.EndPagePrinter(h)

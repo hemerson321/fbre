@@ -4,11 +4,13 @@ Imprime comprovantes e etiquetas direto na impressora térmica, sem janela do na
 
 ## Instalar no PC do cliente (Windows)
 1. Copie `FBREPrintAgent.exe` para `C:\FBRE\`
-2. Execute uma vez: ele cria `fbre_agent.ini` e abre pra edição
-3. Cole o **token da estação** (gerado em *Barcos, locais, produtos → Estações de impressão*)
-4. Configure a impressora:
-   - `tipo = rede` → impressora com IP (porta 9100)
-   - `tipo = windows` → nome da impressora instalada no Windows (ex.: `POS-80`)
+2. Execute uma vez: ele cria o `fbre_agent.ini` **já apontando para a impressora padrão do
+   Windows** (a mesma que o operador usa) e lista as impressoras instaladas no arquivo.
+3. Cole o **token da estação** (gerado em *Cadastros gerais → Estações de impressão*).
+4. Impressora: por padrão já vem `tipo = windows` e `nome_windows = padrao` (usa a impressora
+   padrão do PC, para comprovante **e** etiqueta). Só mexa se quiser outra:
+   - `nome_windows = <nome exato>` → uma impressora específica da lista no arquivo.
+   - `tipo = rede` + `host = <IP>` → impressora de rede (porta 9100), se precisar.
 5. Execute de novo. Ícone aparece na bandeja. Para iniciar com o Windows, crie um atalho em
    `shell:startup`.
 
