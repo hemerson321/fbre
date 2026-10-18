@@ -51,7 +51,7 @@ class CaixaController extends Controller
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
 
         return view('caixa.index', compact('porMeio', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId'))
-            + ['meios' => Pagamento::MEIOS, 'total' => $porMeio->sum('valor')];
+            ->with(['meios' => Pagamento::MEIOS, 'total' => $porMeio->sum('valor')]);
     }
 
     /** Resolve o período: hoje | semana | mes | personalizado */

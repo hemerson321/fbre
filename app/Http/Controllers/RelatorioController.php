@@ -27,6 +27,6 @@ class RelatorioController extends Controller
         $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('meio')->map->sum('valor');
 
         return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo'))
-            + ['meios' => Pagamento::MEIOS];
+            ->with(['meios' => Pagamento::MEIOS]);
     }
 }
