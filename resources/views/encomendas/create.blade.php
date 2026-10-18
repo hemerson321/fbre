@@ -141,11 +141,26 @@
     </div>
     <div class="sec-b">
       <div>
-        <div class="lbl">Toque para adicionar</div>
+        <div class="flex items-center justify-between gap-2 mb-1">
+          <div class="lbl !mb-0">Toque para adicionar · mais usados</div>
+          <div class="relative w-48 sm:w-64">
+            <input x-model="buscaProduto" @focus="buscaAberta=true" @click.outside="buscaAberta=false"
+                   class="field !min-h-0 py-1.5 !pl-8 text-sm" placeholder="Buscar produto...">
+            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔎</span>
+            <div x-show="buscaAberta && produtosFiltrados.length" x-cloak class="absolute z-30 mt-1 w-full bg-white rounded-xl border shadow-xl max-h-60 overflow-auto">
+              <template x-for="p in produtosFiltrados" :key="p.id">
+                <button type="button" @click="addItem(p.nome, p.valor); buscaProduto=''; buscaAberta=false"
+                        class="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b last:border-0 flex justify-between gap-2">
+                  <span x-text="p.nome"></span><span class="text-slate-400 whitespace-nowrap" x-text="FBRE.moeda(p.valor)"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
         <div class="flex flex-wrap gap-1.5">
-          @foreach($produtos as $p)
-            <button type="button" class="pill" @click="addItem('{{ addslashes($p->nome) }}', {{ (float)$p->valor_padrao }})">{{ $p->nome }} <span class="v">{{ number_format($p->valor_padrao,2,',','.') }}</span></button>
-          @endforeach
+          <template x-for="p in pills" :key="p.id">
+            <button type="button" class="pill" @click="addItem(p.nome, p.valor)"><span x-text="p.nome"></span> <span class="v" x-text="FBRE.moeda(p.valor)"></span></button>
+          </template>
           <button type="button" class="pill pill-add" @click="addItem('',0)">＋ outro item</button>
         </div>
       </div>
@@ -243,6 +258,7 @@ function novaEncomenda(){
     cidades: @js($cidades), linhas: @js($linhas), podeRetroativo: @js($podeRetroativo),
     origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino', '')),
     lancamentoEm: @js(old('lancamento_em', now()->toDateString())),
+    catalogo: @js($catalogo), buscaProduto:'', buscaAberta:false,
     viagemData:'', viagemDataPick:'', viagemLabel:'', viagemDia:null, viagemHora:'', minData:'', maxData:'',
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
@@ -298,6 +314,8 @@ function novaEncomenda(){
       this.rotaId=String(linha.id); this.linhaNome=linha.nome; this.paradasInfo=linha.paradas;
       this.recalcularDatas();
     },
+    get pills(){ return this.catalogo.slice(0,6); },
+    get produtosFiltrados(){ const q=this.buscaProduto.trim().toLowerCase(); const lista = q ? this.catalogo.filter(p=>p.nome.toLowerCase().includes(q)) : this.catalogo; return lista.slice(0,20); },
     get subtotal(){ return this.itens.reduce((s,i)=>s+(Number(i.quantidade)||0)*(Number(i.valor)||0),0); },
     get total(){ return Math.max(this.subtotal-(Number(this.desconto)||0),0); },
     get pago(){ return this.forma==='faturado'?0:Object.values(this.pag).reduce((s,v)=>s+(Number(v)||0),0); },

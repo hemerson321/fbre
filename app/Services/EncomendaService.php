@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Encomenda;
 use App\Models\Evento;
 use App\Models\Pessoa;
+use App\Models\Produto;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 
@@ -81,6 +82,7 @@ class EncomendaService
                     'valor_total' => round($it['quantidade'] * $it['valor_unitario'], 2),
                     'observacao' => $it['observacao'] ?? null,
                 ]);
+                $this->catalogar($empresa, $it['descricao'], $it['valor_unitario']);
             }
 
             foreach ($data['pagamentos'] ?? [] as $p) {
@@ -132,6 +134,18 @@ class EncomendaService
                 Evento::where('uuid', $uuid)->exists() || Evento::create(['uuid' => $uuid, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'sync', 'dados' => []]);
             }
         });
+    }
+
+    /** Garante o produto no catálogo e conta o uso (ordena os mais usados). */
+    protected function catalogar($empresa, ?string $nome, $valor): void
+    {
+        $nome = trim((string) $nome);
+        if ($nome === '') return;
+        $p = Produto::firstOrCreate(
+            ['empresa_id' => $empresa->id, 'nome' => $nome],
+            ['valor_padrao' => (float) $valor, 'ativo' => true]
+        );
+        $p->increment('usos');
     }
 
     protected function lembrarPessoa(string $nome, ?string $tel, ?string $doc): void

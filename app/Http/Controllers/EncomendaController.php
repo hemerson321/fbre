@@ -118,12 +118,16 @@ class EncomendaController extends Controller
             'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
         ])->values();
 
+        $catalogo = Produto::where('ativo', true)->orderByDesc('usos')->orderBy('nome')
+            ->get(['id', 'nome', 'valor_padrao'])
+            ->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'valor' => (float) $p->valor_padrao])->values();
+
         return view('encomendas.create', [
             'localidades' => $localidades,
             'cidades' => $localidades->values(),
             'linhas' => $linhas,
             'embarcacoes' => $embarcacoes,
-            'produtos' => Produto::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'valor_padrao']),
+            'catalogo' => $catalogo,
             'setores' => $setores,
             'rotas' => $rotas,
             'ultimaOrigem' => session('ultima_origem') ?: (Tenant::empresa()->cidade ?: $localidades->first()),
