@@ -14,11 +14,13 @@
 
 {{-- AÇÕES --}}
 <div class="card p-3 flex flex-wrap gap-2">
+  @if($u->podeImprimir())
   <button class="btn btn-ghost btn-sm" onclick="FBRE.abrirImpressao('{{ route('imprimir.comprovante',$e) }}')">🧾 Comprovante</button>
   <button class="btn btn-ghost btn-sm" onclick="FBRE.abrirImpressao('{{ route('imprimir.etiqueta',$e) }}')">🏷 Etiquetas ({{ $e->volumes }})</button>
   @if($empresa->temRecurso('print_agent'))
     <button class="btn btn-ghost btn-sm" @click="direto('comprovante')">⚡ Comprovante direto</button>
     <button class="btn btn-ghost btn-sm" @click="direto('etiqueta')">⚡ Etiqueta direta</button>
+  @endif
   @endif
   <span class="flex-1"></span>
   @if($u->podeBaixar() && !$e->cancelada)

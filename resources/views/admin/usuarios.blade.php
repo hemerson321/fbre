@@ -11,8 +11,11 @@
       <div class="text-xs text-slate-500 truncate">login: <b>{{ $u->login }}</b> · {{ $u->setor }}</div>
       <div class="text-xs mt-1 flex gap-1 flex-wrap">
         <span class="chip {{ $u->podeCadastrar()?'st-verde':'st-cinza' }}">cadastra</span>
-        <span class="chip {{ $u->podeBaixar()?'st-verde':'st-cinza' }}">dá baixa</span>
-        <span class="chip {{ $u->podeVerCaixa()?'st-verde':'st-cinza' }}">vê caixa</span>
+        <span class="chip {{ $u->podeFiltrar()?'st-verde':'st-cinza' }}">filtro</span>
+        <span class="chip {{ $u->podeBaixar()?'st-verde':'st-cinza' }}">baixa</span>
+        <span class="chip {{ $u->podeImprimir()?'st-verde':'st-cinza' }}">reimprime</span>
+        <span class="chip {{ $u->podeVerCaixa()?'st-verde':'st-cinza' }}">caixa</span>
+        <span class="chip {{ $u->podeRelatorio()?'st-verde':'st-cinza' }}">relatório</span>
       </div></div>
     <a href="{{ route('admin.usuarios.edit',$u) }}" class="btn btn-ghost btn-sm">Editar</a>
   </div>

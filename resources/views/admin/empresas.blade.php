@@ -24,6 +24,7 @@
     <div class="flex-1 min-w-0">
       <div class="font-semibold">{{ $e->nomeExibicao() }} @if($ativa==$e->id)<span class="chip st-verde">operando</span>@endif @if($e->vencida())<span class="chip st-vermelho">vencida</span>@endif @if(!$e->ativo)<span class="chip st-cinza">inativa</span>@endif</div>
       <div class="text-xs text-slate-500">{{ $e->cnpj }} · {{ $e->users_count }} usuários · {{ $e->encomendas_count }} encomendas · validade {{ $e->validade?->format('d/m/Y') ?? '—' }}</div>
+      <div class="text-xs mt-0.5">Login: <a href="{{ url('/'.$e->slug) }}" target="_blank" class="font-mono text-[var(--cor2)] hover:underline">{{ url('/'.$e->slug) }}</a></div>
     </div>
     <form method="post" action="{{ route('super.empresas.entrar',$e) }}">@csrf<button class="btn btn-ghost btn-sm">Entrar</button></form>
     <form method="post" action="{{ route('super.empresas.toggle',$e) }}">@csrf<button class="btn btn-sm {{ $e->ativo?'btn-danger':'btn-primary' }}">{{ $e->ativo?'Bloquear':'Ativar' }}</button></form>

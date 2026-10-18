@@ -3,7 +3,8 @@
 @section('conteudo')
 <form method="post" enctype="multipart/form-data" class="max-w-2xl mx-auto card p-5 space-y-3">@csrf
 <h1 class="text-xl font-bold">Dados da empresa</h1>
-<p class="text-xs text-slate-500">Aparecem no topo do sistema e nos comprovantes/etiquetas.</p>
+<p class="text-xs text-slate-500">Aparecem no topo do sistema, na tela de login e nos comprovantes/etiquetas.</p>
+<div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm">Endereço de login da sua equipe: <a href="{{ url('/'.$empresa->slug) }}" target="_blank" class="font-mono font-semibold text-[var(--cor2)]">{{ url('/'.$empresa->slug) }}</a></div>
 <div class="grid sm:grid-cols-2 gap-3">
   <div class="sm:col-span-2"><label class="label">Razão social</label><input name="nome" class="input" required value="{{ old('nome',$empresa->nome) }}"></div>
   <div><label class="label">Nome fantasia (aparece nas impressões)</label><input name="nome_fantasia" class="input" value="{{ old('nome_fantasia',$empresa->nome_fantasia) }}"></div>

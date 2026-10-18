@@ -22,8 +22,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [EncomendaController::class, 'inicio'])->name('inicio');
 
     // ---------------- Encomendas ----------------
-    Route::get('/encomendas', [EncomendaController::class, 'index'])->name('encomendas.index');
-    Route::get('/encomendas/dados', [EncomendaController::class, 'dados'])->name('encomendas.dados');
+    Route::get('/encomendas', [EncomendaController::class, 'index'])->name('encomendas.index')->middleware('perm:filtro');
     Route::get('/encomendas/nova', [EncomendaController::class, 'create'])->name('encomendas.create')->middleware('perm:cadastra');
     Route::post('/encomendas', [EncomendaController::class, 'store'])->name('encomendas.store')->middleware('perm:cadastra');
     Route::get('/encomendas/{encomenda}', [EncomendaController::class, 'show'])->name('encomendas.show');
@@ -33,15 +32,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/pessoas/buscar', [EncomendaController::class, 'buscarPessoa'])->name('pessoas.buscar');
 
     // ---------------- Impressão ----------------
-    Route::get('/imprimir/comprovante/{encomenda}', [ImpressaoController::class, 'comprovante'])->name('imprimir.comprovante');
-    Route::get('/imprimir/etiqueta/{encomenda}', [ImpressaoController::class, 'etiqueta'])->name('imprimir.etiqueta');
-    Route::get('/imprimir/protocolo', [ImpressaoController::class, 'protocolo'])->name('imprimir.protocolo');
-    Route::get('/imprimir/listagem', [ImpressaoController::class, 'listagem'])->name('imprimir.listagem');
-    Route::post('/imprimir/direto/{encomenda}/{tipo}', [ImpressaoController::class, 'direto'])->name('imprimir.direto');
+    Route::middleware('perm:imprimir')->group(function () {
+        Route::get('/imprimir/comprovante/{encomenda}', [ImpressaoController::class, 'comprovante'])->name('imprimir.comprovante');
+        Route::get('/imprimir/etiqueta/{encomenda}', [ImpressaoController::class, 'etiqueta'])->name('imprimir.etiqueta');
+        Route::get('/imprimir/protocolo', [ImpressaoController::class, 'protocolo'])->name('imprimir.protocolo')->middleware('perm:filtro');
+        Route::get('/imprimir/listagem', [ImpressaoController::class, 'listagem'])->name('imprimir.listagem')->middleware('perm:filtro');
+        Route::post('/imprimir/direto/{encomenda}/{tipo}', [ImpressaoController::class, 'direto'])->name('imprimir.direto');
+    });
 
     // ---------------- Caixa / relatórios ----------------
     Route::get('/caixa', [CaixaController::class, 'index'])->name('caixa.index')->middleware('perm:caixa');
-    Route::get('/meu-relatorio', [RelatorioController::class, 'meu'])->name('relatorio.meu');
+    Route::get('/meu-relatorio', [RelatorioController::class, 'meu'])->name('relatorio.meu')->middleware('perm:relatorio');
 
     // ---------------- Admin da empresa ----------------
     Route::prefix('admin')->middleware('perm:admin')->name('admin.')->group(function () {
@@ -63,3 +64,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/empresas/sair', [EmpresaController::class, 'sair'])->name('empresas.sair');
     });
 });
+
+// Tela de login personalizada por empresa: fbre.com.br/{slug}  (fica por último para não engolir outras rotas)
+Route::get('/{slug}', [AuthController::class, 'formEmpresa'])->where('slug', '[a-z0-9-]+')->middleware('guest')->name('login.empresa');

@@ -24,6 +24,9 @@ class User extends Authenticatable
             'perm_cadastra' => 'boolean',
             'perm_baixa' => 'boolean',
             'perm_caixa' => 'boolean',
+            'perm_filtro' => 'boolean',
+            'perm_relatorio' => 'boolean',
+            'perm_imprimir' => 'boolean',
             'ativo' => 'boolean',
         ];
     }
@@ -33,6 +36,9 @@ class User extends Authenticatable
     public function podeCadastrar(): bool { return $this->admin || $this->perm_cadastra; }
     public function podeBaixar(): bool    { return $this->admin || $this->perm_baixa; }
     public function podeVerCaixa(): bool  { return $this->admin || $this->perm_caixa; }
+    public function podeFiltrar(): bool   { return $this->admin || $this->perm_filtro; }
+    public function podeRelatorio(): bool { return $this->admin || $this->perm_relatorio; }
+    public function podeImprimir(): bool  { return $this->admin || $this->perm_imprimir; }
     public function isAdmin(): bool       { return $this->admin; }
     public function isSuper(): bool       { return $this->super_admin; }
 }

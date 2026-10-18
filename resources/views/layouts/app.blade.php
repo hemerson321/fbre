@@ -99,15 +99,16 @@ tailwind.config = { theme: { extend: {
       <div class="rounded-xl bg-slate-100/70 p-1.5">
         {!! $grupo('Encomendas') !!}
         @if($u->podeCadastrar()) {!! $item(route('encomendas.create'), 'Nova encomenda', '➕') !!} @endif
-        {!! $item(route('encomendas.index'), 'Encomendas / baixa', '📦') !!}
+        @if($u->podeFiltrar()) {!! $item(route('encomendas.index'), 'Encomendas / baixa', '📦') !!}
         <a target="_blank" href="{{ route('imprimir.protocolo', ['inicio'=>now()->toDateString(),'fim'=>now()->toDateString()]) }}" class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium hover:bg-white text-slate-600"><span class="text-base w-5 text-center">🖨</span>Protocolo do dia</a>
+        @endif
       </div>
 
       {{-- MÓDULO CAIXA --}}
       <div class="rounded-xl bg-slate-100/70 p-1.5">
         {!! $grupo('Caixa') !!}
         @if($u->podeVerCaixa()) {!! $item(route('caixa.index'), 'Caixa geral', '💰') !!} @endif
-        {!! $item(route('relatorio.meu'), 'Meu relatório', '📋') !!}
+        @if($u->podeRelatorio()) {!! $item(route('relatorio.meu'), 'Meu relatório', '📋') !!} @endif
       </div>
 
       @if($u->isAdmin() || $u->isSuper())
@@ -151,9 +152,12 @@ tailwind.config = { theme: { extend: {
 <nav class="no-print fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 lg:hidden safe-b">
   <div class="grid grid-cols-4 text-[11px] font-semibold text-slate-500">
     @php $tab = fn($r,$l,$i) => '<a href="'.$r.'" class="flex flex-col items-center gap-0.5 py-2 '.(request()->url()===$r?'text-[var(--cor1)]':'').'"><span class="text-xl">'.$i.'</span>'.$l.'</a>'; @endphp
-    {!! $tab(route('encomendas.index'), 'Encomendas', '📦') !!}
-    @if($u->podeCadastrar()) {!! $tab(route('encomendas.create'), 'Nova', '➕') !!} @else {!! $tab(route('relatorio.meu'), 'Relatório', '📋') !!} @endif
-    @if($u->podeVerCaixa()) {!! $tab(route('caixa.index'), 'Caixa', '💰') !!} @else {!! $tab(route('relatorio.meu'), 'Relatório', '📋') !!} @endif
+    @php $tabs = [];
+      if($u->podeCadastrar()) $tabs[] = $tab(route('encomendas.create'), 'Nova', '➕');
+      if($u->podeFiltrar()) $tabs[] = $tab(route('encomendas.index'), 'Encomendas', '📦');
+      if($u->podeVerCaixa()) $tabs[] = $tab(route('caixa.index'), 'Caixa', '💰');
+      if($u->podeRelatorio() && count($tabs) < 3) $tabs[] = $tab(route('relatorio.meu'), 'Relatório', '📋');
+      foreach(array_slice($tabs,0,3) as $t) echo $t; @endphp
     <button @click="menu=true" class="flex flex-col items-center gap-0.5 py-2"><span class="text-xl">☰</span>Menu</button>
   </div>
 </nav>

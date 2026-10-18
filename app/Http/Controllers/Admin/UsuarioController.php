@@ -72,9 +72,12 @@ class UsuarioController extends Controller
             'perm_cadastra' => 'nullable|boolean',
             'perm_baixa' => 'nullable|boolean',
             'perm_caixa' => 'nullable|boolean',
+            'perm_filtro' => 'nullable|boolean',
+            'perm_relatorio' => 'nullable|boolean',
+            'perm_imprimir' => 'nullable|boolean',
             'ativo' => 'nullable|boolean',
         ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
-        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'ativo'] as $b) {
+        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'perm_filtro', 'perm_relatorio', 'perm_imprimir', 'ativo'] as $b) {
             $data[$b] = $request->boolean($b);
         }
         if (! $u) $data['ativo'] = true;
