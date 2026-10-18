@@ -16,7 +16,7 @@
 @endpush
 @section('conteudo')
 <form method="post" action="{{ route('encomendas.store') }}" x-data="novaEncomenda()" @submit="salvando=true"
-      class="lg:h-[calc(100vh-56px-3rem)] lg:flex lg:flex-col gap-3">
+      class="lg:h-[calc(100vh-100px-2.5rem)] lg:flex lg:flex-col gap-3">
 @csrf
 <div class="flex items-center justify-between shrink-0">
   <h1 class="text-lg font-extrabold">Nova encomenda</h1>
@@ -26,7 +26,7 @@
 <div class="grid gap-3 lg:grid-cols-12 lg:flex-1 lg:min-h-0">
 
   {{-- ===== COLUNA 1: ROTA + PESSOAS ===== --}}
-  <div class="lg:col-span-4 flex flex-col gap-3 lg:min-h-0">
+  <div class="lg:col-span-3 flex flex-col gap-3 lg:min-h-0">
     <section class="card p-3">
       <div class="sec-t"><span class="sec-n">1</span> Rota</div>
       <div class="grid grid-cols-2 gap-2">
@@ -72,12 +72,12 @@
   </div>
 
   {{-- ===== COLUNA 2: PRODUTOS ===== --}}
-  <section class="card p-3 lg:col-span-5 flex flex-col lg:min-h-0">
+  <section class="card p-3 lg:col-span-6 flex flex-col lg:min-h-0">
     <div class="flex items-center justify-between mb-2">
       <div class="sec-t !mb-0"><span class="sec-n">3</span> Produtos / volumes</div>
       <div class="flex items-center gap-2">
         <label class="label !mb-0">Volumes</label>
-        <input name="volumes" type="number" min="1" x-model.number="volumes" class="input !w-16 !min-h-[34px] text-center font-bold" inputmode="numeric">
+        <input name="volumes" type="number" min="1" x-model.number="volumes" class="input !w-20 !min-h-[36px] text-center font-bold text-base" inputmode="numeric">
       </div>
     </div>
 
@@ -90,16 +90,16 @@
 
     <div class="flex-1 lg:min-h-0 lg:overflow-auto rounded-lg border border-slate-100 bg-slate-50/60">
       <div class="hidden lg:grid grid-cols-12 gap-2 px-2 pt-2 text-[10px] font-bold uppercase text-slate-400">
-        <div class="col-span-6">Descrição</div><div class="col-span-2 text-center">Qtd</div><div class="col-span-2 text-right">Valor</div><div class="col-span-2 text-right">Total</div>
+        <div class="col-span-5">Descrição</div><div class="col-span-2 text-center">Qtd</div><div class="col-span-2 text-right">Valor unit.</div><div class="col-span-2 text-right">Total</div><div class="col-span-1"></div>
       </div>
       <div class="p-2 space-y-1.5">
         <template x-for="(it,i) in itens" :key="it.id">
           <div class="grid grid-cols-12 gap-1.5 items-center bg-white rounded-lg p-1.5 border border-slate-100">
-            <input :name="`itens[${i}][descricao]`" x-model="it.descricao" class="input !min-h-[34px] col-span-12 lg:col-span-6 text-sm" placeholder="Descrição" required>
-            <input :name="`itens[${i}][quantidade]`" x-model.number="it.quantidade" type="number" step="0.01" min="0.01" class="input !min-h-[34px] col-span-3 lg:col-span-2 text-center text-sm" inputmode="decimal">
-            <input :name="`itens[${i}][valor_unitario]`" x-model.number="it.valor" type="number" step="0.01" min="0" class="input !min-h-[34px] col-span-4 lg:col-span-2 text-right text-sm" inputmode="decimal">
-            <div class="col-span-4 lg:col-span-1 text-right text-sm font-bold whitespace-nowrap" x-text="FBRE.moeda(it.quantidade*it.valor)"></div>
-            <button type="button" @click="itens.splice(i,1)" class="col-span-1 text-slate-400 hover:text-red-500 text-lg leading-none text-right">×</button>
+            <input :name="`itens[${i}][descricao]`" x-model="it.descricao" class="input !min-h-[36px] !px-2 col-span-12 lg:col-span-5 text-sm" placeholder="Descrição" required>
+            <input :name="`itens[${i}][quantidade]`" x-model.number="it.quantidade" type="number" step="1" min="0.01" class="input !min-h-[36px] !px-1 col-span-3 lg:col-span-2 text-center text-sm" inputmode="decimal">
+            <input :name="`itens[${i}][valor_unitario]`" x-model.number="it.valor" type="number" step="0.01" min="0" class="input !min-h-[36px] !px-2 col-span-4 lg:col-span-2 text-right text-sm" inputmode="decimal">
+            <div class="col-span-4 lg:col-span-2 text-right text-sm font-bold whitespace-nowrap pr-1" x-text="FBRE.moeda(it.quantidade*it.valor)"></div>
+            <button type="button" @click="itens.splice(i,1)" class="col-span-1 text-slate-400 hover:text-red-500 text-xl leading-none text-center" title="Remover">×</button>
             <input :name="`itens[${i}][observacao]`" x-model="it.obs" class="col-span-12 text-xs bg-transparent border-0 border-b border-dashed border-slate-200 px-1 py-0.5 focus:outline-none focus:border-[var(--cor2)]" placeholder="observação do item (opcional)">
           </div>
         </template>
@@ -124,10 +124,10 @@
       <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
         <template x-for="m in meios" :key="m.k">
           <div><label class="label" x-text="m.l"></label>
-            <input type="number" step="0.01" min="0" inputmode="decimal" class="input text-right" x-model.number="pag[m.k]" placeholder="0,00"></div>
+            <input type="number" step="0.01" min="0" inputmode="decimal" class="input text-right" x-model.number="pag[m.k]" placeholder="0,00" @focus="$event.target.select()"></div>
         </template>
-        <div><label class="label">Desconto</label><input name="desconto" type="number" step="0.01" min="0" inputmode="decimal" class="input text-right" x-model.number="desconto" placeholder="0,00"></div>
-        <div class="flex items-end"><button type="button" class="btn btn-ghost btn-sm w-full !min-h-[38px]" @click="pag.dinheiro = Math.max(total - pagoSemDinheiro, 0)">Receber tudo</button></div>
+        <div><label class="label">Desconto</label><input name="desconto" type="number" step="0.01" min="0" inputmode="decimal" class="input text-right" x-model.number="desconto" placeholder="0,00" @focus="$event.target.select()"></div>
+        <div class="flex items-end"><button type="button" class="btn btn-ghost btn-sm w-full !min-h-[38px]" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
       </div>
       <template x-for="m in meios" :key="'h'+m.k">
         <template x-if="pag[m.k]>0 && forma!=='faturado'">
@@ -169,7 +169,7 @@
 function novaEncomenda(){
   return {
     salvando:false, volumes:1, forma:'avista', imprimir:'navegador',
-    itens:[], desconto:0, pag:{dinheiro:0,pix:0,debito:0,credito:0},
+    itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
     addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); },
     get subtotal(){ return this.itens.reduce((s,i)=>s+(Number(i.quantidade)||0)*(Number(i.valor)||0),0); },
