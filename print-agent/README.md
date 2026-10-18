@@ -2,6 +2,14 @@
 
 Imprime comprovantes e etiquetas direto na impressora térmica, sem janela do navegador.
 
+## Instalar (recomendado: instalador)
+1. Baixe o **FBREPrintAgentSetup.exe** (GitHub → Actions → último build → Artifacts) e execute.
+2. No fim da instalação abre a janela de **Configuração**: cole o **token da estação**
+   (gerado em *Cadastros gerais → Estações de impressão*) e escolha a **impressora do comprovante**
+   e a **impressora da etiqueta** (lista as instaladas no Windows; "Padrão do Windows" usa a padrão).
+3. Pronto. O agente fica na **bandeja** (ao lado do relógio). Pra trocar de impressora depois,
+   clique no ícone → **Configurações**. Já inicia junto com o Windows.
+
 ## Instalar no PC do cliente (Windows)
 1. Copie `FBREPrintAgent.exe` para `C:\FBRE\`
 2. Execute uma vez: ele cria o `fbre_agent.ini` **já apontando para a impressora padrão do
