@@ -277,21 +277,29 @@ function novaEncomenda(){
     fmtBr(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); },
     get hojeISO(){ return this.isoLocal(new Date()); },
     gerarDatas(dia,hora,passadas,futuras){
-      const out=[]; const base=new Date(); base.setHours(0,0,0,0);
+      const out=[]; const hoje=this.isoLocal(new Date());
+      const base=new Date(); base.setHours(0,0,0,0);
       while(base.getDay()!==dia) base.setDate(base.getDate()+1);     // próxima ocorrência >= hoje
       const d=new Date(base); d.setDate(d.getDate()-7*passadas);     // começa nas semanas anteriores
-      for(let i=0;i<passadas+futuras;i++){ out.push({v:this.isoLocal(d), label:this.diasCurto[dia]+' '+this.fmtBr(d)+(hora?' · '+hora:'')}); d.setDate(d.getDate()+7); }
+      for(let i=0;i<passadas+futuras;i++){
+        const v=this.isoLocal(d);
+        const tag = v<hoje ? ' · anterior' : (v===hoje ? ' · hoje' : '');
+        out.push({v, label:this.diasCurto[dia]+' '+this.fmtBr(d)+(hora?' '+hora:'')+tag});
+        d.setDate(d.getDate()+7);
+      }
       return out;
     },
-    // datas da viagem a partir da ORIGEM escolhida (dia/hora em que o barco sai de lá); inclui viagens já saídas
+    // datas da viagem a partir da ORIGEM escolhida (dia/hora em que o barco sai de lá); lista passadas + futuras
     recalcularDatas(){
       if (!this.rotaId || !this.paradasInfo.length) { this.viagemDatas=[]; this.viagemData=''; return; }
       const p = this.paradasInfo.find(x=>x.n===this.origemSel) || this.paradasInfo[0];
       this.viagemHora = p.h || '';
       if (p.d===null||p.d===undefined||p.d==='') { this.viagemDatas=[]; this.viagemData=''; return; }
-      this.viagemDatas = this.gerarDatas(Number(p.d), this.viagemHora, 6, 26);   // 6 semanas atrás + 26 à frente
+      this.viagemDatas = this.gerarDatas(Number(p.d), this.viagemHora, 8, 20);   // 8 semanas atrás + 20 à frente
+      // padrão: viagem de hoje se for dia de viagem, senão a PRÓXIMA (nunca cai numa passada)
       const hoje = this.isoLocal(new Date());
-      this.viagemData = (this.viagemDatas.find(d=>d.v>=hoje) || this.viagemDatas[this.viagemDatas.length-1]).v;
+      const alvo = (this.viagemDatas.find(d=>d.v>=hoje) || this.viagemDatas[this.viagemDatas.length-1]).v;
+      this.$nextTick(()=>{ this.viagemData = alvo; });   // espera as opções renderizarem antes de selecionar
     },
     aplicarRota(){
       const opt = document.querySelector(`select[name=rota_id] option[value='${this.rotaId}']`);
