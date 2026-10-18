@@ -39,32 +39,23 @@
 <form method="post" action="{{ route('encomendas.store') }}" x-data="novaEncomenda()" @submit.prevent="salvar($event)"
       class="mx-auto max-w-[1440px] space-y-2">
 @csrf
-<div class="flex items-center justify-between">
-  <div class="flex items-center gap-3">
+<div class="flex items-center justify-between gap-3 flex-wrap">
+  <div class="flex items-center gap-x-4 gap-y-1 flex-wrap">
     <h1 class="text-lg font-extrabold" style="color:var(--cor1)">Nova encomenda</h1>
-    <span class="hidden xl:inline text-xs text-slate-500">Preencha as 4 etapas e salve. O comprovante e as etiquetas saem na hora.</span>
+    {{-- datas no cabeçalho (compacto) --}}
+    <div x-show="viagemData" x-cloak class="flex items-center gap-1.5">
+      <span class="lbl !mb-0">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></span>
+      <input type="date" class="field !min-h-0 !py-1 w-36 text-sm font-semibold" x-model="viagemDataPick" @change="escolherData()" :min="minData" :max="maxData">
+      <span class="text-[11px]" :class="viagemData<hojeISO ? 'text-amber-600' : 'text-slate-500'" x-text="viagemLabel"></span>
+    </div>
+    @if($podeRetroativo)
+    <div class="flex items-center gap-1.5">
+      <span class="lbl !mb-0">Lançamento</span>
+      <input type="date" name="lancamento_em" class="field !min-h-0 !py-1 w-32 text-sm" x-model="lancamentoEm" :max="hojeISO">
+    </div>
+    @endif
   </div>
   <a href="{{ route('encomendas.index') }}" class="text-sm text-slate-500 hover:underline">← voltar</a>
-</div>
-
-{{-- faixa de datas (viagem + lançamento) — fora das colunas pra não empurrar o form --}}
-<div x-show="viagemData || {{ $podeRetroativo ? 'true' : 'false' }}" x-cloak class="card px-3 py-2 flex flex-wrap items-end gap-x-6 gap-y-2">
-  <div x-show="viagemData" x-cloak>
-    <label class="lbl">Data da viagem <span x-show="linhaNome" class="normal-case text-slate-400 font-normal" x-text="'· '+linhaNome"></span></label>
-    <div class="flex items-center gap-2">
-      <input type="date" class="field !min-h-0 py-2 w-44 font-semibold" x-model="viagemDataPick" @change="escolherData()" :min="minData" :max="maxData">
-      <span class="text-xs whitespace-nowrap" :class="viagemData<hojeISO ? 'text-amber-600' : 'text-slate-500'" x-text="viagemLabel"></span>
-    </div>
-  </div>
-  @if($podeRetroativo)
-  <div>
-    <label class="lbl">Data do lançamento</label>
-    <div class="flex items-center gap-2">
-      <input type="date" name="lancamento_em" class="field !min-h-0 py-2 w-44" x-model="lancamentoEm" :max="hojeISO">
-      <span class="text-[11px] text-amber-600 whitespace-nowrap" x-show="lancamentoEm && lancamentoEm < hojeISO">data anterior · entra no caixa nesse dia</span>
-    </div>
-  </div>
-  @endif
 </div>
 
 <div class="grid gap-2 lg:grid-cols-12 items-start">
