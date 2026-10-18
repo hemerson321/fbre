@@ -79,6 +79,41 @@ class Rota extends Model
         });
     }
 
+    /** Hora de partida (1ª parada), formato HH:MM, ou null. */
+    public function horaPartida(): ?string
+    {
+        $h = optional($this->paradas()->first())->hora;
+        return $h ? substr($h, 0, 5) : null;
+    }
+
+    /**
+     * Viagens do calendário desta rota: materializa as partidas recentes e
+     * próximas (uma por semana, no dia-da-semana da 1ª parada) para servir de
+     * opção no filtro. Idempotente — reaproveita viagens já criadas.
+     */
+    public function proximasViagens(int $passadas = 3, int $futuras = 5)
+    {
+        $partida = $this->paradas()->first();
+
+        if (! $partida || $partida->dia_semana === null) {
+            return collect([$this->viagemPara()]); // rota aberta: viagem única
+        }
+
+        $dia = (int) $partida->dia_semana;
+        $base = now()->startOfDay();
+        for ($i = 0; $i < 7; $i++) {
+            if ($base->dayOfWeek === $dia) break;
+            $base->subDay();
+        }
+
+        $viagens = collect();
+        for ($k = -$passadas; $k <= $futuras; $k++) {
+            $viagens->push($this->viagemPara($base->copy()->addWeeks($k)));
+        }
+
+        return $viagens;
+    }
+
     public static function paraSelecao()
     {
         return static::where('ativo', true)->with('paradas')->orderBy('nome')->get();

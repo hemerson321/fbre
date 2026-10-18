@@ -60,9 +60,7 @@ tailwind.config = { theme: { extend: {
   $grupos = [];
   $g = [];
   if ($u->podeCadastrar()) $g[] = ['r'=>route('encomendas.create'), 'l'=>'Nova encomenda', 'i'=>'➕'];
-  if ($u->podeFiltrar())   { $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
-                             $g[] = ['r'=>route('encomendas.index', ['inicio'=>now()->toDateString(),'fim'=>now()->toDateString(),'protocolo'=>1]), 'l'=>'Protocolo', 'i'=>'🖨']; }
-  if ($u->podeFiltrar() && $empresa?->temRecurso('viagens')) $g[] = ['r'=>route('viagens.index'), 'l'=>'Viagens', 'i'=>'🚢'];
+  if ($u->podeFiltrar())   $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
   if ($g) $grupos['Encomendas'] = $g;
   $g = [];
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>'Caixa geral', 'i'=>'💰'];

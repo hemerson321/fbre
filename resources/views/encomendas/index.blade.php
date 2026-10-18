@@ -43,7 +43,7 @@
     @if($viagens->count())
     <div><label class="label">Viagem</label>
       <select name="viagem_id" class="input"><option value="">Todas</option>
-        @foreach($viagens as $v)<option value="{{ $v->id }}" @selected(($f['viagem_id'] ?? '')==$v->id)>{{ $v->numeroFormatado() }} · {{ $v->nome }}</option>@endforeach</select></div>
+        @foreach($viagens as $v)<option value="{{ $v->id }}" @selected(($f['viagem_id'] ?? '')==$v->id)>{{ $v->rota_nome ?? $v->nome }} · {{ optional($v->data_partida)->format('d/m') ?? 'aberta' }}{{ $v->hora_label ? ' '.$v->hora_label : '' }}</option>@endforeach</select></div>
     @endif
     @if($rotas->count())
     <div><label class="label">Rota</label>

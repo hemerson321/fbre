@@ -53,6 +53,22 @@ class EncomendaController extends Controller
         $encomendas = (clone $base)->with(['embarcacao', 'operador'])
             ->orderByDesc('id')->paginate(50)->withQueryString();
 
+        // Viagens para o filtro: vêm do calendário das rotas (dia da semana + hora).
+        $temViagens = Tenant::empresa()->temRecurso('viagens');
+        $rotas = $temViagens ? Rota::where('ativo', true)->with('paradas')->orderBy('nome')->get() : collect();
+        $viagens = collect();
+        if ($temViagens) {
+            foreach ($rotas as $rota) {
+                $hora = $rota->horaPartida();
+                foreach ($rota->proximasViagens() as $v) {
+                    $v->rota_nome = $rota->nome;
+                    $v->hora_label = $hora;
+                    $viagens->push($v);
+                }
+            }
+            $viagens = $viagens->sortByDesc(fn ($v) => optional($v->data_partida)->timestamp ?? 0)->values();
+        }
+
         return view('encomendas.index', [
             'encomendas' => $encomendas,
             'totais' => $totais,
@@ -60,8 +76,8 @@ class EncomendaController extends Controller
             'f' => $f,
             'localidades' => Localidade::where('ativo', true)->orderBy('nome')->pluck('nome'),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
-            'rotas' => Tenant::empresa()->temRecurso('viagens') ? Rota::where('ativo', true)->orderBy('nome')->get() : collect(),
-            'viagens' => Tenant::empresa()->temRecurso('viagens') ? Viagem::whereIn('status', ['planejada', 'em_andamento'])->orderByDesc('data_partida')->limit(60)->get() : collect(),
+            'rotas' => $rotas,
+            'viagens' => $viagens,
         ]);
     }
 
