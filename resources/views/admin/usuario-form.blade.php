@@ -29,10 +29,11 @@
     'perm_caixa'    => ['Ver caixa geral', 'Totais por operador e meio de pagamento de toda a empresa'],
     'perm_relatorio'=> ['Meu relatório', 'Relatório só do que o próprio usuário fez'],
     'perm_retroativo'=> ['Lançar em datas retroativas', 'Cadastrar em dias anteriores (feito na mão e lançado depois). Gerente já tem.'],
+    'perm_parcial'  => ['Receber pagamento parcial', 'Pode deixar saldo (valor parcial). Sem isso, só pago total ou a receber. Gerente já tem.'],
   ]; @endphp
   @foreach($perms as $k=>[$l,$d])
     <label class="flex items-start gap-3 py-1.5 cursor-pointer">
-      <input type="checkbox" name="{{ $k }}" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old($k, $u->exists ? $u->$k : in_array($k,['perm_cadastra','perm_filtro','perm_imprimir','perm_relatorio'])))>
+      <input type="checkbox" name="{{ $k }}" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old($k, $u->exists ? $u->$k : in_array($k,['perm_cadastra','perm_filtro','perm_imprimir','perm_relatorio','perm_parcial'])))>
       <span><span class="font-semibold text-sm">{{ $l }}</span><br><span class="text-xs text-slate-500">{{ $d }}</span></span>
     </label>
   @endforeach

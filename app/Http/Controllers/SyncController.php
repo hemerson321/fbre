@@ -88,6 +88,15 @@ class SyncController extends Controller
             if (! empty($data['viagem_data']) && $data['viagem_data'] < now()->toDateString()) unset($data['viagem_data']);
         }
 
+        // pagamento parcial só para quem tem permissão
+        if (! auth()->user()->podeParcial()) {
+            $total = collect($data['itens'])->sum(fn ($i) => (float) $i['quantidade'] * (float) $i['valor_unitario']) - (float) ($data['desconto'] ?? 0);
+            $pago = collect($data['pagamentos'] ?? [])->sum(fn ($p) => (float) $p['valor']);
+            if ($pago > 0.009 && $pago < $total - 0.009) {
+                return response()->json(['ok' => false, 'erro' => 'Pagamento parcial não permitido. Receba o total ou deixe a receber.'], 422);
+            }
+        }
+
         try {
             $enc = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
         } catch (\Throwable $e) {
@@ -124,6 +133,12 @@ class SyncController extends Controller
         $enc = $data['encomenda_uuid'] ? Encomenda::where('uuid', $data['encomenda_uuid'])->first() : Encomenda::find($data['encomenda_id'] ?? 0);
         if (! $enc) {
             return response()->json(['ok' => false, 'erro' => 'encomenda_nao_encontrada', 'reter' => true], 409);
+        }
+        if (! auth()->user()->podeParcial()) {
+            $aplicado = (float) ($data['dinheiro'] ?? 0) + (float) ($data['pix'] ?? 0) + (float) ($data['debito'] ?? 0) + (float) ($data['credito'] ?? 0) + (float) ($data['desconto'] ?? 0);
+            if ($aplicado > 0.009 && ($enc->devido - $aplicado) > 0.009) {
+                return response()->json(['ok' => false, 'erro' => 'Pagamento parcial não permitido. Receba o valor total.', 'reter' => true], 422);
+            }
         }
         try {
             $svc->baixa($enc, $data, auth()->id(), $data['uuid']);

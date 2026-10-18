@@ -191,6 +191,12 @@ class EncomendaController extends Controller
             if (! empty($data['viagem_data']) && $data['viagem_data'] < now()->toDateString()) unset($data['viagem_data']);
         }
 
+        if (! auth()->user()->podeParcial()) {
+            $total = collect($data['itens'])->sum(fn ($i) => (float) $i['quantidade'] * (float) $i['valor_unitario']) - (float) ($data['desconto'] ?? 0);
+            $pago = collect($data['pagamentos'] ?? [])->sum(fn ($p) => (float) $p['valor']);
+            abort_if($pago > 0.009 && $pago < $total - 0.009, 422, 'Pagamento parcial não permitido. Receba o total ou deixe a receber.');
+        }
+
         $encomenda = app(\App\Services\EncomendaService::class)->criar($data, auth()->id(), $request->input('uuid'));
 
         if (! empty($data['pre_id'])) {
@@ -246,6 +252,11 @@ class EncomendaController extends Controller
             'entregue_para' => 'nullable|string|max:120',
             'uuid' => 'nullable|uuid',
         ]);
+
+        if (! auth()->user()->podeParcial()) {
+            $aplicado = (float) ($data['dinheiro'] ?? 0) + (float) ($data['pix'] ?? 0) + (float) ($data['debito'] ?? 0) + (float) ($data['credito'] ?? 0) + (float) ($data['desconto'] ?? 0);
+            abort_if($aplicado > 0.009 && ($encomenda->devido - $aplicado) > 0.009, 422, 'Pagamento parcial não permitido. Receba o valor total.');
+        }
 
         app(\App\Services\EncomendaService::class)->baixa($encomenda, $data, auth()->id(), $request->input('uuid'));
 

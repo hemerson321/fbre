@@ -92,8 +92,8 @@
     </div>
     <div class="text-sm flex justify-between"><span>Restará:</span><b x-text="FBRE.moeda(Math.max(devido-d-p-de-c-ds,0))"></b></div>
     @if(!$e->entregue)
-      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="entregar" value="1" class="rounded w-5 h-5"> Dar baixa na entrega também</label>
       <input name="entregue_para" class="input" placeholder="Quem retirou (opcional)">
+      <p class="text-xs text-emerald-600">Ao quitar o valor, a entrega é dada automaticamente. ✓</p>
     @endif
     <div class="flex gap-2 pt-1">
       <button type="button" class="btn btn-ghost flex-1" @click="modal=null">Cancelar</button>
