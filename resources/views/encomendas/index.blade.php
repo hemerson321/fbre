@@ -14,18 +14,32 @@
 </div>
 
 {{-- FILTROS --}}
-<form method="get" class="card p-3 lg:p-4 space-y-3" :class="filtros?'':'hidden lg:block'">
+<form method="get" class="card p-3 lg:p-4" :class="filtros?'':'hidden lg:block'" x-data="{ mais:{{ collect($f)->only(['hora_inicio','hora_fim','viagem_id','rota_id','origem','destino','embarcacao_id','status_pagamento','entregue','forma'])->filter(fn($v)=>$v!==null && $v!=='')->isNotEmpty() ? 'true':'false' }} }">
   <datalist id="locais">@foreach($localidades as $l)<option value="{{ $l }}">@endforeach</datalist>
 
-  {{-- período + busca --}}
-  <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-    <div class="lg:col-span-2"><label class="label">Buscar</label><input name="busca" value="{{ $f['busca'] ?? '' }}" class="input" placeholder="Nº, nome ou telefone"></div>
-    <div><label class="label">De</label><div class="flex gap-1"><input type="date" name="inicio" value="{{ $f['inicio'] ?? '' }}" class="input"><input type="time" name="hora_inicio" value="{{ $f['hora_inicio'] ?? '' }}" class="input !w-[88px]" title="Hora inicial"></div></div>
-    <div><label class="label">Até</label><div class="flex gap-1"><input type="date" name="fim" value="{{ $f['fim'] ?? '' }}" class="input"><input type="time" name="hora_fim" value="{{ $f['hora_fim'] ?? '' }}" class="input !w-[88px]" title="Hora final"></div></div>
+  {{-- linha principal: busca + período --}}
+  <div class="flex flex-col lg:flex-row gap-2 lg:items-end">
+    <div class="flex-1">
+      <label class="label">Buscar</label>
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
+        <input name="busca" value="{{ $f['busca'] ?? '' }}" class="input !pl-9" placeholder="Nº, nome ou telefone">
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <div><label class="label">De</label><input type="date" name="inicio" value="{{ $f['inicio'] ?? '' }}" class="input !min-h-[44px]"></div>
+      <div><label class="label">Até</label><input type="date" name="fim" value="{{ $f['fim'] ?? '' }}" class="input !min-h-[44px]"></div>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn btn-primary !min-h-[44px]">Filtrar</button>
+      <button type="button" class="btn btn-ghost !min-h-[44px]" @click="mais=!mais" x-text="mais ? 'Menos filtros' : 'Mais filtros'"></button>
+    </div>
   </div>
 
-  {{-- trajeto / viagem --}}
-  <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+  {{-- filtros avançados --}}
+  <div x-show="mais" x-cloak class="mt-3 pt-3 border-t border-slate-100 grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+    <div><label class="label">Hora de</label><input type="time" name="hora_inicio" value="{{ $f['hora_inicio'] ?? '' }}" class="input"></div>
+    <div><label class="label">Hora até</label><input type="time" name="hora_fim" value="{{ $f['hora_fim'] ?? '' }}" class="input"></div>
     @if($viagens->count())
     <div><label class="label">Viagem</label>
       <select name="viagem_id" class="input"><option value="">Todas</option>
@@ -41,10 +55,6 @@
     <div><label class="label">Transporte</label>
       <select name="embarcacao_id" class="input"><option value="">Todos</option>
         @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(($f['embarcacao_id'] ?? '')==$b->id)>{{ $b->nome }}</option>@endforeach</select></div>
-  </div>
-
-  {{-- status --}}
-  <div class="grid gap-2 grid-cols-2 sm:grid-cols-3">
     <div><label class="label">Pagamento</label>
       <select name="status_pagamento" class="input"><option value="">Todos</option>
         @foreach(['pago'=>'Pago','parcial'=>'Parcial','pendente'=>'Não pago'] as $k=>$l)<option value="{{ $k }}" @selected(($f['status_pagamento'] ?? '')===$k)>{{ $l }}</option>@endforeach</select></div>
@@ -57,9 +67,8 @@
   </div>
 
   {{-- ações --}}
-  <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
-    <button class="btn btn-primary btn-sm">Filtrar</button>
-    <a href="{{ route('encomendas.index') }}" class="btn btn-ghost btn-sm">Limpar</a>
+  <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+    <a href="{{ route('encomendas.index') }}" class="btn btn-ghost btn-sm">Limpar filtros</a>
     <span class="flex-1"></span>
     <button type="submit" formtarget="_blank" formaction="{{ route('imprimir.protocolo') }}" class="btn btn-sm {{ request()->boolean('protocolo') ? 'btn-accent' : 'btn-ghost' }}">🖨 Protocolo</button>
     <button type="submit" formtarget="_blank" formaction="{{ route('imprimir.listagem') }}" class="btn btn-ghost btn-sm">🖨 Listagem</button>

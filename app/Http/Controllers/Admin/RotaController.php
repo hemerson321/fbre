@@ -12,12 +12,8 @@ class RotaController extends Controller
 {
     public function index()
     {
-        return view('admin.rotas', [
-            'rotas' => Rota::with(['paradas', 'embarcacao'])->orderBy('nome')->get(),
-            'localidades' => Localidade::where('ativo', true)->orderBy('nome')->pluck('nome'),
-            'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
-            'dias' => Rota::DIAS,
-        ]);
+        // rotas agora vivem dentro de "Cadastros gerais"
+        return redirect()->route('admin.cadastros');
     }
 
     public function store(Request $request)

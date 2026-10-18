@@ -7,6 +7,7 @@ use App\Models\Embarcacao;
 use App\Models\Estacao;
 use App\Models\Localidade;
 use App\Models\Produto;
+use App\Models\Rota;
 use App\Models\Setor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -29,6 +30,9 @@ class CadastroController extends Controller
             'setores' => Setor::orderBy('nome')->get(),
             'produtos' => Produto::orderBy('nome')->get(),
             'estacoes' => Estacao::orderBy('nome')->get(),
+            'rotas' => \App\Support\Tenant::empresa()->temRecurso('viagens') ? Rota::with(['paradas', 'embarcacao'])->orderBy('nome')->get() : collect(),
+            'localidadesNomes' => Localidade::where('ativo', true)->orderBy('nome')->pluck('nome'),
+            'dias' => Rota::DIAS,
         ]);
     }
 

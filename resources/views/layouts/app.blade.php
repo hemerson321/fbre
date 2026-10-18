@@ -70,8 +70,7 @@ tailwind.config = { theme: { extend: {
   if ($g) $grupos['Caixa'] = $g;
   if ($u->isAdmin() || $u->isSuper()) $grupos['Administração'] = [
       ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
-      ['r'=>route('admin.cadastros'), 'l'=>'Barcos, locais, produtos', 'i'=>'🚢'],
-      ...($empresa?->temRecurso('viagens') ? [['r'=>route('admin.rotas'), 'l'=>'Rotas e calendário', 'i'=>'🗺️']] : []),
+      ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
       ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'],
   ];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
