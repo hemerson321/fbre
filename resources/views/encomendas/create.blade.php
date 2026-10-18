@@ -46,7 +46,7 @@
     <div x-show="viagemData" x-cloak class="flex items-center gap-1.5">
       <span class="lbl !mb-0">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></span>
       <input type="date" class="field !min-h-0 !py-1 w-36 text-sm font-semibold" x-model="viagemDataPick" @change="escolherData()" :min="minData" :max="maxData">
-      <span class="text-[11px]" :class="viagemData<hojeISO ? 'text-amber-600' : 'text-slate-500'" x-text="viagemLabel"></span>
+      <span class="text-[11px] whitespace-nowrap" :class="viagemData<hojeISO ? 'text-amber-600' : 'text-slate-500'" x-text="viagemLabel"></span>
     </div>
     @if($podeRetroativo)
     <div class="flex items-center gap-1.5">
