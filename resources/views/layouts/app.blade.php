@@ -28,7 +28,7 @@ tailwind.config = { theme: { extend: {
 <style type="text/tailwindcss">
   :root { --cor1: {{ $cor1 }}; --cor2: {{ $cor2 }}; }
   html { -webkit-tap-highlight-color: transparent; }
-  body { background: #f3f5f8; }
+  body { background: #eef2f7; }
   .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-semibold text-sm transition active:scale-[.98] disabled:opacity-50; min-height: 48px; }
   .btn-primary { background: var(--cor1); color: #fff; }
   .btn-accent { background: var(--cor2); color: #fff; }
