@@ -250,6 +250,10 @@ function novaEncomenda(){
     init(){
       try { const v = localStorage.getItem('fbre_imprimir'); if (v) this.imprimir = v; } catch(e){}
       this.$watch('imprimir', v => { try { localStorage.setItem('fbre_imprimir', v); } catch(e){} });
+      // origem nunca fica vazia: usa a última guardada (ou a 1ª cidade)
+      try { const o = localStorage.getItem('fbre_origem'); if (!this.origemSel && o) this.origemSel = o; } catch(e){}
+      if (!this.origemSel && this.cidades.length) this.origemSel = this.cidades[0];
+      this.$watch('origemSel', v => { try { if (v) localStorage.setItem('fbre_origem', v); } catch(e){} });
       this.resolverLinha();
     },
     addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); },
