@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('titulo','Encomendas')
 @section('conteudo')
-<div x-data="{ filtros:{{ request()->boolean('protocolo') ? 'true' : 'false' }} }" class="space-y-4">
+<div x-data="{ filtros:{{ request()->boolean('protocolo') ? 'true' : 'false' }} }" class="space-y-4 max-w-[1440px] mx-auto">
 
 <div class="flex items-center justify-between gap-2">
   <h1 class="text-xl font-bold">Encomendas</h1>
