@@ -22,25 +22,35 @@
   .item:nth-child(even) { background:#f8fafc; }
   .item input.field { min-height: 38px; @apply text-sm py-1 bg-white; }
   .pessoa { @apply rounded-xl p-2.5 space-y-1.5 border; background: color-mix(in srgb, var(--cor2) 7%, white); border-color: color-mix(in srgb, var(--cor2) 30%, white); }
-  @media (min-width:1024px){ .field{min-height:40px;font-size:14px} }
+  /* ---- compacto no desktop pra tudo caber sem rolagem ---- */
+  @media (min-width:1024px){
+    .field{min-height:36px;font-size:14px;padding-top:.3rem;padding-bottom:.3rem}
+    .sec-b{padding:.55rem .6rem;gap:.45rem}
+    .sec-h{padding-top:.3rem;padding-bottom:.3rem}
+    .lbl{margin-bottom:.1rem;font-size:10px}
+    .pessoa{padding:.5rem;}
+    .pessoa>*+*{margin-top:.35rem}
+    .forma{padding-top:.4rem;padding-bottom:.4rem}
+    .item input.field{min-height:34px}
+  }
 </style>
 @endpush
 @section('conteudo')
 <form method="post" action="{{ route('encomendas.store') }}" x-data="novaEncomenda()" @submit.prevent="salvar($event)"
-      class="mx-auto max-w-[1440px] lg:h-[calc(100vh-100px-2rem)] lg:flex lg:flex-col gap-3">
+      class="mx-auto max-w-[1440px] lg:h-[calc(100vh-100px-1.5rem)] lg:flex lg:flex-col gap-2">
 @csrf
 <div class="flex items-center justify-between shrink-0">
   <div class="flex items-center gap-3">
-    <h1 class="text-xl font-extrabold" style="color:var(--cor1)">Nova encomenda</h1>
-    <span class="hidden sm:inline text-xs text-slate-500">Preencha as 4 etapas e salve. O comprovante e as etiquetas saem na hora.</span>
+    <h1 class="text-lg font-extrabold" style="color:var(--cor1)">Nova encomenda</h1>
+    <span class="hidden xl:inline text-xs text-slate-500">Preencha as 4 etapas e salve. O comprovante e as etiquetas saem na hora.</span>
   </div>
   <a href="{{ route('encomendas.index') }}" class="text-sm text-slate-500 hover:underline">← voltar</a>
 </div>
 
-<div class="grid gap-3 lg:grid-cols-12 lg:flex-1 lg:min-h-0">
+<div class="grid gap-2 lg:grid-cols-12 lg:flex-1 lg:min-h-0">
 
   {{-- ===== COLUNA 1 ===== --}}
-  <div class="lg:col-span-3 flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-0.5">
+  <div class="lg:col-span-3 flex flex-col gap-2 lg:min-h-0 lg:overflow-y-auto lg:pr-0.5">
     <section class="sec shrink-0">
       <div class="sec-h"><span class="n">1</span><span class="t">Rota</span></div>
       <div class="sec-b">
@@ -140,7 +150,7 @@
   </section>
 
   {{-- ===== COLUNA 3: PAGAMENTO ===== --}}
-  <div class="lg:col-span-3 flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-0.5">
+  <div class="lg:col-span-3 flex flex-col gap-2 lg:min-h-0 lg:overflow-y-auto lg:pr-0.5">
     <section class="sec shrink-0">
       <div class="sec-h"><span class="n">4</span><span class="t">Pagamento</span></div>
       <div class="sec-b">
@@ -165,11 +175,11 @@
         </template>
         <p x-show="forma==='faturado'" class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">Faturado: nada é recebido agora. A cobrança fica pendente.</p>
 
-        <div class="rounded-2xl p-3 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
+        <div class="rounded-2xl p-2.5 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
           <div class="flex justify-between text-xs opacity-75"><span>Subtotal</span><span x-text="FBRE.moeda(subtotal)"></span></div>
           <div class="flex justify-between text-xs opacity-75" x-show="desconto>0"><span>Desconto</span><span x-text="'- '+FBRE.moeda(desconto)"></span></div>
-          <div class="flex justify-between items-baseline mt-1"><span class="text-sm font-semibold opacity-90">Total</span><span class="text-2xl font-extrabold tracking-tight" x-text="FBRE.moeda(total)"></span></div>
-          <div class="h-px bg-white/20 my-1.5"></div>
+          <div class="flex justify-between items-baseline mt-0.5"><span class="text-sm font-semibold opacity-90">Total</span><span class="text-xl font-extrabold tracking-tight" x-text="FBRE.moeda(total)"></span></div>
+          <div class="h-px bg-white/20 my-1"></div>
           <div class="flex justify-between text-sm"><span>Pago</span><span x-text="FBRE.moeda(pago)"></span></div>
           <div class="flex justify-between items-center text-sm font-bold mt-0.5">
             <span>Devido</span>
@@ -180,7 +190,7 @@
     </section>
 
     <section class="sec shrink-0">
-      <div class="p-3 space-y-2.5">
+      <div class="p-2.5 space-y-2">
         <div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-slate-600">
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="navegador" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>
           @if(\App\Support\Tenant::empresa()->temRecurso('print_agent'))
@@ -188,7 +198,7 @@
           @endif
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
-        <button class="w-full rounded-xl py-3.5 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40 disabled:shadow-none" style="background:var(--cor2)" :disabled="salvando || !itens.length">
+        <button class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40 disabled:shadow-none" style="background:var(--cor2)" :disabled="salvando || !itens.length">
           <span x-show="!salvando">💾 Salvar encomenda</span><span x-show="salvando">Salvando…</span>
         </button>
         <p class="text-[11px] text-slate-400 text-center" x-show="!itens.length">Adicione ao menos um produto.</p>
