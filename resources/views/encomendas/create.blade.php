@@ -136,7 +136,8 @@
       <span class="n">3</span><span class="t">Produtos / volumes</span>
       <div class="ml-auto flex items-center gap-2">
         <span class="text-[11px] font-bold uppercase opacity-80">Volumes</span>
-        <input name="volumes" type="number" min="1" x-model.number="volumes" class="w-16 rounded-lg text-center font-extrabold text-slate-900 py-1 text-base" style="background:var(--cor2)" inputmode="numeric">
+        <button type="button" x-show="volumesManual" x-cloak @click="volumesManual=false; recalcVolumes()" class="text-[10px] font-bold uppercase bg-white/20 rounded px-1.5 py-0.5 hover:bg-white/30" title="Voltar ao cálculo automático">auto</button>
+        <input name="volumes" type="number" min="1" x-model.number="volumes" @input="volumesManual=true" class="w-16 rounded-lg text-center font-extrabold text-slate-900 py-1 text-base" style="background:var(--cor2)" inputmode="numeric">
       </div>
     </div>
     <div class="sec-b">
@@ -173,10 +174,10 @@
           <template x-for="(it,i) in itens" :key="it.id">
             <div class="item">
               <input :name="`itens[${i}][descricao]`" x-model="it.descricao" class="field col-span-12 lg:col-span-5" placeholder="Descrição" required>
-              <input :name="`itens[${i}][quantidade]`" x-model.number="it.quantidade" type="number" step="any" min="0.01" class="field col-span-3 lg:col-span-2 text-center font-semibold" inputmode="decimal" @focus="$event.target.select()">
+              <input :name="`itens[${i}][quantidade]`" x-model.number="it.quantidade" type="number" step="any" min="0.01" class="field col-span-3 lg:col-span-2 text-center font-semibold" inputmode="decimal" @focus="$event.target.select()" @input="recalcVolumes()">
               <input :name="`itens[${i}][valor_unitario]`" x-model.number="it.valor" type="number" step="0.01" min="0" class="field col-span-4 lg:col-span-2 text-right" inputmode="decimal" @focus="$event.target.select()">
               <div class="col-span-4 lg:col-span-2 text-right text-sm font-extrabold whitespace-nowrap" style="color:var(--cor1)" x-text="FBRE.moeda(it.quantidade*it.valor)"></div>
-              <button type="button" @click="itens.splice(i,1)" class="col-span-1 w-8 h-8 mx-auto rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none" title="Remover">×</button>
+              <button type="button" @click="itens.splice(i,1); recalcVolumes()" class="col-span-1 w-8 h-8 mx-auto rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none" title="Remover">×</button>
               <input :name="`itens[${i}][observacao]`" x-model="it.obs" class="col-span-12 text-xs bg-transparent border-0 border-b border-dashed border-slate-300 px-1 py-0.5 focus:outline-none" placeholder="observação do item (opcional)">
             </div>
           </template>
@@ -253,7 +254,7 @@
 <script>
 function novaEncomenda(){
   return {
-    salvando:false, volumes:1, forma:'avista', imprimir:'navegador',
+    salvando:false, volumes:1, volumesManual:false, forma:'avista', imprimir:'navegador',
     rotaId:'', linhaNome:'', paradasInfo: [],
     cidades: @js($cidades), linhas: @js($linhas), podeRetroativo: @js($podeRetroativo),
     origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino', '')),
@@ -272,7 +273,9 @@ function novaEncomenda(){
       this.$watch('origemSel', v => { try { if (v) localStorage.setItem('fbre_origem', v); } catch(e){} });
       this.resolverLinha();
     },
-    addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); },
+    addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); this.recalcVolumes(); },
+    get volumesAuto(){ const n = this.itens.reduce((s,i)=>s+(Number(i.quantidade)||0),0); return Math.max(1, Math.round(n)); },
+    recalcVolumes(){ if (!this.volumesManual) this.volumes = this.volumesAuto; },
     // ---- datas de viagem a partir do dia da semana da linha ----
     isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
     fmtBr(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); },
