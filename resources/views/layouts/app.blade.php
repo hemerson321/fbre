@@ -77,7 +77,7 @@ tailwind.config = { theme: { extend: {
 
 {{-- ===== BARRA DA EMPRESA ===== --}}
 <header class="no-print sticky top-0 z-30 text-white shadow-md" style="background: var(--cor1)">
-  <div class="mx-auto max-w-[1600px] flex items-center gap-3 px-3 sm:px-4 h-14">
+  <div class="mx-auto max-w-[1440px] flex items-center gap-3 px-3 sm:px-4 h-14">
     <button class="lg:hidden p-2 -ml-2 rounded-lg hover:bg-white/10" @click="menu=!menu" aria-label="Menu">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
@@ -101,7 +101,7 @@ tailwind.config = { theme: { extend: {
 
   {{-- ===== MENU HORIZONTAL (desktop) ===== --}}
   <nav class="hidden lg:block bg-white text-slate-700 border-b border-slate-200">
-    <div class="mx-auto max-w-[1600px] px-4 flex items-stretch h-11 overflow-x-auto">
+    <div class="mx-auto max-w-[1440px] px-4 flex items-stretch h-11 overflow-x-auto">
       @foreach($grupos as $titulo => $itens)
         <div class="flex items-center gap-0.5 pr-3 mr-3 border-r border-slate-200 last:border-0 last:mr-0 last:pr-0">
           <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1.5 whitespace-nowrap">{{ $titulo }}</span>
@@ -144,7 +144,7 @@ tailwind.config = { theme: { extend: {
 <div class="no-print fixed inset-0 z-30 bg-black/40 lg:hidden" x-show="menu" @click="menu=false" x-cloak></div>
 
 {{-- ===== CONTEÚDO ===== --}}
-<main class="mx-auto max-w-[1600px] p-3 sm:p-4 lg:p-4 pb-24 lg:pb-4">
+<main class="mx-auto max-w-[1440px] p-3 sm:p-4 lg:p-4 pb-24 lg:pb-4">
   @if(session('ok'))
     <div class="mb-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm no-print">{{ session('ok') }}</div>
   @endif
