@@ -4,10 +4,10 @@
 <style type="text/tailwindcss">
   /* ---- cartão de seção com cabeçalho colorido ---- */
   .sec { @apply rounded-2xl overflow-hidden flex flex-col; background:#fff; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px -12px rgba(15,23,42,.18); }
-  .sec-h { @apply flex items-center gap-2.5 px-4 py-2.5 text-white; background: linear-gradient(90deg, var(--cor1), color-mix(in srgb, var(--cor1) 70%, var(--cor2))); }
+  .sec-h { @apply flex items-center gap-2.5 px-3.5 py-2 text-white; background: linear-gradient(90deg, var(--cor1), color-mix(in srgb, var(--cor1) 70%, var(--cor2))); }
   .sec-h .n { @apply inline-flex w-6 h-6 rounded-full items-center justify-center text-[12px] font-extrabold text-slate-900; background: var(--cor2); }
   .sec-h .t { @apply text-[13px] font-bold uppercase tracking-wide; }
-  .sec-b { @apply p-4 flex-1 flex flex-col gap-3; }
+  .sec-b { @apply p-3 flex-1 flex flex-col gap-2.5; }
   .field { @apply rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[15px] w-full transition; min-height: 44px; }
   .field:focus { @apply outline-none bg-white; border-color: var(--cor2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor2) 25%, transparent); }
   .lbl { @apply block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1; }
@@ -21,13 +21,13 @@
   .item { @apply grid grid-cols-12 gap-2 items-center rounded-xl p-2 border; background:#fff; border-color:#e2e8f0; }
   .item:nth-child(even) { background:#f8fafc; }
   .item input.field { min-height: 38px; @apply text-sm py-1 bg-white; }
-  .pessoa { @apply rounded-xl p-3 space-y-2 border; background: color-mix(in srgb, var(--cor2) 7%, white); border-color: color-mix(in srgb, var(--cor2) 30%, white); }
+  .pessoa { @apply rounded-xl p-2.5 space-y-1.5 border; background: color-mix(in srgb, var(--cor2) 7%, white); border-color: color-mix(in srgb, var(--cor2) 30%, white); }
   @media (min-width:1024px){ .field{min-height:40px;font-size:14px} }
 </style>
 @endpush
 @section('conteudo')
 <form method="post" action="{{ route('encomendas.store') }}" x-data="novaEncomenda()" @submit.prevent="salvar($event)"
-      class="mx-auto max-w-[1440px] lg:h-[calc(100vh-100px-2.5rem)] lg:flex lg:flex-col gap-3">
+      class="mx-auto max-w-[1440px] lg:h-[calc(100vh-100px-2rem)] lg:flex lg:flex-col gap-3">
 @csrf
 <div class="flex items-center justify-between shrink-0">
   <div class="flex items-center gap-3">
@@ -40,8 +40,8 @@
 <div class="grid gap-3 lg:grid-cols-12 lg:flex-1 lg:min-h-0">
 
   {{-- ===== COLUNA 1 ===== --}}
-  <div class="lg:col-span-3 flex flex-col gap-3 lg:min-h-0">
-    <section class="sec">
+  <div class="lg:col-span-3 flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-0.5">
+    <section class="sec shrink-0">
       <div class="sec-h"><span class="n">1</span><span class="t">Rota</span></div>
       <div class="sec-b">
         <div class="grid grid-cols-2 gap-2">
@@ -58,13 +58,13 @@
       </div>
     </section>
 
-    <section class="sec flex-1">
+    <section class="sec shrink-0">
       <div class="sec-h"><span class="n">2</span><span class="t">Remetente e destinatário</span></div>
       <div class="sec-b">
         @foreach(['remetente'=>['Remetente','Quem está enviando'],'destinatario'=>['Destinatário','Quem vai receber']] as $k=>[$lbl,$dica])
         <div class="pessoa" x-data="pessoa()">
           <div class="relative">
-            <label class="lbl">{{ $lbl }} <span class="normal-case font-normal text-slate-400">· {{ $dica }}</span></label>
+            <label class="lbl">{{ $lbl }} <span class="normal-case font-normal text-slate-400 text-[10px]">· {{ $dica }}</span></label>
             <input name="{{ $k }}_nome" class="field" required value="{{ old($k.'_nome') }}" autocomplete="off"
                    x-model="nome" @input.debounce.300ms="buscar" @focus="aberto=true" @click.outside="aberto=false" placeholder="Nome completo">
             <div x-show="aberto && lista.length" x-cloak class="absolute z-20 mt-1 w-full bg-white rounded-xl border shadow-xl max-h-48 overflow-auto">
@@ -113,7 +113,7 @@
           <template x-for="(it,i) in itens" :key="it.id">
             <div class="item">
               <input :name="`itens[${i}][descricao]`" x-model="it.descricao" class="field col-span-12 lg:col-span-5" placeholder="Descrição" required>
-              <input :name="`itens[${i}][quantidade]`" x-model.number="it.quantidade" type="number" step="1" min="0.01" class="field col-span-3 lg:col-span-2 text-center font-semibold" inputmode="decimal" @focus="$event.target.select()">
+              <input :name="`itens[${i}][quantidade]`" x-model.number="it.quantidade" type="number" step="any" min="0.01" class="field col-span-3 lg:col-span-2 text-center font-semibold" inputmode="decimal" @focus="$event.target.select()">
               <input :name="`itens[${i}][valor_unitario]`" x-model.number="it.valor" type="number" step="0.01" min="0" class="field col-span-4 lg:col-span-2 text-right" inputmode="decimal" @focus="$event.target.select()">
               <div class="col-span-4 lg:col-span-2 text-right text-sm font-extrabold whitespace-nowrap" style="color:var(--cor1)" x-text="FBRE.moeda(it.quantidade*it.valor)"></div>
               <button type="button" @click="itens.splice(i,1)" class="col-span-1 w-8 h-8 mx-auto rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none" title="Remover">×</button>
@@ -130,8 +130,8 @@
   </section>
 
   {{-- ===== COLUNA 3: PAGAMENTO ===== --}}
-  <div class="lg:col-span-3 flex flex-col gap-3 lg:min-h-0">
-    <section class="sec flex-1">
+  <div class="lg:col-span-3 flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-0.5">
+    <section class="sec shrink-0">
       <div class="sec-h"><span class="n">4</span><span class="t">Pagamento</span></div>
       <div class="sec-b">
         <div class="flex gap-1.5">
@@ -155,11 +155,11 @@
         </template>
         <p x-show="forma==='faturado'" class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">Faturado: nada é recebido agora. A cobrança fica pendente.</p>
 
-        <div class="mt-auto rounded-2xl p-4 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
+        <div class="rounded-2xl p-3 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
           <div class="flex justify-between text-xs opacity-75"><span>Subtotal</span><span x-text="FBRE.moeda(subtotal)"></span></div>
           <div class="flex justify-between text-xs opacity-75" x-show="desconto>0"><span>Desconto</span><span x-text="'- '+FBRE.moeda(desconto)"></span></div>
-          <div class="flex justify-between items-baseline mt-1"><span class="text-sm font-semibold opacity-90">Total</span><span class="text-3xl font-extrabold tracking-tight" x-text="FBRE.moeda(total)"></span></div>
-          <div class="h-px bg-white/20 my-2.5"></div>
+          <div class="flex justify-between items-baseline mt-1"><span class="text-sm font-semibold opacity-90">Total</span><span class="text-2xl font-extrabold tracking-tight" x-text="FBRE.moeda(total)"></span></div>
+          <div class="h-px bg-white/20 my-1.5"></div>
           <div class="flex justify-between text-sm"><span>Pago</span><span x-text="FBRE.moeda(pago)"></span></div>
           <div class="flex justify-between items-center text-sm font-bold mt-0.5">
             <span>Devido</span>
@@ -169,7 +169,7 @@
       </div>
     </section>
 
-    <section class="sec">
+    <section class="sec shrink-0">
       <div class="p-3 space-y-2.5">
         <div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-slate-600">
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="navegador" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>

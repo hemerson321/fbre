@@ -145,7 +145,7 @@ tailwind.config = { theme: { extend: {
 <div class="no-print fixed inset-0 z-30 bg-black/40 lg:hidden" x-show="menu" @click="menu=false" x-cloak></div>
 
 {{-- ===== CONTEÚDO ===== --}}
-<main class="mx-auto max-w-[1600px] p-3 sm:p-4 lg:p-5 pb-24 lg:pb-6">
+<main class="mx-auto max-w-[1600px] p-3 sm:p-4 lg:p-4 pb-24 lg:pb-4">
   @if(session('ok'))
     <div class="mb-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm no-print">{{ session('ok') }}</div>
   @endif
