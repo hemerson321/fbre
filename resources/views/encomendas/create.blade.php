@@ -56,12 +56,27 @@
       <div class="sec-b">
         @if($rotas->count())
         <div>
-          <label class="lbl">Viagem / rota</label>
+          <label class="lbl">Linha</label>
           <select name="rota_id" class="field" x-model="rotaId" @change="aplicarRota()">
             <option value="">Avulsa (sem viagem)</option>
-            @foreach($rotas as $r)<option value="{{ $r->id }}" data-origem="{{ $r->paradas->first()?->localidade }}" data-destino="{{ $r->paradas->last()?->localidade }}" data-locais='@json($r->paradas->pluck("localidade"))'>{{ $r->nome }} — {{ $r->resumoCalendario() }}</option>@endforeach
+            @foreach($rotas as $r)<option value="{{ $r->id }}"
+              data-origem="{{ $r->paradas->first()?->localidade }}"
+              data-destino="{{ $r->paradas->last()?->localidade }}"
+              data-dia="{{ $r->paradas->first()?->dia_semana }}"
+              data-hora="{{ $r->paradas->first()?->hora ? substr($r->paradas->first()->hora,0,5) : '' }}"
+              data-locais='@json($r->paradas->pluck("localidade"))'>{{ $r->nome }} — {{ $r->resumoCalendario() }}</option>@endforeach
           </select>
-          <p class="text-[11px] text-slate-400 mt-0.5" x-show="rotaId">A viagem do dia é criada/identificada automaticamente pela rota.</p>
+        </div>
+        <div x-show="rotaId && viagemDatas.length" x-cloak>
+          <label class="lbl">Data da viagem</label>
+          <select name="viagem_data" class="field font-semibold" x-model="viagemData">
+            <template x-for="d in viagemDatas" :key="d.v"><option :value="d.v" x-text="d.label"></option></template>
+          </select>
+          <div class="mt-1 flex items-center gap-2">
+            <span class="text-[11px] text-slate-400 uppercase font-bold">ou outra data</span>
+            <input type="date" class="field !min-h-0 py-1 text-xs flex-1" x-model="viagemDataLivre" @change="escolherDataLivre()" :min="hojeISO" :max="maxISO">
+          </div>
+          <p class="text-[11px] text-slate-400 mt-0.5">Datas geradas pelo dia da semana da linha — dá pra lançar viagens futuras.</p>
         </div>
         @endif
         <div class="grid grid-cols-2 gap-2">
@@ -214,15 +229,42 @@
 function novaEncomenda(){
   return {
     salvando:false, volumes:1, forma:'avista', imprimir:'navegador', rotaId:'',
+    viagemData:'', viagemDatas:[], viagemHora:'', viagemDataLivre:'',
+    diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
     addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); },
+    // ---- datas de viagem a partir do dia da semana da linha ----
+    isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
+    fmtBr(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); },
+    get hojeISO(){ const d=new Date(); return this.isoLocal(d); },
+    get maxISO(){ const d=new Date(); d.setFullYear(d.getFullYear()+3); return this.isoLocal(d); },
+    diaDaRota(){ const o=document.querySelector(`select[name=rota_id] option[value='${this.rotaId}']`); const d=o?.dataset.dia; return (d===''||d==null||d===undefined)?null:Number(d); },
+    gerarDatas(dia,hora,qtd){
+      const out=[]; const d=new Date(); d.setHours(0,0,0,0);
+      while(d.getDay()!==dia) d.setDate(d.getDate()+1);
+      for(let i=0;i<qtd;i++){ out.push({v:this.isoLocal(d), label:this.diasCurto[dia]+' '+this.fmtBr(d)+(hora?' · '+hora:'')}); d.setDate(d.getDate()+7); }
+      return out;
+    },
+    escolherDataLivre(){
+      const alvo=this.diaDaRota(); if(alvo===null || !this.viagemDataLivre) return;
+      const [y,m,day]=this.viagemDataLivre.split('-').map(Number); let d=new Date(y,m-1,day); d.setHours(0,0,0,0);
+      for(let i=0;i<7 && d.getDay()!==alvo;i++) d.setDate(d.getDate()-1);
+      const hoje=new Date(); hoje.setHours(0,0,0,0);
+      while(d<hoje) d.setDate(d.getDate()+7);
+      const iso=this.isoLocal(d);
+      if(!this.viagemDatas.find(x=>x.v===iso)) this.viagemDatas.unshift({v:iso, label:this.diasCurto[alvo]+' '+this.fmtBr(d)+(this.viagemHora?' · '+this.viagemHora:'')});
+      this.viagemData=iso;
+    },
     aplicarRota(){
       const opt = document.querySelector(`select[name=rota_id] option[value='${this.rotaId}']`);
-      if (!opt || !this.rotaId) return;
+      if (!opt || !this.rotaId) { this.viagemDatas=[]; this.viagemData=''; this.viagemDataLivre=''; return; }
       if (opt.dataset.origem && !this.$refs.origem.value) this.$refs.origem.value = opt.dataset.origem;
       if (opt.dataset.destino) this.$refs.destino.value = opt.dataset.destino;
       try { const locais = JSON.parse(opt.dataset.locais||'[]'); const dl = document.getElementById('locais'); if (dl && locais.length) dl.innerHTML = locais.map(l=>`<option value="${l}">`).join(''); } catch(e){}
+      const dia = opt.dataset.dia; this.viagemHora = opt.dataset.hora||'';
+      if (dia===''||dia==null) { this.viagemDatas=[]; this.viagemData=''; }
+      else { this.viagemDatas = this.gerarDatas(Number(dia), this.viagemHora, 16); this.viagemData = this.viagemDatas[0]?.v || ''; }
     },
     get subtotal(){ return this.itens.reduce((s,i)=>s+(Number(i.quantidade)||0)*(Number(i.valor)||0),0); },
     get total(){ return Math.max(this.subtotal-(Number(this.desconto)||0),0); },
@@ -237,7 +279,7 @@ function novaEncomenda(){
       this.salvando = true;
       const fd = new FormData(form);
       const dados = {
-        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, setor: fd.get('setor'),
+        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, setor: fd.get('setor'),
         remetente_nome: fd.get('remetente_nome'), remetente_telefone: fd.get('remetente_telefone'), remetente_documento: fd.get('remetente_documento'),
         destinatario_nome: fd.get('destinatario_nome'), destinatario_telefone: fd.get('destinatario_telefone'), destinatario_documento: fd.get('destinatario_documento'),
         volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0,

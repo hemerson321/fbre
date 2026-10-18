@@ -114,6 +114,7 @@ class EncomendaController extends Controller
             'embarcacao_id' => 'nullable|integer',
             'rota_id' => 'nullable|integer',
             'viagem_id' => 'nullable|integer',
+            'viagem_data' => 'nullable|date',
             'remetente_nome' => 'required|string|max:120',
             'remetente_telefone' => 'nullable|string|max:30',
             'remetente_documento' => 'nullable|string|max:20',

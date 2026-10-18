@@ -28,7 +28,10 @@ class EncomendaService
         if (! $viagemId && $rotaId) {
             $rota = \App\Models\Rota::find($rotaId);
             if ($rota) {
-                $dataRef = ! empty($data['criada_em']) ? \Carbon\Carbon::parse($data['criada_em']) : now();
+                // data da viagem escolhida pelo operador (pode ser futura); senão a data do cadastro
+                $dataRef = ! empty($data['viagem_data'])
+                    ? \Carbon\Carbon::parse($data['viagem_data'])
+                    : (! empty($data['criada_em']) ? \Carbon\Carbon::parse($data['criada_em']) : now());
                 $viagemId = $rota->viagemPara($dataRef)->id;
             }
         }
