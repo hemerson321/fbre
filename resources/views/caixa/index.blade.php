@@ -1,0 +1,51 @@
+@extends('layouts.app')
+@section('titulo','Caixa')
+@section('conteudo')
+<div class="space-y-4">
+<div class="flex items-center justify-between"><h1 class="text-xl font-bold">Caixa</h1>
+  <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Imprimir</button></div>
+
+<x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
+  <div><label class="label">Operador</label>
+    <select name="user_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
+      @foreach($usuarios as $us)<option value="{{ $us->id }}" @selected($userId==$us->id)>{{ $us->name }}</option>@endforeach</select></div>
+</x-periodo>
+
+<div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+  <div class="card p-3 text-white" style="background:var(--cor1)"><div class="text-[11px] uppercase opacity-70">Total no caixa</div><div class="text-2xl font-extrabold">R$ {{ number_format($total,2,',','.') }}</div></div>
+  @foreach(['dinheiro','pix','debito','credito'] as $m)
+    <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m]->valor ?? 0,2,',','.') }}</div><div class="text-xs text-slate-400">{{ $porMeio[$m]->qtd ?? 0 }} lançamentos</div></div>
+  @endforeach
+  <div class="card p-3 text-xs space-y-1">
+    <div class="flex justify-between"><span class="text-slate-500">Descontos</span><b>R$ {{ number_format($descontos,2,',','.') }}</b></div>
+    <div class="flex justify-between"><span class="text-slate-500">Cadastros</span><b>{{ $cadastros }}</b></div>
+    <div class="flex justify-between"><span class="text-slate-500">Entregas</span><b>{{ $entregas }}</b></div>
+  </div>
+</div>
+
+<div class="card overflow-hidden">
+  <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Por operador</div>
+  <table class="w-full text-sm"><thead class="bg-slate-50 text-[11px] uppercase text-slate-500"><tr><th class="p-3 text-left">Operador</th>@foreach(['dinheiro','pix','debito','credito'] as $m)<th class="p-3 text-right">{{ $meios[$m] }}</th>@endforeach<th class="p-3 text-right">Total</th></tr></thead>
+  <tbody class="divide-y">
+  @forelse($porOperador as $uid=>$d)
+    <tr><td class="p-3 font-semibold">{{ $usuarios[$uid]->name ?? '—' }}</td>@foreach(['dinheiro','pix','debito','credito'] as $m)<td class="p-3 text-right">{{ number_format($d['meios'][$m] ?? 0,2,',','.') }}</td>@endforeach<td class="p-3 text-right font-bold">{{ number_format($d['total'],2,',','.') }}</td></tr>
+  @empty <tr><td colspan="6" class="p-6 text-center text-slate-400">Sem movimento no período.</td></tr> @endforelse
+  </tbody></table>
+</div>
+
+<div class="card overflow-hidden">
+  <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Lançamentos</div>
+  <div class="divide-y">
+  @foreach($movimentos as $m)
+    <a href="{{ $m->encomenda ? route('encomendas.show',$m->encomenda) : '#' }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 text-sm">
+      <div class="w-14 text-xs text-slate-400">{{ $m->created_at->format('d/m') }}<br>{{ $m->created_at->format('H:i') }}</div>
+      <div class="flex-1 min-w-0"><b>#{{ $m->encomenda?->numeroFormatado() }}</b> {{ $m->encomenda?->destinatario_nome }}<div class="text-xs text-slate-400">{{ $m->user?->name }} · {{ $m->momento==='cadastro'?'no cadastro':'na baixa' }}</div></div>
+      <span class="chip bg-slate-100 text-slate-600">{{ $meios[$m->meio] }}</span>
+      <div class="font-bold whitespace-nowrap">R$ {{ number_format($m->valor,2,',','.') }}</div>
+    </a>
+  @endforeach
+  </div>
+  <div class="p-3">{{ $movimentos->links() }}</div>
+</div>
+</div>
+@endsection
