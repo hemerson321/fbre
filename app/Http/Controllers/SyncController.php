@@ -31,7 +31,7 @@ class SyncController extends Controller
             'usuario' => ['id' => $u->id, 'nome' => $u->name, 'setor' => $u->setor,
                 'cadastra' => $u->podeCadastrar(), 'baixa' => $u->podeBaixar()],
             'produtos' => Produto::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'valor_padrao']),
-            'localidades' => Localidade::where('ativo', true)->orderBy('nome')->pluck('nome'),
+            'localidades' => Rota::todasLocalidades(),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'rotas' => $e->temRecurso('viagens') ? Rota::where('ativo', true)->with('paradas:id,rota_id,localidade,dia_semana,hora,ordem')->orderBy('nome')->get(['id', 'nome', 'embarcacao_id']) : [],
             'setores' => Setor::orderBy('nome')->pluck('nome'),

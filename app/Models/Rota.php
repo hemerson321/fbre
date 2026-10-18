@@ -118,4 +118,19 @@ class Rota extends Model
     {
         return static::where('ativo', true)->with('paradas')->orderBy('nome')->get();
     }
+
+    /** Localidades (origem/destino) montadas a partir das paradas das linhas — sem lista separada. */
+    public static function todasLocalidades()
+    {
+        $locs = static::where('ativo', true)->with('paradas:id,rota_id,localidade')->get()
+            ->flatMap(fn ($r) => $r->paradas->pluck('localidade'))
+            ->filter()->unique()->sort()->values();
+
+        // fallback: instalações sem rotas ainda usam a lista de Localidade
+        if ($locs->isEmpty()) {
+            $locs = \App\Models\Localidade::where('ativo', true)->orderBy('nome')->pluck('nome')->values();
+        }
+
+        return $locs;
+    }
 }

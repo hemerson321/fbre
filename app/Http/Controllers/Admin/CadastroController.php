@@ -26,12 +26,11 @@ class CadastroController extends Controller
     {
         return view('admin.cadastros', [
             'embarcacoes' => Embarcacao::orderBy('nome')->get(),
-            'localidades' => Localidade::orderBy('nome')->get(),
             'setores' => Setor::orderBy('nome')->get(),
             'produtos' => Produto::orderBy('nome')->get(),
             'estacoes' => Estacao::orderBy('nome')->get(),
             'rotas' => \App\Support\Tenant::empresa()->temRecurso('viagens') ? Rota::with(['paradas', 'embarcacao'])->orderBy('nome')->get() : collect(),
-            'localidadesNomes' => Localidade::where('ativo', true)->orderBy('nome')->pluck('nome'),
+            'localidadesNomes' => Rota::todasLocalidades(),
             'dias' => Rota::DIAS,
         ]);
     }

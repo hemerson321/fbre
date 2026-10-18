@@ -74,7 +74,7 @@ class EncomendaController extends Controller
             'totais' => $totais,
             'porMeio' => $porMeio,
             'f' => $f,
-            'localidades' => Localidade::where('ativo', true)->orderBy('nome')->pluck('nome'),
+            'localidades' => Rota::todasLocalidades(),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
             'rotas' => $rotas,
             'viagens' => $viagens,
@@ -97,7 +97,7 @@ class EncomendaController extends Controller
     public function create()
     {
         return view('encomendas.create', [
-            'localidades' => Localidade::where('ativo', true)->orderBy('nome')->pluck('nome'),
+            'localidades' => Rota::todasLocalidades(),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
             'produtos' => Produto::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'valor_padrao']),
             'setores' => Setor::orderBy('nome')->pluck('nome'),

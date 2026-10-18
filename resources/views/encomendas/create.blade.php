@@ -80,8 +80,26 @@
         </div>
         @endif
         <div class="grid grid-cols-2 gap-2">
-          <div><label class="lbl">Origem</label><input name="origem" list="locais" class="field" required value="{{ old('origem', $ultimaOrigem) }}" autocomplete="off" x-ref="origem"></div>
-          <div><label class="lbl">Destino</label><input name="destino" list="locais" class="field" required value="{{ old('destino') }}" autocomplete="off" autofocus x-ref="destino"></div>
+          <div><label class="lbl">Origem</label>
+            <template x-if="rotaId && paradasLinha.length">
+              <select name="origem" class="field" x-model="origemSel" required>
+                <template x-for="l in paradasLinha" :key="'o'+l"><option :value="l" x-text="l"></option></template>
+              </select>
+            </template>
+            <template x-if="!(rotaId && paradasLinha.length)">
+              <input name="origem" list="locais" class="field" required x-model="origemSel" autocomplete="off">
+            </template>
+          </div>
+          <div><label class="lbl">Destino</label>
+            <template x-if="rotaId && paradasLinha.length">
+              <select name="destino" class="field" x-model="destinoSel" required>
+                <template x-for="l in paradasLinha" :key="'d'+l"><option :value="l" x-text="l"></option></template>
+              </select>
+            </template>
+            <template x-if="!(rotaId && paradasLinha.length)">
+              <input name="destino" list="locais" class="field" required x-model="destinoSel" autocomplete="off" autofocus>
+            </template>
+          </div>
           <div><label class="lbl">Transporte</label>
             <select name="embarcacao_id" class="field"><option value="">—</option>
               @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(old('embarcacao_id')==$b->id)>{{ $b->nome }}</option>@endforeach
@@ -229,6 +247,7 @@
 function novaEncomenda(){
   return {
     salvando:false, volumes:1, forma:'avista', imprimir:'navegador', rotaId:'',
+    origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino')), paradasLinha: [],
     viagemData:'', viagemDatas:[], viagemHora:'', viagemDataLivre:'',
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
@@ -258,10 +277,10 @@ function novaEncomenda(){
     },
     aplicarRota(){
       const opt = document.querySelector(`select[name=rota_id] option[value='${this.rotaId}']`);
-      if (!opt || !this.rotaId) { this.viagemDatas=[]; this.viagemData=''; this.viagemDataLivre=''; return; }
-      if (opt.dataset.origem && !this.$refs.origem.value) this.$refs.origem.value = opt.dataset.origem;
-      if (opt.dataset.destino) this.$refs.destino.value = opt.dataset.destino;
-      try { const locais = JSON.parse(opt.dataset.locais||'[]'); const dl = document.getElementById('locais'); if (dl && locais.length) dl.innerHTML = locais.map(l=>`<option value="${l}">`).join(''); } catch(e){}
+      if (!opt || !this.rotaId) { this.paradasLinha=[]; this.viagemDatas=[]; this.viagemData=''; this.viagemDataLivre=''; return; }
+      let locais=[]; try { locais = JSON.parse(opt.dataset.locais||'[]'); } catch(e){}
+      this.paradasLinha = locais;
+      if (locais.length){ this.origemSel = locais[0]; this.destinoSel = locais[locais.length-1]; }
       const dia = opt.dataset.dia; this.viagemHora = opt.dataset.hora||'';
       if (dia===''||dia==null) { this.viagemDatas=[]; this.viagemData=''; }
       else { this.viagemDatas = this.gerarDatas(Number(dia), this.viagemHora, 16); this.viagemData = this.viagemDatas[0]?.v || ''; }

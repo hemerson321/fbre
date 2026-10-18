@@ -2,10 +2,11 @@
 @section('titulo','Cadastros')
 @section('conteudo')
 <div class="max-w-5xl mx-auto space-y-4">
-<h1 class="text-xl font-bold">Barcos, locais, setores e produtos</h1>
+<h1 class="text-xl font-bold">Barcos, setores e produtos</h1>
+<p class="text-xs text-slate-500 -mt-2">As localidades de origem/destino vêm das paradas das linhas (abaixo) — não há lista separada.</p>
 @if(session('token'))<div class="card p-4 bg-amber-50 border-amber-200"><b>Token da estação (copie agora, não será mostrado de novo):</b><code class="block mt-1 break-all text-sm">{{ session('token') }}</code></div>@endif
 <div class="grid md:grid-cols-2 gap-4">
-@foreach([['embarcacoes','Transportes / embarcações',$embarcacoes],['localidades','Localidades (origem/destino)',$localidades],['setores','Setores',$setores],['produtos','Produtos (catálogo)',$produtos]] as [$tipo,$titulo,$lista])
+@foreach([['embarcacoes','Transportes / embarcações',$embarcacoes],['setores','Setores',$setores],['produtos','Produtos (catálogo)',$produtos]] as [$tipo,$titulo,$lista])
   <div class="card p-4 space-y-2">
     <h2 class="font-bold text-sm text-slate-500 uppercase">{{ $titulo }}</h2>
     <form method="post" action="{{ route('admin.cadastros.store',$tipo) }}" class="flex gap-2">@csrf
