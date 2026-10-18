@@ -55,13 +55,14 @@ class EmpresaController extends Controller
 
     public function store(Request $request)
     {
+        $request->merge(['admin_login' => strtolower(trim((string) $request->input('admin_login')))]);
         $data = $request->validate([
             'nome' => 'required|string|max:150',
             'nome_fantasia' => 'nullable|string|max:100',
             'cnpj' => 'nullable|string|max:20',
             'validade' => 'nullable|date',
             'admin_nome' => 'required|string|max:100',
-            'admin_email' => 'required|email|unique:users,email',
+            'admin_login' => 'required|string|min:3|max:40|regex:/^[a-z0-9._-]+$/|unique:users,login',
             'admin_senha' => 'required|string|min:6',
         ]);
 
@@ -82,7 +83,7 @@ class EmpresaController extends Controller
         User::create([
             'empresa_id' => $empresa->id,
             'name' => $data['admin_nome'],
-            'email' => $data['admin_email'],
+            'login' => $data['admin_login'],
             'password' => $data['admin_senha'],
             'admin' => true,
             'perm_cadastra' => true, 'perm_baixa' => true, 'perm_caixa' => true,

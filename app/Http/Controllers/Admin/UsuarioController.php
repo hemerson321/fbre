@@ -62,9 +62,10 @@ class UsuarioController extends Controller
 
     protected function validar(Request $request, ?User $u = null): array
     {
+        $request->merge(['login' => strtolower(trim((string) $request->input('login')))]);
         $data = $request->validate([
             'name' => 'required|string|max:100',
-            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($u?->id)],
+            'login' => ['required', 'string', 'min:3', 'max:40', 'regex:/^[a-z0-9._-]+$/', Rule::unique('users', 'login')->ignore($u?->id)],
             'password' => [$u ? 'nullable' : 'required', 'string', 'min:6'],
             'setor' => 'nullable|string|max:60',
             'admin' => 'nullable|boolean',
@@ -72,7 +73,7 @@ class UsuarioController extends Controller
             'perm_baixa' => 'nullable|boolean',
             'perm_caixa' => 'nullable|boolean',
             'ativo' => 'nullable|boolean',
-        ]);
+        ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
         foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'ativo'] as $b) {
             $data[$b] = $request->boolean($b);
         }

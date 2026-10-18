@@ -12,7 +12,7 @@
   <div><label class="label">Validade do contrato</label><input name="validade" type="date" class="input" value="{{ now()->addYear()->toDateString() }}"></div>
   <div class="sm:col-span-2 label pt-2">Usuário administrador do cliente</div>
   <div><label class="label">Nome</label><input name="admin_nome" class="input" required></div>
-  <div><label class="label">E-mail</label><input name="admin_email" type="email" class="input" required></div>
+  <div><label class="label">Login</label><input name="admin_login" class="input" required placeholder="ex.: admin.empresa" autocapitalize="none"></div>
   <div><label class="label">Senha</label><input name="admin_senha" class="input" required minlength="6"></div>
   <div class="flex items-end"><button class="btn btn-accent w-full">Criar empresa</button></div>
 </form>

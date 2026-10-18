@@ -33,7 +33,8 @@ class DatabaseSeeder extends Seeder
             'ativo' => true,
         ]);
 
-        User::firstOrCreate(['email' => 'hemerson321@gmail.com'], [
+        User::firstOrCreate(['login' => 'hemerson'], [
+            'email' => 'hemerson321@gmail.com',
             'empresa_id' => $geratec->id,
             'name' => 'Hemerson',
             'password' => env('SEED_ADMIN_PASSWORD', 'mudar123'),
@@ -63,7 +64,7 @@ class DatabaseSeeder extends Seeder
             'ativo' => true,
         ]);
 
-        User::firstOrCreate(['email' => 'admin@oliveira.fbre'], [
+        User::firstOrCreate(['login' => 'oliveira'], [
             'empresa_id' => $oliveira->id,
             'name' => 'Administrador Oliveira',
             'password' => env('SEED_ADMIN_PASSWORD', 'mudar123'),

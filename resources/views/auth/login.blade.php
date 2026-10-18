@@ -18,8 +18,8 @@
       @csrf
       @if($errors->any())<div class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2">{{ $errors->first() }}</div>@endif
       <div>
-        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">E-mail</label>
-        <input name="email" type="email" value="{{ old('email') }}" required autofocus autocomplete="username"
+        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Usuário</label>
+        <input name="login" type="text" value="{{ old('login') }}" required autofocus autocomplete="username" autocapitalize="none"
                class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#00a8e8]">
       </div>
       <div>

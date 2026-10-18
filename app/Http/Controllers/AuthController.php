@@ -15,16 +15,16 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $data = $request->validate([
-            'email' => 'required|email',
+            'login' => 'required|string',
             'password' => 'required',
         ]);
 
-        if (Auth::attempt($data + ['ativo' => true], $request->boolean('lembrar'))) {
+        if (Auth::attempt(['login' => strtolower(trim($data['login'])), 'password' => $data['password'], 'ativo' => true], $request->boolean('lembrar'))) {
             $request->session()->regenerate();
             return redirect()->intended('/');
         }
 
-        return back()->withErrors(['email' => 'E-mail ou senha incorretos.'])->onlyInput('email');
+        return back()->withErrors(['login' => 'Usuário ou senha incorretos.'])->onlyInput('login');
     }
 
     public function logout(Request $request)

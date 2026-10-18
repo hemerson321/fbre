@@ -89,22 +89,43 @@ tailwind.config = { theme: { extend: {
       <span class="font-bold">Menu</span>
       <button @click="menu=false" class="p-2">✕</button>
     </div>
-    <nav class="p-3 lg:p-0 space-y-1 text-sm">
-      @php $item = fn($r,$l,$i) => '<a href="'.$r.'" class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium hover:bg-white '.(request()->url()===$r?'bg-white shadow-sm text-[var(--cor1)]':'text-slate-700').'"><span class="text-lg w-6 text-center">'.$i.'</span>'.$l.'</a>'; @endphp
-      {!! $item(route('encomendas.index'), 'Encomendas', '📦') !!}
-      @if($u->podeCadastrar()) {!! $item(route('encomendas.create'), 'Nova encomenda', '➕') !!} @endif
-      @if($u->podeVerCaixa()) {!! $item(route('caixa.index'), 'Caixa', '💰') !!} @endif
-      {!! $item(route('relatorio.meu'), 'Meu relatório', '📋') !!}
+    <nav class="p-3 lg:p-0 space-y-2 text-sm">
+      @php
+        $item = fn($r,$l,$i) => '<a href="'.$r.'" class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium hover:bg-white '.(request()->url()===$r?'bg-white shadow-sm text-[var(--cor1)] font-semibold':'text-slate-600').'"><span class="text-base w-5 text-center">'.$i.'</span>'.$l.'</a>';
+        $grupo = fn($t) => '<div class="flex items-center gap-2 px-3 pt-1 pb-1 text-[10.5px] font-bold tracking-wider text-slate-400 uppercase"><span class="h-px flex-1 bg-slate-200"></span>'.$t.'<span class="h-px flex-1 bg-slate-200"></span></div>';
+      @endphp
+
+      {{-- MÓDULO ENCOMENDAS --}}
+      <div class="rounded-xl bg-slate-100/70 p-1.5">
+        {!! $grupo('Encomendas') !!}
+        @if($u->podeCadastrar()) {!! $item(route('encomendas.create'), 'Nova encomenda', '➕') !!} @endif
+        {!! $item(route('encomendas.index'), 'Encomendas / baixa', '📦') !!}
+        <a target="_blank" href="{{ route('imprimir.protocolo', ['inicio'=>now()->toDateString(),'fim'=>now()->toDateString()]) }}" class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium hover:bg-white text-slate-600"><span class="text-base w-5 text-center">🖨</span>Protocolo do dia</a>
+      </div>
+
+      {{-- MÓDULO CAIXA --}}
+      <div class="rounded-xl bg-slate-100/70 p-1.5">
+        {!! $grupo('Caixa') !!}
+        @if($u->podeVerCaixa()) {!! $item(route('caixa.index'), 'Caixa geral', '💰') !!} @endif
+        {!! $item(route('relatorio.meu'), 'Meu relatório', '📋') !!}
+      </div>
+
       @if($u->isAdmin() || $u->isSuper())
-        <div class="pt-3 pb-1 px-3 text-[11px] font-bold text-slate-400 uppercase">Administração</div>
-        {!! $item(route('admin.usuarios.index'), 'Usuários', '👥') !!}
+      <div class="rounded-xl bg-slate-100/70 p-1.5">
+        {!! $grupo('Administração') !!}
+        {!! $item(route('admin.usuarios.index'), 'Usuários e permissões', '👥') !!}
         {!! $item(route('admin.cadastros'), 'Barcos, locais, produtos', '🚢') !!}
         {!! $item(route('admin.empresa'), 'Minha empresa', '🏢') !!}
+      </div>
       @endif
+
       @if($u->isSuper())
-        <div class="pt-3 pb-1 px-3 text-[11px] font-bold text-slate-400 uppercase">GERATEC</div>
+      <div class="rounded-xl p-1.5" style="background: color-mix(in srgb, var(--cor2) 12%, white)">
+        {!! $grupo('GERATEC') !!}
         {!! $item(route('super.empresas'), 'Empresas (clientes)', '🛠️') !!}
+      </div>
       @endif
+
       <form method="post" action="{{ route('logout') }}" class="sm:hidden pt-2">@csrf
         <button class="w-full text-left flex items-center gap-3 rounded-xl px-3 py-3 font-medium text-red-600"><span class="w-6 text-center">⏻</span>Sair</button>
       </form>
