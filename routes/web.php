@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\EmpresaController;
 use App\Http\Controllers\Admin\CadastroController;
 use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\RelatorioController;
+use App\Http\Controllers\SyncController;
 use Illuminate\Support\Facades\Route;
 
 // ---------------- Autenticação ----------------
@@ -39,6 +40,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/imprimir/listagem', [ImpressaoController::class, 'listagem'])->name('imprimir.listagem')->middleware('perm:filtro');
         Route::post('/imprimir/direto/{encomenda}/{tipo}', [ImpressaoController::class, 'direto'])->name('imprimir.direto');
     });
+
+    // ---------------- Offline / sincronização ----------------
+    Route::get('/sync/bootstrap', [SyncController::class, 'bootstrap'])->name('sync.bootstrap');
+    Route::post('/sync/encomenda', [SyncController::class, 'encomenda'])->name('sync.encomenda');
+    Route::post('/sync/baixa', [SyncController::class, 'baixa'])->name('sync.baixa');
+    Route::view('/offline', 'offline')->name('offline')->withoutMiddleware('auth');
 
     // ---------------- Caixa / relatórios ----------------
     Route::get('/caixa', [CaixaController::class, 'index'])->name('caixa.index')->middleware('perm:caixa');

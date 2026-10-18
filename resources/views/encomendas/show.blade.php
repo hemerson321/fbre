@@ -71,7 +71,7 @@
 
 {{-- MODAL PAGAR --}}
 <div x-show="modal==='pagar'" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" @click.self="modal=null">
-  <form method="post" action="{{ route('encomendas.pagar',$e) }}" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3" x-data="{ d:0,p:0,de:0,c:0,ds:0, devido:{{ (float)$e->devido }} }">
+  <form method="post" action="{{ route('encomendas.pagar',$e) }}" @submit="baixaOffline($event, true)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3" x-data="{ d:0,p:0,de:0,c:0,ds:0, devido:{{ (float)$e->devido }} }">
     @csrf
     <h3 class="text-lg font-bold">Registrar pagamento</h3>
     <div class="text-sm">Falta pagar: <b class="text-red-600">R$ {{ number_format($e->devido,2,',','.') }}</b></div>
@@ -97,7 +97,7 @@
 
 {{-- MODAL ENTREGAR --}}
 <div x-show="modal==='entregar'" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" @click.self="modal=null">
-  <form method="post" action="{{ route('encomendas.entregar',$e) }}" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3">
+  <form method="post" action="{{ route('encomendas.entregar',$e) }}" @submit="baixaOffline($event, false)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3">
     @csrf
     <h3 class="text-lg font-bold">Baixa na entrega</h3>
     @if($e->devido>0)<div class="text-sm bg-red-50 border border-red-200 rounded-lg p-2">Atenção: ainda faltam <b>R$ {{ number_format($e->devido,2,',','.') }}</b>. Para receber e entregar, use "Registrar pagamento".</div>@endif
@@ -114,6 +114,17 @@
 
 @push('scripts')
 <script>
+// Sem internet: a baixa fica na fila do aparelho e sobe depois.
+async function baixaOffline(ev, pagamento){
+  if (navigator.onLine) return; // online: formulário normal
+  ev.preventDefault();
+  const fd = new FormData(ev.target); const d = { encomenda_id: {{ $e->id }} };
+  ['dinheiro','pix','debito','credito','desconto','entregue_para'].forEach(k => { if (fd.get(k)) d[k] = fd.get(k); });
+  if (!pagamento || fd.get('entregar')) { d.entregar = true; d.entregue_em = new Date().toISOString(); }
+  await FBREOffline.salvarBaixa(d);
+  alert('Sem conexão: baixa guardada neste aparelho e será enviada quando a internet voltar.');
+  window.location.href = '{{ route('encomendas.index') }}';
+}
 async function direto(tipo){
   const r = await fetch('{{ url('/imprimir/direto/'.$e->id) }}/'+tipo, {method:'POST', headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}});
   const j = await r.json();

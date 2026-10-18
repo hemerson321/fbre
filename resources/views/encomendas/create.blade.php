@@ -26,7 +26,7 @@
 </style>
 @endpush
 @section('conteudo')
-<form method="post" action="{{ route('encomendas.store') }}" x-data="novaEncomenda()" @submit="salvando=true"
+<form method="post" action="{{ route('encomendas.store') }}" x-data="novaEncomenda()" @submit.prevent="salvar($event)"
       class="mx-auto max-w-[1440px] lg:h-[calc(100vh-100px-2.5rem)] lg:flex lg:flex-col gap-3">
 @csrf
 <div class="flex items-center justify-between shrink-0">
@@ -202,6 +202,37 @@ function novaEncomenda(){
     get pago(){ return this.forma==='faturado'?0:Object.values(this.pag).reduce((s,v)=>s+(Number(v)||0),0); },
     get pagoSemDinheiro(){ return (Number(this.pag.pix)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0); },
     get devido(){ return Math.max(this.total-this.pago,0); },
+
+    // Salva no aparelho primeiro, depois envia. Sem internet: imprime comprovante provisório e continua.
+    async salvar(ev){
+      const form = ev.target;
+      if (!form.reportValidity()) return;
+      this.salvando = true;
+      const fd = new FormData(form);
+      const dados = {
+        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, setor: fd.get('setor'),
+        remetente_nome: fd.get('remetente_nome'), remetente_telefone: fd.get('remetente_telefone'), remetente_documento: fd.get('remetente_documento'),
+        destinatario_nome: fd.get('destinatario_nome'), destinatario_telefone: fd.get('destinatario_telefone'), destinatario_documento: fd.get('destinatario_documento'),
+        volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0,
+        itens: this.itens.map(i => ({descricao:i.descricao, quantidade:Number(i.quantidade)||1, valor_unitario:Number(i.valor)||0, observacao:i.obs||null})),
+        pagamentos: this.forma==='faturado' ? [] : this.meios.filter(m => Number(this.pag[m.k])>0).map(m => ({meio:m.k, valor:Number(this.pag[m.k])})),
+      };
+      try {
+        const r = await FBREOffline.salvarEncomenda(dados);
+        if (r.servidor && r.servidor.ok) {
+          // online: segue o fluxo normal (tela da encomenda + impressão)
+          const url = r.servidor.url + (this.imprimir==='navegador' ? '?print=1' : '');
+          if (this.imprimir==='direto') { fetch('/imprimir/direto/'+r.servidor.id+'/comprovante',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf}}); fetch('/imprimir/direto/'+r.servidor.id+'/etiqueta',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf}}); }
+          window.location.href = url; return;
+        }
+        // offline (ou servidor indisponível): guardado no aparelho
+        if (this.imprimir !== 'nao') await FBREOffline.imprimirComprovanteLocal(r.local);
+        alert('Sem conexão: encomenda ' + r.local.dados.numero_provisorio + ' guardada neste aparelho. Será enviada automaticamente quando a internet voltar.');
+        window.location.href = '{{ route('encomendas.create') }}';
+      } catch (e) {
+        alert('Não foi possível salvar: ' + e.message); this.salvando = false;
+      }
+    },
   }
 }
 function pessoa(){

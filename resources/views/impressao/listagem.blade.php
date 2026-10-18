@@ -7,7 +7,7 @@
 </style></head><body onload="window.print()">
 <div class="cab">
   <div><h1>{{ $empresa->nomeExibicao() }}</h1><div class="sm">Listagem de encomendas · {{ now()->format('d/m/Y H:i') }} · {{ auth()->user()->name }}</div></div>
-  <div class="sm" style="text-align:right">@if($f['inicio'] ?? null)Período {{ \Carbon\Carbon::parse($f['inicio'])->format('d/m/Y') }} a {{ \Carbon\Carbon::parse($f['fim'] ?? now())->format('d/m/Y') }}<br>@endif{{ $encomendas->count() }} encomendas · {{ $encomendas->sum('volumes') }} volumes</div>
+  <div class="sm" style="text-align:right">@if($f['inicio'] ?? null)Período {{ \Carbon\Carbon::parse($f['inicio'])->format('d/m/Y') }} {{ $f['hora_inicio'] ?? '00:00' }} a {{ \Carbon\Carbon::parse($f['fim'] ?? now())->format('d/m/Y') }} {{ $f['hora_fim'] ?? '23:59' }}<br>@endif{{ $encomendas->count() }} encomendas · {{ $encomendas->sum('volumes') }} volumes</div>
 </div>
 <table>
 <thead><tr><th>Nº</th><th>Data</th><th>Origem</th><th>Destino</th><th>Transporte</th><th>Remetente</th><th>Destinatário</th><th>Vol.</th><th class="r">Total</th><th class="r">Pago</th><th class="r">Devido</th><th>Status</th></tr></thead>

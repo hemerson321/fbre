@@ -63,7 +63,7 @@ class EncomendaController extends Controller
 
     protected function filtros(Request $request): array
     {
-        $f = $request->only(['inicio', 'fim', 'origem', 'destino', 'embarcacao_id', 'status_pagamento', 'entregue', 'forma', 'busca', 'user_id']);
+        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'status_pagamento', 'entregue', 'forma', 'busca', 'user_id']);
         if (! $request->has('inicio') && ! $request->filled('busca')) {
             $f['inicio'] = now()->subDays(7)->toDateString();
             $f['fim'] = now()->toDateString();
@@ -111,60 +111,10 @@ class EncomendaController extends Controller
             'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito',
             'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0.01',
             'imprimir' => 'nullable|in:navegador,direto,nao',
+            'uuid' => 'nullable|uuid',
         ]);
 
-        $empresa = Tenant::empresa();
-
-        $encomenda = DB::transaction(function () use ($data, $empresa) {
-            $enc = Encomenda::create([
-                'numero' => $empresa->proximoNumero(),
-                'embarcacao_id' => $data['embarcacao_id'] ?? null,
-                'origem' => $data['origem'],
-                'destino' => $data['destino'],
-                'remetente_nome' => $data['remetente_nome'],
-                'remetente_telefone' => $data['remetente_telefone'] ?? null,
-                'remetente_documento' => $data['remetente_documento'] ?? null,
-                'destinatario_nome' => $data['destinatario_nome'],
-                'destinatario_telefone' => $data['destinatario_telefone'] ?? null,
-                'destinatario_documento' => $data['destinatario_documento'] ?? null,
-                'volumes' => $data['volumes'],
-                'forma' => $data['forma'],
-                'setor' => $data['setor'] ?? auth()->user()->setor,
-                'observacao' => $data['observacao'] ?? null,
-                'desconto' => $data['desconto'] ?? 0,
-                'user_id' => auth()->id(),
-            ]);
-
-            foreach ($data['itens'] as $it) {
-                $enc->itens()->create([
-                    'descricao' => $it['descricao'],
-                    'quantidade' => $it['quantidade'],
-                    'valor_unitario' => $it['valor_unitario'],
-                    'valor_total' => round($it['quantidade'] * $it['valor_unitario'], 2),
-                    'observacao' => $it['observacao'] ?? null,
-                ]);
-            }
-
-            foreach ($data['pagamentos'] ?? [] as $p) {
-                $enc->pagamentos()->create([
-                    'empresa_id' => $empresa->id,
-                    'meio' => $p['meio'],
-                    'valor' => $p['valor'],
-                    'user_id' => auth()->id(),
-                    'momento' => 'cadastro',
-                ]);
-            }
-
-            $enc->recalcular();
-
-            // guarda pessoas para autocompletar
-            $this->lembrarPessoa($data['remetente_nome'], $data['remetente_telefone'] ?? null, $data['remetente_documento'] ?? null);
-            $this->lembrarPessoa($data['destinatario_nome'], $data['destinatario_telefone'] ?? null, $data['destinatario_documento'] ?? null);
-
-            Evento::registrar('cadastro', $enc, ['total' => $enc->total, 'pago' => $enc->pago]);
-
-            return $enc;
-        });
+        $encomenda = app(\App\Services\EncomendaService::class)->criar($data, auth()->id(), $request->input('uuid'));
 
         session(['ultima_origem' => $data['origem']]);
 
@@ -178,18 +128,6 @@ class EncomendaController extends Controller
 
         return redirect()->route('encomendas.show', ['encomenda' => $encomenda, 'print' => $imprimir === 'navegador' ? 1 : 0])
             ->with('ok', "Encomenda {$encomenda->numeroFormatado()} salva.");
-    }
-
-    protected function lembrarPessoa(string $nome, ?string $tel, ?string $doc): void
-    {
-        $nome = trim($nome);
-        if ($nome === '') return;
-        $p = Pessoa::where('nome', $nome)->when($tel, fn ($q) => $q->where('telefone', $tel))->first();
-        if ($p) {
-            $p->update(['telefone' => $tel ?: $p->telefone, 'documento' => $doc ?: $p->documento]);
-        } else {
-            Pessoa::create(['nome' => $nome, 'telefone' => $tel, 'documento' => $doc]);
-        }
     }
 
     public function buscarPessoa(Request $request)
@@ -224,30 +162,10 @@ class EncomendaController extends Controller
             'desconto' => 'nullable|numeric|min:0',
             'entregar' => 'nullable|boolean',
             'entregue_para' => 'nullable|string|max:120',
+            'uuid' => 'nullable|uuid',
         ]);
 
-        DB::transaction(function () use ($data, $encomenda) {
-            $soma = 0;
-            foreach (['dinheiro', 'pix', 'debito', 'credito', 'desconto'] as $meio) {
-                $v = (float) ($data[$meio] ?? 0);
-                if ($v > 0) {
-                    $encomenda->pagamentos()->create([
-                        'empresa_id' => $encomenda->empresa_id,
-                        'meio' => $meio,
-                        'valor' => $v,
-                        'user_id' => auth()->id(),
-                        'momento' => 'baixa',
-                    ]);
-                    $soma += $v;
-                }
-            }
-            $encomenda->recalcular();
-            Evento::registrar('pagamento', $encomenda, ['valor' => $soma, 'detalhe' => array_filter($data)]);
-
-            if (! empty($data['entregar']) && ! $encomenda->entregue) {
-                $this->marcarEntregue($encomenda, $data['entregue_para'] ?? null);
-            }
-        });
+        app(\App\Services\EncomendaService::class)->baixa($encomenda, $data, auth()->id(), $request->input('uuid'));
 
         return redirect()->route('encomendas.show', ['encomenda' => $encomenda, 'print' => 1])
             ->with('ok', 'Pagamento registrado.');
@@ -259,25 +177,12 @@ class EncomendaController extends Controller
     public function entregar(Request $request, Encomenda $encomenda)
     {
         abort_if($encomenda->cancelada, 422, 'Encomenda cancelada.');
-        $data = $request->validate(['entregue_para' => 'nullable|string|max:120']);
+        $data = $request->validate(['entregue_para' => 'nullable|string|max:120', 'uuid' => 'nullable|uuid']);
 
-        if (! $encomenda->entregue) {
-            $this->marcarEntregue($encomenda, $data['entregue_para'] ?? null);
-        }
+        app(\App\Services\EncomendaService::class)->baixa($encomenda, $data + ['entregar' => true], auth()->id(), $request->input('uuid'));
 
         return redirect()->route('encomendas.show', ['encomenda' => $encomenda, 'print' => 1])
             ->with('ok', 'Entrega registrada.');
-    }
-
-    protected function marcarEntregue(Encomenda $encomenda, ?string $para): void
-    {
-        $encomenda->forceFill([
-            'entregue' => true,
-            'entregue_em' => now(),
-            'entregue_por' => auth()->id(),
-            'entregue_para' => $para,
-        ])->save();
-        Evento::registrar('entrega', $encomenda, ['para' => $para]);
     }
 
     public function cancelar(Encomenda $encomenda)

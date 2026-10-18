@@ -61,7 +61,7 @@ tailwind.config = { theme: { extend: {
   $g = [];
   if ($u->podeCadastrar()) $g[] = ['r'=>route('encomendas.create'), 'l'=>'Nova encomenda', 'i'=>'➕'];
   if ($u->podeFiltrar())   { $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
-                             $g[] = ['r'=>route('imprimir.protocolo', ['inicio'=>now()->toDateString(),'fim'=>now()->toDateString()]), 'l'=>'Protocolo do dia', 'i'=>'🖨', 'blank'=>true]; }
+                             $g[] = ['r'=>route('encomendas.index', ['inicio'=>now()->toDateString(),'fim'=>now()->toDateString(),'protocolo'=>1]), 'l'=>'Protocolo', 'i'=>'🖨']; }
   if ($g) $grupos['Encomendas'] = $g;
   $g = [];
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>'Caixa geral', 'i'=>'💰'];
@@ -94,6 +94,7 @@ tailwind.config = { theme: { extend: {
         <button class="text-[11px] rounded-lg bg-white/15 px-2 py-1 hover:bg-white/25">sair da empresa</button>
       </form>
     @endif
+    <button type="button" id="fbre-net" class="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold bg-white/10" title="Estado da conexão"><span class="inline-block w-2 h-2 rounded-full bg-white/60"></span>…</button>
     <form method="post" action="{{ route('logout') }}" class="hidden sm:block">@csrf
       <button class="text-xs rounded-lg bg-white/10 px-3 py-1.5 hover:bg-white/20">Sair</button>
     </form>
@@ -170,6 +171,7 @@ tailwind.config = { theme: { extend: {
   </div>
 </nav>
 
+<script src="/js/fbre-offline.js"></script>
 <script>
   window.FBRE = {
     csrf: document.querySelector('meta[name=csrf-token]').content,

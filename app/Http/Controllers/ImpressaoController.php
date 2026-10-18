@@ -43,14 +43,14 @@ class ImpressaoController extends Controller
 
     public function protocolo(Request $request)
     {
-        $f = $request->only(['inicio', 'fim', 'origem', 'destino', 'embarcacao_id', 'status_pagamento', 'entregue', 'forma', 'busca']);
+        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'status_pagamento', 'entregue', 'forma', 'busca']);
         $encomendas = Encomenda::filtrar($f)->with('embarcacao')->orderBy('numero')->get();
         return view('impressao.protocolo', ['encomendas' => $encomendas, 'empresa' => Tenant::empresa(), 'f' => $f]);
     }
 
     public function listagem(Request $request)
     {
-        $f = $request->only(['inicio', 'fim', 'origem', 'destino', 'embarcacao_id', 'status_pagamento', 'entregue', 'forma', 'busca']);
+        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'status_pagamento', 'entregue', 'forma', 'busca']);
         $encomendas = Encomenda::filtrar($f)->with('embarcacao')->orderBy('numero')->get();
         return view('impressao.listagem', ['encomendas' => $encomendas, 'empresa' => Tenant::empresa(), 'f' => $f]);
     }

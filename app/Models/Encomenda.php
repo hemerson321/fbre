@@ -93,8 +93,8 @@ class Encomenda extends Model
     public function scopeFiltrar(Builder $q, array $f): Builder
     {
         return $q
-            ->when($f['inicio'] ?? null, fn ($q, $v) => $q->where('created_at', '>=', $v.' 00:00:00'))
-            ->when($f['fim'] ?? null, fn ($q, $v) => $q->where('created_at', '<=', $v.' 23:59:59'))
+            ->when($f['inicio'] ?? null, fn ($q, $v) => $q->where('created_at', '>=', $v.' '.(($f['hora_inicio'] ?? '') ?: '00:00').':00'))
+            ->when($f['fim'] ?? null, fn ($q, $v) => $q->where('created_at', '<=', $v.' '.(($f['hora_fim'] ?? '') ?: '23:59').':59'))
             ->when($f['origem'] ?? null, fn ($q, $v) => $q->where('origem', $v))
             ->when($f['destino'] ?? null, fn ($q, $v) => $q->where('destino', $v))
             ->when($f['embarcacao_id'] ?? null, fn ($q, $v) => $q->where('embarcacao_id', $v))

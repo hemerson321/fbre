@@ -8,7 +8,7 @@
 <div class="cab">
   <div><h1>{{ $empresa->nomeExibicao() }}</h1><div class="sm">{{ $empresa->cnpj }} · {{ $empresa->telefone }}</div></div>
   <div style="text-align:right"><b>PROTOCOLO DE ENTREGA</b><div class="sm">Emitido em {{ now()->format('d/m/Y H:i') }} por {{ auth()->user()->name }}</div>
-  <div class="sm">@if($f['inicio'] ?? null)Período {{ \Carbon\Carbon::parse($f['inicio'])->format('d/m/Y') }} a {{ \Carbon\Carbon::parse($f['fim'] ?? now())->format('d/m/Y') }} ·@endif {{ $encomendas->count() }} encomendas</div></div>
+  <div class="sm">@if($f['inicio'] ?? null)Período {{ \Carbon\Carbon::parse($f['inicio'])->format('d/m/Y') }} {{ $f['hora_inicio'] ?? '00:00' }} a {{ \Carbon\Carbon::parse($f['fim'] ?? now())->format('d/m/Y') }} {{ $f['hora_fim'] ?? '23:59' }} ·@endif {{ $encomendas->count() }} encomendas</div></div>
 </div>
 <table>
 <thead><tr><th>Nº</th><th>Destino</th><th>Destinatário</th><th>Remetente</th><th>Vol.</th><th>Devido</th><th class="doc">DOC</th><th class="data">DATA</th><th class="ass">ASSINATURA</th></tr></thead>

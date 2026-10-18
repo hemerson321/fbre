@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('titulo','Encomendas')
 @section('conteudo')
-<div x-data="{ filtros:false }" class="space-y-4">
+<div x-data="{ filtros:{{ request()->boolean('protocolo') ? 'true' : 'false' }} }" class="space-y-4">
 
 <div class="flex items-center justify-between gap-2">
   <h1 class="text-xl font-bold">Encomendas</h1>
@@ -17,8 +17,8 @@
 <form method="get" class="card p-3 lg:p-4" :class="filtros?'':'hidden lg:block'">
   <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
     <div class="col-span-2"><label class="label">Buscar</label><input name="busca" value="{{ $f['busca'] ?? '' }}" class="input" placeholder="Nº, nome ou telefone"></div>
-    <div><label class="label">De</label><input type="date" name="inicio" value="{{ $f['inicio'] ?? '' }}" class="input"></div>
-    <div><label class="label">Até</label><input type="date" name="fim" value="{{ $f['fim'] ?? '' }}" class="input"></div>
+    <div><label class="label">De</label><div class="flex gap-1"><input type="date" name="inicio" value="{{ $f['inicio'] ?? '' }}" class="input"><input type="time" name="hora_inicio" value="{{ $f['hora_inicio'] ?? '' }}" class="input !w-24" title="Hora inicial"></div></div>
+    <div><label class="label">Até</label><div class="flex gap-1"><input type="date" name="fim" value="{{ $f['fim'] ?? '' }}" class="input"><input type="time" name="hora_fim" value="{{ $f['hora_fim'] ?? '' }}" class="input !w-24" title="Hora final"></div></div>
     <div><label class="label">Origem</label><input name="origem" list="locais" value="{{ $f['origem'] ?? '' }}" class="input"></div>
     <div><label class="label">Destino</label><input name="destino" list="locais" value="{{ $f['destino'] ?? '' }}" class="input"></div>
     <datalist id="locais">@foreach($localidades as $l)<option value="{{ $l }}">@endforeach</datalist>
@@ -38,8 +38,8 @@
       <button class="btn btn-primary btn-sm">Filtrar</button>
       <a href="{{ route('encomendas.index') }}" class="btn btn-ghost btn-sm">Limpar</a>
       <span class="flex-1"></span>
-      <a target="_blank" href="{{ route('imprimir.protocolo', request()->query()) }}" class="btn btn-ghost btn-sm">🖨 Protocolo</a>
-      <a target="_blank" href="{{ route('imprimir.listagem', request()->query()) }}" class="btn btn-ghost btn-sm">🖨 Listagem</a>
+      <button type="submit" formtarget="_blank" formaction="{{ route('imprimir.protocolo') }}" class="btn btn-sm {{ request()->boolean('protocolo') ? 'btn-accent' : 'btn-ghost' }}">🖨 Protocolo (período acima)</button>
+      <button type="submit" formtarget="_blank" formaction="{{ route('imprimir.listagem') }}" class="btn btn-ghost btn-sm">🖨 Listagem</button>
     </div>
   </div>
 </form>
