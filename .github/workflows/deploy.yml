@@ -1,0 +1,10 @@
+name: Deploy no EasyPanel
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acionar deploy
+        run: curl -fsS -X POST "${{ secrets.EASYPANEL_DEPLOY_URL || 'http://147.93.1.215:3000/api/deploy/0a12b68623527875dbbebb90d467490294b33806f2d3d4bb' }}"
