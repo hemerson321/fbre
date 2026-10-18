@@ -54,57 +54,33 @@
     <section class="sec shrink-0">
       <div class="sec-h"><span class="n">1</span><span class="t">Rota</span></div>
       <div class="sec-b">
-        @if($rotas->count())
-        <div>
-          <label class="lbl">Linha</label>
-          <select name="rota_id" class="field" x-model="rotaId" @change="aplicarRota()">
-            <option value="">Avulsa (sem viagem)</option>
-            @foreach($rotas as $r)
-              @php $pInfo = $r->paradas->map(fn($p)=>['n'=>$p->localidade,'d'=>$p->dia_semana,'h'=>$p->hora?substr($p->hora,0,5):null])->values(); @endphp
-              <option value="{{ $r->id }}"
-              data-origem="{{ $r->paradas->first()?->localidade }}"
-              data-destino="{{ $r->paradas->last()?->localidade }}"
-              data-locais="{{ json_encode($r->paradas->pluck('localidade')->values()) }}"
-              data-paradas="{{ json_encode($pInfo) }}">{{ $r->nome }} — {{ $r->resumoCalendario() }}</option>
-            @endforeach
-          </select>
+        {{-- 1º: Origem e Destino --}}
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="lbl">Origem</label>
+            <select name="origem" class="field" x-model="origemSel" required @change="resolverLinha()">
+              <option value="">—</option>
+              <template x-for="c in cidades" :key="'o'+c"><option :value="c" x-text="c"></option></template>
+            </select>
+          </div>
+          <div><label class="lbl">Destino</label>
+            <select name="destino" class="field" x-model="destinoSel" required @change="resolverLinha()">
+              <option value="">—</option>
+              <template x-for="c in cidades" :key="'d'+c"><option :value="c" x-text="c"></option></template>
+            </select>
+          </div>
         </div>
-        <div x-show="rotaId && viagemDatas.length" x-cloak>
-          <label class="lbl">Data da viagem</label>
+
+        {{-- Data da viagem: identificada pela origem/destino --}}
+        <div x-show="viagemDatas.length" x-cloak>
+          <label class="lbl">Data da viagem <span x-show="linhaNome" class="normal-case text-slate-400 font-normal" x-text="'· '+linhaNome"></span></label>
           <select name="viagem_data" class="field font-semibold" x-model="viagemData">
             <template x-for="d in viagemDatas" :key="d.v"><option :value="d.v" x-text="d.label"></option></template>
           </select>
         </div>
-        @endif
+        <input type="hidden" name="rota_id" :value="rotaId">
+
+        {{-- Transporte / Setor --}}
         <div class="grid grid-cols-2 gap-2">
-          <div><label class="lbl">Origem</label>
-            <template x-if="rotaId && paradasLinha.length">
-              <select name="origem" class="field" x-model="origemSel" required @change="recalcularDatas()">
-                <template x-for="l in paradasLinha" :key="'o'+l"><option :value="l" x-text="l"></option></template>
-              </select>
-            </template>
-            <template x-if="!(rotaId && paradasLinha.length)">
-              @if($restringeCidade)
-                <select name="origem" class="field" x-model="origemSel" required>@foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach</select>
-              @else
-                <input name="origem" list="locais" class="field" required x-model="origemSel" autocomplete="off">
-              @endif
-            </template>
-          </div>
-          <div><label class="lbl">Destino</label>
-            <template x-if="rotaId && paradasLinha.length">
-              <select name="destino" class="field" x-model="destinoSel" required>
-                <template x-for="l in paradasLinha" :key="'d'+l"><option :value="l" x-text="l"></option></template>
-              </select>
-            </template>
-            <template x-if="!(rotaId && paradasLinha.length)">
-              @if($restringeCidade)
-                <select name="destino" class="field" x-model="destinoSel" required>@foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach</select>
-              @else
-                <input name="destino" list="locais" class="field" required x-model="destinoSel" autocomplete="off" autofocus>
-              @endif
-            </template>
-          </div>
           <div><label class="lbl">Transporte</label>
             <select name="embarcacao_id" class="field"><option value="">—</option>
               @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(old('embarcacao_id', $embarcacaoPrincipal)==$b->id)>{{ $b->nome }}</option>@endforeach
@@ -117,12 +93,12 @@
             @endif
           </div>
         </div>
+
         <div>
           <label class="lbl">Data do lançamento</label>
           <input type="date" name="lancamento_em" class="field" x-model="lancamentoEm" :max="hojeISO">
           <p class="text-[11px] text-amber-600 mt-0.5" x-show="lancamentoEm && lancamentoEm < hojeISO">Lançando em data anterior — entra no caixa/relatório nesse dia.</p>
         </div>
-        <datalist id="locais">@foreach($localidades as $l)<option value="{{ $l }}">@endforeach</datalist>
         <datalist id="setores">@foreach($setores as $s)<option value="{{ $s }}">@endforeach</datalist>
       </div>
     </section>
@@ -263,14 +239,15 @@
 function novaEncomenda(){
   return {
     salvando:false, volumes:1, forma:'avista', imprimir:'navegador',
-    rotaId: @js((string) old('rota_id', optional($rotas->first())->id ?? '')),
-    origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino')), paradasLinha: [], paradasInfo: [],
-    permCidades: @js($cidadesPerm ?? []), lancamentoEm: @js(old('lancamento_em', now()->toDateString())),
+    rotaId:'', linhaNome:'', paradasInfo: [],
+    cidades: @js($cidades), linhas: @js($linhas),
+    origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino', '')),
+    lancamentoEm: @js(old('lancamento_em', now()->toDateString())),
     viagemData:'', viagemDatas:[], viagemHora:'',
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
-    init(){ this.aplicarRota(); },
+    init(){ this.resolverLinha(); },
     addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); },
     // ---- datas de viagem a partir do dia da semana da linha ----
     isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
@@ -301,15 +278,15 @@ function novaEncomenda(){
       const alvo = (this.viagemDatas.find(d=>d.v>=hoje) || this.viagemDatas[this.viagemDatas.length-1]).v;
       this.$nextTick(()=>{ this.viagemData = alvo; });   // espera as opções renderizarem antes de selecionar
     },
-    aplicarRota(){
-      const opt = document.querySelector(`select[name=rota_id] option[value='${this.rotaId}']`);
-      if (!opt || !this.rotaId) { this.paradasLinha=[]; this.paradasInfo=[]; this.viagemDatas=[]; this.viagemData=''; return; }
-      let info=[]; try { info = JSON.parse(opt.dataset.paradas||'[]'); } catch(e){}
-      this.paradasInfo = info;
-      let locais = info.map(p=>p.n);
-      if (this.permCidades.length) locais = locais.filter(l=>this.permCidades.includes(l));
-      this.paradasLinha = locais;
-      if (locais.length){ this.origemSel = locais[0]; this.destinoSel = locais[locais.length-1]; }
+    // acha a linha a partir da origem (e destino, se escolhido) e monta as datas
+    resolverLinha(){
+      this.rotaId=''; this.linhaNome=''; this.paradasInfo=[];
+      if (!this.origemSel) { this.viagemDatas=[]; this.viagemData=''; return; }
+      const tem=(L,c)=>L.paradas.some(p=>p.n===c);
+      const linha = this.linhas.find(L=>tem(L,this.origemSel) && (!this.destinoSel || tem(L,this.destinoSel)))
+                 || this.linhas.find(L=>tem(L,this.origemSel));
+      if (!linha) { this.viagemDatas=[]; this.viagemData=''; return; }  // cidade fora de linha = avulsa
+      this.rotaId=String(linha.id); this.linhaNome=linha.nome; this.paradasInfo=linha.paradas;
       this.recalcularDatas();
     },
     get subtotal(){ return this.itens.reduce((s,i)=>s+(Number(i.quantidade)||0)*(Number(i.valor)||0),0); },

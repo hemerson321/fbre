@@ -110,16 +110,24 @@ class EncomendaController extends Controller
         $localidades = Rota::todasLocalidades();
         if ($cidadesPerm) $localidades = $localidades->intersect($cidadesPerm)->values();
 
+        $rotas = Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect();
+        // linhas (com paradas) para o JS resolver a viagem a partir de origem/destino
+        $linhas = $rotas->map(fn ($r) => [
+            'id' => $r->id,
+            'nome' => $r->nome,
+            'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
+        ])->values();
+
         return view('encomendas.create', [
             'localidades' => $localidades,
+            'cidades' => $localidades->values(),
+            'linhas' => $linhas,
             'embarcacoes' => $embarcacoes,
             'produtos' => Produto::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'valor_padrao']),
             'setores' => $setores,
-            'rotas' => Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect(),
+            'rotas' => $rotas,
             'ultimaOrigem' => session('ultima_origem', Tenant::empresa()->cidade),
-            'cidadesPerm' => $cidadesPerm,
             'embarcacaoPrincipal' => $u->embarcacao_principal_id,
-            'restringeCidade' => ! empty($cidadesPerm),
             'restringeSetor' => ! empty($setoresPerm),
         ]);
     }
