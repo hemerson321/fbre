@@ -20,11 +20,7 @@ class EncomendaController extends Controller
 {
     public function inicio()
     {
-        $u = auth()->user();
-        if ($u->podeFiltrar()) return redirect()->route('encomendas.index');
-        if ($u->podeCadastrar()) return redirect()->route('encomendas.create');
-        if ($u->podeVerCaixa()) return redirect()->route('caixa.index');
-        return redirect()->route('relatorio.meu');
+        return view('home');
     }
 
     // ------------------------------------------------------------------

@@ -81,13 +81,15 @@ tailwind.config = { theme: { extend: {
     <button class="lg:hidden p-2 -ml-2 rounded-lg hover:bg-white/10" @click="menu=!menu" aria-label="Menu">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
-    @if($empresa?->logo)
-      <img src="/{{ $empresa->logo }}" alt="" class="h-9 w-9 rounded-lg object-cover bg-white/90 p-0.5">
-    @endif
-    <div class="min-w-0 flex-1">
-      <div class="font-bold leading-tight truncate">{{ $empresa?->nomeExibicao() ?? 'FBRE' }}</div>
-      <div class="text-[11px] opacity-70 leading-tight truncate">{{ $u->name }} · {{ $u->setor ?: 'Operador' }}</div>
-    </div>
+    <a href="{{ route('inicio') }}" class="flex items-center gap-3 min-w-0 flex-1 hover:opacity-90" title="Início">
+      @if($empresa?->logo)
+        <img src="/{{ $empresa->logo }}" alt="" class="h-9 w-9 rounded-lg object-cover bg-white/90 p-0.5 shrink-0">
+      @endif
+      <div class="min-w-0">
+        <div class="font-bold leading-tight truncate">{{ $empresa?->nomeExibicao() ?? 'FBRE' }}</div>
+        <div class="text-[11px] opacity-70 leading-tight truncate">{{ $u->name }} · {{ $u->setor ?: 'Operador' }}</div>
+      </div>
+    </a>
     @if($u->isSuper() && session('empresa_ativa') && ! config('fbre.single'))
       <form method="post" action="{{ route('super.empresas.sair') }}">@csrf
         <button class="text-[11px] rounded-lg bg-white/15 px-2 py-1 hover:bg-white/25">sair da empresa</button>
