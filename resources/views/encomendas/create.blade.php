@@ -62,26 +62,21 @@
             @foreach($rotas as $r)<option value="{{ $r->id }}"
               data-origem="{{ $r->paradas->first()?->localidade }}"
               data-destino="{{ $r->paradas->last()?->localidade }}"
-              data-dia="{{ $r->paradas->first()?->dia_semana }}"
-              data-hora="{{ $r->paradas->first()?->hora ? substr($r->paradas->first()->hora,0,5) : '' }}"
-              data-locais='@json($r->paradas->pluck("localidade"))'>{{ $r->nome }} — {{ $r->resumoCalendario() }}</option>@endforeach
+              data-locais='@json($r->paradas->pluck("localidade"))'
+              data-paradas='@json($r->paradas->map(fn($p)=>["n"=>$p->localidade,"d"=>$p->dia_semana,"h"=>$p->hora?substr($p->hora,0,5):null]))'>{{ $r->nome }} — {{ $r->resumoCalendario() }}</option>@endforeach
           </select>
         </div>
         <div x-show="rotaId && viagemDatas.length" x-cloak>
-          <div class="flex items-center justify-between">
-            <label class="lbl !mb-0">Data da viagem</label>
-            <button type="button" class="text-[11px] font-bold uppercase" style="color:var(--cor2)" @click="outraData=!outraData" x-text="outraData?'ver lista':'+ outra data'"></button>
-          </div>
-          <select x-show="!outraData" name="viagem_data" class="field font-semibold mt-1" x-model="viagemData">
+          <label class="lbl">Data da viagem</label>
+          <select name="viagem_data" class="field font-semibold" x-model="viagemData">
             <template x-for="d in viagemDatas" :key="d.v"><option :value="d.v" x-text="d.label"></option></template>
           </select>
-          <input x-show="outraData" x-cloak type="date" class="field mt-1" x-model="viagemDataLivre" @change="escolherDataLivre()" :min="hojeISO" :max="maxISO">
         </div>
         @endif
         <div class="grid grid-cols-2 gap-2">
           <div><label class="lbl">Origem</label>
             <template x-if="rotaId && paradasLinha.length">
-              <select name="origem" class="field" x-model="origemSel" required>
+              <select name="origem" class="field" x-model="origemSel" required @change="recalcularDatas()">
                 <template x-for="l in paradasLinha" :key="'o'+l"><option :value="l" x-text="l"></option></template>
               </select>
             </template>
@@ -261,9 +256,9 @@ function novaEncomenda(){
   return {
     salvando:false, volumes:1, forma:'avista', imprimir:'navegador',
     rotaId: @js((string) old('rota_id', optional($rotas->first())->id ?? '')),
-    origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino')), paradasLinha: [],
-    outraData:false, permCidades: @js($cidadesPerm ?? []),
-    viagemData:'', viagemDatas:[], viagemHora:'', viagemDataLivre:'',
+    origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino')), paradasLinha: [], paradasInfo: [],
+    permCidades: @js($cidadesPerm ?? []),
+    viagemData:'', viagemDatas:[], viagemHora:'',
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
@@ -272,35 +267,31 @@ function novaEncomenda(){
     // ---- datas de viagem a partir do dia da semana da linha ----
     isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
     fmtBr(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); },
-    get hojeISO(){ const d=new Date(); return this.isoLocal(d); },
-    get maxISO(){ const d=new Date(); d.setFullYear(d.getFullYear()+3); return this.isoLocal(d); },
-    diaDaRota(){ const o=document.querySelector(`select[name=rota_id] option[value='${this.rotaId}']`); const d=o?.dataset.dia; return (d===''||d==null||d===undefined)?null:Number(d); },
     gerarDatas(dia,hora,qtd){
       const out=[]; const d=new Date(); d.setHours(0,0,0,0);
       while(d.getDay()!==dia) d.setDate(d.getDate()+1);
       for(let i=0;i<qtd;i++){ out.push({v:this.isoLocal(d), label:this.diasCurto[dia]+' '+this.fmtBr(d)+(hora?' · '+hora:'')}); d.setDate(d.getDate()+7); }
       return out;
     },
-    escolherDataLivre(){
-      const alvo=this.diaDaRota(); if(alvo===null || !this.viagemDataLivre) return;
-      const [y,m,day]=this.viagemDataLivre.split('-').map(Number); let d=new Date(y,m-1,day); d.setHours(0,0,0,0);
-      for(let i=0;i<7 && d.getDay()!==alvo;i++) d.setDate(d.getDate()-1);
-      const hoje=new Date(); hoje.setHours(0,0,0,0);
-      while(d<hoje) d.setDate(d.getDate()+7);
-      const iso=this.isoLocal(d);
-      if(!this.viagemDatas.find(x=>x.v===iso)) this.viagemDatas.unshift({v:iso, label:this.diasCurto[alvo]+' '+this.fmtBr(d)+(this.viagemHora?' · '+this.viagemHora:'')});
-      this.viagemData=iso;
+    // datas da viagem a partir da ORIGEM escolhida (dia/hora em que o barco sai de lá)
+    recalcularDatas(){
+      if (!this.rotaId || !this.paradasInfo.length) { this.viagemDatas=[]; this.viagemData=''; return; }
+      const p = this.paradasInfo.find(x=>x.n===this.origemSel) || this.paradasInfo[0];
+      this.viagemHora = p.h || '';
+      if (p.d===null||p.d===undefined||p.d==='') { this.viagemDatas=[]; this.viagemData=''; return; }
+      this.viagemDatas = this.gerarDatas(Number(p.d), this.viagemHora, 26);
+      this.viagemData = this.viagemDatas[0]?.v || '';
     },
     aplicarRota(){
       const opt = document.querySelector(`select[name=rota_id] option[value='${this.rotaId}']`);
-      if (!opt || !this.rotaId) { this.paradasLinha=[]; this.viagemDatas=[]; this.viagemData=''; this.viagemDataLivre=''; return; }
-      let locais=[]; try { locais = JSON.parse(opt.dataset.locais||'[]'); } catch(e){}
+      if (!opt || !this.rotaId) { this.paradasLinha=[]; this.paradasInfo=[]; this.viagemDatas=[]; this.viagemData=''; return; }
+      let info=[]; try { info = JSON.parse(opt.dataset.paradas||'[]'); } catch(e){}
+      this.paradasInfo = info;
+      let locais = info.map(p=>p.n);
       if (this.permCidades.length) locais = locais.filter(l=>this.permCidades.includes(l));
       this.paradasLinha = locais;
       if (locais.length){ this.origemSel = locais[0]; this.destinoSel = locais[locais.length-1]; }
-      const dia = opt.dataset.dia; this.viagemHora = opt.dataset.hora||'';
-      if (dia===''||dia==null) { this.viagemDatas=[]; this.viagemData=''; }
-      else { this.viagemDatas = this.gerarDatas(Number(dia), this.viagemHora, 16); this.viagemData = this.viagemDatas[0]?.v || ''; }
+      this.recalcularDatas();
     },
     get subtotal(){ return this.itens.reduce((s,i)=>s+(Number(i.quantidade)||0)*(Number(i.valor)||0),0); },
     get total(){ return Math.max(this.subtotal-(Number(this.desconto)||0),0); },
