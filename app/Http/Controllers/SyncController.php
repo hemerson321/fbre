@@ -94,6 +94,9 @@ class SyncController extends Controller
             return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
         }
 
+        // lembra os últimos escolhidos p/ já virem preenchidos no próximo cadastro
+        session(['ultima_origem' => $data['origem'] ?? null, 'ultima_embarcacao' => $data['embarcacao_id'] ?? null]);
+
         return ['ok' => true, 'id' => $enc->id, 'numero' => $enc->numero, 'numero_formatado' => $enc->numeroFormatado(),
             'url' => route('encomendas.show', $enc)];
     }

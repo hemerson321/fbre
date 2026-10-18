@@ -126,8 +126,8 @@ class EncomendaController extends Controller
             'produtos' => Produto::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'valor_padrao']),
             'setores' => $setores,
             'rotas' => $rotas,
-            'ultimaOrigem' => session('ultima_origem', Tenant::empresa()->cidade),
-            'embarcacaoPrincipal' => $u->embarcacao_principal_id,
+            'ultimaOrigem' => session('ultima_origem') ?: (Tenant::empresa()->cidade ?: $localidades->first()),
+            'embarcacaoPrincipal' => session('ultima_embarcacao') ?: $u->embarcacao_principal_id,
             'restringeSetor' => ! empty($setoresPerm),
             'podeRetroativo' => $u->podeRetroativo(),
         ]);

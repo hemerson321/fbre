@@ -44,13 +44,13 @@
     <h1 class="text-lg font-extrabold" style="color:var(--cor1)">Nova encomenda</h1>
     {{-- datas no cabeçalho (compacto) --}}
     <div x-show="viagemData" x-cloak class="flex items-center gap-1.5">
-      <span class="lbl !mb-0">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></span>
+      <span class="lbl !mb-0 whitespace-nowrap">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></span>
       <input type="date" class="field !min-h-0 !py-1 w-36 text-sm font-semibold" x-model="viagemDataPick" @change="escolherData()" :min="minData" :max="maxData">
       <span class="text-[11px] whitespace-nowrap" :class="viagemData<hojeISO ? 'text-amber-600' : 'text-slate-500'" x-text="viagemLabel"></span>
     </div>
     @if($podeRetroativo)
     <div class="flex items-center gap-1.5">
-      <span class="lbl !mb-0">Lançamento</span>
+      <span class="lbl !mb-0 whitespace-nowrap">Lançamento</span>
       <input type="date" name="lancamento_em" class="field !min-h-0 !py-1 w-32 text-sm" x-model="lancamentoEm" :max="hojeISO">
     </div>
     @endif
@@ -247,7 +247,11 @@ function novaEncomenda(){
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
-    init(){ this.resolverLinha(); },
+    init(){
+      try { const v = localStorage.getItem('fbre_imprimir'); if (v) this.imprimir = v; } catch(e){}
+      this.$watch('imprimir', v => { try { localStorage.setItem('fbre_imprimir', v); } catch(e){} });
+      this.resolverLinha();
+    },
     addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); },
     // ---- datas de viagem a partir do dia da semana da linha ----
     isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
