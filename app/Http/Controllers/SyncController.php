@@ -75,7 +75,12 @@ class SyncController extends Controller
             'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
         ]);
 
-        $enc = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
+        try {
+            $enc = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
+        }
 
         return ['ok' => true, 'id' => $enc->id, 'numero' => $enc->numero, 'numero_formatado' => $enc->numeroFormatado(),
             'url' => route('encomendas.show', $enc)];
@@ -98,7 +103,12 @@ class SyncController extends Controller
         if (! $enc) {
             return response()->json(['ok' => false, 'erro' => 'encomenda_nao_encontrada', 'reter' => true], 409);
         }
-        $svc->baixa($enc, $data, auth()->id(), $data['uuid']);
+        try {
+            $svc->baixa($enc, $data, auth()->id(), $data['uuid']);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
+        }
         return ['ok' => true, 'id' => $enc->id, 'numero_formatado' => $enc->numeroFormatado()];
     }
 }

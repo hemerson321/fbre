@@ -43,7 +43,7 @@ class EncomendaService
                 'desconto' => $data['desconto'] ?? 0,
                 'user_id' => $userId,
                 'origem_offline' => $offline,
-                'criada_no_aparelho_em' => $data['criada_em'] ?? null,
+                'criada_no_aparelho_em' => ! empty($data['criada_em']) ? \Carbon\Carbon::parse($data['criada_em'])->setTimezone(config('app.timezone')) : null,
             ]);
 
             foreach ($data['itens'] as $it) {
@@ -96,10 +96,10 @@ class EncomendaService
             }
             if ($soma > 0) {
                 $enc->recalcular();
-                Evento::create(['uuid' => $uuid ? $uuid.'-pag' : null, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'pagamento', 'dados' => ['valor' => $soma]]);
+                Evento::create(['uuid' => (! empty($data['entregar']) || $enc->entregue) ? null : $uuid, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'pagamento', 'dados' => ['valor' => $soma]]);
             }
             if (! empty($data['entregar']) && ! $enc->entregue) {
-                $enc->forceFill(['entregue' => true, 'entregue_em' => $data['entregue_em'] ?? now(), 'entregue_por' => $userId, 'entregue_para' => $data['entregue_para'] ?? null])->save();
+                $enc->forceFill(['entregue' => true, 'entregue_em' => ! empty($data['entregue_em']) ? \Carbon\Carbon::parse($data['entregue_em'])->setTimezone(config('app.timezone')) : now(), 'entregue_por' => $userId, 'entregue_para' => $data['entregue_para'] ?? null])->save();
                 Evento::create(['uuid' => $uuid, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'entrega', 'dados' => ['para' => $data['entregue_para'] ?? null]]);
             } elseif ($uuid) {
                 Evento::where('uuid', $uuid)->exists() || Evento::create(['uuid' => $uuid, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'sync', 'dados' => []]);

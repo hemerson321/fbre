@@ -72,7 +72,7 @@
       throw new Error('422');
     }
     if (r.status === 409) { const j = await r.json(); if (j.reter) { item.falhas = (item.falhas || 0) + 1; await filaPut(item); } throw new Error('409'); }
-    if (!r.ok) { item.erro = 'Erro ' + r.status + ' no servidor'; item.falhas = (item.falhas || 0) + 1; await filaPut(item); throw new Error(r.status); }
+    if (!r.ok) { const j = await r.json().catch(() => ({})); item.erro = 'Erro ' + r.status + ' no servidor' + (j.erro ? ': ' + j.erro : ''); item.falhas = (item.falhas || 0) + 1; await filaPut(item); throw new Error(r.status); }
     const j = await r.json();
     await enviadasPut({ uuid: item.uuid, tipo: item.tipo, resposta: j, em: Date.now(), dados: item.dados });
     await filaDel(item.uuid);
