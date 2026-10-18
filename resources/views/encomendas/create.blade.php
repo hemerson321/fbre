@@ -37,9 +37,9 @@
 @endpush
 @section('conteudo')
 <form method="post" action="{{ route('encomendas.store') }}" x-data="novaEncomenda()" @submit.prevent="salvar($event)"
-      class="mx-auto max-w-[1440px] lg:h-[calc(100vh-100px-1.5rem)] lg:flex lg:flex-col gap-2">
+      class="mx-auto max-w-[1440px] space-y-2">
 @csrf
-<div class="flex items-center justify-between shrink-0">
+<div class="flex items-center justify-between">
   <div class="flex items-center gap-3">
     <h1 class="text-lg font-extrabold" style="color:var(--cor1)">Nova encomenda</h1>
     <span class="hidden xl:inline text-xs text-slate-500">Preencha as 4 etapas e salve. O comprovante e as etiquetas saem na hora.</span>
@@ -47,10 +47,10 @@
   <a href="{{ route('encomendas.index') }}" class="text-sm text-slate-500 hover:underline">← voltar</a>
 </div>
 
-<div class="grid gap-2 lg:grid-cols-12 lg:flex-1 lg:min-h-0">
+<div class="grid gap-2 lg:grid-cols-12 items-start">
 
   {{-- ===== COLUNA 1 ===== --}}
-  <div class="lg:col-span-3 flex flex-col gap-2 lg:min-h-0 lg:overflow-y-auto lg:pr-0.5">
+  <div class="lg:col-span-3 space-y-2">
     <section class="sec shrink-0">
       <div class="sec-h"><span class="n">1</span><span class="t">Rota</span></div>
       <div class="sec-b">
@@ -68,15 +68,14 @@
           </select>
         </div>
         <div x-show="rotaId && viagemDatas.length" x-cloak>
-          <label class="lbl">Data da viagem</label>
-          <select name="viagem_data" class="field font-semibold" x-model="viagemData">
+          <div class="flex items-center justify-between">
+            <label class="lbl !mb-0">Data da viagem</label>
+            <button type="button" class="text-[11px] font-bold uppercase" style="color:var(--cor2)" @click="outraData=!outraData" x-text="outraData?'ver lista':'+ outra data'"></button>
+          </div>
+          <select x-show="!outraData" name="viagem_data" class="field font-semibold mt-1" x-model="viagemData">
             <template x-for="d in viagemDatas" :key="d.v"><option :value="d.v" x-text="d.label"></option></template>
           </select>
-          <div class="mt-1 flex items-center gap-2">
-            <span class="text-[11px] text-slate-400 uppercase font-bold">ou outra data</span>
-            <input type="date" class="field !min-h-0 py-1 text-xs flex-1" x-model="viagemDataLivre" @change="escolherDataLivre()" :min="hojeISO" :max="maxISO">
-          </div>
-          <p class="text-[11px] text-slate-400 mt-0.5">Datas geradas pelo dia da semana da linha — dá pra lançar viagens futuras.</p>
+          <input x-show="outraData" x-cloak type="date" class="field mt-1" x-model="viagemDataLivre" @change="escolherDataLivre()" :min="hojeISO" :max="maxISO">
         </div>
         @endif
         <div class="grid grid-cols-2 gap-2">
@@ -87,7 +86,11 @@
               </select>
             </template>
             <template x-if="!(rotaId && paradasLinha.length)">
-              <input name="origem" list="locais" class="field" required x-model="origemSel" autocomplete="off">
+              @if($restringeCidade)
+                <select name="origem" class="field" x-model="origemSel" required>@foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach</select>
+              @else
+                <input name="origem" list="locais" class="field" required x-model="origemSel" autocomplete="off">
+              @endif
             </template>
           </div>
           <div><label class="lbl">Destino</label>
@@ -97,14 +100,24 @@
               </select>
             </template>
             <template x-if="!(rotaId && paradasLinha.length)">
-              <input name="destino" list="locais" class="field" required x-model="destinoSel" autocomplete="off" autofocus>
+              @if($restringeCidade)
+                <select name="destino" class="field" x-model="destinoSel" required>@foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach</select>
+              @else
+                <input name="destino" list="locais" class="field" required x-model="destinoSel" autocomplete="off" autofocus>
+              @endif
             </template>
           </div>
           <div><label class="lbl">Transporte</label>
             <select name="embarcacao_id" class="field"><option value="">—</option>
-              @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(old('embarcacao_id')==$b->id)>{{ $b->nome }}</option>@endforeach
+              @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(old('embarcacao_id', $embarcacaoPrincipal)==$b->id)>{{ $b->nome }}</option>@endforeach
             </select></div>
-          <div><label class="lbl">Setor</label><input name="setor" list="setores" class="field" value="{{ old('setor', auth()->user()->setor) }}"></div>
+          <div><label class="lbl">Setor</label>
+            @if($restringeSetor)
+              <select name="setor" class="field">@foreach($setores as $s)<option value="{{ $s }}" @selected(old('setor', auth()->user()->setor)==$s)>{{ $s }}</option>@endforeach</select>
+            @else
+              <input name="setor" list="setores" class="field" value="{{ old('setor', auth()->user()->setor) }}">
+            @endif
+          </div>
         </div>
         <datalist id="locais">@foreach($localidades as $l)<option value="{{ $l }}">@endforeach</datalist>
         <datalist id="setores">@foreach($setores as $s)<option value="{{ $s }}">@endforeach</datalist>
@@ -139,7 +152,7 @@
   </div>
 
   {{-- ===== COLUNA 2: PRODUTOS ===== --}}
-  <section class="sec lg:col-span-6 lg:min-h-0">
+  <section class="sec lg:col-span-6">
     <div class="sec-h">
       <span class="n">3</span><span class="t">Produtos / volumes</span>
       <div class="ml-auto flex items-center gap-2">
@@ -147,7 +160,7 @@
         <input name="volumes" type="number" min="1" x-model.number="volumes" class="w-16 rounded-lg text-center font-extrabold text-slate-900 py-1 text-base" style="background:var(--cor2)" inputmode="numeric">
       </div>
     </div>
-    <div class="sec-b lg:min-h-0">
+    <div class="sec-b">
       <div>
         <div class="lbl">Toque para adicionar</div>
         <div class="flex flex-wrap gap-1.5">
@@ -158,7 +171,7 @@
         </div>
       </div>
 
-      <div class="flex-1 lg:min-h-0 lg:overflow-auto rounded-xl border border-slate-200 bg-slate-50">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 lg:max-h-[46vh] lg:overflow-auto">
         <div class="sticky top-0 hidden lg:grid grid-cols-12 gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border-b">
           <div class="col-span-5">Descrição</div><div class="col-span-2 text-center">Qtd</div><div class="col-span-2 text-right">Valor unit.</div><div class="col-span-2 text-right">Total</div><div class="col-span-1"></div>
         </div>
@@ -183,7 +196,7 @@
   </section>
 
   {{-- ===== COLUNA 3: PAGAMENTO ===== --}}
-  <div class="lg:col-span-3 flex flex-col gap-2 lg:min-h-0 lg:overflow-y-auto lg:pr-0.5">
+  <div class="lg:col-span-3 space-y-2">
     <section class="sec shrink-0">
       <div class="sec-h"><span class="n">4</span><span class="t">Pagamento</span></div>
       <div class="sec-b">
@@ -246,12 +259,15 @@
 <script>
 function novaEncomenda(){
   return {
-    salvando:false, volumes:1, forma:'avista', imprimir:'navegador', rotaId:'',
+    salvando:false, volumes:1, forma:'avista', imprimir:'navegador',
+    rotaId: @js((string) old('rota_id', optional($rotas->first())->id ?? '')),
     origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino')), paradasLinha: [],
+    outraData:false, permCidades: @js($cidadesPerm ?? []),
     viagemData:'', viagemDatas:[], viagemHora:'', viagemDataLivre:'',
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+    init(){ this.aplicarRota(); },
     addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); },
     // ---- datas de viagem a partir do dia da semana da linha ----
     isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
@@ -279,6 +295,7 @@ function novaEncomenda(){
       const opt = document.querySelector(`select[name=rota_id] option[value='${this.rotaId}']`);
       if (!opt || !this.rotaId) { this.paradasLinha=[]; this.viagemDatas=[]; this.viagemData=''; this.viagemDataLivre=''; return; }
       let locais=[]; try { locais = JSON.parse(opt.dataset.locais||'[]'); } catch(e){}
+      if (this.permCidades.length) locais = locais.filter(l=>this.permCidades.includes(l));
       this.paradasLinha = locais;
       if (locais.length){ this.origemSel = locais[0]; this.destinoSel = locais[locais.length-1]; }
       const dia = opt.dataset.dia; this.viagemHora = opt.dataset.hora||'';

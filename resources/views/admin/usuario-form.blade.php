@@ -7,7 +7,14 @@
 <div><label class="label">Nome completo</label><input name="name" class="input" required value="{{ old('name',$u->name) }}" placeholder="Ex.: Maria da Silva"></div>
 <div><label class="label">Login (usuário para entrar)</label><input name="login" class="input" required value="{{ old('login',$u->login) }}" placeholder="Ex.: maria" autocapitalize="none" pattern="[a-z0-9._-]+"></div>
 <div><label class="label">Senha {{ $u->exists?'(deixe vazio para manter)':'' }}</label><input name="password" type="password" class="input" {{ $u->exists?'':'required' }} autocomplete="new-password"></div>
-<div><label class="label">Setor</label><input name="setor" list="setores" class="input" value="{{ old('setor',$u->setor) }}"><datalist id="setores">@foreach($setores as $s)<option value="{{ $s }}">@endforeach</datalist></div>
+<div class="grid grid-cols-2 gap-2">
+  <div><label class="label">Setor principal</label><input name="setor" list="setores" class="input" value="{{ old('setor',$u->setor) }}" placeholder="padrão no cadastro"><datalist id="setores">@foreach($setores as $s)<option value="{{ $s }}">@endforeach</datalist></div>
+  <div><label class="label">Barco principal</label>
+    <select name="embarcacao_principal_id" class="input"><option value="">—</option>
+      @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(old('embarcacao_principal_id',$u->embarcacao_principal_id)==$b->id)>{{ $b->nome }}</option>@endforeach
+    </select></div>
+</div>
+<p class="text-xs text-slate-400 -mt-1">Setor e barco principais já entram selecionados na tela de Nova encomenda desse operador.</p>
 <div class="rounded-xl bg-slate-50 p-3 space-y-1">
   <div class="label">Permissões</div>
   @php $perms = [
@@ -30,6 +37,39 @@
   </label>
   @if($u->exists)<label class="flex items-center gap-3 py-1 border-t pt-2"><input type="checkbox" name="ativo" value="1" class="w-5 h-5 rounded" @checked(old('ativo',$u->ativo))> Usuário ativo</label>@endif
 </div>
+
+{{-- ESCOPO: o que o operador pode usar no cadastro --}}
+@php
+  $cidadesSel = old('loc_permitidas', $u->loc_permitidas ?? []);
+  $setoresSel = old('setores_permitidos', $u->setores_permitidos ?? []);
+  $transpSel  = array_map('strval', old('transportes_permitidos', $u->transportes_permitidos ?? []));
+@endphp
+<div class="rounded-xl bg-slate-50 p-3 space-y-3">
+  <div><div class="label !mb-0">O que ele pode usar no cadastro</div>
+    <p class="text-xs text-slate-500">Marque para limitar. Nada marcado = tudo liberado.</p></div>
+
+  <div>
+    <div class="text-xs font-bold text-slate-600 uppercase mb-1">Cidades (origem/destino)</div>
+    @forelse($cidades as $c)
+      <label class="inline-flex items-center gap-1.5 mr-3 mb-1 text-sm"><input type="checkbox" name="loc_permitidas[]" value="{{ $c }}" class="w-4 h-4 rounded" @checked(in_array($c,$cidadesSel))> {{ $c }}</label>
+    @empty <span class="text-xs text-slate-400">Cadastre linhas para ter cidades.</span> @endforelse
+  </div>
+
+  <div>
+    <div class="text-xs font-bold text-slate-600 uppercase mb-1">Setores</div>
+    @forelse($setores as $s)
+      <label class="inline-flex items-center gap-1.5 mr-3 mb-1 text-sm"><input type="checkbox" name="setores_permitidos[]" value="{{ $s }}" class="w-4 h-4 rounded" @checked(in_array($s,$setoresSel))> {{ $s }}</label>
+    @empty <span class="text-xs text-slate-400">Nenhum setor.</span> @endforelse
+  </div>
+
+  <div>
+    <div class="text-xs font-bold text-slate-600 uppercase mb-1">Transportes</div>
+    @forelse($embarcacoes as $b)
+      <label class="inline-flex items-center gap-1.5 mr-3 mb-1 text-sm"><input type="checkbox" name="transportes_permitidos[]" value="{{ $b->id }}" class="w-4 h-4 rounded" @checked(in_array((string)$b->id,$transpSel))> {{ $b->nome }}</label>
+    @empty <span class="text-xs text-slate-400">Nenhum transporte.</span> @endforelse
+  </div>
+</div>
+
 <div class="flex gap-2"><a href="{{ route('admin.usuarios.index') }}" class="btn btn-ghost flex-1">Cancelar</a><button class="btn btn-accent flex-1">Salvar</button></div>
 </form>
 @endsection

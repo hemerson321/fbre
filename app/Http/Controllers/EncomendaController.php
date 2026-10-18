@@ -96,13 +96,31 @@ class EncomendaController extends Controller
     // ------------------------------------------------------------------
     public function create()
     {
+        $u = auth()->user();
+        $cidadesPerm = $u->cidadesPermitidas();
+        $setoresPerm = $u->setoresPermitidos();
+        $transpPerm = $u->transportesPermitidos();
+
+        $embarcacoes = Embarcacao::where('ativo', true)->orderBy('nome')->get();
+        if ($transpPerm) $embarcacoes = $embarcacoes->whereIn('id', $transpPerm)->values();
+
+        $setores = Setor::orderBy('nome')->pluck('nome');
+        if ($setoresPerm) $setores = $setores->intersect($setoresPerm)->values();
+
+        $localidades = Rota::todasLocalidades();
+        if ($cidadesPerm) $localidades = $localidades->intersect($cidadesPerm)->values();
+
         return view('encomendas.create', [
-            'localidades' => Rota::todasLocalidades(),
-            'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
+            'localidades' => $localidades,
+            'embarcacoes' => $embarcacoes,
             'produtos' => Produto::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'valor_padrao']),
-            'setores' => Setor::orderBy('nome')->pluck('nome'),
+            'setores' => $setores,
             'rotas' => Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect(),
             'ultimaOrigem' => session('ultima_origem', Tenant::empresa()->cidade),
+            'cidadesPerm' => $cidadesPerm,
+            'embarcacaoPrincipal' => $u->embarcacao_principal_id,
+            'restringeCidade' => ! empty($cidadesPerm),
+            'restringeSetor' => ! empty($setoresPerm),
         ]);
     }
 

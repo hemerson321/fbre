@@ -28,10 +28,18 @@ class User extends Authenticatable
             'perm_relatorio' => 'boolean',
             'perm_imprimir' => 'boolean',
             'ativo' => 'boolean',
+            'loc_permitidas' => 'array',
+            'setores_permitidos' => 'array',
+            'transportes_permitidos' => 'array',
         ];
     }
 
     public function empresa(): BelongsTo { return $this->belongsTo(Empresa::class); }
+
+    // ---- escopo do operador no cadastro (vazio = tudo liberado) ----
+    public function cidadesPermitidas(): array    { return array_values($this->loc_permitidas ?? []); }
+    public function setoresPermitidos(): array    { return array_values($this->setores_permitidos ?? []); }
+    public function transportesPermitidos(): array { return array_map('intval', $this->transportes_permitidos ?? []); }
 
     public function podeCadastrar(): bool { return $this->admin || $this->perm_cadastra; }
     public function podeBaixar(): bool    { return $this->admin || $this->perm_baixa; }

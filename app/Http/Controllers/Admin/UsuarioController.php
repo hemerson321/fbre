@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Embarcacao;
+use App\Models\Rota;
 use App\Models\Setor;
 use App\Models\User;
 use App\Support\Tenant;
@@ -24,9 +26,19 @@ class UsuarioController extends Controller
         ]);
     }
 
+    protected function dadosForm(User $u): array
+    {
+        return [
+            'u' => $u,
+            'setores' => Setor::orderBy('nome')->pluck('nome'),
+            'cidades' => Rota::todasLocalidades(),
+            'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
+        ];
+    }
+
     public function create()
     {
-        return view('admin.usuario-form', ['u' => new User, 'setores' => Setor::orderBy('nome')->pluck('nome')]);
+        return view('admin.usuario-form', $this->dadosForm(new User));
     }
 
     public function store(Request $request)
@@ -40,7 +52,7 @@ class UsuarioController extends Controller
     public function edit(User $usuario)
     {
         abort_unless($usuario->empresa_id === Tenant::id(), 404);
-        return view('admin.usuario-form', ['u' => $usuario, 'setores' => Setor::orderBy('nome')->pluck('nome')]);
+        return view('admin.usuario-form', $this->dadosForm($usuario));
     }
 
     public function update(Request $request, User $usuario)
@@ -76,10 +88,22 @@ class UsuarioController extends Controller
             'perm_relatorio' => 'nullable|boolean',
             'perm_imprimir' => 'nullable|boolean',
             'ativo' => 'nullable|boolean',
+            'loc_permitidas' => 'nullable|array',
+            'loc_permitidas.*' => 'string|max:80',
+            'setores_permitidos' => 'nullable|array',
+            'setores_permitidos.*' => 'string|max:60',
+            'transportes_permitidos' => 'nullable|array',
+            'transportes_permitidos.*' => 'integer',
+            'embarcacao_principal_id' => 'nullable|integer',
         ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
         foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'perm_filtro', 'perm_relatorio', 'perm_imprimir', 'ativo'] as $b) {
             $data[$b] = $request->boolean($b);
         }
+        // listas vazias viram null (= tudo liberado)
+        foreach (['loc_permitidas', 'setores_permitidos', 'transportes_permitidos'] as $lista) {
+            $data[$lista] = ! empty($data[$lista]) ? array_values($data[$lista]) : null;
+        }
+        $data['embarcacao_principal_id'] = $data['embarcacao_principal_id'] ?? null;
         if (! $u) $data['ativo'] = true;
         return $data;
     }
