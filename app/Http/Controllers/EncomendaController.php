@@ -93,6 +93,24 @@ class EncomendaController extends Controller
     public function create()
     {
         $u = auth()->user();
+
+        // pré-cadastro (cliente preencheu pelo QR) para pré-preencher o formulário
+        $pre = [];
+        if ($preId = request('pre')) {
+            if ($p = \App\Models\PreCadastro::where('status', 'pendente')->find($preId)) {
+                $pre = [
+                    'id' => $p->id, 'codigo' => $p->codigo, 'remetente' => $p->remetente_nome,
+                    'origem' => $p->origem, 'destino' => $p->destino,
+                    'remetente_nome' => $p->remetente_nome, 'remetente_telefone' => $p->remetente_telefone,
+                    'destinatario_nome' => $p->destinatario_nome, 'destinatario_telefone' => $p->destinatario_telefone,
+                    'observacao' => $p->observacao,
+                    'itens' => collect($p->itens ?? [])->map(fn ($i) => [
+                        'id' => uniqid(), 'descricao' => $i['descricao'] ?? '', 'quantidade' => $i['quantidade'] ?? 1, 'valor' => 0, 'obs' => '',
+                    ])->values(),
+                ];
+            }
+        }
+
         $cidadesPerm = $u->cidadesPermitidas();
         $setoresPerm = $u->setoresPermitidos();
         $transpPerm = $u->transportesPermitidos();
@@ -130,6 +148,7 @@ class EncomendaController extends Controller
             'embarcacaoPrincipal' => session('ultima_embarcacao') ?: $u->embarcacao_principal_id,
             'restringeSetor' => ! empty($setoresPerm),
             'podeRetroativo' => $u->podeRetroativo(),
+            'pre' => $pre,
         ]);
     }
 
@@ -143,6 +162,7 @@ class EncomendaController extends Controller
             'viagem_id' => 'nullable|integer',
             'viagem_data' => 'nullable|date',
             'lancamento_em' => 'nullable|date',
+            'pre_id' => 'nullable|integer',
             'remetente_nome' => 'required|string|max:120',
             'remetente_telefone' => 'nullable|string|max:30',
             'remetente_documento' => 'nullable|string|max:20',
@@ -172,6 +192,11 @@ class EncomendaController extends Controller
         }
 
         $encomenda = app(\App\Services\EncomendaService::class)->criar($data, auth()->id(), $request->input('uuid'));
+
+        if (! empty($data['pre_id'])) {
+            \App\Models\PreCadastro::where('status', 'pendente')->where('id', $data['pre_id'])
+                ->update(['status' => 'finalizado', 'encomenda_id' => $encomenda->id]);
+        }
 
         session(['ultima_origem' => $data['origem']]);
 

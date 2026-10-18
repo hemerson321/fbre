@@ -60,6 +60,7 @@ class SyncController extends Controller
             'viagem_id' => 'nullable|integer',
             'viagem_data' => 'nullable|date',
             'lancamento_em' => 'nullable|date',
+            'pre_id' => 'nullable|integer',
             'remetente_nome' => 'required|string|max:120',
             'remetente_telefone' => 'nullable|string|max:30',
             'remetente_documento' => 'nullable|string|max:20',
@@ -92,6 +93,12 @@ class SyncController extends Controller
         } catch (\Throwable $e) {
             report($e);
             return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
+        }
+
+        // pré-cadastro atendido → finalizado
+        if (! empty($data['pre_id'])) {
+            \App\Models\PreCadastro::where('status', 'pendente')->where('id', $data['pre_id'])
+                ->update(['status' => 'finalizado', 'encomenda_id' => $enc->id]);
         }
 
         // lembra os últimos escolhidos p/ já virem preenchidos no próximo cadastro

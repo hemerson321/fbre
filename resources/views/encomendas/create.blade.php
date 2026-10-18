@@ -58,6 +58,12 @@
   <a href="{{ route('encomendas.index') }}" class="text-sm text-slate-500 hover:underline">← voltar</a>
 </div>
 
+@if(!empty($pre))
+<div class="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2 text-sm flex items-center gap-2">
+  <span class="text-lg">🪧</span> Atendendo pré-cadastro <b class="tracking-widest">{{ $pre['codigo'] }}</b> — {{ $pre['remetente'] }}. Confira, ajuste os valores e finalize.
+</div>
+@endif
+
 <div class="grid gap-2 lg:grid-cols-12 items-start">
 
   {{-- ===== COLUNA 1 ===== --}}
@@ -83,6 +89,7 @@
 
         <input type="hidden" name="rota_id" :value="rotaId">
         <input type="hidden" name="viagem_data" :value="viagemData">
+        <input type="hidden" name="pre_id" value="{{ $pre['id'] ?? '' }}">
 
         {{-- Transporte / Setor --}}
         <div class="grid grid-cols-2 gap-2">
@@ -107,7 +114,7 @@
       <div class="sec-h"><span class="n">2</span><span class="t">Remetente e destinatário</span></div>
       <div class="sec-b">
         @foreach(['remetente'=>['Remetente','Quem está enviando'],'destinatario'=>['Destinatário','Quem vai receber']] as $k=>[$lbl,$dica])
-        <div class="pessoa" x-data="pessoa()">
+        <div class="pessoa" x-data="pessoa(@js(old($k.'_nome', $pre[$k.'_nome'] ?? '')), @js(old($k.'_telefone', $pre[$k.'_telefone'] ?? '')))">
           <div class="relative">
             <label class="lbl">{{ $lbl }} <span class="normal-case font-normal text-slate-400 text-[10px]">· {{ $dica }}</span></label>
             <input name="{{ $k }}_nome" class="field" required value="{{ old($k.'_nome') }}" autocomplete="off"
@@ -186,7 +193,7 @@
           </div>
         </div>
       </div>
-      <input name="observacao" class="field" placeholder="Observação geral da encomenda (opcional)" value="{{ old('observacao') }}">
+      <input name="observacao" class="field" placeholder="Observação geral da encomenda (opcional)" value="{{ old('observacao', $pre['observacao'] ?? '') }}">
     </div>
   </section>
 
@@ -257,14 +264,15 @@ function novaEncomenda(){
     salvando:false, volumes:1, volumesManual:false, forma:'avista', imprimir:'navegador',
     rotaId:'', linhaNome:'', paradasInfo: [],
     cidades: @js($cidades), linhas: @js($linhas), podeRetroativo: @js($podeRetroativo),
-    origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino', '')),
+    origemSel: @js(old('origem', ($pre['origem'] ?? '') ?: $ultimaOrigem)), destinoSel: @js(old('destino', $pre['destino'] ?? '')),
     lancamentoEm: @js(old('lancamento_em', now()->toDateString())),
     catalogo: @js($catalogo), buscaProduto:'', buscaAberta:false,
     viagemData:'', viagemDataPick:'', viagemLabel:'', viagemDia:null, viagemHora:'', minData:'', maxData:'',
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
-    itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
+    itens: @js($pre['itens'] ?? []), desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
     init(){
+      this.recalcVolumes();
       try { const v = localStorage.getItem('fbre_imprimir'); if (v) this.imprimir = v; } catch(e){}
       this.$watch('imprimir', v => { try { localStorage.setItem('fbre_imprimir', v); } catch(e){} });
       // origem nunca fica vazia: usa a última guardada (ou a 1ª cidade)
@@ -332,7 +340,7 @@ function novaEncomenda(){
       this.salvando = true;
       const fd = new FormData(form);
       const dados = {
-        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, lancamento_em: this.lancamentoEm || null, setor: fd.get('setor'),
+        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, lancamento_em: this.lancamentoEm || null, pre_id: fd.get('pre_id') || null, setor: fd.get('setor'),
         remetente_nome: fd.get('remetente_nome'), remetente_telefone: fd.get('remetente_telefone'), remetente_documento: fd.get('remetente_documento'),
         destinatario_nome: fd.get('destinatario_nome'), destinatario_telefone: fd.get('destinatario_telefone'), destinatario_documento: fd.get('destinatario_documento'),
         volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0,
@@ -357,9 +365,9 @@ function novaEncomenda(){
     },
   }
 }
-function pessoa(){
+function pessoa(nome='', telefone=''){
   return {
-    nome:'', telefone:'', documento:'', lista:[], aberto:false,
+    nome:nome, telefone:telefone, documento:'', lista:[], aberto:false,
     async buscar(){ if(this.nome.length<2){this.lista=[];return;}
       const r=await fetch(`{{ route('pessoas.buscar') }}?q=${encodeURIComponent(this.nome)}`); this.lista=await r.json(); this.aberto=true; },
     escolher(p){ this.nome=p.nome; this.telefone=p.telefone||''; this.documento=p.documento||''; this.aberto=false; this.lista=[]; }

@@ -11,7 +11,14 @@ use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\ViagemController;
 use App\Http\Controllers\Admin\RotaController;
 use App\Http\Controllers\SyncController;
+use App\Http\Controllers\PreCadastroController;
+use App\Http\Controllers\PreCadastroPublicController;
 use Illuminate\Support\Facades\Route;
+
+// ---------------- Pré-cadastro público (cliente via QR, sem login) ----------------
+Route::get('/pre/{slug}', [PreCadastroPublicController::class, 'form'])->where('slug', '[a-z0-9-]+')->name('pre.form');
+Route::post('/pre/{slug}', [PreCadastroPublicController::class, 'store'])->where('slug', '[a-z0-9-]+')->name('pre.store');
+Route::get('/pre/{slug}/ok/{codigo}', [PreCadastroPublicController::class, 'ok'])->where('slug', '[a-z0-9-]+')->name('pre.ok');
 
 // ---------------- Autenticação ----------------
 Route::middleware('guest')->group(function () {
@@ -33,6 +40,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/encomendas/{encomenda}/entregar', [EncomendaController::class, 'entregar'])->name('encomendas.entregar')->middleware('perm:baixa');
     Route::post('/encomendas/{encomenda}/cancelar', [EncomendaController::class, 'cancelar'])->name('encomendas.cancelar')->middleware('perm:admin');
     Route::get('/pessoas/buscar', [EncomendaController::class, 'buscarPessoa'])->name('pessoas.buscar');
+
+    // ---------------- Pré-cadastros (operador) ----------------
+    Route::middleware('perm:cadastra')->group(function () {
+        Route::get('/pre-cadastros', [PreCadastroController::class, 'index'])->name('pre.index');
+        Route::get('/pre-cadastros/qr', [PreCadastroController::class, 'qr'])->name('pre.qr');
+        Route::post('/pre-cadastros/{pre}/cancelar', [PreCadastroController::class, 'cancelar'])->name('pre.cancelar');
+    });
 
     // ---------------- Impressão ----------------
     Route::middleware('perm:imprimir')->group(function () {

@@ -61,6 +61,7 @@ tailwind.config = { theme: { extend: {
   $g = [];
   if ($u->podeCadastrar()) $g[] = ['r'=>route('encomendas.create'), 'l'=>'Nova encomenda', 'i'=>'➕'];
   if ($u->podeFiltrar())   $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
+  if ($u->podeCadastrar()) $g[] = ['r'=>route('pre.index'), 'l'=>'Pré-cadastros', 'i'=>'🪧', 'b'=>(\App\Models\PreCadastro::where('status','pendente')->count() ?: null)];
   if ($g) $grupos['Encomendas'] = $g;
   $g = [];
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰'];
@@ -113,6 +114,7 @@ tailwind.config = { theme: { extend: {
                       {{ $ativo($it['r']) ? 'text-white shadow-sm' : 'hover:bg-slate-100' }}"
                @if($ativo($it['r'])) style="background: var(--cor2)" @endif>
               <span class="text-sm">{{ $it['i'] }}</span>{{ $it['l'] }}
+              @if(!empty($it['b']))<span class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $it['b'] }}</span>@endif
             </a>
           @endforeach
         </div>
@@ -134,7 +136,8 @@ tailwind.config = { theme: { extend: {
         <div class="px-3 pb-1 text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{{ $titulo }}</div>
         @foreach($itens as $it)
           <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo($it['r']) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
-            <span class="text-lg w-6 text-center">{{ $it['i'] }}</span>{{ $it['l'] }}</a>
+            <span class="text-lg w-6 text-center">{{ $it['i'] }}</span>{{ $it['l'] }}
+            @if(!empty($it['b']))<span class="ml-auto min-w-[20px] text-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5">{{ $it['b'] }}</span>@endif</a>
         @endforeach
       </div>
     @endforeach
