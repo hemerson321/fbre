@@ -33,17 +33,9 @@ class DatabaseSeeder extends Seeder
             'ativo' => true,
         ]);
 
-        User::firstOrCreate(['login' => 'hemerson'], [
-            'email' => 'hemerson321@gmail.com',
-            'empresa_id' => $geratec->id,
-            'name' => 'Hemerson',
-            'password' => env('SEED_ADMIN_PASSWORD', 'mudar123'),
-            'super_admin' => true,
-            'admin' => true,
-            'perm_cadastra' => true,
-            'perm_baixa' => true,
-            'perm_caixa' => true,
-            'setor' => 'Escritório',
+        $this->usuario('hemerson321@gmail.com', [
+            'login' => 'hemerson', 'empresa_id' => $geratec->id, 'name' => 'Hemerson',
+            'super_admin' => true, 'admin' => true, 'perm_cadastra' => true, 'perm_baixa' => true, 'perm_caixa' => true, 'setor' => 'Escritório',
         ]);
 
         $this->dadosBase($geratec);
@@ -64,18 +56,23 @@ class DatabaseSeeder extends Seeder
             'ativo' => true,
         ]);
 
-        User::firstOrCreate(['login' => 'oliveira'], [
-            'empresa_id' => $oliveira->id,
-            'name' => 'Administrador Oliveira',
-            'password' => env('SEED_ADMIN_PASSWORD', 'mudar123'),
-            'admin' => true,
-            'perm_cadastra' => true,
-            'perm_baixa' => true,
-            'perm_caixa' => true,
-            'setor' => 'Escritório',
+        $this->usuario('admin@oliveira.fbre', [
+            'login' => 'oliveira', 'empresa_id' => $oliveira->id, 'name' => 'Administrador Oliveira',
+            'admin' => true, 'perm_cadastra' => true, 'perm_baixa' => true, 'perm_caixa' => true, 'setor' => 'Escritório',
         ]);
 
         $this->dadosBase($oliveira);
+    }
+
+    /** Cria o usuário se não existir; se existir, só garante login/permissões (não mexe na senha). */
+    protected function usuario(string $email, array $dados): void
+    {
+        $u = User::where('email', $email)->orWhere('login', $dados['login'])->first();
+        if ($u) {
+            $u->fill($dados)->save();
+        } else {
+            User::create($dados + ['email' => $email, 'password' => env('SEED_ADMIN_PASSWORD', 'mudar123')]);
+        }
     }
 
     protected function dadosBase(Empresa $empresa): void

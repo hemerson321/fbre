@@ -16,7 +16,7 @@ done
 
 php artisan storage:link >/dev/null 2>&1 || true
 php artisan migrate --force
-if [ "$SEED_ON_BOOT" = "1" ]; then php artisan db:seed --force; fi
+if [ "$SEED_ON_BOOT" = "1" ]; then php artisan db:seed --force || echo "AVISO: seed falhou (ignorado)"; fi
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 chown -R www-data:www-data storage bootstrap/cache
 
