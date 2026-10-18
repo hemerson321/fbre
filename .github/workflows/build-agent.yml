@@ -1,0 +1,17 @@
+﻿name: Build FBRE Print Agent (.exe)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['print-agent/**', '.github/workflows/build-agent.yml']
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install pyinstaller pystray pillow pywin32
+      - run: pyinstaller --onefile --noconsole --name FBREPrintAgent print-agent/fbre_print_agent.py
+      - uses: actions/upload-artifact@v4
+        with: { name: FBREPrintAgent, path: dist/FBREPrintAgent.exe }
