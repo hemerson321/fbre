@@ -70,12 +70,12 @@
           </div>
         </div>
 
-        {{-- Data da viagem: identificada pela origem/destino --}}
-        <div x-show="viagemDatas.length" x-cloak>
+        {{-- Data da viagem: calendário; encaixa no dia da linha pela origem --}}
+        <div x-show="viagemData" x-cloak>
           <label class="lbl">Data da viagem <span x-show="linhaNome" class="normal-case text-slate-400 font-normal" x-text="'· '+linhaNome"></span></label>
-          <select name="viagem_data" class="field font-semibold" x-model="viagemData">
-            <template x-for="d in viagemDatas" :key="d.v"><option :value="d.v" x-text="d.label"></option></template>
-          </select>
+          <input type="date" class="field font-semibold" x-model="viagemDataPick" @change="escolherData()" :min="minData" :max="maxData">
+          <p class="text-[11px] mt-0.5" :class="viagemData<hojeISO ? 'text-amber-600' : 'text-slate-500'" x-text="viagemLabel"></p>
+          <input type="hidden" name="viagem_data" :value="viagemData">
         </div>
         <input type="hidden" name="rota_id" :value="rotaId">
 
@@ -94,11 +94,13 @@
           </div>
         </div>
 
+        @if($podeRetroativo)
         <div>
           <label class="lbl">Data do lançamento</label>
           <input type="date" name="lancamento_em" class="field" x-model="lancamentoEm" :max="hojeISO">
           <p class="text-[11px] text-amber-600 mt-0.5" x-show="lancamentoEm && lancamentoEm < hojeISO">Lançando em data anterior — entra no caixa/relatório nesse dia.</p>
         </div>
+        @endif
         <datalist id="setores">@foreach($setores as $s)<option value="{{ $s }}">@endforeach</datalist>
       </div>
     </section>
@@ -240,10 +242,10 @@ function novaEncomenda(){
   return {
     salvando:false, volumes:1, forma:'avista', imprimir:'navegador',
     rotaId:'', linhaNome:'', paradasInfo: [],
-    cidades: @js($cidades), linhas: @js($linhas),
+    cidades: @js($cidades), linhas: @js($linhas), podeRetroativo: @js($podeRetroativo),
     origemSel: @js(old('origem', $ultimaOrigem)), destinoSel: @js(old('destino', '')),
     lancamentoEm: @js(old('lancamento_em', now()->toDateString())),
-    viagemData:'', viagemDatas:[], viagemHora:'',
+    viagemData:'', viagemDataPick:'', viagemLabel:'', viagemDia:null, viagemHora:'', minData:'', maxData:'',
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens:[], desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
@@ -253,39 +255,36 @@ function novaEncomenda(){
     isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
     fmtBr(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); },
     get hojeISO(){ return this.isoLocal(new Date()); },
-    gerarDatas(dia,hora,passadas,futuras){
-      const out=[]; const hoje=this.isoLocal(new Date());
-      const base=new Date(); base.setHours(0,0,0,0);
-      while(base.getDay()!==dia) base.setDate(base.getDate()+1);     // próxima ocorrência >= hoje
-      const d=new Date(base); d.setDate(d.getDate()-7*passadas);     // começa nas semanas anteriores
-      for(let i=0;i<passadas+futuras;i++){
-        const v=this.isoLocal(d);
-        const tag = v<hoje ? ' · anterior' : (v===hoje ? ' · hoje' : '');
-        out.push({v, label:this.diasCurto[dia]+' '+this.fmtBr(d)+(hora?' '+hora:'')+tag});
-        d.setDate(d.getDate()+7);
-      }
-      return out;
-    },
-    // datas da viagem a partir da ORIGEM escolhida (dia/hora em que o barco sai de lá); lista passadas + futuras
+    // próxima ocorrência (>= hoje) do dia-da-semana
+    proximaViagem(dia){ const d=new Date(); d.setHours(0,0,0,0); while(d.getDay()!==dia) d.setDate(d.getDate()+1); return this.isoLocal(d); },
+    // encaixa uma data escolhida no dia-da-semana da linha (volta até achar o dia da partida)
+    snap(iso,dia){ const [y,m,day]=iso.split('-').map(Number); let d=new Date(y,m-1,day); d.setHours(0,0,0,0); for(let i=0;i<7 && d.getDay()!==dia;i++) d.setDate(d.getDate()-1); return this.isoLocal(d); },
+    rotulo(iso){ const [y,m,day]=iso.split('-').map(Number); const d=new Date(y,m-1,day); const tag = iso<this.hojeISO?' · anterior':(iso===this.hojeISO?' · hoje':''); return this.diasCurto[d.getDay()]+' '+this.fmtBr(d)+(this.viagemHora?' '+this.viagemHora:'')+tag; },
+    // monta a viagem a partir da ORIGEM (dia/hora em que o barco sai de lá)
     recalcularDatas(){
-      if (!this.rotaId || !this.paradasInfo.length) { this.viagemDatas=[]; this.viagemData=''; return; }
       const p = this.paradasInfo.find(x=>x.n===this.origemSel) || this.paradasInfo[0];
-      this.viagemHora = p.h || '';
-      if (p.d===null||p.d===undefined||p.d==='') { this.viagemDatas=[]; this.viagemData=''; return; }
-      this.viagemDatas = this.gerarDatas(Number(p.d), this.viagemHora, 8, 20);   // 8 semanas atrás + 20 à frente
-      // padrão: viagem de hoje se for dia de viagem, senão a PRÓXIMA (nunca cai numa passada)
-      const hoje = this.isoLocal(new Date());
-      const alvo = (this.viagemDatas.find(d=>d.v>=hoje) || this.viagemDatas[this.viagemDatas.length-1]).v;
-      this.$nextTick(()=>{ this.viagemData = alvo; });   // espera as opções renderizarem antes de selecionar
+      if (!p || p.d===null||p.d===undefined||p.d==='') { this.viagemDia=null; this.viagemData=''; this.viagemDataPick=''; this.viagemLabel=''; return; }
+      this.viagemDia = Number(p.d); this.viagemHora = p.h || '';
+      const prox = this.proximaViagem(this.viagemDia);
+      const max=new Date(); max.setFullYear(max.getFullYear()+3); this.maxData=this.isoLocal(max);
+      this.minData = this.podeRetroativo ? '2023-01-01' : prox;   // sem retroativo não deixa escolher passado
+      this.viagemData = prox; this.viagemDataPick = prox;
+      this.$nextTick(()=>{ this.viagemLabel = this.rotulo(this.viagemData); });
+    },
+    escolherData(){
+      if (this.viagemDia===null || !this.viagemDataPick) return;
+      let iso = this.snap(this.viagemDataPick, this.viagemDia);
+      if (!this.podeRetroativo && iso < this.hojeISO) iso = this.proximaViagem(this.viagemDia);
+      this.viagemData = iso; this.viagemDataPick = iso; this.viagemLabel = this.rotulo(iso);
     },
     // acha a linha a partir da origem (e destino, se escolhido) e monta as datas
     resolverLinha(){
       this.rotaId=''; this.linhaNome=''; this.paradasInfo=[];
-      if (!this.origemSel) { this.viagemDatas=[]; this.viagemData=''; return; }
+      if (!this.origemSel) { this.viagemDia=null; this.viagemData=''; this.viagemDataPick=''; this.viagemLabel=''; return; }
       const tem=(L,c)=>L.paradas.some(p=>p.n===c);
       const linha = this.linhas.find(L=>tem(L,this.origemSel) && (!this.destinoSel || tem(L,this.destinoSel)))
                  || this.linhas.find(L=>tem(L,this.origemSel));
-      if (!linha) { this.viagemDatas=[]; this.viagemData=''; return; }  // cidade fora de linha = avulsa
+      if (!linha) { this.viagemDia=null; this.viagemData=''; this.viagemDataPick=''; this.viagemLabel=''; return; }  // cidade fora de linha = avulsa
       this.rotaId=String(linha.id); this.linhaNome=linha.nome; this.paradasInfo=linha.paradas;
       this.recalcularDatas();
     },

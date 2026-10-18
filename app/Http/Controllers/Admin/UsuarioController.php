@@ -80,6 +80,7 @@ class UsuarioController extends Controller
             'login' => ['required', 'string', 'min:3', 'max:40', 'regex:/^[a-z0-9._-]+$/', Rule::unique('users', 'login')->ignore($u?->id)],
             'password' => [$u ? 'nullable' : 'required', 'string', 'min:6'],
             'setor' => 'nullable|string|max:60',
+            'papel' => 'nullable|in:operador_barco,agencia_externa,gerente',
             'admin' => 'nullable|boolean',
             'perm_cadastra' => 'nullable|boolean',
             'perm_baixa' => 'nullable|boolean',
@@ -87,6 +88,7 @@ class UsuarioController extends Controller
             'perm_filtro' => 'nullable|boolean',
             'perm_relatorio' => 'nullable|boolean',
             'perm_imprimir' => 'nullable|boolean',
+            'perm_retroativo' => 'nullable|boolean',
             'ativo' => 'nullable|boolean',
             'loc_permitidas' => 'nullable|array',
             'loc_permitidas.*' => 'string|max:80',
@@ -96,7 +98,7 @@ class UsuarioController extends Controller
             'transportes_permitidos.*' => 'integer',
             'embarcacao_principal_id' => 'nullable|integer',
         ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
-        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'perm_filtro', 'perm_relatorio', 'perm_imprimir', 'ativo'] as $b) {
+        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'perm_filtro', 'perm_relatorio', 'perm_imprimir', 'perm_retroativo', 'ativo'] as $b) {
             $data[$b] = $request->boolean($b);
         }
         // listas vazias viram null (= tudo liberado)

@@ -81,6 +81,12 @@ class SyncController extends Controller
             'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
         ]);
 
+        // retroativo só para quem tem permissão
+        if (! auth()->user()->podeRetroativo()) {
+            unset($data['lancamento_em']);
+            if (! empty($data['viagem_data']) && $data['viagem_data'] < now()->toDateString()) unset($data['viagem_data']);
+        }
+
         try {
             $enc = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
         } catch (\Throwable $e) {

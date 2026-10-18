@@ -7,6 +7,10 @@
 <div><label class="label">Nome completo</label><input name="name" class="input" required value="{{ old('name',$u->name) }}" placeholder="Ex.: Maria da Silva"></div>
 <div><label class="label">Login (usuário para entrar)</label><input name="login" class="input" required value="{{ old('login',$u->login) }}" placeholder="Ex.: maria" autocapitalize="none" pattern="[a-z0-9._-]+"></div>
 <div><label class="label">Senha {{ $u->exists?'(deixe vazio para manter)':'' }}</label><input name="password" type="password" class="input" {{ $u->exists?'':'required' }} autocomplete="new-password"></div>
+<div><label class="label">Tipo de usuário</label>
+  <select name="papel" class="input"><option value="">—</option>
+    @foreach(\App\Models\User::PAPEIS as $k=>$l)<option value="{{ $k }}" @selected(old('papel',$u->papel)==$k)>{{ $l }}</option>@endforeach
+  </select></div>
 <div class="grid grid-cols-2 gap-2">
   <div><label class="label">Setor principal</label><input name="setor" list="setores" class="input" value="{{ old('setor',$u->setor) }}" placeholder="padrão no cadastro"><datalist id="setores">@foreach($setores as $s)<option value="{{ $s }}">@endforeach</datalist></div>
   <div><label class="label">Barco principal</label>
@@ -24,6 +28,7 @@
     'perm_imprimir' => ['Reimprimir', 'Comprovantes e etiquetas de encomendas já salvas'],
     'perm_caixa'    => ['Ver caixa geral', 'Totais por operador e meio de pagamento de toda a empresa'],
     'perm_relatorio'=> ['Meu relatório', 'Relatório só do que o próprio usuário fez'],
+    'perm_retroativo'=> ['Lançar em datas retroativas', 'Cadastrar em dias anteriores (feito na mão e lançado depois). Gerente já tem.'],
   ]; @endphp
   @foreach($perms as $k=>[$l,$d])
     <label class="flex items-start gap-3 py-1.5 cursor-pointer">

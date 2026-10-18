@@ -31,8 +31,15 @@ class User extends Authenticatable
             'loc_permitidas' => 'array',
             'setores_permitidos' => 'array',
             'transportes_permitidos' => 'array',
+            'perm_retroativo' => 'boolean',
         ];
     }
+
+    public const PAPEIS = [
+        'operador_barco' => 'Operador do Barco',
+        'agencia_externa' => 'Agência Externa',
+        'gerente' => 'Gerente',
+    ];
 
     public function empresa(): BelongsTo { return $this->belongsTo(Empresa::class); }
 
@@ -40,6 +47,9 @@ class User extends Authenticatable
     public function cidadesPermitidas(): array    { return array_values($this->loc_permitidas ?? []); }
     public function setoresPermitidos(): array    { return array_values($this->setores_permitidos ?? []); }
     public function transportesPermitidos(): array { return array_map('intval', $this->transportes_permitidos ?? []); }
+    public function podeRetroativo(): bool        { return $this->admin || $this->gerente() || $this->perm_retroativo; }
+    public function gerente(): bool               { return $this->papel === 'gerente'; }
+    public function papelNome(): string           { return self::PAPEIS[$this->papel] ?? '—'; }
 
     public function podeCadastrar(): bool { return $this->admin || $this->perm_cadastra; }
     public function podeBaixar(): bool    { return $this->admin || $this->perm_baixa; }

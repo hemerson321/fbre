@@ -129,6 +129,7 @@ class EncomendaController extends Controller
             'ultimaOrigem' => session('ultima_origem', Tenant::empresa()->cidade),
             'embarcacaoPrincipal' => $u->embarcacao_principal_id,
             'restringeSetor' => ! empty($setoresPerm),
+            'podeRetroativo' => $u->podeRetroativo(),
         ]);
     }
 
@@ -164,6 +165,11 @@ class EncomendaController extends Controller
             'imprimir' => 'nullable|in:navegador,direto,nao',
             'uuid' => 'nullable|uuid',
         ]);
+
+        if (! auth()->user()->podeRetroativo()) {
+            unset($data['lancamento_em']);
+            if (! empty($data['viagem_data']) && $data['viagem_data'] < now()->toDateString()) unset($data['viagem_data']);
+        }
 
         $encomenda = app(\App\Services\EncomendaService::class)->criar($data, auth()->id(), $request->input('uuid'));
 
