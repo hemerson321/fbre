@@ -47,6 +47,26 @@
   <a href="{{ route('encomendas.index') }}" class="text-sm text-slate-500 hover:underline">← voltar</a>
 </div>
 
+{{-- faixa de datas (viagem + lançamento) — fora das colunas pra não empurrar o form --}}
+<div x-show="viagemData || {{ $podeRetroativo ? 'true' : 'false' }}" x-cloak class="card px-3 py-2 flex flex-wrap items-end gap-x-6 gap-y-2">
+  <div x-show="viagemData" x-cloak>
+    <label class="lbl">Data da viagem <span x-show="linhaNome" class="normal-case text-slate-400 font-normal" x-text="'· '+linhaNome"></span></label>
+    <div class="flex items-center gap-2">
+      <input type="date" class="field !min-h-0 py-2 w-44 font-semibold" x-model="viagemDataPick" @change="escolherData()" :min="minData" :max="maxData">
+      <span class="text-xs whitespace-nowrap" :class="viagemData<hojeISO ? 'text-amber-600' : 'text-slate-500'" x-text="viagemLabel"></span>
+    </div>
+  </div>
+  @if($podeRetroativo)
+  <div>
+    <label class="lbl">Data do lançamento</label>
+    <div class="flex items-center gap-2">
+      <input type="date" name="lancamento_em" class="field !min-h-0 py-2 w-44" x-model="lancamentoEm" :max="hojeISO">
+      <span class="text-[11px] text-amber-600 whitespace-nowrap" x-show="lancamentoEm && lancamentoEm < hojeISO">data anterior · entra no caixa nesse dia</span>
+    </div>
+  </div>
+  @endif
+</div>
+
 <div class="grid gap-2 lg:grid-cols-12 items-start">
 
   {{-- ===== COLUNA 1 ===== --}}
@@ -70,14 +90,8 @@
           </div>
         </div>
 
-        {{-- Data da viagem: calendário; encaixa no dia da linha pela origem --}}
-        <div x-show="viagemData" x-cloak>
-          <label class="lbl">Data da viagem <span x-show="linhaNome" class="normal-case text-slate-400 font-normal" x-text="'· '+linhaNome"></span></label>
-          <input type="date" class="field font-semibold" x-model="viagemDataPick" @change="escolherData()" :min="minData" :max="maxData">
-          <p class="text-[11px] mt-0.5" :class="viagemData<hojeISO ? 'text-amber-600' : 'text-slate-500'" x-text="viagemLabel"></p>
-          <input type="hidden" name="viagem_data" :value="viagemData">
-        </div>
         <input type="hidden" name="rota_id" :value="rotaId">
+        <input type="hidden" name="viagem_data" :value="viagemData">
 
         {{-- Transporte / Setor --}}
         <div class="grid grid-cols-2 gap-2">
@@ -94,13 +108,6 @@
           </div>
         </div>
 
-        @if($podeRetroativo)
-        <div>
-          <label class="lbl">Data do lançamento</label>
-          <input type="date" name="lancamento_em" class="field" x-model="lancamentoEm" :max="hojeISO">
-          <p class="text-[11px] text-amber-600 mt-0.5" x-show="lancamentoEm && lancamentoEm < hojeISO">Lançando em data anterior — entra no caixa/relatório nesse dia.</p>
-        </div>
-        @endif
         <datalist id="setores">@foreach($setores as $s)<option value="{{ $s }}">@endforeach</datalist>
       </div>
     </section>
