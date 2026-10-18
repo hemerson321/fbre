@@ -14,19 +14,20 @@ class RelatorioController extends Controller
     {
         [$inicio, $fim, $periodo] = CaixaController::periodo($request);
         $uid = auth()->id();
+        $todos = auth()->user()->relatorioTodos();   // vê de todos ou só o próprio
 
-        $cadastros = Encomenda::where('user_id', $uid)->whereBetween('created_at', [$inicio, $fim])
-            ->with('embarcacao')->orderByDesc('id')->get();
+        $cadastros = Encomenda::when(! $todos, fn ($q) => $q->where('user_id', $uid))
+            ->whereBetween('created_at', [$inicio, $fim])->with('embarcacao')->orderByDesc('id')->get();
 
-        $recebimentos = Pagamento::where('user_id', $uid)->where('estornado', false)
+        $recebimentos = Pagamento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('estornado', false)
             ->whereBetween('created_at', [$inicio, $fim])->with('encomenda')->orderByDesc('id')->get();
 
-        $entregas = Evento::where('user_id', $uid)->where('tipo', 'entrega')
+        $entregas = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')
             ->whereBetween('created_at', [$inicio, $fim])->with('encomenda')->orderByDesc('id')->get();
 
         $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('meio')->map->sum('valor');
 
-        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo'))
+        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos'))
             ->with(['meios' => Pagamento::MEIOS]);
     }
 }

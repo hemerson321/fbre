@@ -85,8 +85,10 @@ class UsuarioController extends Controller
             'perm_cadastra' => 'nullable|boolean',
             'perm_baixa' => 'nullable|boolean',
             'perm_caixa' => 'nullable|boolean',
+            'caixa_todos' => 'nullable|boolean',
             'perm_filtro' => 'nullable|boolean',
             'perm_relatorio' => 'nullable|boolean',
+            'relatorio_todos' => 'nullable|boolean',
             'perm_imprimir' => 'nullable|boolean',
             'perm_retroativo' => 'nullable|boolean',
             'ativo' => 'nullable|boolean',
@@ -98,7 +100,7 @@ class UsuarioController extends Controller
             'transportes_permitidos.*' => 'integer',
             'embarcacao_principal_id' => 'nullable|integer',
         ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
-        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'perm_filtro', 'perm_relatorio', 'perm_imprimir', 'perm_retroativo', 'ativo'] as $b) {
+        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'ativo'] as $b) {
             $data[$b] = $request->boolean($b);
         }
         // listas vazias viram null (= tudo liberado)

@@ -32,6 +32,8 @@ class User extends Authenticatable
             'setores_permitidos' => 'array',
             'transportes_permitidos' => 'array',
             'perm_retroativo' => 'boolean',
+            'caixa_todos' => 'boolean',
+            'relatorio_todos' => 'boolean',
         ];
     }
 
@@ -49,6 +51,8 @@ class User extends Authenticatable
     public function transportesPermitidos(): array { return array_map('intval', $this->transportes_permitidos ?? []); }
     public function podeRetroativo(): bool        { return $this->admin || $this->gerente() || $this->perm_retroativo; }
     public function gerente(): bool               { return $this->papel === 'gerente'; }
+    public function caixaTodos(): bool            { return $this->admin || $this->gerente() || $this->caixa_todos; }
+    public function relatorioTodos(): bool        { return $this->admin || $this->gerente() || $this->relatorio_todos; }
     public function papelNome(): string           { return self::PAPEIS[$this->papel] ?? '—'; }
 
     public function podeCadastrar(): bool { return $this->admin || $this->perm_cadastra; }

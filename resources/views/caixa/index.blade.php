@@ -2,13 +2,15 @@
 @section('titulo','Caixa')
 @section('conteudo')
 <div class="space-y-4">
-<div class="flex items-center justify-between"><h1 class="text-xl font-bold">Caixa</h1>
+<div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ $verTodos ? 'Caixa geral' : 'Meu caixa' }}</h1>
   <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Imprimir</button></div>
 
 <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
+  @if($verTodos)
   <div><label class="label">Operador</label>
     <select name="user_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
       @foreach($usuarios as $us)<option value="{{ $us->id }}" @selected($userId==$us->id)>{{ $us->name }}</option>@endforeach</select></div>
+  @endif
   @if($viagens->count())
   <div><label class="label">Viagem</label>
     <select name="viagem_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">— período —</option>

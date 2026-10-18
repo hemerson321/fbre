@@ -63,8 +63,8 @@ tailwind.config = { theme: { extend: {
   if ($u->podeFiltrar())   $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
   if ($g) $grupos['Encomendas'] = $g;
   $g = [];
-  if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>'Caixa geral', 'i'=>'💰'];
-  if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>'Meu relatório', 'i'=>'📋'];
+  if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰'];
+  if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
   if ($g) $grupos['Caixa'] = $g;
   if ($u->isAdmin() || $u->isSuper()) $grupos['Administração'] = [
       ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],

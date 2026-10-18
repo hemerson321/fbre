@@ -36,6 +36,14 @@
       <span><span class="font-semibold text-sm">{{ $l }}</span><br><span class="text-xs text-slate-500">{{ $d }}</span></span>
     </label>
   @endforeach
+  <label class="flex items-start gap-3 py-1.5 cursor-pointer">
+    <input type="checkbox" name="caixa_todos" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('caixa_todos', $u->caixa_todos))>
+    <span><span class="font-semibold text-sm">Caixa de todos os operadores</span><br><span class="text-xs text-slate-500">Desmarcado = vê só o caixa dele. (precisa de "Ver caixa geral")</span></span>
+  </label>
+  <label class="flex items-start gap-3 py-1.5 cursor-pointer">
+    <input type="checkbox" name="relatorio_todos" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('relatorio_todos', $u->relatorio_todos))>
+    <span><span class="font-semibold text-sm">Relatório de todos</span><br><span class="text-xs text-slate-500">Desmarcado = vê só o relatório dele.</span></span>
+  </label>
   <label class="flex items-start gap-3 py-2 mt-1 border-t cursor-pointer">
     <input type="checkbox" name="admin" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('admin', $u->admin))>
     <span><span class="font-semibold text-sm">Administrador da empresa</span><br><span class="text-xs text-slate-500">Tudo acima + usuários, barcos/locais/produtos e dados da empresa</span></span>

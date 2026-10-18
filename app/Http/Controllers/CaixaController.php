@@ -14,7 +14,9 @@ class CaixaController extends Controller
     public function index(Request $request)
     {
         [$inicio, $fim, $periodo] = $this->periodo($request);
-        $userId = $request->input('user_id');
+        // escopo: quem não vê "de todos" fica travado no próprio
+        $verTodos = auth()->user()->caixaTodos();
+        $userId = $verTodos ? $request->input('user_id') : auth()->id();
         $viagemId = $request->input('viagem_id');
         $viagens = \App\Support\Tenant::empresa()->temRecurso('viagens')
             ? Viagem::orderByDesc('data_partida')->limit(60)->get() : collect();
@@ -50,7 +52,7 @@ class CaixaController extends Controller
 
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
 
-        return view('caixa.index', compact('porMeio', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId'))
+        return view('caixa.index', compact('porMeio', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos'))
             ->with(['meios' => Pagamento::MEIOS, 'total' => $porMeio->sum('valor')]);
     }
 
