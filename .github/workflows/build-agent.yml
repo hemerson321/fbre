@@ -1,4 +1,4 @@
-﻿name: Build FBRE Print Agent (.exe)
+﻿name: Build Agente de Impressao (.exe)
 on:
   workflow_dispatch:
   push:
@@ -12,14 +12,14 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: pip install pyinstaller pystray pillow pywin32
-      - run: pyinstaller --onefile --noconsole --name FBREPrintAgent --distpath print-agent/dist --workpath build/w --specpath build print-agent/fbre_print_agent.py
+      - run: pyinstaller --onefile --noconsole --name agenteprint --distpath print-agent/dist --workpath build/w --specpath build print-agent/fbre_print_agent.py
       - name: Instalar Inno Setup
         run: choco install innosetup -y --no-progress
       - name: Gerar instalador
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" print-agent\fbre-agent.iss'
       - uses: actions/upload-artifact@v4
         with:
-          name: FBREPrintAgent-Instalador
+          name: agenteprint
           path: |
-            print-agent/installer/FBREPrintAgentSetup.exe
-            print-agent/dist/FBREPrintAgent.exe
+            print-agent/installer/agenteprint-setup.exe
+            print-agent/dist/agenteprint.exe
