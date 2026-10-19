@@ -19,7 +19,7 @@ import time
 import urllib.request
 import urllib.error
 
-APP = "FBRE Print Agent"
+APP = "GERATEC Agente de Impressão"
 # config/log numa pasta gravável (o instalador põe o .exe em Program Files, que é só leitura)
 DATA = os.path.join(os.environ.get("PROGRAMDATA", os.path.expanduser("~")), "FBRE")
 try:
@@ -216,7 +216,7 @@ def enviar(cfg_sec, dados: bytes):
             nome = win32print.GetDefaultPrinter()   # mesma impressora que o operador usa
         h = win32print.OpenPrinter(nome)
         try:
-            win32print.StartDocPrinter(h, 1, ("FBRE", None, "RAW"))
+            win32print.StartDocPrinter(h, 1, ("GERATEC Agente de Impressão", None, "RAW"))
             win32print.StartPagePrinter(h); win32print.WritePrinter(h, dados); win32print.EndPagePrinter(h)
             win32print.EndDocPrinter(h)
         finally:
@@ -229,10 +229,19 @@ def enviar(cfg_sec, dados: bytes):
 
 
 # ---------------------------------------------------------------- API
+# Contexto TLS que não depende do pacote de CAs embutido no .exe (que pode
+# estar vencido em máquinas antigas). O agente fala só com o servidor do
+# próprio cliente, autenticado por token, então não verificamos a cadeia.
+import ssl as _ssl
+_SSL_CTX = _ssl.create_default_context()
+_SSL_CTX.check_hostname = False
+_SSL_CTX.verify_mode = _ssl.CERT_NONE
+
+
 class Api:
     def __init__(self, servidor, token):
-        self.base = servidor.rstrip("/") + "/api/print"
-        self.token = token
+        self.base = (servidor or "").strip().rstrip("/") + "/api/print"
+        self.token = (token or "").strip()
 
     def _req(self, metodo, caminho, corpo=None):
         req = urllib.request.Request(self.base + caminho, method=metodo)
@@ -242,7 +251,7 @@ class Api:
         if corpo is not None:
             data = json.dumps(corpo).encode()
             req.add_header("Content-Type", "application/json")
-        with urllib.request.urlopen(req, data, timeout=15) as r:
+        with urllib.request.urlopen(req, data, timeout=15, context=_SSL_CTX) as r:
             return json.loads(r.read().decode())
 
     def ping(self):  return self._req("GET", "/ping")
@@ -257,7 +266,7 @@ def loop(parar: threading.Event):
     while not parar.is_set():
         cfg = carregar_config()
         token = (cfg["fbre"].get("token", "") or "").strip()
-        servidor = cfg["fbre"].get("servidor", "https://fbre.com.br")
+        servidor = (cfg["fbre"].get("servidor", "https://fbre.com.br") or "").strip()
         col = int(cfg["escpos"].get("colunas", 48))
         intervalo = float(cfg["fbre"].get("intervalo", 2))
         if "COLE_AQUI" in token or not token:
@@ -328,9 +337,9 @@ def janela_config():
     def val(c):
         return "padrao" if c.get() == PADRAO else c.get()
 
-    root = tk.Tk(); root.title("FBRE Print Agent — Configuração"); root.resizable(False, False)
+    root = tk.Tk(); root.title("GERATEC Agente de Impressão — Configuração"); root.resizable(False, False)
     frm = ttk.Frame(root, padding=16); frm.grid()
-    ttk.Label(frm, text="FBRE Print Agent", font=("Segoe UI", 15, "bold")).grid(column=0, row=0, columnspan=2, sticky="w")
+    ttk.Label(frm, text="GERATEC Agente de Impressão", font=("Segoe UI", 15, "bold")).grid(column=0, row=0, columnspan=2, sticky="w")
     ttk.Label(frm, text="Impressão direta de comprovantes e etiquetas.").grid(column=0, row=1, columnspan=2, sticky="w", pady=(0, 12))
 
     ttk.Label(frm, text="Token da estação:").grid(column=0, row=2, sticky="w", pady=4)
@@ -349,10 +358,10 @@ def janela_config():
 
     def salvar():
         if not e_tok.get().strip():
-            messagebox.showwarning("FBRE", "Cole o token da estação (gerado no sistema em Cadastros gerais → Estações).")
+            messagebox.showwarning("GERATEC Agente de Impressão", "Cole o token da estação (gerado no sistema em Cadastros gerais → Estações).")
             return
         salvar_config(coletar())
-        messagebox.showinfo("FBRE", "Configuração salva! O agente já passa a usar essas impressoras.")
+        messagebox.showinfo("GERATEC Agente de Impressão", "Configuração salva! O agente já passa a usar essas impressoras.")
         root.destroy()
 
     def testar(qual):
@@ -360,14 +369,14 @@ def janela_config():
             salvar_config(coletar())
             cfg2 = configparser.ConfigParser(); cfg2.read(INI, encoding="utf-8")
             if qual == "etiqueta":
-                p = EscPos(48); p.txt("TESTE ETIQUETA", "c", True, 2); p.txt("FBRE", "c"); p.feed(2); p.cortar()
+                p = EscPos(48); p.txt("TESTE ETIQUETA", "c", True, 2); p.txt("GERATEC", "c"); p.feed(2); p.cortar()
                 enviar(cfg2["impressora_etiqueta"], p.bytes())
             else:
-                p = EscPos(48); p.txt("TESTE COMPROVANTE", "c", True, 2); p.txt("FBRE Print Agent OK", "c"); p.feed(3); p.cortar()
+                p = EscPos(48); p.txt("TESTE COMPROVANTE", "c", True, 2); p.txt("GERATEC Agente de Impressão OK", "c"); p.feed(3); p.cortar()
                 enviar(cfg2["impressora_comprovante"], p.bytes())
-            messagebox.showinfo("FBRE", "Enviado para a impressora. Confira o papel.")
+            messagebox.showinfo("GERATEC Agente de Impressão", "Enviado para a impressora. Confira o papel.")
         except Exception as ex:
-            messagebox.showerror("FBRE", f"Falha no teste: {ex}")
+            messagebox.showerror("GERATEC Agente de Impressão", f"Falha no teste: {ex}")
 
     bar = ttk.Frame(frm); bar.grid(column=0, row=6, columnspan=2, pady=(14, 0), sticky="e")
     ttk.Button(bar, text="Testar comprovante", command=lambda: testar("comprovante")).grid(column=0, row=0, padx=4)

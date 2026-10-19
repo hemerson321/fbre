@@ -2,11 +2,11 @@
 ; Gera FBREPrintAgentSetup.exe a partir de dist\FBREPrintAgent.exe
 
 [Setup]
-AppName=FBRE Print Agent
+AppName=GERATEC Agente de Impressão
 AppVersion=1.0
 AppPublisher=GERATEC
-DefaultDirName={autopf}\FBRE Print Agent
-DefaultGroupName=FBRE Print Agent
+DefaultDirName={autopf}\GERATEC Agente de Impressao
+DefaultGroupName=GERATEC Agente de Impressão
 DisableProgramGroupPage=yes
 DisableDirPage=yes
 PrivilegesRequired=lowest
@@ -23,11 +23,11 @@ Name: "pt"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 Source: "dist\FBREPrintAgent.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\FBRE Print Agent"; Filename: "{app}\FBREPrintAgent.exe"
+Name: "{group}\GERATEC Agente de Impressão"; Filename: "{app}\FBREPrintAgent.exe"
 Name: "{group}\Configurar impressoras"; Filename: "{app}\FBREPrintAgent.exe"; Parameters: "--config"
 Name: "{group}\Desinstalar"; Filename: "{uninstallexe}"
 ; inicia junto com o Windows
-Name: "{userstartup}\FBRE Print Agent"; Filename: "{app}\FBREPrintAgent.exe"
+Name: "{userstartup}\GERATEC Agente de Impressão"; Filename: "{app}\FBREPrintAgent.exe"
 
 [Run]
 ; ao terminar a instalação, já abre a tela pra escolher impressoras e colar o token
