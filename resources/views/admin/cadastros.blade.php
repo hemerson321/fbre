@@ -36,7 +36,11 @@
         <div class="flex items-center gap-2">
           <form method="post" action="{{ route('admin.estacoes.renomear',$e) }}" class="flex items-center gap-2 flex-1">@csrf
             <input name="nome" value="{{ $e->nome }}" class="input !min-h-[38px] !py-1 flex-1" maxlength="60" required>
-            <button class="btn btn-ghost btn-sm" title="Salvar nome">Salvar</button>
+            <select name="colunas" class="input !min-h-[38px] !py-1 !w-24" title="Largura do papel da impressora">
+              <option value="48" @selected(($e->colunas ?? 48)==48)>80mm</option>
+              <option value="32" @selected(($e->colunas ?? 48)==32)>58mm</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" title="Salvar">Salvar</button>
           </form>
           <form method="post" action="{{ route('admin.cadastros.destroy',['estacoes',$e->id]) }}" onsubmit="return confirm('Excluir esta estação? O token vai parar de funcionar neste PC.')">@csrf @method('DELETE')<button class="text-red-500 text-xs px-2">excluir</button></form>
         </div>

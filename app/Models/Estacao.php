@@ -15,5 +15,6 @@ class Estacao extends Model
     protected $casts = [
         'visto_em' => 'datetime',
         'ativo' => 'boolean',
+        'colunas' => 'integer',
     ];
 }

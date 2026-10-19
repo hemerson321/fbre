@@ -66,8 +66,11 @@ class CadastroController extends Controller
 
     public function renomearEstacao(Request $request, Estacao $estacao)
     {
-        $data = $request->validate(['nome' => 'required|string|max:60']);
-        $estacao->update(['nome' => $data['nome']]);
-        return back()->with('ok', 'Nome da estação atualizado.');
+        $data = $request->validate([
+            'nome' => 'required|string|max:60',
+            'colunas' => 'nullable|in:32,48',
+        ]);
+        $estacao->update(['nome' => $data['nome'], 'colunas' => (int) ($data['colunas'] ?? 48)]);
+        return back()->with('ok', 'Estação atualizada.');
     }
 }

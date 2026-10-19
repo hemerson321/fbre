@@ -27,7 +27,7 @@ class PrintAgentController extends Controller
     public function ping(Request $request)
     {
         $e = $this->estacao($request);
-        return ['ok' => true, 'estacao' => $e->nome, 'empresa' => $e->empresa->nomeExibicao()];
+        return ['ok' => true, 'estacao' => $e->nome, 'empresa' => $e->empresa->nomeExibicao(), 'colunas' => (int) ($e->colunas ?: 48)];
     }
 
     public function next(Request $request)

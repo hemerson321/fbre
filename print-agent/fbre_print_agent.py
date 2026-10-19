@@ -272,19 +272,24 @@ class Api:
 
 # ---------------------------------------------------------------- loop (recarrega config a cada ciclo)
 def loop(parar: threading.Event):
-    api = None; token_atual = None
+    api = None; token_atual = None; colunas_srv = None
     while not parar.is_set():
         cfg = carregar_config()
         token = (cfg["fbre"].get("token", "") or "").strip()
         servidor = (cfg["fbre"].get("servidor", "https://fbre.com.br") or "").strip()
-        col = int(cfg["escpos"].get("colunas", 48))
+        # largura do papel: o servidor manda (por estação); se não vier, usa a do arquivo
+        col = colunas_srv or int(cfg["escpos"].get("colunas", 48))
         intervalo = float(cfg["fbre"].get("intervalo", 2))
         if "COLE_AQUI" in token or not token:
             parar.wait(3); continue                       # ainda sem token
         if api is None or token != token_atual:
             api = Api(servidor, token); token_atual = token
-            try: info = api.ping(); log(f"Conectado: {info['empresa']} / estação {info['estacao']}")
-            except Exception as ex: log(f"Falha ao conectar: {ex}")
+            try:
+                info = api.ping(); colunas_srv = int(info.get("colunas") or 0) or None
+                if colunas_srv: col = colunas_srv
+                log(f"Conectado: {info['empresa']} / estação {info['estacao']} ({col} col)")
+            except Exception as ex:
+                log(f"Falha ao conectar: {ex}")
         try:
             for job in api.next():
                 try:
