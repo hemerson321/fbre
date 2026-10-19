@@ -113,7 +113,7 @@ class EscPos:
         a = {"l": 0, "c": 1, "r": 2}[align]
         self.buf += self.ESC + b"a" + bytes([a])
         self.buf += self.ESC + b"E" + (b"\x01" if bold else b"\x00")
-        n = {1: 0x00, 2: 0x11, 3: 0x22}.get(size, 0x00)
+        n = {1: 0x00, 2: 0x11, 3: 0x22, 4: 0x01}.get(size, 0x00)  # 4 = só dobra a altura (não alarga, não quebra)
         self.buf += self.GS + b"!" + bytes([n])
         self.buf += s.encode("cp1252", "replace") + b"\n"
         self.buf += self.GS + b"!\x00" + self.ESC + b"E\x00"
@@ -147,8 +147,9 @@ def montar_comprovante(d, col):
     p.txt(f"ENCOMENDA No {e['numero']}", "c", True, 2)
     p.txt(f"{e['data']}  Op: {e.get('operador') or ''}", "c")
     p.linha()
-    p.lr("ORIGEM", e["origem"], True)
-    p.lr("DESTINO", e["destino"], True)
+    # Rota em destaque: origem e destino lado a lado, letra maior (só mais alta, não quebra)
+    p.txt("ORIGEM  >  DESTINO", "c")
+    p.txt(f"{e['origem']}  >  {e['destino']}", "c", True, 4)
     if e.get("embarcacao"): p.lr("TRANSPORTE", e["embarcacao"])
     p.lr("VOLUMES", e["volumes"])
     p.linha()
@@ -282,6 +283,8 @@ def loop(parar: threading.Event):
                     if job["tipo"] == "comprovante":
                         raw = montar_comprovante(dados, col); enviar(cfg["impressora_comprovante"], raw)
                     elif job["tipo"] == "etiqueta":
+                        if (cfg["impressora_etiqueta"].get("nome_windows", "") or "").upper() == "NAO_IMPRIMIR":
+                            api.done(job["id"]); log(f"Etiqueta #{dados['encomenda']['numero']} ignorada (etiqueta desativada)"); continue
                         raw = montar_etiqueta(dados, col); enviar(cfg["impressora_etiqueta"], raw)
                     else:
                         raise RuntimeError("tipo não suportado: " + job["tipo"])
@@ -320,7 +323,9 @@ def janela_config():
 
     nomes, _ = listar_impressoras()
     PADRAO = "Padrão do Windows"
+    NAO = "(não imprimir)"
     opcoes = [PADRAO] + nomes
+    opcoes_etq = [NAO, PADRAO] + nomes  # etiqueta pode ser desligada (ex.: ainda sem etiquetadora)
 
     cfg = configparser.ConfigParser()
     if os.path.exists(INI): cfg.read(INI, encoding="utf-8")
@@ -334,8 +339,16 @@ def janela_config():
         if (atual or "padrao").lower() == "padrao": return PADRAO
         return atual if atual in nomes else PADRAO
 
+    def sel_etq(atual):
+        if (atual or "").upper() == "NAO_IMPRIMIR": return NAO
+        return sel(atual)
+
     def val(c):
         return "padrao" if c.get() == PADRAO else c.get()
+
+    def val_etq(c):
+        if c.get() == NAO: return "NAO_IMPRIMIR"
+        return val(c)
 
     root = tk.Tk(); root.title("GERATEC Print Agent — Configuração"); root.resizable(False, False)
     frm = ttk.Frame(root, padding=16); frm.grid()
@@ -350,11 +363,12 @@ def janela_config():
     ttk.Label(frm, text="Impressora do comprovante:").grid(column=0, row=4, sticky="w", pady=4)
     c_comp = ttk.Combobox(frm, width=45, values=opcoes, state="readonly"); c_comp.set(sel(comp)); c_comp.grid(column=1, row=4, pady=4)
     ttk.Label(frm, text="Impressora da etiqueta:").grid(column=0, row=5, sticky="w", pady=4)
-    c_etq = ttk.Combobox(frm, width=45, values=opcoes, state="readonly"); c_etq.set(sel(etq)); c_etq.grid(column=1, row=5, pady=4)
+    c_etq = ttk.Combobox(frm, width=45, values=opcoes_etq, state="readonly"); c_etq.set(sel_etq(etq)); c_etq.grid(column=1, row=5, pady=4)
+    ttk.Label(frm, text="Sem etiquetadora? Escolha \"(não imprimir)\" na etiqueta.", foreground="#888").grid(column=1, row=6, sticky="w")
 
     def coletar():
         return {"token": e_tok.get().strip(), "servidor": e_srv.get().strip(),
-                "comprovante": val(c_comp), "etiqueta": val(c_etq)}
+                "comprovante": val(c_comp), "etiqueta": val_etq(c_etq)}
 
     def salvar():
         if not e_tok.get().strip():
@@ -369,6 +383,9 @@ def janela_config():
             salvar_config(coletar())
             cfg2 = configparser.ConfigParser(); cfg2.read(INI, encoding="utf-8")
             if qual == "etiqueta":
+                if (cfg2["impressora_etiqueta"].get("nome_windows", "") or "").upper() == "NAO_IMPRIMIR":
+                    messagebox.showinfo("GERATEC Print Agent", "Etiqueta está em \"(não imprimir)\". Escolha uma impressora pra testar.")
+                    return
                 p = EscPos(48); p.txt("TESTE ETIQUETA", "c", True, 2); p.txt("GERATEC", "c"); p.feed(2); p.cortar()
                 enviar(cfg2["impressora_etiqueta"], p.bytes())
             else:
@@ -378,7 +395,7 @@ def janela_config():
         except Exception as ex:
             messagebox.showerror("GERATEC Print Agent", f"Falha no teste: {ex}")
 
-    bar = ttk.Frame(frm); bar.grid(column=0, row=6, columnspan=2, pady=(14, 0), sticky="e")
+    bar = ttk.Frame(frm); bar.grid(column=0, row=7, columnspan=2, pady=(14, 0), sticky="e")
     ttk.Button(bar, text="Testar comprovante", command=lambda: testar("comprovante")).grid(column=0, row=0, padx=4)
     ttk.Button(bar, text="Testar etiqueta", command=lambda: testar("etiqueta")).grid(column=1, row=0, padx=4)
     ttk.Button(bar, text="Salvar", command=salvar).grid(column=2, row=0, padx=4)
