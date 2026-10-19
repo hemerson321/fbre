@@ -104,9 +104,9 @@ class DatabaseSeeder extends Seeder
             'super_admin' => true, 'admin' => true, 'perm_cadastra' => true, 'perm_baixa' => true, 'perm_caixa' => true, 'setor' => 'Suporte',
         ]);
 
-        // administrador do cliente
+        // administrador do cliente (login: admin)
         $this->usuario("admin@{$slug}.fbre", [
-            'login' => $slug, 'empresa_id' => $empresa->id, 'name' => 'Administrador',
+            'login' => 'admin', 'empresa_id' => $empresa->id, 'name' => 'Administrador',
             'admin' => true, 'perm_cadastra' => true, 'perm_baixa' => true, 'perm_caixa' => true, 'setor' => 'Escritório',
         ]);
 
