@@ -123,6 +123,13 @@ class EscPos:
         esp = max(self.col - len(esq) - len(dir_), 1)
         self.txt(esq + " " * esp + dir_, bold=bold)
 
+    def col2(self, esq, dir_, bold=False):
+        """Duas colunas lado a lado (metade da largura cada), cortando se passar."""
+        w = self.col // 2
+        e = str(esq)[:w - 1].ljust(w)
+        d = str(dir_)[:w - 1]
+        self.txt(e + d, bold=bold)
+
     def linha(self, ch="-"):
         self.txt(ch * self.col)
 
@@ -153,8 +160,10 @@ def montar_comprovante(d, col):
     if e.get("embarcacao"): p.lr("TRANSPORTE", e["embarcacao"])
     p.lr("VOLUMES", e["volumes"])
     p.linha()
-    p.txt("REMETENTE", bold=True); p.txt(e["remetente"]); p.txt(e.get("remetente_tel") or "")
-    p.txt("DESTINATARIO", bold=True); p.txt(e["destinatario"]); p.txt(e.get("destinatario_tel") or "")
+    p.col2("REMETENTE", "DESTINATARIO", True)
+    p.col2(e["remetente"], e["destinatario"])
+    if (e.get("remetente_tel") or e.get("destinatario_tel")):
+        p.col2(e.get("remetente_tel") or "", e.get("destinatario_tel") or "")
     p.linha()
     for it in e["itens"]:
         p.txt(it["descricao"])
