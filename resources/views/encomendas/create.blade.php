@@ -121,9 +121,9 @@
             </select></div>
           <div><label class="lbl">Setor</label>
             @if($restringeSetor)
-              <select name="setor" class="field">@foreach($setores as $s)<option value="{{ $s }}" @selected(old('setor', auth()->user()->setor)==$s)>{{ $s }}</option>@endforeach</select>
+              <select name="setor" class="field" x-model="setorSel">@foreach($setores as $s)<option value="{{ $s }}">{{ $s }}</option>@endforeach</select>
             @else
-              <input name="setor" list="setores" class="field" value="{{ old('setor', auth()->user()->setor) }}">
+              <input name="setor" list="setores" class="field" x-model="setorSel">
             @endif
           </div>
         </div>
@@ -287,6 +287,7 @@ function novaEncomenda(){
     rotaId:'', linhaNome:'', paradasInfo: [],
     cidades: @js($cidades), linhas: @js($linhas), podeRetroativo: @js($podeRetroativo),
     origemSel: @js(old('origem', ($pre['origem'] ?? '') ?: $ultimaOrigem)), destinoSel: @js(old('destino', $pre['destino'] ?? '')),
+    setorSel: @js(old('setor', auth()->user()->setor)),
     lancamentoEm: @js(old('lancamento_em', now()->toDateString())),
     catalogo: @js($catalogo), buscaProduto:'', buscaAberta:false,
     viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
@@ -301,6 +302,9 @@ function novaEncomenda(){
       try { const o = localStorage.getItem('fbre_origem'); if (!this.origemSel && o) this.origemSel = o; } catch(e){}
       if (!this.origemSel && this.cidades.length) this.origemSel = this.cidades[0];
       this.$watch('origemSel', v => { try { if (v) localStorage.setItem('fbre_origem', v); } catch(e){} });
+      // setor: lembra a última escolha (destino nunca é lembrado)
+      try { const s = localStorage.getItem('fbre_setor'); if (s) this.setorSel = s; } catch(e){}
+      this.$watch('setorSel', v => { try { if (v) localStorage.setItem('fbre_setor', v); } catch(e){} });
       this.resolverLinha();
     },
     addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); this.recalcVolumes(); },
