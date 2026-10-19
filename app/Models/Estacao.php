@@ -11,4 +11,9 @@ class Estacao extends Model
 
     protected $table = 'estacoes';
     protected $guarded = [];
+
+    protected $casts = [
+        'visto_em' => 'datetime',
+        'ativo' => 'boolean',
+    ];
 }
