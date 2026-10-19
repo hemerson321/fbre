@@ -19,7 +19,7 @@ import time
 import urllib.request
 import urllib.error
 
-APP = "GERATEC Agente de Impressão"
+APP = "GERATEC Print Agent"
 # config/log numa pasta gravável (o instalador põe o .exe em Program Files, que é só leitura)
 DATA = os.path.join(os.environ.get("PROGRAMDATA", os.path.expanduser("~")), "FBRE")
 try:
@@ -216,7 +216,7 @@ def enviar(cfg_sec, dados: bytes):
             nome = win32print.GetDefaultPrinter()   # mesma impressora que o operador usa
         h = win32print.OpenPrinter(nome)
         try:
-            win32print.StartDocPrinter(h, 1, ("GERATEC Agente de Impressão", None, "RAW"))
+            win32print.StartDocPrinter(h, 1, ("GERATEC Print Agent", None, "RAW"))
             win32print.StartPagePrinter(h); win32print.WritePrinter(h, dados); win32print.EndPagePrinter(h)
             win32print.EndDocPrinter(h)
         finally:
@@ -337,9 +337,9 @@ def janela_config():
     def val(c):
         return "padrao" if c.get() == PADRAO else c.get()
 
-    root = tk.Tk(); root.title("GERATEC Agente de Impressão — Configuração"); root.resizable(False, False)
+    root = tk.Tk(); root.title("GERATEC Print Agent — Configuração"); root.resizable(False, False)
     frm = ttk.Frame(root, padding=16); frm.grid()
-    ttk.Label(frm, text="GERATEC Agente de Impressão", font=("Segoe UI", 15, "bold")).grid(column=0, row=0, columnspan=2, sticky="w")
+    ttk.Label(frm, text="GERATEC Print Agent", font=("Segoe UI", 15, "bold")).grid(column=0, row=0, columnspan=2, sticky="w")
     ttk.Label(frm, text="Impressão direta de comprovantes e etiquetas.").grid(column=0, row=1, columnspan=2, sticky="w", pady=(0, 12))
 
     ttk.Label(frm, text="Token da estação:").grid(column=0, row=2, sticky="w", pady=4)
@@ -358,10 +358,10 @@ def janela_config():
 
     def salvar():
         if not e_tok.get().strip():
-            messagebox.showwarning("GERATEC Agente de Impressão", "Cole o token da estação (gerado no sistema em Cadastros gerais → Estações).")
+            messagebox.showwarning("GERATEC Print Agent", "Cole o token da estação (gerado no sistema em Cadastros gerais → Estações).")
             return
         salvar_config(coletar())
-        messagebox.showinfo("GERATEC Agente de Impressão", "Configuração salva! O agente já passa a usar essas impressoras.")
+        messagebox.showinfo("GERATEC Print Agent", "Configuração salva! O agente já passa a usar essas impressoras.")
         root.destroy()
 
     def testar(qual):
@@ -372,11 +372,11 @@ def janela_config():
                 p = EscPos(48); p.txt("TESTE ETIQUETA", "c", True, 2); p.txt("GERATEC", "c"); p.feed(2); p.cortar()
                 enviar(cfg2["impressora_etiqueta"], p.bytes())
             else:
-                p = EscPos(48); p.txt("TESTE COMPROVANTE", "c", True, 2); p.txt("GERATEC Agente de Impressão OK", "c"); p.feed(3); p.cortar()
+                p = EscPos(48); p.txt("TESTE COMPROVANTE", "c", True, 2); p.txt("GERATEC Print Agent OK", "c"); p.feed(3); p.cortar()
                 enviar(cfg2["impressora_comprovante"], p.bytes())
-            messagebox.showinfo("GERATEC Agente de Impressão", "Enviado para a impressora. Confira o papel.")
+            messagebox.showinfo("GERATEC Print Agent", "Enviado para a impressora. Confira o papel.")
         except Exception as ex:
-            messagebox.showerror("GERATEC Agente de Impressão", f"Falha no teste: {ex}")
+            messagebox.showerror("GERATEC Print Agent", f"Falha no teste: {ex}")
 
     bar = ttk.Frame(frm); bar.grid(column=0, row=6, columnspan=2, pady=(14, 0), sticky="e")
     ttk.Button(bar, text="Testar comprovante", command=lambda: testar("comprovante")).grid(column=0, row=0, padx=4)
