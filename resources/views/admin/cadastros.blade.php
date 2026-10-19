@@ -27,14 +27,27 @@
 @endforeach
 
 <div class="card p-4 space-y-2 md:col-span-2">
-  <h2 class="font-bold text-sm text-slate-500 uppercase">Estações de impressão direta (FBRE Print Agent)</h2>
-  <p class="text-xs text-slate-500">Cada computador com impressora térmica recebe um token. Instale o FBRE Print Agent no PC e cole o token.</p>
+  <h2 class="font-bold text-sm text-slate-500 uppercase">Estações de impressão direta (Agente de Impressão)</h2>
+  <p class="text-xs text-slate-500">Cada computador com impressora térmica recebe um token. Instale o Agente de Impressão no PC e cole o token.</p>
   <form method="post" action="{{ route('admin.estacoes.store') }}" class="flex gap-2">@csrf<input name="nome" class="input !min-h-[42px]" placeholder="Ex.: Balcão 1" required><button class="btn btn-accent btn-sm">Gerar token</button></form>
   <div class="divide-y text-sm">
     @forelse($estacoes as $e)
-      <div class="flex items-center justify-between py-1.5 {{ $e->ativo?'':'opacity-40' }}">
-        <span>{{ $e->nome }} <span class="text-xs text-slate-400">{{ $e->visto_em ? 'visto '.$e->visto_em->diffForHumans() : 'nunca conectou' }}</span></span>
-        @if($e->ativo)<form method="post" action="{{ route('admin.cadastros.destroy',['estacoes',$e->id]) }}">@csrf @method('DELETE')<button class="text-red-500 text-xs">desativar</button></form>@endif
+      <div class="py-2" x-data="{ mostra:false }">
+        <div class="flex items-center gap-2">
+          <form method="post" action="{{ route('admin.estacoes.renomear',$e) }}" class="flex items-center gap-2 flex-1">@csrf
+            <input name="nome" value="{{ $e->nome }}" class="input !min-h-[38px] !py-1 flex-1" maxlength="60" required>
+            <button class="btn btn-ghost btn-sm" title="Salvar nome">Salvar</button>
+          </form>
+          <form method="post" action="{{ route('admin.cadastros.destroy',['estacoes',$e->id]) }}" onsubmit="return confirm('Excluir esta estação? O token vai parar de funcionar neste PC.')">@csrf @method('DELETE')<button class="text-red-500 text-xs px-2">excluir</button></form>
+        </div>
+        <div class="flex items-center gap-2 mt-1 text-xs flex-wrap">
+          <span class="text-slate-400">{{ $e->visto_em ? 'visto '.$e->visto_em->diffForHumans() : 'nunca conectou' }}</span>
+          <span class="text-slate-300">·</span>
+          <span class="text-slate-500">Token:</span>
+          <code class="bg-slate-100 px-1.5 py-0.5 rounded break-all" x-text="mostra ? @js($e->token) : '••••••••••••••••'"></code>
+          <button type="button" class="text-blue-600 hover:underline" @click="mostra=!mostra" x-text="mostra ? 'ocultar' : 'mostrar'"></button>
+          <button type="button" class="text-blue-600 hover:underline" @click="navigator.clipboard.writeText(@js($e->token)); $el.textContent='copiado!'; setTimeout(()=>$el.textContent='copiar',1500)">copiar</button>
+        </div>
       </div>
     @empty <div class="py-3 text-slate-400">Nenhuma estação.</div> @endforelse
   </div>

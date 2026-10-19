@@ -80,6 +80,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/cadastros/{tipo}', [CadastroController::class, 'store'])->name('cadastros.store');
         Route::delete('/cadastros/{tipo}/{id}', [CadastroController::class, 'destroy'])->name('cadastros.destroy');
         Route::post('/estacoes', [CadastroController::class, 'novaEstacao'])->name('estacoes.store');
+        Route::post('/estacoes/{estacao}/renomear', [CadastroController::class, 'renomearEstacao'])->name('estacoes.renomear');
         Route::get('/rotas', [RotaController::class, 'index'])->name('rotas');
         Route::post('/rotas', [RotaController::class, 'store'])->name('rotas.store');
         Route::put('/rotas/{rota}', [RotaController::class, 'update'])->name('rotas.update');

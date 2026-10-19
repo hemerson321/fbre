@@ -52,7 +52,7 @@ class CadastroController extends Controller
         abort_unless(isset($this->tipos[$tipo]) || $tipo === 'estacoes', 404);
         $m = $tipo === 'estacoes' ? Estacao::class : $this->tipos[$tipo];
         $reg = $m::findOrFail($id);
-        if ($tipo === 'setores') { $reg->delete(); }
+        if ($tipo === 'setores' || $tipo === 'estacoes') { $reg->delete(); }
         else { $reg->update(['ativo' => false]); }
         return back()->with('ok', 'Removido.');
     }
@@ -62,5 +62,12 @@ class CadastroController extends Controller
         $data = $request->validate(['nome' => 'required|string|max:60']);
         $e = Estacao::create(['nome' => $data['nome'], 'token' => Str::random(48)]);
         return back()->with('ok', "Estação criada. Token: {$e->token}")->with('token', $e->token);
+    }
+
+    public function renomearEstacao(Request $request, Estacao $estacao)
+    {
+        $data = $request->validate(['nome' => 'required|string|max:60']);
+        $estacao->update(['nome' => $data['nome']]);
+        return back()->with('ok', 'Nome da estação atualizado.');
     }
 }
