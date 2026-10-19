@@ -156,7 +156,7 @@ def montar_comprovante(d, col):
     p.linha()
     # Rota em destaque: origem e destino lado a lado, letra maior (só mais alta, não quebra)
     p.txt("ORIGEM  >  DESTINO", "c")
-    p.txt(f"{e['origem']}  >  {e['destino']}", "c", True, 4)
+    p.txt(f"{e['origem']}  >  {e['destino']}", "c", True)
     if e.get("embarcacao"): p.lr("TRANSPORTE", e["embarcacao"])
     p.lr("VOLUMES", e["volumes"])
     p.linha()
