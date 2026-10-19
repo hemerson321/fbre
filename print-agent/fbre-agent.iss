@@ -1,17 +1,17 @@
-; Instalador do FBRE Print Agent (Inno Setup)
-; Gera FBREPrintAgentSetup.exe a partir de dist\FBREPrintAgent.exe
+; Instalador do Agente de Impressão (Inno Setup)
+; Gera agenteprint-setup.exe a partir de dist\agenteprint.exe
 
 [Setup]
-AppName=GERATEC Print Agent
+AppName=Agente de Impressão
 AppVersion=1.0
-AppPublisher=GERATEC
-DefaultDirName={autopf}\GERATEC Print Agent
-DefaultGroupName=GERATEC Print Agent
+AppPublisher=Agente de Impressão
+DefaultDirName={autopf}\Agente de Impressão
+DefaultGroupName=Agente de Impressão
 DisableProgramGroupPage=yes
 DisableDirPage=yes
 PrivilegesRequired=lowest
 OutputDir=installer
-OutputBaseFilename=GERATEC Agente de Impressora
+OutputBaseFilename=agenteprint-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -20,15 +20,15 @@ WizardStyle=modern
 Name: "pt"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Files]
-Source: "dist\FBREPrintAgent.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\agenteprint.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\GERATEC Print Agent"; Filename: "{app}\FBREPrintAgent.exe"
-Name: "{group}\Configurar impressoras"; Filename: "{app}\FBREPrintAgent.exe"; Parameters: "--config"
+Name: "{group}\Agente de Impressão"; Filename: "{app}\agenteprint.exe"
+Name: "{group}\Configurar impressoras"; Filename: "{app}\agenteprint.exe"; Parameters: "--config"
 Name: "{group}\Desinstalar"; Filename: "{uninstallexe}"
 ; inicia junto com o Windows
-Name: "{userstartup}\GERATEC Print Agent"; Filename: "{app}\FBREPrintAgent.exe"
+Name: "{userstartup}\Agente de Impressão"; Filename: "{app}\agenteprint.exe"
 
 [Run]
 ; ao terminar a instalação, já abre a tela pra escolher impressoras e colar o token
-Filename: "{app}\FBREPrintAgent.exe"; Parameters: "--config"; Description: "Configurar impressoras e token agora"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\agenteprint.exe"; Parameters: "--config"; Description: "Configurar impressoras e token agora"; Flags: nowait postinstall skipifsilent
