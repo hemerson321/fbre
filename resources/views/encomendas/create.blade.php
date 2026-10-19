@@ -98,13 +98,13 @@
           <div><label class="lbl">Origem</label>
             <select name="origem" class="field" x-model="origemSel" required @change="resolverLinha()">
               <option value="">—</option>
-              <template x-for="c in cidades" :key="'o'+c"><option :value="c" x-text="c"></option></template>
+              @foreach($cidades as $c)<option value="{{ $c }}">{{ $c }}</option>@endforeach
             </select>
           </div>
           <div><label class="lbl">Destino</label>
             <select name="destino" class="field" x-model="destinoSel" required @change="resolverLinha()">
               <option value="">—</option>
-              <template x-for="c in cidades" :key="'d'+c"><option :value="c" x-text="c"></option></template>
+              @foreach($cidades as $c)<option value="{{ $c }}">{{ $c }}</option>@endforeach
             </select>
           </div>
         </div>
