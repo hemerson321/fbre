@@ -108,6 +108,7 @@ class DatabaseSeeder extends Seeder
         $this->usuario("admin@{$slug}.fbre", [
             'login' => 'admin', 'empresa_id' => $empresa->id, 'name' => 'Administrador',
             'admin' => true, 'perm_cadastra' => true, 'perm_baixa' => true, 'perm_caixa' => true, 'setor' => 'Escritório',
+            'password' => env('SEED_ADMIN_PASSWORD') ?: 'Malu2013@123',
         ]);
 
         $this->dadosBase($empresa);
@@ -118,9 +119,11 @@ class DatabaseSeeder extends Seeder
     {
         $u = User::where('email', $email)->orWhere('login', $dados['login'])->first();
         if ($u) {
+            unset($dados['password']); // não mexe na senha de quem já existe
             $u->fill($dados)->save();
         } else {
-            User::create($dados + ['email' => $email, 'password' => env('SEED_ADMIN_PASSWORD', 'mudar123')]);
+            $dados['password'] = $dados['password'] ?? env('SEED_ADMIN_PASSWORD', 'mudar123');
+            User::create($dados + ['email' => $email]);
         }
     }
 

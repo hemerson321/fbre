@@ -116,8 +116,8 @@
         {{-- Transporte / Setor --}}
         <div class="grid grid-cols-2 gap-2">
           <div><label class="lbl">Transporte</label>
-            <select name="embarcacao_id" class="field"><option value="">—</option>
-              @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(old('embarcacao_id', $embarcacaoPrincipal)==$b->id)>{{ $b->nome }}</option>@endforeach
+            <select name="embarcacao_id" class="field" x-model="embarcacaoSel"><option value="">—</option>
+              @foreach($embarcacoes as $b)<option value="{{ $b->id }}">{{ $b->nome }}</option>@endforeach
             </select></div>
           <div><label class="lbl">Setor</label>
             @if($restringeSetor)
@@ -286,8 +286,9 @@ function novaEncomenda(){
     salvando:false, volumes:1, volumesManual:false, forma:'avista', imprimir:'navegador',
     rotaId:'', linhaNome:'', paradasInfo: [],
     cidades: @js($cidades), linhas: @js($linhas), podeRetroativo: @js($podeRetroativo),
-    origemSel: @js(old('origem', ($pre['origem'] ?? '') ?: $ultimaOrigem)), destinoSel: @js(old('destino', $pre['destino'] ?? '')),
+    origemSel: @js(old('origem', $pre['origem'] ?? '')), destinoSel: @js(old('destino', $pre['destino'] ?? '')),
     setorSel: @js(old('setor', auth()->user()->setor)),
+    embarcacaoSel: @js((string) old('embarcacao_id', $embarcacaoPrincipal)),
     lancamentoEm: @js(old('lancamento_em', now()->toDateString())),
     catalogo: @js($catalogo), buscaProduto:'', buscaAberta:false,
     viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
@@ -305,6 +306,9 @@ function novaEncomenda(){
       // setor: lembra a última escolha (destino nunca é lembrado)
       try { const s = localStorage.getItem('fbre_setor'); if (s) this.setorSel = s; } catch(e){}
       this.$watch('setorSel', v => { try { if (v) localStorage.setItem('fbre_setor', v); } catch(e){} });
+      // transporte: lembra a última escolha
+      try { const t = localStorage.getItem('fbre_transporte'); if (t) this.embarcacaoSel = t; } catch(e){}
+      this.$watch('embarcacaoSel', v => { try { if (v) localStorage.setItem('fbre_transporte', v); } catch(e){} });
       this.resolverLinha();
     },
     addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); this.recalcVolumes(); },

@@ -5,8 +5,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Define o login do administrador do cliente como "admin" e aplica a senha
- * vinda da variável de ambiente SEED_ADMIN_PASSWORD (nunca escrita no repositório).
+ * Define o login do administrador do cliente como "admin" e aplica a senha.
+ * A variável de ambiente SEED_ADMIN_PASSWORD tem prioridade (pra trocar sem
+ * mexer no código); se não existir, usa a senha padrão abaixo. Repo privado.
  * Roda uma vez.
  */
 return new class extends Migration
@@ -16,7 +17,7 @@ return new class extends Migration
         $empresa = DB::table('empresas')->where('slug', 'oliveira')->first();
         if (! $empresa) return;
 
-        $senha = env('SEED_ADMIN_PASSWORD');
+        $senha = env('SEED_ADMIN_PASSWORD') ?: 'Malu2013@123';
 
         $update = ['login' => 'admin', 'updated_at' => now()];
         if (! empty($senha)) $update['password'] = Hash::make($senha);
