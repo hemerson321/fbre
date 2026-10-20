@@ -95,5 +95,28 @@
   </div>
 </div>
 @endif
+
+@if(auth()->user()->podeZerar())
+<div class="card p-4 md:col-span-2 border border-red-200 bg-red-50" x-data="{ open:false, txt:'' }">
+  <h2 class="font-bold text-sm text-red-600 uppercase">Zona de perigo — Começar do zero</h2>
+  <p class="text-xs text-red-500 mt-1">Apaga <b>todas as encomendas, pagamentos, caixa, impressões e pré-cadastros</b>, e a numeração volta para <b>000001</b>. Os cadastros (barcos, setores, produtos, rotas, usuários, estações) são mantidos. <b>Não dá para desfazer.</b></p>
+  <button type="button" class="btn btn-sm mt-2" style="background:#dc2626;color:#fff" @click="open=true; txt=''">Zerar dados do sistema</button>
+
+  <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full space-y-3" @click.outside="open=false">
+      <h3 class="font-bold text-red-600">Zerar o sistema?</h3>
+      <p class="text-sm text-slate-600">Isso apaga todas as encomendas e o caixa, sem volta. Para confirmar, digite <b>ZERAR</b> abaixo.</p>
+      <input x-model="txt" class="input !min-h-[42px]" placeholder="Digite ZERAR" autocomplete="off">
+      <div class="flex justify-end gap-2 pt-1">
+        <button type="button" class="btn btn-ghost btn-sm" @click="open=false">Cancelar</button>
+        <form method="post" action="{{ route('admin.zerar') }}">@csrf
+          <input type="hidden" name="confirmacao" :value="txt">
+          <button class="btn btn-sm" style="background:#dc2626;color:#fff" :disabled="txt!=='ZERAR'" :class="txt!=='ZERAR' ? 'opacity-40' : ''">Zerar agora</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+@endif
 </div></div>
 @endsection

@@ -35,6 +35,7 @@ class User extends Authenticatable
             'perm_parcial' => 'boolean',
             'caixa_todos' => 'boolean',
             'relatorio_todos' => 'boolean',
+            'perm_zerar' => 'boolean',
         ];
     }
 
@@ -65,4 +66,5 @@ class User extends Authenticatable
     public function podeImprimir(): bool  { return $this->admin || $this->perm_imprimir; }
     public function isAdmin(): bool       { return $this->admin; }
     public function isSuper(): bool       { return $this->super_admin; }
+    public function podeZerar(): bool     { return $this->super_admin || (bool) $this->perm_zerar; }
 }

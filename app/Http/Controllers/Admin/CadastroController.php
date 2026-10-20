@@ -4,12 +4,20 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Embarcacao;
+use App\Models\Encomenda;
+use App\Models\EncomendaItem;
 use App\Models\Estacao;
+use App\Models\Evento;
+use App\Models\FilaImpressao;
 use App\Models\Localidade;
+use App\Models\Pagamento;
+use App\Models\PreCadastro;
 use App\Models\Produto;
 use App\Models\Rota;
 use App\Models\Setor;
+use App\Support\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /** Cadastros auxiliares: embarcações, localidades, setores, produtos, estações de impressão. */
@@ -72,5 +80,32 @@ class CadastroController extends Controller
         ]);
         $estacao->update(['nome' => $data['nome'], 'colunas' => (int) ($data['colunas'] ?? 48)]);
         return back()->with('ok', 'Estação atualizada.');
+    }
+
+    /**
+     * Zera os dados operacionais (começar do zero): apaga encomendas, itens,
+     * pagamentos, eventos, fila de impressão e pré-cadastros, e reinicia a
+     * numeração em 000001. Mantém os cadastros (barcos, setores, produtos,
+     * rotas, usuários, estações). Protegido por permissão (podeZerar).
+     */
+    public function zerar(Request $request)
+    {
+        abort_unless($request->user()->podeZerar(), 403, 'Sem permissão para zerar o sistema.');
+        $request->validate(['confirmacao' => 'required|in:ZERAR']);
+
+        $empresaId = Tenant::id();
+
+        DB::transaction(function () use ($empresaId) {
+            $encIds = Encomenda::pluck('id');                       // só da empresa (escopo global)
+            EncomendaItem::whereIn('encomenda_id', $encIds)->delete(); // item não tem escopo próprio
+            Pagamento::whereIn('encomenda_id', $encIds)->delete();
+            Evento::query()->delete();                              // escopo por empresa
+            FilaImpressao::query()->delete();
+            PreCadastro::query()->delete();
+            Encomenda::query()->delete();
+            DB::table('empresas')->where('id', $empresaId)->update(['proximo_numero' => 1]);
+        });
+
+        return back()->with('ok', 'Sistema zerado. As encomendas começam do 000001.');
     }
 }

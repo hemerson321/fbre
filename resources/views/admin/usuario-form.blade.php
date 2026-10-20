@@ -30,6 +30,7 @@
     'perm_relatorio'=> ['Meu relatório', 'Relatório só do que o próprio usuário fez'],
     'perm_retroativo'=> ['Lançar em datas retroativas', 'Cadastrar em dias anteriores (feito na mão e lançado depois). Gerente já tem.'],
     'perm_parcial'  => ['Receber pagamento parcial', 'Pode deixar saldo (valor parcial). Sem isso, só pago total ou a receber. Gerente já tem.'],
+    'perm_zerar'    => ['Zerar o sistema', 'Pode apagar TODAS as encomendas/caixa e recomeçar do zero (botão em Cadastros gerais). Use com cuidado.'],
   ]; @endphp
   @foreach($perms as $k=>[$l,$d])
     <label class="flex items-start gap-3 py-1.5 cursor-pointer">

@@ -81,6 +81,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/cadastros/{tipo}/{id}', [CadastroController::class, 'destroy'])->name('cadastros.destroy');
         Route::post('/estacoes', [CadastroController::class, 'novaEstacao'])->name('estacoes.store');
         Route::post('/estacoes/{estacao}/renomear', [CadastroController::class, 'renomearEstacao'])->name('estacoes.renomear');
+        Route::post('/zerar', [CadastroController::class, 'zerar'])->name('zerar');
         Route::get('/rotas', [RotaController::class, 'index'])->name('rotas');
         Route::post('/rotas', [RotaController::class, 'store'])->name('rotas.store');
         Route::put('/rotas/{rota}', [RotaController::class, 'update'])->name('rotas.update');
