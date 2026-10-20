@@ -120,6 +120,9 @@ class EscPos:
 
     def lr(self, esq, dir_, bold=False):
         esq, dir_ = str(esq), str(dir_)
+        maxe = max(self.col - len(dir_) - 1, 1)   # corta a esquerda p/ nunca estourar a linha (não quebra)
+        if len(esq) > maxe:
+            esq = esq[:maxe]
         esp = max(self.col - len(esq) - len(dir_), 1)
         self.txt(esq + " " * esp + dir_, bold=bold)
 

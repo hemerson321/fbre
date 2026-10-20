@@ -268,10 +268,11 @@
           @endif
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
-        <button class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40 disabled:shadow-none" style="background:var(--cor2)" :disabled="salvando || !itens.length">
+        <button x-show="total>0" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40 disabled:shadow-none" style="background:var(--cor2)" :disabled="salvando || !itens.length">
           <span x-show="!salvando">💾 Salvar encomenda</span><span x-show="salvando">Salvando…</span>
         </button>
         <p class="text-[11px] text-slate-400 text-center" x-show="!itens.length">Adicione ao menos um produto.</p>
+        <p class="text-[12px] text-amber-600 font-semibold text-center" x-show="itens.length && total<=0" x-cloak>Informe o valor para poder salvar.</p>
       </div>
     </section>
   </div>
