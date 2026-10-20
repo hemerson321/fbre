@@ -88,7 +88,8 @@ class Encomenda extends Model
 
     public function numeroFormatado(): string
     {
-        return str_pad((string) $this->numero, 6, '0', STR_PAD_LEFT);
+        // número oficial definitivo (ex.: RE-0001); encomendas antigas caem no número de 6 dígitos
+        return $this->numero_completo ?: str_pad((string) $this->numero, 6, '0', STR_PAD_LEFT);
     }
 
     // ---------------- filtros ----------------
@@ -112,7 +113,8 @@ class Encomenda extends Model
                     $q->where('remetente_nome', 'like', "%$v%")
                       ->orWhere('destinatario_nome', 'like', "%$v%")
                       ->orWhere('remetente_telefone', 'like', "%$v%")
-                      ->orWhere('destinatario_telefone', 'like', "%$v%");
+                      ->orWhere('destinatario_telefone', 'like', "%$v%")
+                      ->orWhere('numero_completo', 'like', "%$v%");
                     if (ctype_digit($v)) {
                         $q->orWhere('numero', (int) $v);
                     }

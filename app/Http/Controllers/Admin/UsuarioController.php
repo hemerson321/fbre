@@ -79,6 +79,7 @@ class UsuarioController extends Controller
             'name' => 'required|string|max:100',
             'login' => ['required', 'string', 'min:3', 'max:40', 'regex:/^[a-z0-9._-]+$/', Rule::unique('users', 'login')->ignore($u?->id)],
             'password' => [$u ? 'nullable' : 'required', 'string', 'min:6'],
+            'prefixo' => ['required', 'string', 'max:8', 'regex:/^[A-Za-z0-9]+$/', Rule::unique('users', 'prefixo')->ignore($u?->id)],
             'setor' => 'nullable|string|max:60',
             'papel' => 'nullable|in:operador_barco,agencia_externa,gerente',
             'admin' => 'nullable|boolean',
@@ -110,6 +111,7 @@ class UsuarioController extends Controller
             $data[$lista] = ! empty($data[$lista]) ? array_values($data[$lista]) : null;
         }
         $data['embarcacao_principal_id'] = $data['embarcacao_principal_id'] ?? null;
+        $data['prefixo'] = strtoupper($data['prefixo']);
         if (! $u) $data['ativo'] = true;
         return $data;
     }

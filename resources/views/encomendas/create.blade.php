@@ -282,6 +282,8 @@
 
 @push('scripts')
 <script>
+// operador logado: prefixo + semente da sequência (o número oficial nasce aqui no aparelho)
+window.FBRE_OP = @js(['prefixo' => auth()->user()->prefixo ?: 'OP'.auth()->id(), 'proximoSeq' => (int) (auth()->user()->proximo_seq ?: 1)]);
 function novaEncomenda(){
   return {
     salvando:false, volumes:1, volumesManual:false, forma:'avista', imprimir:'navegador',
@@ -402,7 +404,7 @@ function novaEncomenda(){
         }
         // offline (ou servidor indisponível): guardado no aparelho
         if (this.imprimir !== 'nao') await FBREOffline.imprimirComprovanteLocal(r.local);
-        alert('Sem conexão: encomenda ' + r.local.dados.numero_provisorio + ' guardada neste aparelho. Será enviada automaticamente quando a internet voltar.');
+        alert('Sem conexão: encomenda ' + r.local.dados.numero_completo + ' guardada neste aparelho (esse já é o número definitivo). Sobe sozinha quando a internet voltar.');
         window.location.href = '{{ route('encomendas.create') }}';
       } catch (e) {
         alert('Não foi possível salvar: ' + e.message); this.salvando = false;

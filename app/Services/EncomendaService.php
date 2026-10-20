@@ -44,10 +44,22 @@ class EncomendaService
             if ($quando->isToday() || $quando->isFuture()) $quando = null; // só vale pra datas passadas
         }
 
-        return DB::transaction(function () use ($data, $userId, $uuid, $offline, $empresa, $viagemId, $rotaId, $quando) {
+        // número oficial e definitivo vem do aparelho (ex.: RE-0001) e nunca é reatribuído.
+        // Fallback (cliente antigo / sem número): gera no servidor pela sequência do operador.
+        $numeroCompleto = trim((string) ($data['numero_completo'] ?? ''));
+        $seq = (int) ($data['numero_seq'] ?? 0);
+        if ($numeroCompleto === '') {
+            $op = \App\Models\User::find($userId);
+            $pref = $op && $op->prefixo ? $op->prefixo : ('OP' . $userId);
+            $seq = $op ? $op->proximoSeq() : 1;
+            $numeroCompleto = $pref . '-' . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+        }
+
+        return DB::transaction(function () use ($data, $userId, $uuid, $offline, $empresa, $viagemId, $rotaId, $quando, $numeroCompleto, $seq) {
             $enc = Encomenda::create([
                 'uuid' => $uuid,
-                'numero' => $empresa->proximoNumero(),
+                'numero' => $seq,
+                'numero_completo' => $numeroCompleto,
                 'numero_provisorio' => $data['numero_provisorio'] ?? null,
                 'embarcacao_id' => ($data['embarcacao_id'] ?? null) ?: null,
                 'viagem_id' => $viagemId,
@@ -103,6 +115,12 @@ class EncomendaService
 
             Evento::create(['encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'cadastro',
                 'dados' => ['total' => $enc->total, 'pago' => $enc->pago, 'offline' => $offline]]);
+
+            // mantém a semente do operador à frente do maior número já usado (continuidade/reinstalação)
+            if ($seq > 0) {
+                \App\Models\User::where('id', $userId)->where('proximo_seq', '<=', $seq)
+                    ->update(['proximo_seq' => $seq + 1]);
+            }
 
             return $enc;
         });

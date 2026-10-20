@@ -45,6 +45,17 @@ class User extends Authenticatable
         'gerente' => 'Gerente',
     ];
 
+    protected static function booted(): void
+    {
+        // todo operador precisa de um prefixo único (código do número da encomenda)
+        static::created(function (self $u) {
+            if (empty($u->prefixo)) {
+                $u->prefixo = 'OP' . $u->id;
+                $u->saveQuietly();
+            }
+        });
+    }
+
     public function empresa(): BelongsTo { return $this->belongsTo(Empresa::class); }
 
     // ---- escopo do operador no cadastro (vazio = tudo liberado) ----
@@ -67,4 +78,15 @@ class User extends Authenticatable
     public function isAdmin(): bool       { return $this->admin; }
     public function isSuper(): bool       { return $this->super_admin; }
     public function podeZerar(): bool     { return $this->super_admin || (bool) $this->perm_zerar; }
+
+    /** Próxima sequência do operador, de forma atômica (fallback quando o aparelho não manda o número). */
+    public function proximoSeq(): int
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () {
+            $u = static::lockForUpdate()->find($this->id);
+            $n = (int) ($u->proximo_seq ?: 1);
+            $u->update(['proximo_seq' => $n + 1]);
+            return $n;
+        });
+    }
 }

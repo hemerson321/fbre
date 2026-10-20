@@ -6,6 +6,7 @@
 <h1 class="text-xl font-bold">{{ $u->exists ? 'Editar usuário' : 'Novo usuário' }}</h1>
 <div><label class="label">Nome completo</label><input name="name" class="input" required value="{{ old('name',$u->name) }}" placeholder="Ex.: Maria da Silva"></div>
 <div><label class="label">Login (usuário para entrar)</label><input name="login" class="input" required value="{{ old('login',$u->login) }}" placeholder="Ex.: maria" autocapitalize="none" pattern="[a-z0-9._-]+"></div>
+<div><label class="label">Código das encomendas (prefixo do número)</label><input name="prefixo" class="input uppercase" required maxlength="8" value="{{ old('prefixo',$u->prefixo) }}" placeholder="Ex.: RE, AG, BAL1" style="text-transform:uppercase" pattern="[A-Za-z0-9]+"><p class="text-xs text-slate-400 mt-0.5">Cada operador precisa de um código único. O número da encomenda sai assim: <b>{{ $u->prefixo ?: 'RE' }}-0001</b>. É o número definitivo (vale offline e no papel).</p></div>
 <div><label class="label">Senha {{ $u->exists?'(deixe vazio para manter)':'' }}</label><input name="password" type="password" class="input" {{ $u->exists?'':'required' }} autocomplete="new-password"></div>
 <div><label class="label">Tipo de usuário</label>
   <select name="papel" class="input"><option value="">—</option>

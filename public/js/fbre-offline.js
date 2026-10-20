@@ -93,8 +93,22 @@
     } finally { sincronizando = false; atualizarIndicador(); }
   }
 
+  // Número oficial e DEFINITIVO, gerado no aparelho: PREFIXO-0001.
+  // Usa o maior entre o contador local (offline) e a semente do servidor (reinstalação).
+  function gerarNumero() {
+    const op = window.FBRE_OP || {};
+    const pref = String(op.prefixo || 'OP').toUpperCase();
+    const key = 'fbre_seq_' + pref;
+    const semente = parseInt(op.proximoSeq || 1, 10) || 1;
+    let local = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+    const seq = Math.max(local, semente);
+    try { localStorage.setItem(key, String(seq + 1)); } catch (e) {}
+    return { seq, completo: pref + '-' + String(seq).padStart(4, '0') };
+  }
+
   // ---------------------------------------------------------------- API pública
   const FBREOffline = {
+    gerarNumero,
     uuid, moeda, online,
     pendentes: async () => (await filaTodos()).length,
     descartar: async (uuid) => { await filaDel(uuid); atualizarIndicador(); },
@@ -106,7 +120,8 @@
     /** Salva a encomenda localmente e tenta enviar. Retorna {local, servidor?} */
     async salvarEncomenda(dados) {
       const id = dados.uuid || uuid();
-      const item = { uuid: id, tipo: 'encomenda', em: Date.now(), dados: { ...dados, uuid: id, criada_em: new Date().toISOString(), numero_provisorio: 'P-' + id.slice(0, 6).toUpperCase() } };
+      const num = (dados.numero_completo && dados.numero_seq) ? { seq: dados.numero_seq, completo: dados.numero_completo } : gerarNumero();
+      const item = { uuid: id, tipo: 'encomenda', em: Date.now(), dados: { ...dados, uuid: id, criada_em: new Date().toISOString(), numero_seq: num.seq, numero_completo: num.completo } };
       await filaPut(item);                       // 1) gravado no aparelho
       let servidor = null;
       if (online()) { try { servidor = await enviarUm(item); } catch (e) { servidor = null; } }
@@ -136,19 +151,18 @@
       const linhasItens = d.itens.map((i) => `<tr><td>${esc(i.descricao)}</td><td class="r">${i.quantidade}x ${moeda(i.valor_unitario).replace('R$', '').trim()}</td><td class="r b">${moeda(i.quantidade * i.valor_unitario).replace('R$', '').trim()}</td></tr>`).join('');
       const etiquetas = Array.from({ length: Number(d.volumes) || 1 }, (_, v) => `
         <div class="quebra"><div class="c b lg">${esc((e.nome || '').toUpperCase())}</div>
-        <div class="box c"><div class="b" style="font-size:26px">Nº ${esc(d.numero_provisorio)}</div><div class="b lg">VOLUME ${v + 1}/${d.volumes}</div></div>
+        <div class="box c"><div class="b" style="font-size:26px">Nº ${esc(d.numero_completo)}</div><div class="b lg">VOLUME ${v + 1}/${d.volumes}</div></div>
         <div class="b lg">DESTINO: ${esc(d.destino.toUpperCase())}</div><div class="sm">Origem: ${esc(d.origem)}</div><hr>
         <div class="b">PARA: ${esc(d.destinatario_nome.toUpperCase())}</div><div>${esc(d.destinatario_telefone || '')}</div>
         <div class="sm">DE: ${esc(d.remetente_nome)} ${esc(d.remetente_telefone || '')}</div><hr>
         <table><tr><td class="sm">${new Date().toLocaleString('pt-BR')}</td><td class="r b">${devido > 0 ? 'A RECEBER ' + moeda(devido) : 'PAGO'}</td></tr></table><br></div>`).join('');
-      const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Comprovante ${esc(d.numero_provisorio)}</title>
+      const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Comprovante ${esc(d.numero_completo)}</title>
       <style>@page{margin:0;size:80mm auto}*{box-sizing:border-box}body{margin:0;padding:3mm 4mm;width:80mm;font-family:"Courier New",monospace;font-size:11.5px;color:#000}
       .c{text-align:center}.r{text-align:right}.b{font-weight:bold}.xl{font-size:18px}.lg{font-size:14px}.sm{font-size:10px}hr{border:0;border-top:1px dashed #000;margin:4px 0}
       table{width:100%;border-collapse:collapse}td{padding:1px 0;vertical-align:top}.box{border:1px solid #000;padding:2mm;margin:2mm 0}.quebra{page-break-after:always}
       .aviso{border:1px solid #000;padding:2px;text-align:center;font-size:10px;margin:3px 0}</style></head><body onload="window.print()">
       <div class="c"><div class="b lg">${esc((e.nome || 'FBRE').toUpperCase())}</div>${e.cnpj ? `<div class="sm">CNPJ ${esc(e.cnpj)}</div>` : ''}${e.telefone || e.whatsapp ? `<div class="sm">${esc(e.telefone || '')} ${e.whatsapp ? '· WhatsApp ' + esc(e.whatsapp) : ''}</div>` : ''}</div><hr>
-      <div class="c b xl">ENCOMENDA Nº ${esc(d.numero_provisorio)}</div>
-      <div class="aviso">Nº PROVISÓRIO — emitido sem internet. O número definitivo será atribuído na sincronização.</div>
+      <div class="c b xl">ENCOMENDA Nº ${esc(d.numero_completo)}</div>
       <div class="c sm">${new Date().toLocaleString('pt-BR')} · Operador: ${esc((b.usuario || {}).nome || '')}</div><hr>
       <table><tr><td class="b">ORIGEM</td><td class="r">${esc(d.origem)}</td></tr><tr><td class="b">DESTINO</td><td class="r">${esc(d.destino)}</td></tr><tr><td class="b">VOLUMES</td><td class="r">${d.volumes}</td></tr></table><hr>
       <div class="b">REMETENTE</div><div>${esc(d.remetente_nome)}</div><div class="sm">${esc(d.remetente_telefone || '')} ${esc(d.remetente_documento || '')}</div>
@@ -183,7 +197,7 @@
     if (!el) { el = document.createElement('div'); el.id = 'fbre-painel'; document.body.appendChild(el); }
     const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
     const linhas = fila.map((i) => {
-      const d = i.dados; const titulo = i.tipo === 'encomenda' ? `Encomenda ${esc(d.numero_provisorio)} — ${esc(d.destinatario_nome)} (${esc(d.destino)})` : `Baixa — encomenda #${esc(d.encomenda_id || d.encomenda_uuid)}`;
+      const d = i.dados; const titulo = i.tipo === 'encomenda' ? `Encomenda ${esc(d.numero_completo)} — ${esc(d.destinatario_nome)} (${esc(d.destino)})` : `Baixa — encomenda #${esc(d.encomenda_id || d.encomenda_uuid)}`;
       return `<div class="rounded-xl border p-3 text-sm ${i.erro ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}">
         <div class="font-semibold">${titulo}</div>
         <div class="text-xs text-slate-500">${new Date(i.em).toLocaleString('pt-BR')} · ${i.falhas ? i.falhas + ' tentativa(s)' : 'aguardando envio'}</div>

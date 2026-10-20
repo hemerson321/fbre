@@ -51,6 +51,8 @@ class SyncController extends Controller
 
         $data = $request->validate([
             'uuid' => 'required|uuid',
+            'numero_completo' => 'nullable|string|max:30',
+            'numero_seq' => 'nullable|integer|min:1',
             'numero_provisorio' => 'nullable|string|max:30',
             'criada_em' => 'nullable|date',
             'origem' => 'required|string|max:80',

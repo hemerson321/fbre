@@ -155,6 +155,8 @@ class EncomendaController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
+            'numero_completo' => 'nullable|string|max:30',
+            'numero_seq' => 'nullable|integer|min:1',
             'origem' => 'required|string|max:80',
             'destino' => 'required|string|max:80',
             'embarcacao_id' => 'nullable|integer',
