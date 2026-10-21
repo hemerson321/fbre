@@ -3,6 +3,18 @@
     $u = auth()->user();
     $cor1 = $empresa?->cor_primaria ?? '#0b1a33';
     $cor2 = $empresa?->cor_secundaria ?? '#00a8e8';
+    // módulo atual (pela rota) -> cor do topo acompanha o módulo
+    $moduloAtual = match (true) {
+        request()->routeIs('passagens.*') => 'passagem',
+        request()->routeIs('encomendas.*', 'pre.*') => 'encomenda',
+        request()->routeIs('fretes.*') => 'frete',
+        request()->routeIs('camarotes.*') => 'camarote',
+        request()->routeIs('lanchonete.*') => 'lanchonete',
+        request()->routeIs('wifi.*') => 'wifi',
+        default => null,
+    };
+    $headerCor = $moduloAtual ? \App\Support\Modulos::hex($moduloAtual) : $cor1;
+    $headerGrad = 'linear-gradient(100deg, '.$headerCor.', color-mix(in srgb, '.$headerCor.' 70%, #000))';
 @endphp
 <!doctype html>
 <html lang="pt-BR">
@@ -10,7 +22,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<meta name="theme-color" content="{{ $cor1 }}">
+<meta name="theme-color" content="{{ $headerCor }}">
 <title>@yield('titulo', 'FBRE') · {{ $empresa?->nomeExibicao() ?? 'FBRE' }}</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="{{ $empresa?->logo ? '/'.$empresa->logo : '/img/icon.png' }}">
@@ -94,7 +106,7 @@ tailwind.config = { theme: { extend: {
 @endphp
 
 {{-- ===== BARRA DA EMPRESA ===== --}}
-<header class="no-print sticky top-0 z-30 text-white shadow-md" style="background: var(--cor1)">
+<header class="no-print sticky top-0 z-30 text-white shadow-md transition-colors duration-300" style="background: {{ $headerGrad }}">
   <div class="mx-auto max-w-[1440px] flex items-center gap-3 px-3 sm:px-4 h-14">
     <button class="lg:hidden p-2 -ml-2 rounded-lg hover:bg-white/10" @click="menu=!menu" aria-label="Menu">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>

@@ -18,7 +18,6 @@ class PassagemController extends Controller
     // ---------------- LISTA / FILTRO ----------------
     public function index(Request $request)
     {
-        try {
         $f = $this->filtros($request);
         $base = Passagem::filtrar($f);
 
@@ -37,7 +36,7 @@ class PassagemController extends Controller
 
         $passagens = (clone $base)->with(['embarcacao', 'operador'])->orderByDesc('id')->paginate(50)->withQueryString();
 
-        $html = view('passagens.index', [
+        return view('passagens.index', [
             'passagens' => $passagens,
             'totais' => $totais,
             'porMeio' => $porMeio,
@@ -45,15 +44,7 @@ class PassagemController extends Controller
             'localidades' => TabelaPreco::select('origem')->distinct()->pluck('origem')
                 ->merge(Rota::todasLocalidades())->unique()->sort()->values(),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
-        ])->render();
-        return response($html);
-        } catch (\Throwable $e) {
-            report($e);
-            if (auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isSuper())) {
-                return response("DIAG passagens/index\n".get_class($e).': '.$e->getMessage()."\n@ ".$e->getFile().':'.$e->getLine()."\n\n".$e->getTraceAsString(), 200)->header('Content-Type','text/plain; charset=utf-8');
-            }
-            throw $e;
-        }
+        ]);
     }
 
     protected function filtros(Request $request): array
