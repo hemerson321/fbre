@@ -6,7 +6,6 @@
     // módulo atual (pela rota) -> cor do topo acompanha o módulo
     $moduloAtual = match (true) {
         request()->routeIs('passagens.*') => 'passagem',
-        request()->routeIs('encomendas.*', 'pre.*') => 'encomenda',
         request()->routeIs('fretes.*') => 'frete',
         request()->routeIs('camarotes.*') => 'camarote',
         request()->routeIs('lanchonete.*') => 'lanchonete',
