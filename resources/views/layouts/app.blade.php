@@ -78,6 +78,18 @@ tailwind.config = { theme: { extend: {
       ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'],
   ];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
+  // cor e ícone de cada grupo do menu (identidade visual por módulo)
+  $metaGrupo = [
+    'Encomendas'    => ['📦', \App\Support\Modulos::hex('encomenda')],
+    'Passagem'      => ['🎫', \App\Support\Modulos::hex('passagem')],
+    'Frete'         => ['🚢', \App\Support\Modulos::hex('frete')],
+    'Camarote'      => ['🛏️', \App\Support\Modulos::hex('camarote')],
+    'Lanchonete'    => ['🍔', \App\Support\Modulos::hex('lanchonete')],
+    'WiFi'          => ['📶', \App\Support\Modulos::hex('wifi')],
+    'Caixa'         => ['💰', '#0b1a33'],
+    'Administração' => ['⚙️', '#334155'],
+    'GERATEC'       => ['🛠️', '#334155'],
+  ];
   $ativo = fn($r) => request()->url() === strtok($r, '?');
 @endphp
 
@@ -108,20 +120,34 @@ tailwind.config = { theme: { extend: {
   </div>
 
   {{-- ===== MENU HORIZONTAL (desktop) ===== --}}
-  <nav class="hidden lg:block bg-white text-slate-700 border-b border-slate-200">
-    <div class="mx-auto max-w-[1440px] px-4 flex items-stretch h-11 overflow-x-auto">
+  <nav class="hidden lg:block bg-white border-b border-slate-200" x-data="{ aberto:null }" @click.outside="aberto=null">
+    <div class="mx-auto max-w-[1440px] px-4 flex items-stretch h-12 gap-1">
       @foreach($grupos as $titulo => $itens)
-        <div class="flex items-center gap-0.5 pr-3 mr-3 border-r border-slate-200 last:border-0 last:mr-0 last:pr-0">
-          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1.5 whitespace-nowrap">{{ $titulo }}</span>
-          @foreach($itens as $it)
-            <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif
-               class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition
-                      {{ $ativo($it['r']) ? 'text-white shadow-sm' : 'hover:bg-slate-100' }}"
-               @if($ativo($it['r'])) style="background: var(--cor2)" @endif>
-              <span class="text-sm">{{ $it['i'] }}</span>{{ $it['l'] }}
-              @if(!empty($it['b']))<span class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $it['b'] }}</span>@endif
-            </a>
-          @endforeach
+        @php [$gi,$gc] = $metaGrupo[$titulo] ?? ['•','#475569']; $temAtivo = collect($itens)->contains(fn($it)=>$ativo($it['r'])); @endphp
+        <div class="relative flex items-center">
+          <button type="button" @click="aberto = (aberto==='{{ $titulo }}' ? null : '{{ $titulo }}')"
+            class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-slate-50"
+            :class="aberto==='{{ $titulo }}' ? 'bg-slate-50' : ''"
+            style="{{ $temAtivo ? 'color:'.$gc : 'color:#334155' }}">
+            <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $gc }}"></span>
+            <span class="text-base">{{ $gi }}</span>{{ $titulo }}
+            @php $badge = collect($itens)->sum(fn($it)=>(int)($it['b'] ?? 0)); @endphp
+            @if($badge)<span class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $badge }}</span>@endif
+            <svg class="w-3.5 h-3.5 opacity-50 transition" :class="aberto==='{{ $titulo }}'?'rotate-180':''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div x-show="aberto==='{{ $titulo }}'" x-cloak x-transition.origin.top.left
+               class="absolute left-0 top-full mt-1 z-50 w-60 rounded-xl bg-white shadow-xl border border-slate-100 p-1.5">
+            <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider" style="color:{{ $gc }}">{{ $titulo }}</div>
+            @foreach($itens as $it)
+              <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif
+                 class="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-medium transition
+                        {{ $ativo($it['r']) ? 'text-white' : 'text-slate-700 hover:bg-slate-50' }}"
+                 @if($ativo($it['r'])) style="background:{{ $gc }}" @endif>
+                <span class="text-lg w-6 text-center">{{ $it['i'] }}</span>{{ $it['l'] }}
+                @if(!empty($it['b']))<span class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $it['b'] }}</span>@endif
+              </a>
+            @endforeach
+          </div>
         </div>
       @endforeach
     </div>
@@ -171,10 +197,9 @@ tailwind.config = { theme: { extend: {
   <div class="grid grid-cols-4 text-[11px] font-semibold text-slate-500">
     @php $tab = fn($r,$l,$i) => '<a href="'.$r.'" class="flex flex-col items-center gap-0.5 py-2 '.($ativo($r)?'text-[var(--cor1)]':'').'"><span class="text-xl">'.$i.'</span>'.$l.'</a>';
       $tabs = [];
-      if($u->podeCadastrar()) $tabs[] = $tab(route('encomendas.create'), 'Nova', '➕');
-      if($u->podeFiltrar()) $tabs[] = $tab(route('encomendas.index'), 'Encomendas', '📦');
+      $tabs[] = $tab(route('inicio'), 'Início', '🏠');
       if($u->podeVerCaixa()) $tabs[] = $tab(route('caixa.index'), 'Caixa', '💰');
-      if($u->podeRelatorio() && count($tabs) < 3) $tabs[] = $tab(route('relatorio.meu'), 'Relatório', '📋');
+      if($u->podeRelatorio()) $tabs[] = $tab(route('relatorio.meu'), 'Relatório', '📋');
       foreach(array_slice($tabs,0,3) as $t) echo $t; @endphp
     <button @click="menu=true" class="flex flex-col items-center gap-0.5 py-2"><span class="text-xl">☰</span>Menu</button>
   </div>

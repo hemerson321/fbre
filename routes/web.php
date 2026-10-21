@@ -47,8 +47,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/passagens', [\App\Http\Controllers\PassagemController::class, 'store'])->name('passagens.store')->middleware('perm:passagem');
     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos');
     Route::get('/passagens/{passagem}', [\App\Http\Controllers\PassagemController::class, 'show'])->name('passagens.show');
-    Route::post('/passagens/{passagem}/pagar', [\App\Http\Controllers\PassagemController::class, 'pagar'])->name('passagens.pagar')->middleware('perm:baixa');
-    Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:baixa');
+    Route::post('/passagens/{passagem}/pagar', [\App\Http\Controllers\PassagemController::class, 'pagar'])->name('passagens.pagar')->middleware('perm:passagem.baixa');
+    Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:passagem.baixa');
     Route::post('/passagens/{passagem}/cancelar', [\App\Http\Controllers\PassagemController::class, 'cancelar'])->name('passagens.cancelar')->middleware('perm:admin');
 
     // ---------------- Pré-cadastros (operador) ----------------

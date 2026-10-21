@@ -44,6 +44,7 @@ class User extends Authenticatable
             'perm_avulso' => 'boolean',
             'perm_recibo' => 'boolean',
             'perm_financeiro' => 'boolean',
+            'mod_perms' => 'array',
         ];
     }
 
@@ -77,13 +78,13 @@ class User extends Authenticatable
     public function relatorioTodos(): bool        { return $this->admin || $this->gerente() || $this->relatorio_todos || $this->financeiro(); }
     public function papelNome(): string           { return self::PAPEIS[$this->papel] ?? '—'; }
 
-    public function podeCadastrar(): bool { return $this->admin || $this->perm_cadastra; }
-    public function podeBaixar(): bool    { return $this->admin || $this->perm_baixa; }
+    public function podeCadastrar(): bool { return $this->permite('encomenda', 'cadastra'); }
+    public function podeBaixar(): bool    { return $this->permite('encomenda', 'baixa'); }
     public function financeiro(): bool    { return (bool) $this->perm_financeiro; }
     public function podeVerCaixa(): bool  { return $this->admin || $this->perm_caixa || $this->financeiro(); }
     public function podeFiltrar(): bool   { return $this->admin || $this->perm_filtro; }
     public function podeRelatorio(): bool { return $this->admin || $this->perm_relatorio || $this->financeiro(); }
-    public function podeImprimir(): bool  { return $this->admin || $this->perm_imprimir; }
+    public function podeImprimir(): bool  { return $this->permite('encomenda', 'imprimir'); }
     public function isAdmin(): bool       { return $this->admin; }
     public function isSuper(): bool       { return $this->super_admin; }
     public function podeZerar(): bool     { return $this->super_admin || (bool) $this->perm_zerar; }
@@ -100,12 +101,35 @@ class User extends Authenticatable
         'recibo'     => 'Recibo',
     ];
 
-    /** Pode cadastrar/vender no módulo informado. Admin e gerente acessam tudo. */
+    /** Ações possíveis dentro de um módulo. */
+    public const ACOES = [
+        'cadastra' => 'Cadastrar',
+        'baixa'    => 'Dar baixa',
+        'imprimir' => 'Imprimir',
+    ];
+
+    /**
+     * Permissão por módulo e ação. Admin/gerente podem tudo.
+     * Se o módulo não tem config em mod_perms, cai no fallback das colunas antigas.
+     */
+    public function permite(string $mod, string $acao = 'cadastra'): bool
+    {
+        if ($this->admin || $this->isSuper() || $this->gerente()) return true;
+        $mp = $this->mod_perms[$mod] ?? null;
+        if (is_array($mp) && array_key_exists($acao, $mp)) return (bool) $mp[$acao];
+        // fallback (compatível com permissões antigas)
+        return match ($acao) {
+            'cadastra' => $mod === 'encomenda' ? (bool) $this->perm_cadastra : (bool) ($this->{'perm_' . $mod} ?? false),
+            'baixa'    => (bool) $this->perm_baixa,
+            'imprimir' => (bool) $this->perm_imprimir,
+            default    => false,
+        };
+    }
+
+    /** Pode cadastrar/vender no módulo informado. */
     public function podeModulo(string $mod): bool
     {
-        if ($this->admin || $this->gerente()) return true;
-        if ($mod === 'encomenda') return (bool) $this->perm_cadastra; // mantém compatibilidade
-        return (bool) ($this->{'perm_' . $mod} ?? false);
+        return $this->permite($mod, 'cadastra');
     }
 
     /** Lista de módulos que este usuário pode acessar. */

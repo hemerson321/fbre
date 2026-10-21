@@ -102,6 +102,8 @@ class UsuarioController extends Controller
             'perm_avulso' => 'nullable|boolean',
             'perm_recibo' => 'nullable|boolean',
             'perm_financeiro' => 'nullable|boolean',
+            'mod_perms' => 'nullable|array',
+            'mod_perms.*' => 'array',
             'ativo' => 'nullable|boolean',
             'loc_permitidas' => 'nullable|array',
             'loc_permitidas.*' => 'string|max:80',
@@ -120,6 +122,17 @@ class UsuarioController extends Controller
         }
         $data['embarcacao_principal_id'] = $data['embarcacao_principal_id'] ?? null;
         $data['prefixo'] = strtoupper($data['prefixo']);
+
+        // permissões por módulo e ação (cadastra/baixa/imprimir)
+        $mp = $request->input('mod_perms', []);
+        $clean = [];
+        foreach ((array) $mp as $mod => $acoes) {
+            if (! array_key_exists($mod, User::MODULOS)) continue;
+            $row = [];
+            foreach (array_keys(User::ACOES) as $ak) $row[$ak] = ! empty($acoes[$ak]);
+            if (array_filter($row)) $clean[$mod] = $row;
+        }
+        $data['mod_perms'] = $clean ?: null;
         if (! $u) $data['ativo'] = true;
         return $data;
     }

@@ -38,7 +38,7 @@
   </div>
 
   {{-- baixa de pagamento --}}
-  @if(!$p->cancelada && $p->devido>0.009 && $u->podeBaixar())
+  @if(!$p->cancelada && $p->devido>0.009 && $u->permite('passagem','baixa'))
   <form method="post" action="{{ route('passagens.pagar',$p) }}" class="card p-4 space-y-3" x-data="{d:0,px:0,db:0,cr:0}">
     @csrf
     <div class="font-semibold">Receber pagamento</div>
@@ -54,7 +54,7 @@
   @endif
 
   {{-- embarque --}}
-  @if(!$p->cancelada && !$p->embarcou && ($p->devido<=0.009 || $p->forma==='faturado') && $u->podeBaixar())
+  @if(!$p->cancelada && !$p->embarcou && ($p->devido<=0.009 || $p->forma==='faturado') && $u->permite('passagem','baixa'))
   <form method="post" action="{{ route('passagens.embarcar',$p) }}">@csrf
     <button class="btn btn-ghost w-full">✅ Confirmar embarque</button>
   </form>
