@@ -5,6 +5,37 @@
 <div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ $verTodos ? 'Caixa geral' : 'Meu caixa' }}</h1>
   <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Imprimir</button></div>
 
+@if($podeAvulso)
+<div x-data="{open:false, tipo:'entrada'}" class="no-print">
+  <div class="flex gap-2">
+    <button type="button" @click="tipo='entrada';open=true" class="btn btn-sm text-white" style="background:#059669">➕ Entrada avulsa</button>
+    <button type="button" @click="tipo='saida';open=true" class="btn btn-sm text-white" style="background:#e11d48">➖ Saída avulsa</button>
+  </div>
+  <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3" @click="open=false">
+    <form method="post" action="{{ route('caixa.avulso') }}" class="bg-white rounded-2xl p-4 w-full max-w-sm space-y-3" @click.stop>
+      @csrf
+      <input type="hidden" name="tipo_mov" :value="tipo">
+      <div class="font-bold text-lg" x-text="tipo==='entrada' ? '➕ Entrada avulsa' : '➖ Saída avulsa'"></div>
+      <div><label class="label">Categoria</label>
+        <select name="categoria" class="input" required>
+          <option value="">— escolher —</option>
+          @foreach($categorias as $c)<option value="{{ $c->nome }}" x-show="'{{ $c->tipo }}'==='ambos' || '{{ $c->tipo }}'===tipo">{{ $c->nome }}</option>@endforeach
+        </select>
+        @if(auth()->user()->isAdmin() || auth()->user()->isSuper())<p class="text-[11px] text-slate-400 mt-1">Criar/editar categorias em <a href="{{ route('admin.cadastros') }}" class="underline">Cadastros gerais</a>.</p>@endif
+      </div>
+      <div><label class="label">Valor</label><input name="valor" type="number" step="0.01" min="0.01" class="input" required inputmode="decimal"></div>
+      <div><label class="label">Forma</label>
+        <select name="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select></div>
+      <div><label class="label">Descrição (opcional)</label><input name="descricao" class="input" maxlength="200"></div>
+      <div class="flex gap-2 pt-1">
+        <button type="button" class="btn btn-ghost flex-1" @click="open=false">Cancelar</button>
+        <button class="btn flex-1 text-white" :style="tipo==='entrada'?'background:#059669':'background:#e11d48'">Registrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+@endif
+
 <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
   @if($verTodos)
   <div><label class="label">Operador</label>
@@ -23,11 +54,12 @@
 @if($viagemId)<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Mostrando o caixa da viagem selecionada (o período acima é ignorado).</div>@endif
 
 <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
-  <div class="card p-3 text-white" style="background:var(--cor1)"><div class="text-[11px] uppercase opacity-70">Total no caixa</div><div class="text-2xl font-extrabold">R$ {{ number_format($total,2,',','.') }}</div></div>
+  <div class="card p-3 text-white" style="background:var(--cor1)"><div class="text-[11px] uppercase opacity-70">Caixa (líquido)</div><div class="text-2xl font-extrabold">R$ {{ number_format($total,2,',','.') }}</div><div class="text-[10px] opacity-70">entradas {{ number_format($entradas,2,',','.') }} · saídas {{ number_format($saidas,2,',','.') }}</div></div>
   @foreach(['dinheiro','pix','debito','credito'] as $m)
     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m]->valor ?? 0,2,',','.') }}</div><div class="text-xs text-slate-400">{{ $porMeio[$m]->qtd ?? 0 }} lançamentos</div></div>
   @endforeach
   <div class="card p-3 text-xs space-y-1">
+    <div class="flex justify-between"><span class="text-slate-500">Saídas avulsas</span><b class="text-red-600">R$ {{ number_format($saidas,2,',','.') }}</b></div>
     <div class="flex justify-between"><span class="text-slate-500">Descontos</span><b>R$ {{ number_format($descontos,2,',','.') }}</b></div>
     <div class="flex justify-between"><span class="text-slate-500">Cadastros</span><b>{{ $cadastros }}</b></div>
     <div class="flex justify-between"><span class="text-slate-500">Entregas</span><b>{{ $entregas }}</b></div>

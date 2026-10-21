@@ -7,6 +7,8 @@ use App\Models\Evento;
 use App\Models\Pagamento;
 use App\Models\User;
 use App\Models\Viagem;
+use App\Models\AvulsoCategoria;
+use App\Support\Tenant;
 use Illuminate\Http\Request;
 
 class CaixaController extends Controller
@@ -29,7 +31,8 @@ class CaixaController extends Controller
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
-            ->when($modulo, fn ($q) => $q->where('modulo', $modulo));
+            ->when($modulo, fn ($q) => $q->where('modulo', $modulo))
+            ->where('tipo_mov', '!=', 'saida');
 
         $porMeio = (clone $base)->selectRaw('meio, SUM(valor) valor, COUNT(*) qtd')->groupBy('meio')->get()->keyBy('meio');
         $porOperador = (clone $base)->selectRaw('user_id, meio, SUM(valor) valor')->groupBy('user_id', 'meio')->get()
@@ -54,10 +57,46 @@ class CaixaController extends Controller
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))->count();
 
+        $saidas = Pagamento::where('estornado', false)->where('tipo_mov', 'saida')
+            ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
+            ->when($encIds !== null, fn ($q) => $q->whereIn('origem_id', $encIds))
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($modulo, fn ($q) => $q->where('modulo', $modulo))->sum('valor');
+
+        $categorias = AvulsoCategoria::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
+        $podeAvulso = auth()->user()->podeModulo('avulso');
+
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo'))
-            ->with(['meios' => Pagamento::MEIOS, 'total' => $porMeio->sum('valor')]);
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso'))
+            ->with(['meios' => Pagamento::MEIOS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas]);
+    }
+
+    /** Registra uma entrada ou saída avulsa no caixa. */
+    public function avulso(Request $request)
+    {
+        abort_unless($request->user()->podeModulo('avulso'), 403, 'Sem permissão para lançar avulso.');
+        $data = $request->validate([
+            'tipo_mov' => 'required|in:entrada,saida',
+            'categoria' => 'nullable|string|max:60',
+            'valor' => 'required|numeric|min:0.01',
+            'meio' => 'required|in:dinheiro,pix,debito,credito',
+            'descricao' => 'nullable|string|max:200',
+        ]);
+        Pagamento::create([
+            'empresa_id' => Tenant::id(),
+            'modulo' => 'avulso',
+            'origem_id' => null,
+            'encomenda_id' => null,
+            'meio' => $data['meio'],
+            'valor' => $data['valor'],
+            'user_id' => auth()->id(),
+            'momento' => 'cadastro',
+            'tipo_mov' => $data['tipo_mov'],
+            'categoria' => $data['categoria'] ?? null,
+            'descricao' => $data['descricao'] ?? null,
+        ]);
+        return back()->with('ok', ($data['tipo_mov'] === 'entrada' ? 'Entrada' : 'Saída') . ' avulsa registrada.');
     }
 
     /** Resolve o período: hoje | semana | mes | personalizado */

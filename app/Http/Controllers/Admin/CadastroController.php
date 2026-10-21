@@ -15,6 +15,7 @@ use App\Models\PreCadastro;
 use App\Models\Produto;
 use App\Models\Rota;
 use App\Models\Setor;
+use App\Models\AvulsoCategoria;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,7 @@ class CadastroController extends Controller
         'localidades' => Localidade::class,
         'setores' => Setor::class,
         'produtos' => Produto::class,
+        'categorias' => AvulsoCategoria::class,
     ];
 
     public function index()
@@ -37,6 +39,7 @@ class CadastroController extends Controller
             'setores' => Setor::orderBy('nome')->get(),
             'produtos' => Produto::orderBy('nome')->get(),
             'estacoes' => Estacao::orderBy('nome')->get(),
+            'categorias' => AvulsoCategoria::orderBy('ordem')->orderBy('nome')->get(),
             'rotas' => \App\Support\Tenant::empresa()->temRecurso('viagens') ? Rota::with(['paradas', 'embarcacao'])->orderBy('nome')->get() : collect(),
             'localidadesNomes' => Rota::todasLocalidades(),
             'dias' => Rota::DIAS,
@@ -46,6 +49,16 @@ class CadastroController extends Controller
     public function store(Request $request, string $tipo)
     {
         abort_unless(isset($this->tipos[$tipo]), 404);
+
+        if ($tipo === 'categorias') {
+            $data = $request->validate([
+                'nome' => 'required|string|max:60',
+                'tipo' => 'required|in:entrada,saida,ambos',
+            ]);
+            AvulsoCategoria::create(['nome' => $data['nome'], 'tipo' => $data['tipo'], 'ativo' => true]);
+            return back()->with('ok', 'Categoria criada.');
+        }
+
         $data = $request->validate([
             'nome' => 'required|string|max:120',
             'valor_padrao' => 'nullable|numeric|min:0',
@@ -60,7 +73,7 @@ class CadastroController extends Controller
         abort_unless(isset($this->tipos[$tipo]) || $tipo === 'estacoes', 404);
         $m = $tipo === 'estacoes' ? Estacao::class : $this->tipos[$tipo];
         $reg = $m::findOrFail($id);
-        if ($tipo === 'setores' || $tipo === 'estacoes') { $reg->delete(); }
+        if (in_array($tipo, ['setores', 'estacoes', 'categorias'])) { $reg->delete(); }
         else { $reg->update(['ativo' => false]); }
         return back()->with('ok', 'Removido.');
     }

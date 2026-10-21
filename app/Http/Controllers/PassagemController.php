@@ -18,6 +18,7 @@ class PassagemController extends Controller
     // ---------------- LISTA / FILTRO ----------------
     public function index(Request $request)
     {
+        try {
         $f = $this->filtros($request);
         $base = Passagem::filtrar($f);
 
@@ -36,7 +37,7 @@ class PassagemController extends Controller
 
         $passagens = (clone $base)->with(['embarcacao', 'operador'])->orderByDesc('id')->paginate(50)->withQueryString();
 
-        return view('passagens.index', [
+        $html = view('passagens.index', [
             'passagens' => $passagens,
             'totais' => $totais,
             'porMeio' => $porMeio,
@@ -44,7 +45,15 @@ class PassagemController extends Controller
             'localidades' => TabelaPreco::select('origem')->distinct()->pluck('origem')
                 ->merge(Rota::todasLocalidades())->unique()->sort()->values(),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
-        ]);
+        ])->render();
+        return response($html);
+        } catch (\Throwable $e) {
+            report($e);
+            if (auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isSuper())) {
+                return response("DIAG passagens/index\n".get_class($e).': '.$e->getMessage()."\n@ ".$e->getFile().':'.$e->getLine()."\n\n".$e->getTraceAsString(), 200)->header('Content-Type','text/plain; charset=utf-8');
+            }
+            throw $e;
+        }
     }
 
     protected function filtros(Request $request): array
@@ -77,15 +86,25 @@ class PassagemController extends Controller
             ->merge(TabelaPreco::where('ativo', true)->pluck('destino'))
             ->merge(Rota::todasLocalidades())->unique()->sort()->values();
         $rotas = Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect();
+        // linhas (com paradas) para o JS resolver a viagem a partir de origem/destino (igual ao encomenda)
+        $linhas = $rotas->map(fn ($r) => [
+            'id' => $r->id,
+            'nome' => $r->nome,
+            'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
+        ])->values();
 
         return view('passagens.create', [
             'embarcacoes' => $embarcacoes,
             'tipos' => $tipos,
             'precos' => $precos,
             'localidades' => $localidades,
+            'cidades' => $localidades->values(),
+            'linhas' => $linhas,
             'rotas' => $rotas,
             'ultimaOrigem' => session('ultima_origem_pass') ?: (Tenant::empresa()->cidade ?: $localidades->first()),
+            'embarcacaoPrincipal' => session('ultima_embarcacao_pass') ?: $u->embarcacao_principal_id,
             'podeParcial' => $u->podeParcial(),
+            'podeRetroativo' => $u->podeRetroativo(),
         ]);
     }
 

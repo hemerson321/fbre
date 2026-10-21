@@ -27,6 +27,29 @@
 @endforeach
 
 <div class="card p-4 space-y-2 md:col-span-2">
+  <h2 class="font-bold text-sm text-slate-500 uppercase">Categorias do caixa (entrada/saída avulsa)</h2>
+  <p class="text-xs text-slate-500">O operador escolhe uma destas ao lançar entrada/saída no caixa. Só o admin cria aqui.</p>
+  <form method="post" action="{{ route('admin.cadastros.store','categorias') }}" class="flex flex-wrap gap-2 items-end">@csrf
+    <input name="nome" class="input !min-h-[42px] flex-1 min-w-[160px]" placeholder="Nome da categoria (ex.: Combustível)" required maxlength="60">
+    <select name="tipo" class="input !min-h-[42px] !w-44">
+      <option value="ambos">Entrada e saída</option>
+      <option value="entrada">Só entrada</option>
+      <option value="saida">Só saída</option>
+    </select>
+    <button class="btn btn-accent btn-sm">+ Adicionar</button>
+  </form>
+  <div class="flex flex-wrap gap-2 pt-1">
+    @forelse($categorias as $c)
+      <span class="chip bg-slate-100 text-slate-700 flex items-center gap-2">
+        {{ $c->nome }}
+        <span class="text-[10px] uppercase font-bold {{ $c->tipo==='entrada'?'text-emerald-600':($c->tipo==='saida'?'text-red-600':'text-slate-400') }}">{{ \App\Models\AvulsoCategoria::TIPOS[$c->tipo] ?? $c->tipo }}</span>
+        <form method="post" action="{{ route('admin.cadastros.destroy',['categorias',$c->id]) }}" onsubmit="return confirm('Remover categoria?')">@csrf @method('DELETE')<button class="text-red-500 text-xs">×</button></form>
+      </span>
+    @empty <span class="text-slate-400 text-sm">Nenhuma categoria ainda.</span> @endforelse
+  </div>
+</div>
+
+<div class="card p-4 space-y-2 md:col-span-2">
   <h2 class="font-bold text-sm text-slate-500 uppercase">Estações de impressão direta (Agente de Impressão)</h2>
   <p class="text-xs text-slate-500">Cada computador com impressora térmica recebe um token. Instale o Agente de Impressão no PC e cole o token.</p>
   <form method="post" action="{{ route('admin.estacoes.store') }}" class="flex gap-2">@csrf<input name="nome" class="input !min-h-[42px]" placeholder="Ex.: Balcão 1" required><button class="btn btn-accent btn-sm">Gerar token</button></form>

@@ -76,6 +76,7 @@ Route::middleware('auth')->group(function () {
 
     // ---------------- Caixa / relatórios ----------------
     Route::get('/caixa', [CaixaController::class, 'index'])->name('caixa.index')->middleware('perm:caixa');
+    Route::post('/caixa/avulso', [CaixaController::class, 'avulso'])->name('caixa.avulso')->middleware('perm:avulso');
     Route::get('/meu-relatorio', [RelatorioController::class, 'meu'])->name('relatorio.meu')->middleware('perm:relatorio');
 
     // ---------------- Viagens (módulo rotas) ----------------
