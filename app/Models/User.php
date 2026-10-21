@@ -43,6 +43,7 @@ class User extends Authenticatable
             'perm_wifi' => 'boolean',
             'perm_avulso' => 'boolean',
             'perm_recibo' => 'boolean',
+            'perm_financeiro' => 'boolean',
         ];
     }
 
@@ -72,15 +73,16 @@ class User extends Authenticatable
     public function podeRetroativo(): bool        { return $this->admin || $this->gerente() || $this->perm_retroativo; }
     public function podeParcial(): bool           { return $this->admin || $this->gerente() || (bool) $this->perm_parcial; }
     public function gerente(): bool               { return $this->papel === 'gerente'; }
-    public function caixaTodos(): bool            { return $this->admin || $this->gerente() || $this->caixa_todos; }
-    public function relatorioTodos(): bool        { return $this->admin || $this->gerente() || $this->relatorio_todos; }
+    public function caixaTodos(): bool            { return $this->admin || $this->gerente() || $this->caixa_todos || $this->financeiro(); }
+    public function relatorioTodos(): bool        { return $this->admin || $this->gerente() || $this->relatorio_todos || $this->financeiro(); }
     public function papelNome(): string           { return self::PAPEIS[$this->papel] ?? '—'; }
 
     public function podeCadastrar(): bool { return $this->admin || $this->perm_cadastra; }
     public function podeBaixar(): bool    { return $this->admin || $this->perm_baixa; }
-    public function podeVerCaixa(): bool  { return $this->admin || $this->perm_caixa; }
+    public function financeiro(): bool    { return (bool) $this->perm_financeiro; }
+    public function podeVerCaixa(): bool  { return $this->admin || $this->perm_caixa || $this->financeiro(); }
     public function podeFiltrar(): bool   { return $this->admin || $this->perm_filtro; }
-    public function podeRelatorio(): bool { return $this->admin || $this->perm_relatorio; }
+    public function podeRelatorio(): bool { return $this->admin || $this->perm_relatorio || $this->financeiro(); }
     public function podeImprimir(): bool  { return $this->admin || $this->perm_imprimir; }
     public function isAdmin(): bool       { return $this->admin; }
     public function isSuper(): bool       { return $this->super_admin; }

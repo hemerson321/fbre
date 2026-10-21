@@ -70,6 +70,10 @@
     <span><span class="font-semibold text-sm">Relatório de todos</span><br><span class="text-xs text-slate-500">Desmarcado = vê só o relatório dele.</span></span>
   </label>
   <label class="flex items-start gap-3 py-2 mt-1 border-t cursor-pointer">
+    <input type="checkbox" name="perm_financeiro" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('perm_financeiro', $u->exists ? $u->perm_financeiro : false))>
+    <span><span class="font-semibold text-sm">Financeiro</span><br><span class="text-xs text-slate-500">Só entra no Caixa e Relatório, mas vê TODOS os operadores e TODOS os módulos (filtra por módulo, operador e período). Não cadastra.</span></span>
+  </label>
+  <label class="flex items-start gap-3 py-2 mt-1 border-t cursor-pointer">
     <input type="checkbox" name="admin" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('admin', $u->admin))>
     <span><span class="font-semibold text-sm">Administrador da empresa</span><br><span class="text-xs text-slate-500">Tudo acima + usuários, barcos/locais/produtos e dados da empresa</span></span>
   </label>

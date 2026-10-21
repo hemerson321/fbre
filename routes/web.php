@@ -41,6 +41,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/encomendas/{encomenda}/cancelar', [EncomendaController::class, 'cancelar'])->name('encomendas.cancelar')->middleware('perm:admin');
     Route::get('/pessoas/buscar', [EncomendaController::class, 'buscarPessoa'])->name('pessoas.buscar');
 
+    // ---------- PASSAGEM ----------
+    Route::get('/passagens', [\App\Http\Controllers\PassagemController::class, 'index'])->name('passagens.index')->middleware('perm:filtro');
+    Route::get('/passagens/nova', [\App\Http\Controllers\PassagemController::class, 'create'])->name('passagens.create')->middleware('perm:passagem');
+    Route::post('/passagens', [\App\Http\Controllers\PassagemController::class, 'store'])->name('passagens.store')->middleware('perm:passagem');
+    Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos');
+    Route::get('/passagens/{passagem}', [\App\Http\Controllers\PassagemController::class, 'show'])->name('passagens.show');
+    Route::post('/passagens/{passagem}/pagar', [\App\Http\Controllers\PassagemController::class, 'pagar'])->name('passagens.pagar')->middleware('perm:baixa');
+    Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:baixa');
+    Route::post('/passagens/{passagem}/cancelar', [\App\Http\Controllers\PassagemController::class, 'cancelar'])->name('passagens.cancelar')->middleware('perm:admin');
+
     // ---------------- Pré-cadastros (operador) ----------------
     Route::middleware('perm:cadastra')->group(function () {
         Route::get('/pre-cadastros', [PreCadastroController::class, 'index'])->name('pre.index');
@@ -60,6 +70,7 @@ Route::middleware('auth')->group(function () {
     // ---------------- Offline / sincronização ----------------
     Route::get('/sync/bootstrap', [SyncController::class, 'bootstrap'])->name('sync.bootstrap');
     Route::post('/sync/encomenda', [SyncController::class, 'encomenda'])->name('sync.encomenda');
+    Route::post('/sync/passagem', [SyncController::class, 'passagem'])->name('sync.passagem');
     Route::post('/sync/baixa', [SyncController::class, 'baixa'])->name('sync.baixa');
     Route::view('/offline', 'offline')->name('offline')->withoutMiddleware('auth');
 

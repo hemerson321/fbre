@@ -101,6 +101,7 @@ class UsuarioController extends Controller
             'perm_wifi' => 'nullable|boolean',
             'perm_avulso' => 'nullable|boolean',
             'perm_recibo' => 'nullable|boolean',
+            'perm_financeiro' => 'nullable|boolean',
             'ativo' => 'nullable|boolean',
             'loc_permitidas' => 'nullable|array',
             'loc_permitidas.*' => 'string|max:80',
@@ -110,7 +111,7 @@ class UsuarioController extends Controller
             'transportes_permitidos.*' => 'integer',
             'embarcacao_principal_id' => 'nullable|integer',
         ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
-        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'ativo', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo'] as $b) {
+        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'ativo', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo', 'perm_financeiro'] as $b) {
             $data[$b] = $request->boolean($b);
         }
         // listas vazias viram null (= tudo liberado)

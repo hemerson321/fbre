@@ -119,6 +119,51 @@ class SyncController extends Controller
             'url' => route('encomendas.show', $enc)];
     }
 
+    /** Recebe uma passagem criada no aparelho. Idempotente por uuid. */
+    public function passagem(Request $request, \App\Services\PassagemService $svc)
+    {
+        abort_unless(auth()->user()->podeModulo('passagem'), 403);
+        $data = $request->validate([
+            'uuid' => 'required|uuid',
+            'numero_completo' => 'nullable|string|max:30',
+            'numero_seq' => 'nullable|integer|min:1',
+            'criada_em' => 'nullable|date',
+            'origem' => 'required|string|max:80',
+            'destino' => 'required|string|max:80',
+            'embarcacao_id' => 'nullable|integer',
+            'rota_id' => 'nullable|integer',
+            'viagem_id' => 'nullable|integer',
+            'data_viagem' => 'nullable|date',
+            'comprador_nome' => 'nullable|string|max:120',
+            'comprador_telefone' => 'nullable|string|max:30',
+            'comprador_documento' => 'nullable|string|max:20',
+            'forma' => 'required|in:avista,areceber,faturado',
+            'observacao' => 'nullable|string|max:1000',
+            'desconto' => 'nullable|numeric|min:0',
+            'passageiros' => 'required|array|min:1',
+            'passageiros.*.nome' => 'required|string|max:120',
+            'passageiros.*.tipo' => 'required|string|max:60',
+            'passageiros.*.percentual' => 'nullable|integer|min:0|max:100',
+            'passageiros.*.documento' => 'nullable|string|max:20',
+            'passageiros.*.nascimento' => 'nullable|date',
+            'passageiros.*.poltrona' => 'nullable|string|max:10',
+            'passageiros.*.valor_passagem' => 'required|numeric|min:0',
+            'passageiros.*.valor_taxa' => 'nullable|numeric|min:0',
+            'passageiros.*.observacao' => 'nullable|string|max:200',
+            'pagamentos' => 'nullable|array',
+            'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito',
+            'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
+        ]);
+        try {
+            $p = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
+        }
+        session(['ultima_origem_pass' => $data['origem'] ?? null]);
+        return ['ok' => true, 'id' => $p->id, 'numero_formatado' => $p->numeroFormatado(), 'url' => route('passagens.show', $p)];
+    }
+
     /** Baixa feita offline (pagamento e/ou entrega). */
     public function baixa(Request $request, EncomendaService $svc)
     {

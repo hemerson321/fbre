@@ -11,6 +11,9 @@
     <select name="user_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
       @foreach($usuarios as $us)<option value="{{ $us->id }}" @selected($userId==$us->id)>{{ $us->name }}</option>@endforeach</select></div>
   @endif
+  <div><label class="label">Módulo</label>
+    <select name="modulo" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos os módulos</option>
+      @foreach(\App\Support\Modulos::LISTA as $mk=>$mv)<option value="{{ $mk }}" @selected(($modulo ?? '')===$mk)>{{ $mv[1] }} {{ $mv[0] }}</option>@endforeach</select></div>
   @if($viagens->count())
   <div><label class="label">Viagem</label>
     <select name="viagem_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">— período —</option>
@@ -44,10 +47,18 @@
 <div class="card overflow-hidden">
   <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Lançamentos</div>
   <div class="divide-y">
+  @if(isset($porModulo) && $porModulo->count())
+  <div class="px-3 pt-3 flex flex-wrap gap-2">
+    @foreach($porModulo as $mod=>$row)
+      <span class="chip" style="background:{{ \App\Support\Modulos::hex($mod) }}20;color:{{ \App\Support\Modulos::hex($mod) }}">{{ \App\Support\Modulos::icone($mod) }} {{ \App\Support\Modulos::rotulo($mod) }}: R$ {{ number_format($row->valor,2,',','.') }} ({{ $row->qtd }})</span>
+    @endforeach
+  </div>
+  @endif
   @foreach($movimentos as $m)
-    <a href="{{ $m->encomenda ? route('encomendas.show',$m->encomenda) : '#' }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 text-sm">
+    @php $rf = $m->resumoFonte(); @endphp
+    <a href="{{ $rf['url'] ?? '#' }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 text-sm">
       <div class="w-14 text-xs text-slate-400">{{ $m->created_at->format('d/m') }}<br>{{ $m->created_at->format('H:i') }}</div>
-      <div class="flex-1 min-w-0"><b>#{{ $m->encomenda?->numeroFormatado() }}</b> {{ $m->encomenda?->destinatario_nome }}<div class="text-xs text-slate-400">{{ $m->user?->name }} · {{ $m->momento==='cadastro'?'no cadastro':'na baixa' }}</div></div>
+      <div class="flex-1 min-w-0"><span class="chip" style="background:{{ \App\Support\Modulos::hex($m->modulo ?: 'encomenda') }}20;color:{{ \App\Support\Modulos::hex($m->modulo ?: 'encomenda') }}">{{ \App\Support\Modulos::icone($m->modulo ?: 'encomenda') }}</span> <b>#{{ $rf['numero'] }}</b> {{ $rf['nome'] }}<div class="text-xs text-slate-400">{{ $m->user?->name }} · {{ $m->momento==='cadastro'?'no cadastro':'na baixa' }}</div></div>
       <span class="chip bg-slate-100 text-slate-600">{{ $meios[$m->meio] }}</span>
       <div class="font-bold whitespace-nowrap">R$ {{ number_format($m->valor,2,',','.') }}</div>
     </a>

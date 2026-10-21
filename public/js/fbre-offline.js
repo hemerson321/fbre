@@ -54,7 +54,7 @@
 
   // ---------------------------------------------------------------- envio
   async function enviarUm(item, tentativa = 0) {
-    const url = item.tipo === 'encomenda' ? '/sync/encomenda' : '/sync/baixa';
+    const url = item.tipo === 'baixa' ? '/sync/baixa' : '/sync/' + item.tipo;
     const r = await fetch(url, {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
@@ -86,7 +86,7 @@
     try {
       const fila = (await filaTodos()).sort((a, b) => a.em - b.em);
       // encomendas primeiro, depois baixas (a baixa pode depender da encomenda)
-      for (const item of [...fila.filter((i) => i.tipo === 'encomenda'), ...fila.filter((i) => i.tipo !== 'encomenda')]) {
+      for (const item of [...fila.filter((i) => i.tipo !== 'baixa'), ...fila.filter((i) => i.tipo === 'baixa')]) {
         if ((item.falhas || 0) >= 20) continue;
         try { await enviarUm(item); } catch (e) { console.warn('[FBRE sync]', item.uuid, e.message, item.erro || ''); if (['login', 'csrf'].includes(e.message)) break; }
       }
@@ -116,6 +116,28 @@
     fila: filaTodos,
     bootstrap: () => kvGet('bootstrap'),
     sincronizar,
+
+    /** Renderizadores de comprovante local por módulo (offline). */
+    renderers: {},
+
+    /** Salva um cadastro de QUALQUER módulo localmente e tenta enviar. */
+    async salvarModulo(modulo, dados) {
+      const id = dados.uuid || uuid();
+      const num = (dados.numero_completo && dados.numero_seq) ? { seq: dados.numero_seq, completo: dados.numero_completo } : gerarNumero();
+      const item = { uuid: id, tipo: modulo, em: Date.now(), dados: { ...dados, uuid: id, criada_em: new Date().toISOString(), numero_seq: num.seq, numero_completo: num.completo } };
+      await filaPut(item);
+      let servidor = null;
+      if (online()) { try { servidor = await enviarUm(item); } catch (e) { servidor = null; } }
+      atualizarIndicador();
+      return { local: item, servidor };
+    },
+
+    /** Comprovante local de qualquer módulo (usa o renderer registrado). */
+    async imprimirModuloLocal(item) {
+      const fn = FBREOffline.renderers[item.tipo];
+      if (fn) { const b = (await kvGet('bootstrap')) || { empresa: {} }; return fn(item, b); }
+      if (item.tipo === 'encomenda') return FBREOffline.imprimirComprovanteLocal(item);
+    },
 
     /** Salva a encomenda localmente e tenta enviar. Retorna {local, servidor?} */
     async salvarEncomenda(dados) {

@@ -18,6 +18,7 @@ class CaixaController extends Controller
         $verTodos = auth()->user()->caixaTodos();
         $userId = $verTodos ? $request->input('user_id') : auth()->id();
         $viagemId = $request->input('viagem_id');
+        $modulo = $request->input('modulo');
         $viagens = \App\Support\Tenant::empresa()->temRecurso('viagens')
             ? Viagem::orderByDesc('data_partida')->limit(60)->get() : collect();
         // quando filtra por viagem, ignora o período (viagem é o recorte)
@@ -27,7 +28,8 @@ class CaixaController extends Controller
             ->where('meio', '!=', 'desconto')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
-            ->when($userId, fn ($q) => $q->where('user_id', $userId));
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($modulo, fn ($q) => $q->where('modulo', $modulo));
 
         $porMeio = (clone $base)->selectRaw('meio, SUM(valor) valor, COUNT(*) qtd')->groupBy('meio')->get()->keyBy('meio');
         $porOperador = (clone $base)->selectRaw('user_id, meio, SUM(valor) valor')->groupBy('user_id', 'meio')->get()
@@ -35,12 +37,14 @@ class CaixaController extends Controller
                 'total' => $rows->sum('valor'),
                 'meios' => $rows->pluck('valor', 'meio'),
             ]);
+        $porModulo = (clone $base)->selectRaw('modulo, SUM(valor) valor, COUNT(*) qtd')->groupBy('modulo')->get()->keyBy('modulo');
+
         $usuarios = User::where('empresa_id', auth()->user()->empresa_id)->orderBy('name')->get()->keyBy('id');
 
         $descontos = Pagamento::where('estornado', false)->where('meio', 'desconto')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
-            ->when($userId, fn ($q) => $q->where('user_id', $userId))->sum('valor');
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->sum('valor');
 
         $entregas = Evento::where('tipo', 'entrega')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
@@ -52,7 +56,7 @@ class CaixaController extends Controller
 
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
 
-        return view('caixa.index', compact('porMeio', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo'))
             ->with(['meios' => Pagamento::MEIOS, 'total' => $porMeio->sum('valor')]);
     }
 
