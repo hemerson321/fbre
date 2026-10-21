@@ -22,6 +22,28 @@
 <p class="text-xs text-slate-400 -mt-1">Setor e barco principais já entram selecionados na tela de Nova encomenda desse operador.</p>
 <div class="rounded-xl bg-slate-50 p-3 space-y-1">
   <div class="label">Permissões</div>
+
+  {{-- MÓDULOS que o operador pode cadastrar/vender --}}
+  <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Módulos liberados</div>
+  <p class="text-xs text-slate-400 mb-2">Marque o que este operador pode cadastrar. (Encomendas usa a permissão "Cadastrar encomendas" abaixo.)</p>
+  <div class="grid grid-cols-2 gap-x-4 gap-y-1 mb-3">
+    @php $mods = [
+      'perm_passagem' => 'Passagem',
+      'perm_frete' => 'Frete',
+      'perm_camarote' => 'Camarote',
+      'perm_lanchonete' => 'Lanchonete',
+      'perm_wifi' => 'WiFi',
+      'perm_avulso' => 'Avulso (entrada/saída)',
+      'perm_recibo' => 'Recibo',
+    ]; @endphp
+    @foreach($mods as $k=>$l)
+      <label class="flex items-center gap-2 py-1 cursor-pointer text-sm">
+        <input type="checkbox" name="{{ $k }}" value="1" class="w-5 h-5 rounded" @checked(old($k, $u->exists ? $u->$k : false))>
+        <span class="font-medium">{{ $l }}</span>
+      </label>
+    @endforeach
+  </div>
+  <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 border-t pt-2">Permissões gerais</div>
   @php $perms = [
     'perm_cadastra' => ['Cadastrar encomendas', 'Tela "Nova encomenda" e impressão do comprovante no cadastro'],
     'perm_filtro'   => ['Ver encomendas / filtro', 'Lista com filtros, totais, protocolo e listagem'],

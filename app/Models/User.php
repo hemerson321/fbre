@@ -36,6 +36,13 @@ class User extends Authenticatable
             'caixa_todos' => 'boolean',
             'relatorio_todos' => 'boolean',
             'perm_zerar' => 'boolean',
+            'perm_passagem' => 'boolean',
+            'perm_frete' => 'boolean',
+            'perm_camarote' => 'boolean',
+            'perm_lanchonete' => 'boolean',
+            'perm_wifi' => 'boolean',
+            'perm_avulso' => 'boolean',
+            'perm_recibo' => 'boolean',
         ];
     }
 
@@ -78,6 +85,32 @@ class User extends Authenticatable
     public function isAdmin(): bool       { return $this->admin; }
     public function isSuper(): bool       { return $this->super_admin; }
     public function podeZerar(): bool     { return $this->super_admin || (bool) $this->perm_zerar; }
+
+    /** Módulos de cadastro do sistema. */
+    public const MODULOS = [
+        'encomenda'  => 'Encomendas',
+        'passagem'   => 'Passagem',
+        'frete'      => 'Frete',
+        'camarote'   => 'Camarote',
+        'lanchonete' => 'Lanchonete',
+        'wifi'       => 'WiFi',
+        'avulso'     => 'Avulso (entrada/saída)',
+        'recibo'     => 'Recibo',
+    ];
+
+    /** Pode cadastrar/vender no módulo informado. Admin e gerente acessam tudo. */
+    public function podeModulo(string $mod): bool
+    {
+        if ($this->admin || $this->gerente()) return true;
+        if ($mod === 'encomenda') return (bool) $this->perm_cadastra; // mantém compatibilidade
+        return (bool) ($this->{'perm_' . $mod} ?? false);
+    }
+
+    /** Lista de módulos que este usuário pode acessar. */
+    public function modulosLiberados(): array
+    {
+        return array_values(array_filter(array_keys(self::MODULOS), fn ($m) => $this->podeModulo($m)));
+    }
 
     /** Próxima sequência do operador, de forma atômica (fallback quando o aparelho não manda o número). */
     public function proximoSeq(): int

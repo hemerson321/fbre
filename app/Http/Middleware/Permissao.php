@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 
 /**
  * Uso: ->middleware('perm:cadastra') | perm:baixa | perm:caixa | perm:admin | perm:super
+ * Por módulo: ->middleware('perm:passagem') | perm:frete | perm:camarote | perm:lanchonete | perm:wifi | perm:avulso | perm:recibo
  */
 class Permissao
 {
@@ -22,7 +23,7 @@ class Permissao
             'imprimir' => $u->podeImprimir(),
             'admin'    => $u->isAdmin() || $u->isSuper(),
             'super'    => $u->isSuper(),
-            default    => false,
+            default    => array_key_exists($perm, \App\Models\User::MODULOS) ? $u->podeModulo($perm) : false,
         };
 
         abort_unless($ok, 403, 'Você não tem permissão para esta ação.');
