@@ -162,7 +162,7 @@
       enviando:false, numeroPreview:'—',
       mapaAberto:false, paxAtual:0,
 
-      novoPax(){ return { nome:'', tipo:@js($tipos->first()->nome ?? 'Adulto'), percentual:@js($tipos->first()->percentual ?? 100), paga_taxa:true, documento:'', valor_passagem:0, valor_taxa:0, poltrona:'' }; },
+      novoPax(){ return { nome:'', tipo:@js(optional($tipos->first())->nome ?? 'Adulto'), percentual:@js(optional($tipos->first())->percentual ?? 100), paga_taxa:true, documento:'', valor_passagem:0, valor_taxa:0, poltrona:'' }; },
       init(){ this.passageiros=[this.novoPax()]; this.previewNumero(); window.addEventListener('online',()=>this.online=true); window.addEventListener('offline',()=>this.online=false); this.recalc(); },
       async previewNumero(){ try{ const n = window.FBREOffline ? window.FBREOffline.gerarNumeroPreview?.() : null; }catch(e){} const op=window.FBRE_OP||{}; this.numeroPreview=(op.prefixo||'OP')+'-'+String(op.proximoSeq||1).padStart(4,'0'); },
 

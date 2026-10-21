@@ -65,6 +65,13 @@ class PassagemController extends Controller
             ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd']);
         $tipos = TipoPassageiro::where('ativo', true)->orderBy('ordem')->orderBy('nome')
             ->get(['nome', 'percentual', 'paga_taxa']);
+        if ($tipos->isEmpty()) {
+            // auto-reparo: garante os tipos padrão desta empresa (evita tela vazia / erro)
+            foreach ([['Adulto', 100, true, 1], ['Estudante', 50, true, 2], ['Criança', 50, true, 3], ['Idoso', 50, true, 4], ['Gratuito', 0, false, 5]] as [$n, $pc, $tx, $o]) {
+                TipoPassageiro::create(['nome' => $n, 'percentual' => $pc, 'paga_taxa' => $tx, 'ativo' => true, 'ordem' => $o]);
+            }
+            $tipos = TipoPassageiro::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get(['nome', 'percentual', 'paga_taxa']);
+        }
         $precos = TabelaPreco::where('ativo', true)->get(['origem', 'destino', 'passagem', 'taxa_embarque']);
         $localidades = TabelaPreco::where('ativo', true)->pluck('origem')
             ->merge(TabelaPreco::where('ativo', true)->pluck('destino'))
