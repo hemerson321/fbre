@@ -60,7 +60,6 @@ class PassagemController extends Controller
     // ---------------- CADASTRO ----------------
     public function create()
     {
-        try {
         $u = auth()->user();
         $embarcacoes = Embarcacao::where('ativo', true)->orderBy('nome')
             ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd']);
@@ -79,7 +78,7 @@ class PassagemController extends Controller
             ->merge(Rota::todasLocalidades())->unique()->sort()->values();
         $rotas = Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect();
 
-        $html = view('passagens.create', [
+        return view('passagens.create', [
             'embarcacoes' => $embarcacoes,
             'tipos' => $tipos,
             'precos' => $precos,
@@ -87,18 +86,7 @@ class PassagemController extends Controller
             'rotas' => $rotas,
             'ultimaOrigem' => session('ultima_origem_pass') ?: (Tenant::empresa()->cidade ?: $localidades->first()),
             'podeParcial' => $u->podeParcial(),
-        ])->render();
-        return response($html);
-        } catch (\Throwable $e) {
-            report($e);
-            if (auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isSuper())) {
-                return response(
-                    "DIAG passagens/create\n".get_class($e).': '.$e->getMessage()."\n@ ".$e->getFile().':'.$e->getLine()."\n\n".$e->getTraceAsString(),
-                    200
-                )->header('Content-Type', 'text/plain; charset=utf-8');
-            }
-            throw $e;
-        }
+        ]);
     }
 
     public function store(Request $request)
