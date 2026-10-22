@@ -109,7 +109,7 @@ class LeitorDocumento
                 ['type' => 'text', 'text' => self::PROMPT],
             ]]],
         ]);
-        return ['ok' => $r->successful(), 'text' => data_get($r->json(), 'content.0.text'), 'status' => $r->status(), 'body' => $r->body()];
+        return ['ok' => $r->successful(), 'text' => $this->textoClaude($r->json()), 'status' => $r->status(), 'body' => $r->body()];
     }
 
     protected function openai(string $token, string $modelo, string $mediaType, string $base64): array
@@ -122,6 +122,15 @@ class LeitorDocumento
             ]]],
         ]);
         return ['ok' => $r->successful(), 'text' => data_get($r->json(), 'choices.0.message.content'), 'status' => $r->status(), 'body' => $r->body()];
+    }
+
+    /** Junta os blocos de texto da resposta do Claude, ignorando blocos de 'thinking'. */
+    protected function textoClaude($json): ?string
+    {
+        $t = collect(data_get($json, 'content', []))
+            ->filter(fn ($b) => ($b['type'] ?? '') === 'text')
+            ->pluck('text')->filter()->implode("\n");
+        return $t !== '' ? $t : null;
     }
 
     protected function parseJson(string $texto): ?array
