@@ -26,15 +26,15 @@
   ];
   $mods = [];
   foreach (Modulos::LISTA as $k => [$rot,$ic,$cor,$hex]) {
-    if (! $u->podeModulo($k)) continue;
-    $pronto = isset($rotaCriar[$k]);
-    $mods[] = ['k'=>$k, 't'=>$rot, 'i'=>$ic, 'hex'=>$hex, 'r'=>$pronto ? $rotaCriar[$k]() : null, 'd'=>$desc[$k] ?? ''];
+    if (! $u->temModulo($k)) continue;      // sem o módulo, nem aparece
+    if (! isset($rotaCriar[$k])) continue;  // módulo ainda não construído: não mostra "Em breve"
+    $mods[] = ['k'=>$k, 't'=>$rot, 'i'=>$ic, 'hex'=>$hex, 'r'=>$rotaCriar[$k](), 'd'=>$desc[$k] ?? ''];
   }
 
   // Ferramentas (caixa, relatório, admin)
   $tools = [];
-  if ($u->podeFiltrar()) $tools[] = ['r'=>route('encomendas.index'), 'i'=>'📦', 't'=>'Encomendas / baixa'];
-  if ($u->podeFiltrar()) $tools[] = ['r'=>route('passagens.index'), 'i'=>'🧾', 't'=>'Passagens / embarque'];
+  if ($u->temModulo('encomenda') || $u->podeFiltrar()) $tools[] = ['r'=>route('encomendas.index'), 'i'=>'📦', 't'=>'Encomendas / baixa'];
+  if ($u->temModulo('passagem')) $tools[] = ['r'=>route('passagens.index'), 'i'=>'🧾', 't'=>'Passagens / embarque'];
   if ($u->podeVerCaixa())  $tools[] = ['r'=>route('caixa.index'), 'i'=>'💰', 't'=>$u->caixaTodos()?'Caixa geral':'Meu caixa'];
   if ($u->podeRelatorio()) $tools[] = ['r'=>route('relatorio.meu'), 'i'=>'📋', 't'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório'];
   if ($u->isAdmin() || $u->isSuper()) {

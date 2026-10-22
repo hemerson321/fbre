@@ -71,13 +71,13 @@ tailwind.config = { theme: { extend: {
   $grupos = [];
   $g = [];
   if ($u->podeCadastrar()) $g[] = ['r'=>route('encomendas.create'), 'l'=>'Nova encomenda', 'i'=>'➕'];
-  if ($u->podeFiltrar())   $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
+  if ($u->temModulo('encomenda') || $u->podeFiltrar()) $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
   if ($u->podeCadastrar()) $g[] = ['r'=>route('pre.index'), 'l'=>'Pré-cadastros', 'i'=>'🪧', 'b'=>(\App\Models\PreCadastro::where('status','pendente')->count() ?: null)];
   if ($g) $grupos['Encomendas'] = $g;
   // Passagem (só aparece se o operador tiver o módulo liberado)
   $g = [];
   if ($u->podeModulo('passagem')) $g[] = ['r'=>route('passagens.create'), 'l'=>'Nova passagem', 'i'=>'🎫'];
-  if ($u->podeFiltrar())          $g[] = ['r'=>route('passagens.index'), 'l'=>'Passagens / embarque', 'i'=>'🧾'];
+  if ($u->temModulo('passagem'))  $g[] = ['r'=>route('passagens.index'), 'l'=>'Passagens / embarque', 'i'=>'🧾'];
   if ($g) $grupos['Passagem'] = $g;
   $g = [];
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰'];

@@ -132,6 +132,12 @@ class User extends Authenticatable
         return $this->permite($mod, 'cadastra');
     }
 
+    /** Tem QUALQUER acesso ao módulo (cadastrar, dar baixa ou imprimir). Decide se o módulo aparece pra ele. */
+    public function temModulo(string $mod): bool
+    {
+        return $this->permite($mod, 'cadastra') || $this->permite($mod, 'baixa') || $this->permite($mod, 'imprimir');
+    }
+
     /** Lista de módulos que este usuário pode acessar. */
     public function modulosLiberados(): array
     {
