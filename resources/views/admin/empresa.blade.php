@@ -57,6 +57,22 @@
   @endif
 </div>
 
+<div class="border-t pt-3 mt-1" x-data="{prov:'{{ $empresa->config('ia_provider','claude') }}'}">
+  <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">Leitura de documentos (IA)</h2>
+  <p class="text-xs text-slate-500 mb-2">Usada na captura por foto do RG (passagem). Cole o token da sua IA.</p>
+  <div class="grid sm:grid-cols-2 gap-3">
+    <div><label class="label">Provedor</label>
+      <select name="ia_provider" x-model="prov" class="input">
+        <option value="claude">Claude (Anthropic)</option>
+        <option value="openai">OpenAI</option>
+      </select></div>
+    <div><label class="label">Modelo</label>
+      <input name="ia_modelo" class="input" value="{{ $empresa->config('ia_modelo') }}" :placeholder="prov==='openai' ? 'gpt-4o-mini' : 'claude-sonnet-4-20250514'"></div>
+    <div class="sm:col-span-2"><label class="label">Token da API</label>
+      <input name="ia_token" class="input" value="{{ $empresa->config('ia_token') }}" :placeholder="prov==='openai' ? 'sk-...' : 'sk-ant-...'" autocomplete="off"></div>
+  </div>
+</div>
+
 <button class="btn btn-accent w-full">Salvar</button>
 </form>
 @endsection

@@ -41,6 +41,9 @@ class EmpresaController extends Controller
             'wa_conexao' => 'nullable|array',
             'wa_conexao.*' => 'nullable|integer',
             'cores_por_modulo' => 'nullable|boolean',
+            'ia_provider' => 'nullable|in:claude,openai',
+            'ia_token' => 'nullable|string|max:255',
+            'ia_modelo' => 'nullable|string|max:80',
         ]);
 
         // Componentes da passagem (opcionais): taxa de servico e alimentacao
@@ -53,6 +56,9 @@ class EmpresaController extends Controller
             $config['wa_conexao_'.$mk] = $request->input('wa_conexao.'.$mk) ?: null;
         }
         $config['cores_por_modulo'] = $request->boolean('cores_por_modulo');
+        $config['ia_provider'] = $request->input('ia_provider') ?: 'claude';
+        $config['ia_token'] = trim((string) $request->input('ia_token')) ?: null;
+        $config['ia_modelo'] = trim((string) $request->input('ia_modelo')) ?: null;
         $data['config'] = $config;
         unset($data['label_taxa_embarque'], $data['label_alimentacao']);
 

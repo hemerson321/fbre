@@ -18,6 +18,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'checkin_auto' => 'boolean',
             'password' => 'hashed',
             'super_admin' => 'boolean',
             'admin' => 'boolean',

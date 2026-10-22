@@ -35,6 +35,16 @@ class Empresa extends Model
         return data_get($this->config, $chave, $padrao);
     }
 
+    /** Configuração da IA de leitura de documentos. */
+    public function iaConfig(): array
+    {
+        return [
+            'provider' => $this->config('ia_provider', 'claude'),
+            'token' => $this->config('ia_token'),
+            'modelo' => $this->config('ia_modelo'),
+        ];
+    }
+
     /** Conexão de WhatsApp escolhida para um serviço (encomenda, passagem...). */
     public function whatsappConexao(string $servico = 'encomenda'): ?WhatsappConexao
     {
