@@ -13,6 +13,7 @@ class PassagemPassageiro extends Model
         'nascimento' => 'date',
         'valor_passagem' => 'decimal:2',
         'valor_taxa' => 'decimal:2',
+        'valor_integral' => 'decimal:2',
         'valor_total' => 'decimal:2',
     ];
 

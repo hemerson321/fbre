@@ -282,10 +282,12 @@
         (this.taxas||[]).forEach(r=>{ this.taxaMap[(String(r.origem).toLowerCase())+'|'+(String(r.destino).toLowerCase())]=Number(r.taxa)||0; });
         // garante tipo_id inicial nos passageiros
         if(this.tipos.length && this.normalId==null) this.normalId=this.tipos[0].id;
-        try{ const o=localStorage.getItem('fbre_origem'); if(!this.origemSel && o) this.origemSel=o; }catch(e){}
+        try{ const o=localStorage.getItem('fbre_origem'); if(o) this.origemSel=o; }catch(e){}
         if(!this.origemSel && this.cidades.length) this.origemSel=this.cidades[0];
+        try{ const dd=localStorage.getItem('fbre_destino'); if(dd) this.destinoSel=dd; }catch(e){}
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
+        this.$watch('destinoSel', v=>{ try{ if(v) localStorage.setItem('fbre_destino',v); else localStorage.removeItem('fbre_destino');}catch(e){} });
         this.$watch('embarcacaoSel', ()=>this.mudarEmbarcacao());
         this.addPax();
         this.mudarEmbarcacao();
@@ -330,6 +332,7 @@
       taxaDoTrecho(){ const o=(this.origemSel||'').trim().toLowerCase(), d=(this.destinoSel||'').trim().toLowerCase();
         return Number(this.taxaMap[o+'|'+d] ?? this.taxaMap[d+'|'+o] ?? 0)||0; },
       get baseNormal(){ const n=this.tipos.find(x=>String(x.id)===String(this.normalId)); const c=n?this.trechoGet(n.id):null; return c?Number(c.tarifa)||0:(n?Number(n.tarifa_padrao)||0:0); },
+      integralNormal(){ const n=this.tipos.find(x=>String(x.id)===String(this.normalId)); if(!n) return 0; const pr=this.precoDoTipo(n); return Math.round(((Number(pr.tarifa)||0)+(this.usaAlim?(Number(pr.alim)||0):0))*100)/100; },
 
       // ---- preço pela tabela (origem/destino) ----
       aplicarPreco(){
@@ -430,7 +433,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:this.integralNormal()})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
         try{
@@ -465,8 +468,10 @@
       const pago=(d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0), devido=Math.max(total-pago,0);
       const linhas=d.passageiros.map(p=>{
         const vt=Number(p.valor_passagem)||0, va=Number(p.valor_alimentacao)||0, vx=Number(p.valor_taxa)||0;
+        const pago=vt+va+vx; const vi=Number(p.valor_integral)||0;
         let bd='Transp. '+moeda(vt).replace('R$','').trim(); if((va+vx)>0) bd+=' · Alim.+Adic. '+moeda(va+vx).replace('R$','').trim();
-        return `<tr><td>${esc(p.nome)}<div class="sm">${esc(p.tipo)}${p.poltrona?(' · poltrona '+esc(p.poltrona)):''}</div><div class="sm">${bd}</div></td><td class="r b">${moeda(vt+va+vx).replace('R$','').trim()}</td></tr>`;
+        const normal = (vi>pago+0.009) ? `<div class="sm">Preço normal ${moeda(vi).replace('R$','').trim()} · Pago ${moeda(pago).replace('R$','').trim()}</div>` : '';
+        return `<tr><td>${esc(p.nome)}<div class="sm">${esc(p.tipo)}${p.poltrona?(' · poltrona '+esc(p.poltrona)):''}</div>${normal}<div class="sm">${bd}</div></td><td class="r b">${moeda(pago).replace('R$','').trim()}</td></tr>`;
       }).join('');
       const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Passagem ${esc(d.numero_completo)}</title>
       <style>@page{margin:0;size:80mm auto}*{box-sizing:border-box}body{margin:0;padding:3mm 4mm;width:80mm;font-family:"Courier New",monospace;font-size:11.5px}

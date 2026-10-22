@@ -71,6 +71,7 @@ class PassagemService
                 $vp = round((float) ($pax['valor_passagem'] ?? 0), 2);
                 $vt = round((float) ($pax['valor_taxa'] ?? 0), 2);
                 $va = round((float) ($pax['valor_alimentacao'] ?? 0), 2);
+                $vi = round((float) ($pax['valor_integral'] ?? ($vp + $vt + $va)), 2);
                 $p->passageiros()->create([
                     'nome' => $pax['nome'],
                     'tipo' => $pax['tipo'] ?? 'Adulto',
@@ -81,6 +82,7 @@ class PassagemService
                     'valor_passagem' => $vp,
                     'valor_taxa' => $vt,
                     'valor_alimentacao' => $va,
+                    'valor_integral' => $vi,
                     'valor_total' => round($vp + $vt + $va, 2),
                     'observacao' => $pax['observacao'] ?? null,
                 ]);

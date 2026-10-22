@@ -81,6 +81,8 @@ class PassagemController extends Controller
         $localidades = $trechoPrecos->pluck('origem')
             ->merge($trechoPrecos->pluck('destino'))
             ->merge(Rota::todasLocalidades())->filter()->unique()->sort()->values();
+        $cidadesPerm = $u->cidadesPermitidas();
+        if ($cidadesPerm) $localidades = $localidades->intersect($cidadesPerm)->values();
         $rotas = Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect();
         // linhas (com paradas) para o JS resolver a viagem a partir de origem/destino (igual ao encomenda)
         $linhas = $rotas->map(fn ($r) => [
@@ -151,6 +153,7 @@ class PassagemController extends Controller
             'passageiros.*.valor_passagem' => 'required|numeric|min:0',
             'passageiros.*.valor_taxa' => 'nullable|numeric|min:0',
             'passageiros.*.valor_alimentacao' => 'nullable|numeric|min:0',
+            'passageiros.*.valor_integral' => 'nullable|numeric|min:0',
             'passageiros.*.observacao' => 'nullable|string|max:200',
             'pagamentos' => 'nullable|array',
             'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito',

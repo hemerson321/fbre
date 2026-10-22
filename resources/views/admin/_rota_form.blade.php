@@ -81,8 +81,9 @@
                       {{-- AUTO: calculado a partir do Normal, se ajusta sozinho --}}
                       <template x-if="!c.manual">
                         <div>
-                          <div class="text-sm font-bold" :style="`color:${tp.cor}`" x-text="'= '+moeda(calcPct(t.key, tp))"></div>
-                          <div class="text-[11px]"><span class="text-slate-500">Transporte</span> <b x-text="moeda(calcPctTarifa(t.key, tp))"></b><template x-if="usaAlim"><span> · <span class="text-slate-500">Alim.+serv.</span> <b x-text="moeda(calcPctAlim(t.key, tp))"></b></span></template></div>
+                          <div class="text-[11px] text-slate-400">Preço normal (integral): <b class="text-slate-500" x-text="moeda(normalIntegral(t.key))"></b></div>
+                          <div class="text-sm font-bold" :style="`color:${tp.cor}`"><span class="text-[11px] font-normal text-slate-500">Valor com desconto</span> <span x-text="'= '+moeda(calcPct(t.key, tp))"></span></div>
+                          <div class="text-[11px]"><span class="text-slate-500">Transporte</span> <b x-text="moeda(calcPctTarifa(t.key, tp))"></b><template x-if="usaAlim"><span> · <span class="text-slate-500">Alim.+Adic.</span> <b x-text="moeda(calcPctAlim(t.key, tp))"></b></span></template></div>
                           <button type="button" @click="ajustarManual(t.key, tp)" class="text-[10px] text-sky-600 underline mt-0.5">✎ dividir manual</button>
                         </div>
                       </template>
@@ -174,6 +175,8 @@ function rotaForm(paradas, precos, tipos, flags){
       const baseA = nc?Number(nc.alim)||0:Number(n.alimentacao_padrao)||0;
       return (tp.pct_sobre==='tudo') ? baseA*(Number(tp.percentual)||0)/100 : baseA; },
     calcPct(trechoKey,tp){ return this.calcPctTarifa(trechoKey,tp) + this.calcPctAlim(trechoKey,tp); },
+    normalIntegral(trechoKey){ const n=this.normal; if(!n) return 0; const nc=this.precos[this.cellKey(trechoKey,n.id)];
+      const t=nc?Number(nc.tarifa)||0:Number(n.tarifa_padrao)||0; const a=this.usaAlim?(nc?Number(nc.alim)||0:Number(n.alimentacao_padrao)||0):0; return t+a; },
     get submitRows(){ const rows=[];
       this.trechos.forEach(t=>{ this.tipos.forEach(tp=>{
         const c=this.precos[this.cellKey(t.key,tp.id)];

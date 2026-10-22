@@ -18,7 +18,7 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}</
 <div class="b">PASSAGEIROS</div>
 <table>
   @foreach($p->passageiros as $pax)
-  <tr><td>{{ $pax->nome }}<div class="sm">{{ $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div><div class="sm">Transp. {{ number_format($pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. {{ number_format($pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div></td><td class="r b">{{ number_format($pax->valor_total,2,',','.') }}</td></tr>
+  <tr><td>{{ $pax->nome }}<div class="sm">{{ $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div>@if($pax->valor_integral > $pax->valor_total + 0.009)<div class="sm">Preço normal {{ number_format($pax->valor_integral,2,',','.') }} · Pago {{ number_format($pax->valor_total,2,',','.') }}</div>@endif<div class="sm">Transp. {{ number_format($pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. {{ number_format($pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div></td><td class="r b">{{ number_format($pax->valor_total,2,',','.') }}</td></tr>
   @endforeach
 </table><hr>
 <table>

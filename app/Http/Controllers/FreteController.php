@@ -49,6 +49,8 @@ class FreteController extends Controller
     {
         $u = auth()->user();
         $localidades = Rota::todasLocalidades();
+        $cidadesPerm = $u->cidadesPermitidas();
+        if ($cidadesPerm) $localidades = $localidades->intersect($cidadesPerm)->values();
         $rotas = Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect();
         $linhas = $rotas->map(fn ($r) => [
             'id' => $r->id, 'nome' => $r->nome,
