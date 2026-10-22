@@ -58,6 +58,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/passagens/captura/ocr', [CapturaController::class, 'ocrDireto'])->name('captura.ocr')->middleware('perm:passagem');
     Route::post('/passagens/captura/{captura}/usar', [CapturaController::class, 'usar'])->name('captura.usar')->middleware('perm:passagem');
     // Revendedor: filiados + acerto
+    Route::get('/checkin/{passagem}', [\App\Http\Controllers\PassagemController::class, 'checkin'])->name('checkin')->middleware('perm:passagem.baixa');
     Route::get('/meus-filiados', [AcertoController::class, 'meus'])->name('filiados.meus');
     Route::post('/meus-filiados/salvar/{filiado?}', [AcertoController::class, 'salvarFiliado'])->name('filiados.salvar');
     Route::post('/meus-filiados/{filiado}/baixa', [AcertoController::class, 'baixaFiliado'])->name('filiados.baixa');

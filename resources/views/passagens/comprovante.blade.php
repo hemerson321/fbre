@@ -2,8 +2,9 @@
 <title>Passagem {{ $p->numeroFormatado() }}</title>
 <style>@page{margin:0;size:80mm auto}*{box-sizing:border-box}body{margin:0;padding:3mm 4mm;width:80mm;font-family:"Courier New",monospace;font-size:11.5px;color:#000}
 .c{text-align:center}.r{text-align:right}.b{font-weight:bold}.xl{font-size:18px}.lg{font-size:14px}.sm{font-size:10px;color:#333}hr{border:0;border-top:1px dashed #000;margin:4px 0}
-table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}</style></head>
-<body onload="window.print()">
+table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}#qr{display:inline-block}#qr img,#qr canvas{margin:0 auto}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script></head>
+<body onload="qrImprimir()">
 @php $e=$empresa; @endphp
 <div class="c b lg">{{ strtoupper($e?->nomeExibicao() ?? 'FBRE') }}</div>
 @if($e?->cnpj)<div class="c sm">CNPJ {{ $e->cnpj }}</div>@endif<hr>
@@ -30,5 +31,8 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}</
   <tr><td class="b">DEVIDO</td><td class="r b">R$ {{ number_format($p->devido,2,',','.') }}</td></tr>
 </table>
 @if($e?->rodape_comprovante)<hr><div class="c sm">{{ $e->rodape_comprovante }}</div>@endif
-<hr><div class="c sm">Apresente esta passagem no embarque.</div><br><br>
+<hr><div class="c"><div id="qr"></div><div class="sm b">CHECK-IN</div><div class="sm">Apresente no embarque</div></div><br><br>
+<script>
+function qrImprimir(){ try{ new QRCode(document.getElementById('qr'),{text:@json(route('checkin',$p)),width:130,height:130,correctLevel:QRCode.CorrectLevel.M}); }catch(e){} setTimeout(function(){ window.print(); }, 350); }
+</script>
 </body></html>

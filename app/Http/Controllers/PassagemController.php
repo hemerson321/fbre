@@ -258,6 +258,14 @@ class PassagemController extends Controller
         return redirect()->route('passagens.show', $passagem)->with('ok', 'Embarque confirmado.');
     }
 
+    /** Tela de check-in (vinda do QR do comprovante) — valida embarque, só operador logado. */
+    public function checkin(Passagem $passagem)
+    {
+        abort_unless($passagem->empresa_id === Tenant::id(), 404);
+        $passagem->load(['passageiros', 'embarcacao', 'operador']);
+        return view('passagens.checkin', ['p' => $passagem, 'u' => auth()->user()]);
+    }
+
     public function cancelar(Request $request, Passagem $passagem)
     {
         $data = $request->validate(['motivo' => 'required|string|min:3|max:300'], ['motivo.required' => 'Informe o motivo.']);
