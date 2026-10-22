@@ -66,6 +66,7 @@
 
   <div class="flex gap-2">
     <button onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost flex-1">🖨 Comprovante</button>
+    <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost flex-1">📄 PDF / Enviar</button>
     @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
     <button type="button" class="btn btn-danger" x-data @click="$refs.cancel.classList.toggle('hidden')">Cancelar</button>
     @endif

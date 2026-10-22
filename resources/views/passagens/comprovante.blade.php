@@ -3,7 +3,8 @@
 <style>@page{margin:0;size:80mm auto}*{box-sizing:border-box}body{margin:0;padding:3mm 4mm;width:80mm;font-family:"Courier New",monospace;font-size:11.5px;color:#000}
 .c{text-align:center}.r{text-align:right}.b{font-weight:bold}.xl{font-size:18px}.lg{font-size:14px}.sm{font-size:10px;color:#333}hr{border:0;border-top:1px dashed #000;margin:4px 0}
 table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}#qr{display:inline-block}#qr img,#qr canvas{margin:0 auto}</style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script></head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script></head>
 <body onload="qrImprimir()">
 @php $e=$empresa; @endphp
 <div class="c b lg">{{ strtoupper($e?->nomeExibicao() ?? 'FBRE') }}</div>
@@ -32,7 +33,25 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}#q
 </table>
 @if($e?->rodape_comprovante)<hr><div class="c sm">{{ $e->rodape_comprovante }}</div>@endif
 <hr><div class="c"><div id="qr"></div><div class="sm b">CHECK-IN</div><div class="sm">Apresente no embarque</div></div><br><br>
+<div id="pdfbar" class="c" style="display:none"><br><button onclick="gerarPdf()" style="padding:8px 14px;font-size:13px;border:1px solid #000;border-radius:8px;background:#fff">📄 Baixar / Compartilhar PDF</button></div>
 <script>
-function qrImprimir(){ try{ new QRCode(document.getElementById('qr'),{text:@json(route('checkin',$p)),width:130,height:130,correctLevel:QRCode.CorrectLevel.M}); }catch(e){} setTimeout(function(){ window.print(); }, 350); }
+var MODO=@json($modo ?? null);
+function qrImprimir(){
+  try{ new QRCode(document.getElementById('qr'),{text:@json(route('checkin',$p)),width:130,height:130,correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
+  if(MODO==='pdf'){ document.getElementById('pdfbar').style.display='block'; setTimeout(gerarPdf, 500); }
+  else { setTimeout(function(){ window.print(); }, 350); }
+}
+function gerarPdf(){
+  var bar=document.getElementById('pdfbar'); if(bar) bar.style.display='none';
+  var opt={ margin:[2,2,2,2], filename:'passagem-{{ $p->numeroFormatado() }}.pdf', image:{type:'jpeg',quality:0.95}, html2canvas:{scale:2,useCORS:true}, jsPDF:{unit:'mm',format:[80,260],orientation:'portrait'} };
+  html2pdf().set(opt).from(document.body).toPdf().output('blob').then(async function(blob){
+    if(bar) bar.style.display='block';
+    try{
+      var file=new File([blob],opt.filename,{type:'application/pdf'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Passagem {{ $p->numeroFormatado() }}'}); return; }
+    }catch(e){}
+    var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download=opt.filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }).catch(function(e){ alert('Erro ao gerar PDF: '+e.message); });
+}
 </script>
 </body></html>

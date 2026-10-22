@@ -258,6 +258,14 @@ class PassagemController extends Controller
         return redirect()->route('passagens.show', $passagem)->with('ok', 'Embarque confirmado.');
     }
 
+    /** Comprovante 80mm (impressão/PDF) com QR de check-in. */
+    public function comprovante(Passagem $passagem)
+    {
+        abort_unless($passagem->empresa_id === Tenant::id(), 404);
+        $passagem->load(['passageiros', 'embarcacao', 'operador']);
+        return view('passagens.comprovante', ['p' => $passagem, 'empresa' => Tenant::empresa(), 'modo' => request('modo')]);
+    }
+
     /** Tela de check-in (vinda do QR do comprovante) — valida embarque, só operador logado. */
     public function checkin(Passagem $passagem)
     {
