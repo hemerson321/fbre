@@ -14,7 +14,9 @@ class LeitorDocumento
     public const PROMPT = 'Analise esta imagem de documento brasileiro de identidade (RG ou CNH). '
         .'Extraia os campos e retorne APENAS um JSON válido, sem explicação: '
         .'{"nome":"nome completo","documento":"RG ou CPF como está no documento","nascimento":"dd/mm/aaaa",'
-        .'"sexo":"M ou F","nacionalidade":"nacionalidade"}. '
+        .'"sexo":"M ou F","nacionalidade":"nacionalidade",'
+        .'"foto_box":{"x":0,"y":0,"w":0,"h":0}}. '
+        .'Em foto_box informe a posição da FOTO 3x4 do titular na imagem, em PORCENTAGEM (0 a 100) relativa à largura/altura. '
         .'Se um campo não for legível, use "". Retorne SOMENTE o JSON.';
 
     /** @return array{ok:bool,campos?:array,erro?:string,bruto?:mixed} */

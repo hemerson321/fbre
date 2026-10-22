@@ -83,6 +83,7 @@ class PassagemService
                     'nacionalidade' => $pax['nacionalidade'] ?? null,
                     'checkin' => (bool) ($pax['checkin'] ?? true),
                     'foto_rg' => $pax['foto_rg'] ?? null,
+                    'foto' => $pax['foto'] ?? null,
                     'poltrona' => $pax['poltrona'] ?? null,
                     'valor_passagem' => $vp,
                     'valor_taxa' => $vt,

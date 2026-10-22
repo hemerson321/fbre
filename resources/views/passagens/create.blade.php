@@ -162,7 +162,7 @@
             <div class="flex items-center justify-between gap-2 mt-1.5">
               <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
               <div class="flex items-center gap-2">
-                <img :src="'/'+p.foto_rg" x-show="p.foto_rg" x-cloak class="h-8 rounded border cursor-pointer" @click="window.open('/'+p.foto_rg,'_blank')" title="Foto do RG">
+                <img :src="'/'+(p.foto||p.foto_rg)" x-show="p.foto||p.foto_rg" x-cloak class="h-8 w-8 object-cover rounded border cursor-pointer" @click="window.open('/'+(p.foto_rg||p.foto),'_blank')" title="Foto (clique p/ ver o documento)">
                 <button type="button" class="text-[11px] text-slate-500 underline" @click="p._mais=!p._mais" x-text="p._mais?'menos dados':'mais dados'"></button>
               </div>
             </div>
@@ -326,7 +326,7 @@
       },
 
       // ---- passageiros ----
-      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', foto_rg:'', checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
+      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', foto_rg:'', foto:'', checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       paxTotal(p){ return Math.round(((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))*100)/100; },
       setPaxTotal(p,v){ const total=Math.max(Number(v)||0,0); const fixo=(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0); p.valor_passagem=Math.round(Math.max(total-fixo,0)*100)/100; },
@@ -373,6 +373,7 @@
         if(it.nacionalidade) p.nacionalidade=it.nacionalidade;
         if(it.documento) p.documento=it.documento;
         if(it.foto_rg) p.foto_rg=it.foto_rg;
+        if(it.foto) p.foto=it.foto;
         p._mais=true;
         if(it.origem){ this.origemSel=it.origem; }
         if(it.destino){ this.destinoSel=it.destino; }
@@ -518,7 +519,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
         try{

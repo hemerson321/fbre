@@ -50,6 +50,7 @@ class CapturaController extends Controller
                 'origem' => $c->origem,
                 'destino' => $c->destino,
                 'foto_rg' => $c->foto_rg,
+                'foto' => $c->foto,
             ]);
 
         return response()->json(['itens' => $itens]);
@@ -105,6 +106,7 @@ class CapturaController extends Controller
         $pathRg = $this->salvarFoto($data['foto']);
         $res = $leitor->extrair($data['foto'], $empresa->iaConfig());
         $campos = $res['ok'] ? ($res['campos'] ?? []) : [];
+        $pathRosto = $this->recortarRosto($data['foto'], $campos['foto_box'] ?? null);
 
         Captura::create([
             'empresa_id' => $empresa->id,
@@ -118,6 +120,7 @@ class CapturaController extends Controller
             'nacionalidade' => $campos['nacionalidade'] ?? null,
             'documento' => $campos['documento'] ?? null,
             'foto_rg' => $pathRg,
+            'foto' => $pathRosto,
             'dados' => $res,
             'status' => 'nova',
         ]);
@@ -136,6 +139,39 @@ class CapturaController extends Controller
             }
         }
         return null;
+    }
+
+    /** Recorta só a foto 3x4 do titular (privacidade: não expõe o doc inteiro). */
+    protected function recortarRosto(string $dataUrl, $box): ?string
+    {
+        if (! is_array($box) || ! function_exists('imagecreatefromstring')) return null;
+        if (! preg_match('/^data:image\/\w+;base64,(.+)$/s', $dataUrl, $m)) return null;
+        $bin = base64_decode($m[1], true);
+        if ($bin === false) return null;
+        $img = @imagecreatefromstring($bin);
+        if (! $img) return null;
+
+        $W = imagesx($img); $H = imagesy($img);
+        $px = fn ($v, $dim) => $v <= 1 ? (int) round($v * $dim) : ($v <= 100 ? (int) round($v / 100 * $dim) : min((int) $v, $dim));
+        $x = max(0, $px((float) ($box['x'] ?? 0), $W));
+        $y = max(0, $px((float) ($box['y'] ?? 0), $H));
+        $w = $px((float) ($box['w'] ?? 0), $W);
+        $h = $px((float) ($box['h'] ?? 0), $H);
+        // margem de 8% e limites
+        $mx = (int) round($w * 0.08); $my = (int) round($h * 0.08);
+        $x = max(0, $x - $mx); $y = max(0, $y - $my);
+        $w = min($W - $x, $w + 2 * $mx); $h = min($H - $y, $h + 2 * $my);
+        if ($w < 24 || $h < 24) { imagedestroy($img); return null; }
+
+        $crop = imagecrop($img, ['x' => $x, 'y' => $y, 'width' => $w, 'height' => $h]);
+        imagedestroy($img);
+        if (! $crop) return null;
+        ob_start(); imagejpeg($crop, null, 85); $jpg = ob_get_clean();
+        imagedestroy($crop);
+
+        $nome = 'capturas/'.date('Y/m').'/rosto-'.Str::random(20).'.jpg';
+        Storage::disk('public')->put($nome, $jpg);
+        return 'storage/'.$nome;
     }
 
     protected function paraData(?string $v): ?string
