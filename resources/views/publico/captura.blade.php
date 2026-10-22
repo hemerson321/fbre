@@ -31,6 +31,9 @@
   </div>
 
   <div class="card space-y-3">
+    <div x-show="enviados>0" x-cloak class="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-bold text-center py-2">
+      <span x-text="enviados"></span> passageiro(s) enviado(s) nesta sessão
+    </div>
     <div class="grid grid-cols-2 gap-2">
       <div><label class="lbl">Origem</label>
         <select class="field" x-model="origem">
@@ -72,7 +75,7 @@
 function captura(){
   return {
     e:@js($e), u:@js($u), s:@js($s),
-    origem:'', destino:'', foto:null, enviando:false, msg:'', msgOk:false,
+    origem:'', destino:'', foto:null, enviando:false, msg:'', msgOk:false, enviados:0,
     init(){
       try{ const o=localStorage.getItem('fbre_cap_origem'); if(o) this.origem=o; const d=localStorage.getItem('fbre_cap_destino'); if(d) this.destino=d; }catch(e){}
       this.$watch('origem', v=>{ try{ localStorage.setItem('fbre_cap_origem', v||''); }catch(e){} });
@@ -109,8 +112,9 @@ function captura(){
         });
         const j=await r.json();
         if(j.ok){
+          this.enviados++;
           this.msgOk=true;
-          this.msg = j.lido ? '✅ Enviado e lido! Confira no computador.' : '✅ Foto enviada. A leitura automática falhou'+(j.erro?(': '+j.erro):'')+', preencha no computador.';
+          this.msg = (j.lido ? '✅ Passageiro '+this.enviados+' enviado e lido!' : '✅ Passageiro '+this.enviados+' enviado (leitura falhou'+(j.erro?': '+j.erro:'')+', preencha no PC)')+' Tire a foto do próximo.';
           this.foto=null; this.$refs.cam.value='';
         } else { this.msgOk=false; this.msg='Não foi possível enviar.'; }
       }catch(e){ this.msgOk=false; this.msg='Sem conexão: '+e.message; }
