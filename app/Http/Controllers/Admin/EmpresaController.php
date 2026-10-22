@@ -60,7 +60,7 @@ class EmpresaController extends Controller
         $config['ia_token'] = trim((string) $request->input('ia_token')) ?: null;
         $config['ia_modelo'] = trim((string) $request->input('ia_modelo')) ?: null;
         $data['config'] = $config;
-        unset($data['label_taxa_embarque'], $data['label_alimentacao']);
+        unset($data['label_taxa_embarque'], $data['label_alimentacao'], $data['wa_conexao'], $data['cores_por_modulo'], $data['ia_provider'], $data['ia_token'], $data['ia_modelo']);
 
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
