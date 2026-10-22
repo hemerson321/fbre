@@ -136,6 +136,7 @@
       <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1" @click="abrirCaptura()">📷 Captura</button>
     </div>
     <div class="sec-b">
+      <div x-show="capturaAviso" x-cloak class="mb-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold px-3 py-2" x-text="capturaAviso"></div>
       <div class="rounded-xl border border-slate-200 bg-slate-50 lg:max-h-[52vh] lg:overflow-auto p-2 space-y-1.5">
         <template x-for="(p,i) in passageiros" :key="p.id">
           <div class="pax">
@@ -286,7 +287,7 @@
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4)])->values()),
       podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
-      capturaAberta:false, capturaUrl:'', capturaSid:'', capturaDesde:0, capturaTimer:null, capturaStatus:'',
+      capturaAberta:false, capturaUrl:'', capturaSid:'', capturaDesde:0, capturaTimer:null, capturaStatus:'', capturaAviso:'', _avisoT:null,
       usaEmbarque:@js($usaTaxaEmbarque ?? false), usaAlim:@js($usaAlimentacao ?? true), labelTaxa:@js($labelTaxa ?? 'Taxa de embarque'), labelAlim:@js($labelAlim ?? 'Alimentação'),
       trechoMap:{}, taxaMap:{},
       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'',
@@ -321,6 +322,7 @@
         this.addPax();
         this.mudarEmbarcacao();
         this.onRota();
+        this.iniciarCaptura();
       },
 
       // ---- passageiros ----
@@ -329,20 +331,25 @@
       paxTotal(p){ return Math.round(((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))*100)/100; },
       setPaxTotal(p,v){ const total=Math.max(Number(v)||0,0); const fixo=(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0); p.valor_passagem=Math.round(Math.max(total-fixo,0)*100)/100; },
       // ---- captura por foto (QR -> celular -> IA -> autofill) ----
-      async abrirCaptura(){
-        this.capturaAberta=true; this.capturaStatus='Gerando QR...'; this.capturaUrl='';
+      async iniciarCaptura(){
         try{
           const r=await fetch(@js(route('captura.novo')),{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}});
-          const j=await r.json(); this.capturaSid=j.sid; this.capturaUrl=j.url; this.capturaDesde=0;
-          this.$nextTick(()=>this.renderQr());
-          this.capturaStatus='Aponte a câmera do celular pro QR.';
+          const j=await r.json(); this.capturaSid=j.sid; this.capturaUrl=j.url;
+          try{ const d=parseInt(localStorage.getItem('fbre_captura_desde_'+this.capturaSid)||'0',10); this.capturaDesde=isNaN(d)?0:d; }catch(e){}
           this.iniciarPoll();
-        }catch(e){ this.capturaStatus='Erro ao gerar QR: '+e.message; }
+          return true;
+        }catch(e){ return false; }
       },
-      renderQr(){ const el=document.getElementById('qr-captura'); if(!el||!window.QRCode) return; el.innerHTML=''; new QRCode(el,{text:this.capturaUrl,width:220,height:220,correctLevel:QRCode.CorrectLevel.M}); },
+      async abrirCaptura(){
+        this.capturaAberta=true;
+        if(!this.capturaUrl){ this.capturaStatus='Gerando QR...'; await this.iniciarCaptura(); }
+        this.capturaStatus = this.capturaUrl ? 'Aponte a câmera do celular pro QR. O link é fixo: dá pra salvar e usar sempre.' : 'Não consegui gerar o QR. Tente de novo.';
+        this.$nextTick(()=>this.renderQr());
+      },
+      renderQr(){ const el=document.getElementById('qr-captura'); if(!el||!window.QRCode||!this.capturaUrl) return; el.innerHTML=''; new QRCode(el,{text:this.capturaUrl,width:220,height:220,correctLevel:QRCode.CorrectLevel.M}); },
       iniciarPoll(){ this.pararPoll(); this.capturaTimer=setInterval(()=>this.pollCaptura(),2500); },
       pararPoll(){ if(this.capturaTimer){ clearInterval(this.capturaTimer); this.capturaTimer=null; } },
-      fecharCaptura(){ this.capturaAberta=false; this.pararPoll(); },
+      fecharCaptura(){ this.capturaAberta=false; }, // segue recebendo em segundo plano
       async pollCaptura(){
         if(!this.capturaSid) return;
         try{
@@ -351,6 +358,7 @@
           (j.itens||[]).forEach(it=>{
             this.aplicarCaptura(it);
             this.capturaDesde=Math.max(this.capturaDesde, it.id);
+            try{ localStorage.setItem('fbre_captura_desde_'+this.capturaSid, this.capturaDesde); }catch(e){}
             fetch('/passagens/captura/'+it.id+'/usar',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf}});
           });
         }catch(e){}
@@ -370,6 +378,8 @@
         if(it.destino){ this.destinoSel=it.destino; }
         if(it.origem||it.destino){ this.onRota(); }
         this.capturaStatus='✅ '+(it.nome||'Passageiro')+' recebido! Pode enviar o próximo.';
+        this.capturaAviso='📷 '+(it.nome||'Passageiro')+' recebido da foto'+(it.nome?'':' (preencha o nome)');
+        clearTimeout(this._avisoT); this._avisoT=setTimeout(()=>this.capturaAviso='',5000);
       },
       rmPax(i){ this.passageiros.splice(i,1); },
       aplicarTipo(p){

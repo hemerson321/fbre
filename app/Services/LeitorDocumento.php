@@ -30,7 +30,7 @@ class LeitorDocumento
         try {
             $texto = $provider === 'openai'
                 ? $this->openai($token, $cfg['modelo'] ?? 'gpt-4o-mini', $mediaType, $base64)
-                : $this->claude($token, $cfg['modelo'] ?? 'claude-sonnet-4-20250514', $mediaType, $base64);
+                : $this->claude($token, $cfg['modelo'] ?? 'claude-3-5-sonnet-latest', $mediaType, $base64);
             if ($texto === null) return ['ok' => false, 'erro' => 'IA não respondeu.'];
 
             $campos = $this->parseJson($texto);

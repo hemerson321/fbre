@@ -24,10 +24,10 @@ class CapturaController extends Controller
     public function novo(Request $request)
     {
         $u = auth()->user();
-        $sid = Str::random(16);
-        $url = URL::temporarySignedRoute('captura.mobile', now()->addHours(3), [
-            'e' => Tenant::id(), 'u' => $u->id, 's' => $sid,
-        ]);
+        // sid fixo por operador: o link do QR é sempre o mesmo e não expira,
+        // então o operador escaneia uma vez e continua enviando sem reabrir.
+        $sid = substr(hash_hmac('sha256', 'captura:'.Tenant::id().':'.$u->id, (string) config('app.key')), 0, 20);
+        $url = URL::signedRoute('captura.mobile', ['e' => Tenant::id(), 'u' => $u->id, 's' => $sid]);
         return response()->json(['sid' => $sid, 'url' => $url]);
     }
 
