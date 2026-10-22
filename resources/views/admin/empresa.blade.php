@@ -82,6 +82,18 @@
   </div>
 </div>
 
+<div class="border-t pt-3 mt-1" x-data="{rv:{{ $empresa->config('usa_revendedores') ? 'true':'false' }}}">
+  <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">Revendedores (passagem)</h2>
+  <label class="flex items-start gap-2 py-1 cursor-pointer">
+    <input type="checkbox" name="usa_revendedores" value="1" x-model="rv" class="w-5 h-5 rounded mt-0.5">
+    <span><span class="font-semibold text-sm">Usar revendedores</span><br><span class="text-xs text-slate-500">Habilita agentes que vendem passagem e acertam com a empresa.</span></span>
+  </label>
+  <label class="flex items-start gap-2 py-1 cursor-pointer" x-show="rv" x-cloak>
+    <input type="checkbox" name="revendedor_multi" value="1" @checked($empresa->config('revendedor_multi')) class="w-5 h-5 rounded mt-0.5">
+    <span><span class="font-semibold text-sm">Multiagente (filiados)</span><br><span class="text-xs text-slate-500">Cada revendedor pode ter seus filiados (vendedores) e acertar com eles.</span></span>
+  </label>
+</div>
+
 <button class="btn btn-accent w-full">Salvar</button>
 </form>
 @endsection

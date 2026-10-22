@@ -33,6 +33,8 @@ class UsuarioController extends Controller
             'setores' => Setor::orderBy('nome')->pluck('nome'),
             'cidades' => Rota::todasLocalidades(),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
+            'revendedores' => User::where('is_revendedor', true)->where('id', '!=', $u->id)->orderBy('name')->get(['id', 'name']),
+            'empresa' => \App\Support\Tenant::empresa(),
         ];
     }
 
@@ -103,6 +105,10 @@ class UsuarioController extends Controller
             'perm_recibo' => 'nullable|boolean',
             'perm_financeiro' => 'nullable|boolean',
             'checkin_auto' => 'nullable|boolean',
+            'is_revendedor' => 'nullable|boolean',
+            'revendedor_id' => 'nullable|integer',
+            'modo_acerto' => 'nullable|in:comissao,cheio',
+            'comissao_pct' => 'nullable|integer|min:0|max:100',
             'mod_perms' => 'nullable|array',
             'mod_perms.*' => 'array',
             'ativo' => 'nullable|boolean',
@@ -114,7 +120,7 @@ class UsuarioController extends Controller
             'transportes_permitidos.*' => 'integer',
             'embarcacao_principal_id' => 'nullable|integer',
         ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
-        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'ativo', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo', 'perm_financeiro', 'checkin_auto'] as $b) {
+        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'ativo', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo', 'perm_financeiro', 'checkin_auto', 'is_revendedor'] as $b) {
             $data[$b] = $request->boolean($b);
         }
         // listas vazias viram null (= tudo liberado)
@@ -123,6 +129,10 @@ class UsuarioController extends Controller
         }
         $data['embarcacao_principal_id'] = $data['embarcacao_principal_id'] ?? null;
         $data['prefixo'] = strtoupper($data['prefixo']);
+        // revendedor: se é revendedor, não tem pai; vendedor tem pai (revendedor_id)
+        $data['revendedor_id'] = ($data['is_revendedor'] ?? false) ? null : (($data['revendedor_id'] ?? null) ?: null);
+        $data['modo_acerto'] = $data['modo_acerto'] ?? 'cheio';
+        $data['comissao_pct'] = (int) ($data['comissao_pct'] ?? 0);
 
         // permissões por módulo e ação (cadastra/baixa/imprimir)
         $mp = $request->input('mod_perms', []);

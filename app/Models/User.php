@@ -19,6 +19,7 @@ class User extends Authenticatable
     {
         return [
             'checkin_auto' => 'boolean',
+            'is_revendedor' => 'boolean',
             'password' => 'hashed',
             'super_admin' => 'boolean',
             'admin' => 'boolean',
@@ -70,6 +71,27 @@ class User extends Authenticatable
 
     // ---- escopo do operador no cadastro (vazio = tudo liberado) ----
     public function cidadesPermitidas(): array    { return array_values($this->loc_permitidas ?? []); }
+
+    // ---- revendedores / acerto ----
+    public function ehRevendedor(): bool { return (bool) $this->is_revendedor; }
+
+    /** O revendedor "dono" deste usuário: ele mesmo (se revendedor), ou o pai (se vendedor), ou null. */
+    public function revendedorDono(): ?int
+    {
+        if ($this->revendedor_id) return (int) $this->revendedor_id;
+        if ($this->is_revendedor) return (int) $this->id;
+        return null;
+    }
+
+    /** Quanto este usuário REPASSA (deve ao nível acima) por uma passagem de valor $total. */
+    public function repasseDe(float $total): float
+    {
+        if (($this->modo_acerto ?? 'cheio') === 'comissao') {
+            $pct = max(0, min(100, (int) ($this->comissao_pct ?? 0)));
+            return round($total * (1 - $pct / 100), 2);
+        }
+        return round($total, 2);
+    }
     public function setoresPermitidos(): array    { return array_values($this->setores_permitidos ?? []); }
     public function transportesPermitidos(): array { return array_map('intval', $this->transportes_permitidos ?? []); }
     public function podeRetroativo(): bool        { return $this->admin || $this->gerente() || $this->perm_retroativo; }

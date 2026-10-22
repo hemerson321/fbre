@@ -24,6 +24,37 @@
   <input type="checkbox" name="checkin_auto" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('checkin_auto', $u->exists ? $u->checkin_auto : true))>
   <span><span class="font-semibold text-sm">Check-in automático (passagem)</span><br><span class="text-xs text-slate-500">Operador do barco: passageiros já entram com check-in marcado. Desmarque para operador que só vende (check-in validado depois no embarque).</span></span>
 </label>
+
+@if($empresa && $empresa->config('usa_revendedores'))
+<div class="rounded-xl bg-amber-50 border border-amber-200 p-3 space-y-2" x-data="{rev:{{ old('is_revendedor',$u->is_revendedor)?'true':'false' }}, modo:'{{ old('modo_acerto',$u->modo_acerto ?: 'cheio') }}'}">
+  <label class="flex items-start gap-2 cursor-pointer">
+    <input type="checkbox" name="is_revendedor" value="1" x-model="rev" class="w-5 h-5 rounded mt-0.5">
+    <span><span class="font-semibold text-sm">É revendedor de passagem</span><br><span class="text-xs text-slate-500">Vende passagem e pode ter filiados. Faz acerto com a empresa.</span></span>
+  </label>
+
+  @if($empresa->config('revendedor_multi'))
+  <div x-show="!rev" x-cloak>
+    <label class="label !text-xs">Filiado do revendedor (opcional)</label>
+    <select name="revendedor_id" class="input">
+      <option value="">— não é filiado —</option>
+      @foreach($revendedores as $r)<option value="{{ $r->id }}" @selected(old('revendedor_id',$u->revendedor_id)==$r->id)>{{ $r->name }}</option>@endforeach
+    </select>
+    <p class="text-xs text-slate-400 mt-0.5">Vendedor vinculado a um revendedor (acerta com o revendedor, não com a empresa).</p>
+  </div>
+  @endif
+
+  <div class="grid grid-cols-2 gap-2 items-end">
+    <div><label class="label !text-xs">Acerto</label>
+      <select name="modo_acerto" x-model="modo" class="input !min-h-[40px]">
+        <option value="cheio">Valor cheio (repassa tudo)</option>
+        <option value="comissao">Comissão (%)</option>
+      </select></div>
+    <div x-show="modo==='comissao'" x-cloak><label class="label !text-xs">Comissão %</label>
+      <input type="number" min="0" max="100" name="comissao_pct" value="{{ old('comissao_pct',$u->comissao_pct ?? 0) }}" class="input !min-h-[40px] text-right"></div>
+  </div>
+  <p class="text-xs text-slate-500">No <b>valor cheio</b> repassa o total e a comissão é tratada à parte. Na <b>comissão</b>, fica com a % e repassa o resto.</p>
+</div>
+@endif
 <div class="rounded-xl bg-slate-50 p-3 space-y-1">
   <div class="label">Permissões</div>
 

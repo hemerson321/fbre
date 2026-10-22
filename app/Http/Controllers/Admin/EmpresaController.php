@@ -56,6 +56,8 @@ class EmpresaController extends Controller
             $config['wa_conexao_'.$mk] = $request->input('wa_conexao.'.$mk) ?: null;
         }
         $config['cores_por_modulo'] = $request->boolean('cores_por_modulo');
+        $config['usa_revendedores'] = $request->boolean('usa_revendedores');
+        $config['revendedor_multi'] = $request->boolean('revendedor_multi');
         $config['ia_provider'] = $request->input('ia_provider') ?: 'claude';
         $config['ia_token'] = trim((string) $request->input('ia_token')) ?: null;
         $config['ia_modelo'] = trim((string) $request->input('ia_modelo')) ?: null;

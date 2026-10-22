@@ -408,6 +408,7 @@
         this.capturaStatus='✅ '+(it.nome||'Passageiro')+' recebido! Pode enviar o próximo.';
         this.capturaAviso='📷 '+(it.nome||'Passageiro')+' recebido da foto'+(it.nome?'':' (preencha o nome)');
         clearTimeout(this._avisoT); this._avisoT=setTimeout(()=>this.capturaAviso='',5000);
+        if(this.capturaAberta) this.fecharCaptura(); // chegou captura: fecha o QR (segue recebendo em 2o plano)
       },
       // ---- webcam / arquivo no proprio desktop ----
       async abrirCam(i){ this.camTargetIdx=i; this.camAberta=true; this.camStatus='';
