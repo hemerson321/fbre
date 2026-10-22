@@ -1,7 +1,7 @@
 /* FBRE — service worker: deixa o sistema abrir sem internet.
  * Estratégia: páginas = rede primeiro, cache como reserva; libs externas (Tailwind, Alpine, fontes) = cache primeiro.
  */
-const VERSAO = 'fbre-v6';
+const VERSAO = 'fbre-v7';
 const SHELL = ['/encomendas/nova', '/encomendas', '/offline', '/manifest.json', '/img/icon.png', '/js/fbre-offline.js'];
 const LIBS = [
   'https://cdn.tailwindcss.com',
@@ -47,7 +47,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith((async () => {
     const c = await caches.open(VERSAO);
     try {
-      const r = await fetch(req);
+      const r = await fetch(req.mode === 'navigate' ? new Request(req, { cache: 'reload' }) : req);
       if (r.ok && (req.mode === 'navigate' || url.pathname.startsWith('/img/') || url.pathname.startsWith('/js/') || url.pathname.startsWith('/storage/'))) {
         c.put(req, r.clone());
       }
