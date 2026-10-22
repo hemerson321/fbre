@@ -65,7 +65,7 @@ class PassagemController extends Controller
         $u = auth()->user();
         $embarcacoes = Embarcacao::where('ativo', true)->orderBy('nome')
             ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas']);
-        $colunas = ['id', 'nome', 'cor', 'percentual', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao'];
+        $colunas = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao'];
         $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get($colunas);
         if ($tipos->isEmpty()) {
             // auto-reparo: cria o Normal (Adulto) e alguns tipos padrão

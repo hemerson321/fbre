@@ -322,7 +322,9 @@
           const baseT=nc?Number(nc.tarifa)||0:(n?Number(n.tarifa_padrao)||0:0);
           const baseA=nc?Number(nc.alim)||0:(n?Number(n.alimentacao_padrao)||0:0);
           const pct=(Number(t.percentual)||0)/100;
-          return {tarifa:Math.round(baseT*pct*100)/100, alim:Math.round(baseA*pct*100)/100};
+          const tarifa=Math.round(baseT*pct*100)/100;
+          const alim=(t.pct_sobre==='tudo') ? Math.round(baseA*pct*100)/100 : Math.round(baseA*100)/100;
+          return {tarifa:tarifa, alim:alim};
         }
         const c=this.trechoGet(t.id);
         return {tarifa: c?Number(c.tarifa)||0:(Number(t.tarifa_padrao)||0), alim: c?Number(c.alim)||0:(Number(t.alimentacao_padrao)||0)};
@@ -457,10 +459,17 @@
       const e=(b&&b.empresa)||{}; const d=item.dados;
       const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
       const moeda=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-      const sub=d.passageiros.reduce((s,p)=>s+(Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0),0);
+      const subT=d.passageiros.reduce((s,p)=>s+(Number(p.valor_passagem)||0),0);
+      const subA=d.passageiros.reduce((s,p)=>s+(Number(p.valor_alimentacao)||0),0);
+      const subX=d.passageiros.reduce((s,p)=>s+(Number(p.valor_taxa)||0),0);
+      const sub=subT+subA+subX;
       const desc=Number(d.desconto)||0, total=Math.max(sub-desc,0);
       const pago=(d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0), devido=Math.max(total-pago,0);
-      const linhas=d.passageiros.map(p=>`<tr><td>${esc(p.nome)}<div class="sm">${esc(p.tipo)}${p.poltrona?(' · poltrona '+esc(p.poltrona)):''}</div></td><td class="r b">${moeda((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0)).replace('R$','').trim()}</td></tr>`).join('');
+      const linhas=d.passageiros.map(p=>{
+        const vt=Number(p.valor_passagem)||0, va=Number(p.valor_alimentacao)||0, vx=Number(p.valor_taxa)||0;
+        let bd='Transporte '+moeda(vt).replace('R$','').trim(); if(va>0) bd+=' · Alim. '+moeda(va).replace('R$','').trim(); if(vx>0) bd+=' · Taxa '+moeda(vx).replace('R$','').trim();
+        return `<tr><td>${esc(p.nome)}<div class="sm">${esc(p.tipo)}${p.poltrona?(' · poltrona '+esc(p.poltrona)):''}</div><div class="sm">${bd}</div></td><td class="r b">${moeda(vt+va+vx).replace('R$','').trim()}</td></tr>`;
+      }).join('');
       const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Passagem ${esc(d.numero_completo)}</title>
       <style>@page{margin:0;size:80mm auto}*{box-sizing:border-box}body{margin:0;padding:3mm 4mm;width:80mm;font-family:"Courier New",monospace;font-size:11.5px}
       .c{text-align:center}.r{text-align:right}.b{font-weight:bold}.xl{font-size:18px}.lg{font-size:14px}.sm{font-size:10px;color:#333}hr{border:0;border-top:1px dashed #000;margin:4px 0}
@@ -470,7 +479,7 @@
       <div class="c sm">${new Date().toLocaleString('pt-BR')}</div><hr>
       <table><tr><td class="b">ORIGEM</td><td class="r">${esc(d.origem)}</td></tr><tr><td class="b">DESTINO</td><td class="r">${esc(d.destino)}</td></tr>${d.viagem_data?`<tr><td class="b">VIAGEM</td><td class="r">${esc(d.viagem_data)}</td></tr>`:''}</table><hr>
       <div class="b">PASSAGEIROS</div><table>${linhas}</table><hr>
-      <table>${desc>0?`<tr><td>Desconto</td><td class="r">-${moeda(desc)}</td></tr>`:''}<tr class="lg"><td class="b">TOTAL</td><td class="r b">${moeda(total)}</td></tr><tr><td>Pago</td><td class="r">${moeda(pago)}</td></tr><tr><td class="b">DEVIDO</td><td class="r b">${moeda(devido)}</td></tr></table>
+      <table><tr><td>Transporte</td><td class="r">${moeda(subT)}</td></tr>${subA>0?`<tr><td>Alimentação</td><td class="r">${moeda(subA)}</td></tr>`:''}${subX>0?`<tr><td>Taxa de embarque</td><td class="r">${moeda(subX)}</td></tr>`:''}${desc>0?`<tr><td>Desconto</td><td class="r">-${moeda(desc)}</td></tr>`:''}<tr class="lg"><td class="b">TOTAL</td><td class="r b">${moeda(total)}</td></tr><tr><td>Pago</td><td class="r">${moeda(pago)}</td></tr><tr><td class="b">DEVIDO</td><td class="r b">${moeda(devido)}</td></tr></table>
       ${e.rodape?`<hr><div class="c sm">${esc(e.rodape)}</div>`:''}<hr><div class="c sm">Apresente esta passagem no embarque.</div><br><br></body></html>`;
       const w=window.open('','fbre_print','width=420,height=640'); if(!w)return alert('Permita pop-ups para imprimir.'); w.document.open(); w.document.write(html); w.document.close();
     };

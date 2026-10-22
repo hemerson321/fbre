@@ -1,6 +1,6 @@
 @php $edit = (bool) $rota; @endphp
 <form method="post" action="{{ $edit ? route('admin.rotas.update',$rota) : route('admin.rotas.store') }}"
-      x-data="rotaForm({{ $edit ? $rota->paradas->map(fn($p)=>['localidade'=>$p->localidade,'dia_semana'=>$p->dia_semana,'hora'=>$p->hora? substr($p->hora,0,5):''])->toJson() : '[]' }}, @js($trechoPrecosMapa ?? []), @js(($tiposPassageiro ?? collect())->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor','percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,'eh_normal'=>(bool)$t->eh_normal])->values()), @js(['alim'=>($usaAlimentacao ?? true)]))" class="space-y-3">
+      x-data="rotaForm({{ $edit ? $rota->paradas->map(fn($p)=>['localidade'=>$p->localidade,'dia_semana'=>$p->dia_semana,'hora'=>$p->hora? substr($p->hora,0,5):''])->toJson() : '[]' }}, @js($trechoPrecosMapa ?? []), @js(($tiposPassageiro ?? collect())->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor','percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,'eh_normal'=>(bool)$t->eh_normal,'pct_sobre'=>$t->pct_sobre ?: 'tarifa'])->values()), @js(['alim'=>($usaAlimentacao ?? true)]))" class="space-y-3">
 @csrf @if($edit) @method('PUT') @endif
 <div class="grid sm:grid-cols-2 gap-3">
   <div><label class="label">Nome da rota</label><input name="nome" class="input" required value="{{ $edit ? $rota->nome : '' }}" placeholder="Ex.: Linha Tefé"></div>
@@ -105,7 +105,10 @@ function rotaForm(paradas, precos, tipos, flags){
       const nc=this.precos[this.cellKey(trechoKey,n.id)];
       const baseT = nc?Number(nc.tarifa)||0:Number(n.tarifa_padrao)||0;
       const baseA = this.usaAlim ? (nc?Number(nc.alim)||0:Number(n.alimentacao_padrao)||0) : 0;
-      return (baseT+baseA)*(Number(tp.percentual)||0)/100; },
+      const pct = (Number(tp.percentual)||0)/100;
+      const tarifa = baseT*pct;
+      const alim = (tp.pct_sobre==='tudo') ? baseA*pct : baseA;
+      return tarifa + alim; },
     get submitRows(){ const rows=[];
       this.trechos.forEach(t=>{ this.valorTipos.forEach(tp=>{
         const c=this.precos[this.cellKey(t.key,tp.id)];

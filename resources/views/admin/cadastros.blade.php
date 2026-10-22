@@ -59,7 +59,7 @@
 <div class="card p-4 space-y-2 md:col-span-2" x-data="tiposEditor(@js($tiposPassageiro->map(fn($t)=>[
      'id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor',
      'percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,
-     'eh_normal'=>(bool)$t->eh_normal,'paga_taxa'=>(bool)$t->paga_taxa,
+     'eh_normal'=>(bool)$t->eh_normal,'paga_taxa'=>(bool)$t->paga_taxa,'pct_sobre'=>$t->pct_sobre ?: 'tarifa',
    ])->values()))">
   <h2 class="font-bold text-sm text-slate-500 uppercase">Tipos de passageiro</h2>
   <p class="text-xs text-slate-500">Escolha o modo: <b>Valor</b> (Tarifa + Alimentação por rota) ou <b>Porcentagem</b> (% do Normal, automático). Marque qual tipo é o <b>Normal</b> (base do cálculo — ex.: Adulto).</p>
@@ -75,8 +75,15 @@
             <option value="valor">Valor (Tarifa+Alim.)</option>
             <option value="porcentagem">Porcentagem do Normal</option>
           </select></div>
-        <div x-show="t.modo==='porcentagem' && !t.eh_normal" class="flex items-end gap-1"><div><label class="label !text-xs">% do Normal</label>
-          <input type="number" min="0" max="100" x-model.number="t.percentual" :name="`tipos[${i}][percentual]`" class="input !min-h-[40px] !w-24 text-right"></div><span class="text-sm pb-2">%</span></div>
+        <div x-show="t.modo==='porcentagem' && !t.eh_normal" class="flex items-end gap-2 flex-wrap">
+          <div class="flex items-end gap-1"><div><label class="label !text-xs">% do Normal</label>
+            <input type="number" min="0" max="100" x-model.number="t.percentual" :name="`tipos[${i}][percentual]`" class="input !min-h-[40px] !w-24 text-right"></div><span class="text-sm pb-2">%</span></div>
+          <div><label class="label !text-xs">Desconto aplica em</label>
+            <select x-model="t.pct_sobre" :name="`tipos[${i}][pct_sobre]`" class="input !min-h-[40px] !w-48">
+              <option value="tarifa">Só transporte</option>
+              <option value="tudo">Transporte + alimentação</option>
+            </select></div>
+        </div>
         <template x-if="t.modo==='valor' || t.eh_normal">
           <div class="flex items-end gap-2">
             <div><label class="label !text-xs">Tarifa Padrão</label>
@@ -103,8 +110,8 @@
 <script>
 function tiposEditor(tipos){
   return {
-    tipos: (tipos&&tipos.length) ? tipos : [{id:null,nome:'Adulto',cor:'#2563eb',modo:'valor',percentual:100,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:true,paga_taxa:true}],
-    adicionar(){ this.tipos.push({id:null,nome:'',cor:'#7c3aed',modo:'porcentagem',percentual:50,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:false,paga_taxa:true}); },
+    tipos: (tipos&&tipos.length) ? tipos : [{id:null,nome:'Adulto',cor:'#2563eb',modo:'valor',percentual:100,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:true,paga_taxa:true,pct_sobre:'tarifa'}],
+    adicionar(){ this.tipos.push({id:null,nome:'',cor:'#7c3aed',modo:'porcentagem',percentual:50,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:false,paga_taxa:true,pct_sobre:'tarifa'}); },
     remover(i){ const era=this.tipos[i].eh_normal; this.tipos.splice(i,1); if(era && this.tipos.length) this.tipos[0].eh_normal=true; },
     marcarNormal(i){ this.tipos.forEach((t,k)=>{ t.eh_normal = (k===i); if(k===i) t.modo='valor'; }); },
   };
