@@ -204,7 +204,7 @@
             <div class="item">
               <input :name="`itens[${i}][descricao]`" x-model="it.descricao" class="field col-span-12 lg:col-span-5" placeholder="Descrição" required>
               <input :name="`itens[${i}][quantidade]`" x-model.number="it.quantidade" type="number" step="any" min="0.01" class="field col-span-3 lg:col-span-2 text-center font-semibold" inputmode="decimal" @focus="$event.target.select()" @input="recalcVolumes()">
-              <input :name="`itens[${i}][valor_unitario]`" x-model.number="it.valor" type="number" step="0.01" min="0" class="field col-span-4 lg:col-span-2 text-right" inputmode="decimal" @focus="$event.target.select()">
+              <input :name="`itens[${i}][valor_unitario]`" x-money="it.valor" class="field col-span-4 lg:col-span-2 text-right">
               <div class="col-span-4 lg:col-span-2 text-right text-sm font-extrabold whitespace-nowrap" style="color:var(--cor1)" x-text="FBRE.moeda(it.quantidade*it.valor)"></div>
               <button type="button" @click="itens.splice(i,1); recalcVolumes()" class="col-span-1 w-8 h-8 mx-auto rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none" title="Remover">×</button>
               <input :name="`itens[${i}][observacao]`" x-model="it.obs" class="col-span-12 text-xs bg-transparent border-0 border-b border-dashed border-slate-300 px-1 py-0.5 focus:outline-none" placeholder="observação do item (opcional)">
@@ -233,9 +233,9 @@
         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
             <div><label class="lbl" x-text="m.l"></label>
-              <input type="number" step="0.01" min="0" inputmode="decimal" class="field text-right font-semibold" x-model.number="pag[m.k]" placeholder="0,00" @focus="$event.target.select()"></div>
+              <input class="field text-right font-semibold" x-money="pag[m.k]"></div>
           </template>
-          <div><label class="lbl">Desconto</label><input name="desconto" type="number" step="0.01" min="0" inputmode="decimal" class="field text-right" x-model.number="desconto" placeholder="0,00" @focus="$event.target.select()"></div>
+          <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
         </div>
         <template x-for="m in meios" :key="'h'+m.k">

@@ -25,10 +25,10 @@
   <form method="post" action="{{ route('fretes.pagar',$f) }}" class="card p-4 space-y-3">@csrf
     <div class="font-semibold">Receber pagamento</div>
     <div class="grid grid-cols-2 gap-2">
-      <div><label class="text-[11px] text-slate-500">Dinheiro</label><input name="dinheiro" type="number" step="0.01" min="0" class="input"></div>
-      <div><label class="text-[11px] text-slate-500">PIX</label><input name="pix" type="number" step="0.01" min="0" class="input"></div>
-      <div><label class="text-[11px] text-slate-500">Débito</label><input name="debito" type="number" step="0.01" min="0" class="input"></div>
-      <div><label class="text-[11px] text-slate-500">Crédito</label><input name="credito" type="number" step="0.01" min="0" class="input"></div>
+      <div><label class="text-[11px] text-slate-500">Dinheiro</label><input name="dinheiro" class="input" x-money></div>
+      <div><label class="text-[11px] text-slate-500">PIX</label><input name="pix" class="input" x-money></div>
+      <div><label class="text-[11px] text-slate-500">Débito</label><input name="debito" class="input" x-money></div>
+      <div><label class="text-[11px] text-slate-500">Crédito</label><input name="credito" class="input" x-money></div>
     </div>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="entregar" value="1" class="w-5 h-5 rounded"> Confirmar entrega ao pagar</label>
     <button class="btn w-full text-white" style="background:{{ $cor }}">Registrar pagamento</button>

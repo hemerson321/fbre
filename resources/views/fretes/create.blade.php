@@ -91,8 +91,8 @@
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <div><label class="lbl">Peso (kg)</label><input type="number" step="0.01" min="0" class="field text-right" x-model.number="peso" @input="calcValor()" placeholder="0"></div>
         <div><label class="lbl">Volumes</label><input type="number" min="1" class="field text-center" x-model.number="volumes"></div>
-        <div><label class="lbl">Preço / kg</label><input type="number" step="0.01" min="0" class="field text-right" x-model.number="precoKilo" @input="calcValor()" placeholder="0,00"></div>
-        <div><label class="lbl">Valor do frete</label><input type="number" step="0.01" min="0" class="field text-right font-bold" style="color:var(--cor1)" x-model.number="valor" @input="valorManual=true" @focus="$event.target.select()"></div>
+        <div><label class="lbl">Preço / kg</label><input type="text" inputmode="numeric" class="field text-right" :value="FBRE.fmtMoney(precoKilo)" @input="precoKilo=FBRE.parseMoney($event.target.value); calcValor(); $event.target.value=FBRE.fmtMoney(precoKilo)"></div>
+        <div><label class="lbl">Valor do frete</label><input type="text" inputmode="numeric" class="field text-right font-bold" style="color:var(--cor1)" :value="FBRE.fmtMoney(valor)" @input="valor=FBRE.parseMoney($event.target.value); valorManual=true; $event.target.value=FBRE.fmtMoney(valor)"></div>
       </div>
       <p class="text-[11px] text-slate-400" x-show="peso>0 && precoKilo>0 && !valorManual" x-cloak>Calculado: <span x-text="peso"></span> kg × <span x-text="FBRE.moeda(precoKilo)"></span> = <b x-text="FBRE.moeda(peso*precoKilo)"></b></p>
       <input class="field" placeholder="Observação (opcional)" x-model="observacao">
@@ -106,8 +106,8 @@
       <div class="sec-b">
         <div class="flex gap-1.5">@foreach(\App\Models\Frete::FORMAS as $k=>$l)<label class="forma" :class="forma==='{{ $k }}' && 'on'"><input type="radio" value="{{ $k }}" x-model="forma" class="sr-only"> {{ $l }}</label>@endforeach</div>
         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
-          <template x-for="m in meios" :key="m.k"><div><label class="lbl" x-text="m.l"></label><input type="number" step="0.01" min="0" inputmode="decimal" class="field text-right font-semibold" x-model.number="pag[m.k]" placeholder="0,00" @focus="$event.target.select()"></div></template>
-          <div><label class="lbl">Desconto</label><input type="number" step="0.01" min="0" inputmode="decimal" class="field text-right" x-model.number="desconto" placeholder="0,00" @focus="$event.target.select()"></div>
+          <template x-for="m in meios" :key="m.k"><div><label class="lbl" x-text="m.l"></label><input class="field text-right font-semibold" x-money="pag[m.k]"></div></template>
+          <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
         </div>
         <p x-show="forma==='faturado'" class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">Faturado: nada recebido agora.</p>

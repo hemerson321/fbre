@@ -83,11 +83,11 @@
     <h3 class="text-lg font-bold">Registrar pagamento</h3>
     <div class="text-sm">Falta pagar: <b class="text-red-600">R$ {{ number_format($e->devido,2,',','.') }}</b></div>
     <div class="grid grid-cols-2 gap-2">
-      <div><label class="label">Dinheiro</label><input name="dinheiro" type="number" step="0.01" min="0" inputmode="decimal" class="input text-right" x-model.number="d"></div>
-      <div><label class="label">PIX</label><input name="pix" type="number" step="0.01" min="0" inputmode="decimal" class="input text-right" x-model.number="p"></div>
-      <div><label class="label">Débito</label><input name="debito" type="number" step="0.01" min="0" inputmode="decimal" class="input text-right" x-model.number="de"></div>
-      <div><label class="label">Crédito</label><input name="credito" type="number" step="0.01" min="0" inputmode="decimal" class="input text-right" x-model.number="c"></div>
-      <div><label class="label">Desconto</label><input name="desconto" type="number" step="0.01" min="0" inputmode="decimal" class="input text-right" x-model.number="ds"></div>
+      <div><label class="label">Dinheiro</label><input name="dinheiro" class="input text-right" x-money="d"></div>
+      <div><label class="label">PIX</label><input name="pix" class="input text-right" x-money="p"></div>
+      <div><label class="label">Débito</label><input name="debito" class="input text-right" x-money="de"></div>
+      <div><label class="label">Crédito</label><input name="credito" class="input text-right" x-money="c"></div>
+      <div><label class="label">Desconto</label><input name="desconto" class="input text-right" x-money="ds"></div>
       <div class="flex items-end"><button type="button" class="btn btn-ghost w-full" @click="d=Math.max(devido-p-de-c-ds,0)">Tudo em dinheiro</button></div>
     </div>
     <div class="text-sm flex justify-between"><span>Restará:</span><b x-text="FBRE.moeda(Math.max(devido-d-p-de-c-ds,0))"></b></div>

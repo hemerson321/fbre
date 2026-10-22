@@ -35,6 +35,34 @@ tailwind.config = { theme: { extend: {
   colors: { brand: { DEFAULT: '{{ $cor1 }}', accent: '{{ $cor2 }}' } }
 }}}
 </script>
+<script>
+// Mascara de dinheiro (R$) estilo caixa: digita e preenche a partir dos centavos.
+document.addEventListener('alpine:init', () => {
+  const fmt = n => (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  Alpine.directive('money', (el, { expression }, { evaluateLater, effect, cleanup }) => {
+    el.type = 'text'; el.setAttribute('inputmode','numeric');
+    // campo com name (POST normal): move o name pra um hidden numerico
+    let hidden = null; const nm = el.getAttribute('name');
+    if (nm) { hidden = document.createElement('input'); hidden.type = 'hidden'; hidden.name = nm; el.removeAttribute('name'); el.insertAdjacentElement('afterend', hidden); }
+    const hasExpr = expression && expression.trim();
+    const getVal = hasExpr ? evaluateLater(expression) : null;
+    const setVal = v => { if (hasExpr) { try { Alpine.evaluate(el, expression + ' = __money', { __money: v }); } catch(e){} } else { el._m = v; } };
+    const read = cb => { if (hasExpr) getVal(cb); else cb(el._m || 0); };
+    const syncHidden = v => { if (hidden) hidden.value = (Number(v)||0).toFixed(2); };
+    const render = () => read(v => { if (document.activeElement !== el) el.value = fmt(v); syncHidden(v); });
+    if (hasExpr) effect(render);
+    const onInput = () => {
+      const digits = (el.value || '').replace(/\D/g,'');
+      const num = digits ? parseInt(digits,10)/100 : 0;
+      setVal(num); el.value = fmt(num); syncHidden(num);
+      try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){}
+    };
+    el.addEventListener('input', onInput);
+    cleanup(() => el.removeEventListener('input', onInput));
+    read(v => { el.value = fmt(v); syncHidden(v); });
+  });
+});
+</script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 <style type="text/tailwindcss">
   :root { --cor1: {{ $cor1 }}; --cor2: {{ $cor2 }}; }
@@ -227,6 +255,8 @@ tailwind.config = { theme: { extend: {
   window.FBRE = {
     csrf: document.querySelector('meta[name=csrf-token]').content,
     moeda: v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),
+    fmtMoney: v => (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
+    parseMoney: s => { const d=String(s||'').replace(/\D/g,''); return d ? parseInt(d,10)/100 : 0; },
     abrirImpressao: url => { const w = window.open(url, 'fbre_print', 'width=420,height=640'); if (w) w.focus(); },
   };
 </script>

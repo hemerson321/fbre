@@ -23,7 +23,7 @@
         </select>
         @if(auth()->user()->isAdmin() || auth()->user()->isSuper())<p class="text-[11px] text-slate-400 mt-1">Criar/editar categorias em <a href="{{ route('admin.cadastros') }}" class="underline">Cadastros gerais</a>.</p>@endif
       </div>
-      <div><label class="label">Valor</label><input name="valor" type="number" step="0.01" min="0.01" class="input" required inputmode="decimal"></div>
+      <div><label class="label">Valor</label><input name="valor" class="input" x-money></div>
       <div><label class="label">Forma</label>
         <select name="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select></div>
       <div><label class="label">Descrição (opcional)</label><input name="descricao" class="input" maxlength="200"></div>

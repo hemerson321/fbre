@@ -67,13 +67,13 @@
                     <div class="mt-1" x-data="{c: ensure(t.key, tp.id, tp)}">
                       <div class="grid grid-cols-2 gap-2">
                         <div><div class="text-[10px] text-slate-500 font-semibold">Integral</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.integral" placeholder="0"></div>
+                          <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.integral"></div>
                         <div><div class="text-[10px] text-slate-500 font-semibold">Com desconto</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="comDesc(c)" @input="setComDesc(c,$event.target.value)"></div>
+                          <input type="text" inputmode="numeric" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="FBRE.fmtMoney(comDesc(c))" @input="setComDesc(c, FBRE.parseMoney($event.target.value)); $event.target.value=FBRE.fmtMoney(comDesc(c))"></div>
                         <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
+                          <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.tarifa"></div>
                         <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
+                          <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.alim"></div>
                       </div>
                       <div class="text-[11px] mt-1 leading-tight"><span class="text-slate-500">Paga</span> <b :style="`color:${tp.cor}`" x-text="moeda(comDesc(c))"></b> <span class="text-slate-400" x-show="Number(c.integral)>comDesc(c)+0.009">(normal <span x-text="moeda(Number(c.integral)||0)"></span>)</span></div>
                     </div>
@@ -94,13 +94,13 @@
                         <div>
                       <div class="grid grid-cols-2 gap-2">
                         <div><div class="text-[10px] text-slate-500 font-semibold">Integral</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.integral" placeholder="0"></div>
+                          <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.integral"></div>
                         <div><div class="text-[10px] text-slate-500 font-semibold">Com desconto</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="comDesc(c)" @input="setComDesc(c,$event.target.value)"></div>
+                          <input type="text" inputmode="numeric" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="FBRE.fmtMoney(comDesc(c))" @input="setComDesc(c, FBRE.parseMoney($event.target.value)); $event.target.value=FBRE.fmtMoney(comDesc(c))"></div>
                         <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
+                          <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.tarifa"></div>
                         <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
+                          <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.alim"></div>
                       </div>
                           <div class="text-[11px] mt-1"><span class="text-slate-500">Paga</span> <b :style="`color:${tp.cor}`" x-text="moeda(comDesc(c))"></b> <span class="text-slate-400" x-show="Number(c.integral)>comDesc(c)+0.009">(normal <span x-text="moeda(Number(c.integral)||0)"></span>)</span>
                             <button type="button" @click="voltarAuto(t.key, tp)" class="text-[10px] text-slate-500 underline ml-2">↻ voltar ao automático</button></div>

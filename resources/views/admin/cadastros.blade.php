@@ -87,9 +87,9 @@
         <template x-if="t.modo==='valor' || t.eh_normal">
           <div class="flex items-end gap-2">
             <div><label class="label !text-xs">Tarifa Padrão</label>
-              <input type="number" step="0.01" min="0" x-model.number="t.tarifa_padrao" :name="`tipos[${i}][tarifa_padrao]`" class="input !min-h-[40px] !w-28 text-right" placeholder="0"></div>
+              <input type="text" inputmode="numeric" :value="FBRE.fmtMoney(t.tarifa_padrao)" @input="t.tarifa_padrao=FBRE.parseMoney($event.target.value); $event.target.value=FBRE.fmtMoney(t.tarifa_padrao)" class="input !min-h-[40px] !w-28 text-right"><input type="hidden" :name="`tipos[${i}][tarifa_padrao]`" :value="t.tarifa_padrao"></div>
             <div><label class="label !text-xs">Aliment. Padrão</label>
-              <input type="number" step="0.01" min="0" x-model.number="t.alimentacao_padrao" :name="`tipos[${i}][alimentacao_padrao]`" class="input !min-h-[40px] !w-28 text-right" placeholder="0"></div>
+              <input type="text" inputmode="numeric" :value="FBRE.fmtMoney(t.alimentacao_padrao)" @input="t.alimentacao_padrao=FBRE.parseMoney($event.target.value); $event.target.value=FBRE.fmtMoney(t.alimentacao_padrao)" class="input !min-h-[40px] !w-28 text-right"><input type="hidden" :name="`tipos[${i}][alimentacao_padrao]`" :value="t.alimentacao_padrao"></div>
           </div>
         </template>
         <label class="flex items-center gap-1.5 text-sm pb-2 cursor-pointer" title="Base do cálculo das porcentagens">
@@ -130,7 +130,7 @@ function tiposEditor(tipos){
       <div class="grid grid-cols-12 gap-2 items-center">
         <input x-model="t.origem" :name="`taxas[${i}][origem]`" list="locais" class="input !min-h-[38px] col-span-5" placeholder="Embarque">
         <input x-model="t.destino" :name="`taxas[${i}][destino]`" list="locais" class="input !min-h-[38px] col-span-4" placeholder="Destino">
-        <input x-model.number="t.taxa" :name="`taxas[${i}][taxa]`" type="number" step="0.01" min="0" class="input !min-h-[38px] col-span-2 text-right" placeholder="0,00">
+        <input type="text" inputmode="numeric" :value="FBRE.fmtMoney(t.taxa)" @input="t.taxa=FBRE.parseMoney($event.target.value); $event.target.value=FBRE.fmtMoney(t.taxa)" class="input !min-h-[38px] col-span-2 text-right"><input type="hidden" :name="`taxas[${i}][taxa]`" :value="t.taxa">
         <button type="button" @click="taxas.splice(i,1)" class="col-span-1 text-red-500 text-xl">×</button>
       </div>
     </template>
