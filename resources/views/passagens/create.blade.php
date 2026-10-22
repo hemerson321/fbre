@@ -140,7 +140,7 @@
           <div class="pax">
             <div class="flex items-center gap-2 mb-1.5">
               <span class="w-6 h-6 rounded-full text-white text-[11px] font-bold flex items-center justify-center shrink-0" style="background:var(--cor1)" x-text="i+1"></span>
-              <input class="field !min-h-0 py-1 flex-1" placeholder="Nome do passageiro" x-model="p.nome" required>
+              <input :id="'pax-nome-'+i" class="field !min-h-0 py-1 flex-1" placeholder="Nome do passageiro" x-model="p.nome" required>
               <button type="button" class="w-8 h-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none" @click="rmPax(i)" x-show="passageiros.length>1" title="Remover">×</button>
             </div>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
@@ -371,7 +371,7 @@
       estaOcupada(n){ return this.ocupadas.includes(String(n)); },
       poltronaMinha(n){ return this.passageiros.some(p=>String(p.poltrona)===String(n)); },
       assentoClasse(n){ const minha=String(this.passageiros[this.paxAtual]?.poltrona)===String(n); if(minha) return 'text-white'; if(this.estaOcupada(n)||this.poltronaMinha(n)) return 'bg-red-100 text-red-700 border-red-200 opacity-70'; return 'bg-slate-50 hover:bg-slate-100 border-slate-200'; },
-      escolherPoltrona(n){ if(this.estaOcupada(n)&&!this.poltronaMinha(n))return; this.passageiros[this.paxAtual].poltrona=String(n); this.mapaAberto=false; },
+      escolherPoltrona(n){ if(this.estaOcupada(n)&&!this.poltronaMinha(n))return; const i=this.paxAtual; this.passageiros[i].poltrona=String(n); this.mapaAberto=false; this.$nextTick(()=>{ const el=document.getElementById('pax-nome-'+i); if(el){ el.focus(); el.select && el.select(); } }); },
 
       // mapa no formato da lancha: fileiras com corredor no meio
       get fileiras(){
