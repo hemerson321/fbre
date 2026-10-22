@@ -25,7 +25,7 @@
 </style>
 @endpush
 @section('conteudo')
-<form method="post" action="{{ route('passagens.store') }}" x-data="novaPassagem()" x-init="init()" @submit.prevent="salvar($event)"
+<form method="post" action="{{ route('passagens.store') }}" x-data="novaPassagem()" @submit.prevent="salvar($event)"
       class="mx-auto max-w-[1440px] space-y-2" style="--cor1:#059669;--cor2:#34d399">
 @csrf
 <div class="flex items-center justify-between gap-3 flex-wrap">

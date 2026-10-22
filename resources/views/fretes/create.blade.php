@@ -17,7 +17,7 @@
 </style>
 @endpush
 @section('conteudo')
-<form method="post" action="{{ route('fretes.store') }}" x-data="novoFrete()" x-init="init()" @submit.prevent="salvar($event)"
+<form method="post" action="{{ route('fretes.store') }}" x-data="novoFrete()" @submit.prevent="salvar($event)"
       class="mx-auto max-w-[1440px] space-y-2" style="--cor1:#d97706;--cor2:#fbbf24">
 @csrf
 <div class="flex items-center justify-between gap-3 flex-wrap">
