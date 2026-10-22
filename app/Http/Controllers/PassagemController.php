@@ -155,19 +155,45 @@ class PassagemController extends Controller
         $assentos = collect($data['passageiros'])->pluck('poltrona')->filter()->values();
         if ($assentos->isEmpty()) return;
         abort_if($assentos->duplicates()->isNotEmpty(), 422, 'Há poltronas repetidas no mesmo cadastro.');
-        $ocupadas = $this->ocupadas($emb->id, $data['data_viagem'] ?? null, $data['viagem_id'] ?? null);
+        $ocupadas = $this->ocupadas($emb->id, $data['data_viagem'] ?? null, $data['viagem_id'] ?? null, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null);
         $conflito = $assentos->intersect($ocupadas);
         abort_if($conflito->isNotEmpty(), 422, 'Poltrona(s) já vendida(s): ' . $conflito->implode(', '));
     }
 
-    protected function ocupadas($embarcacaoId, $dataViagem, $viagemId, $ignorarId = null): \Illuminate\Support\Collection
+    /**
+     * Poltronas ocupadas. Considera o TRECHO: se a rota é Manaus→…→Tefé, um assento
+     * vendido Manaus→Tefé bloqueia Coari→Tefé (trechos se sobrepõem), mas não um trecho
+     * que não se cruza. Sem rota conhecida, bloqueia a viagem inteira.
+     */
+    protected function ocupadas($embarcacaoId, $dataViagem, $viagemId, $rotaId = null, $origem = null, $destino = null, $ignorarId = null): \Illuminate\Support\Collection
     {
         $q = Passagem::where('embarcacao_id', $embarcacaoId)->where('cancelada', false)
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
             ->when(! $viagemId && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
             ->when($ignorarId, fn ($q) => $q->where('id', '!=', $ignorarId));
-        return PassagemPassageiro::whereIn('passagem_id', $q->select('id'))
-            ->whereNotNull('poltrona')->pluck('poltrona');
+
+        $ordem = [];
+        if ($rotaId && ($rota = \App\Models\Rota::find($rotaId))) $ordem = array_map('mb_strtolower', $rota->localidades());
+        $idx = fn ($cidade) => array_search(mb_strtolower((string) $cidade), $ordem, true);
+        $reqS = $origem !== null ? $idx($origem) : false;
+        $reqD = $destino !== null ? $idx($destino) : false;
+        $temTrecho = $ordem && $reqS !== false && $reqD !== false;
+        $reqMin = $temTrecho ? min($reqS, $reqD) : null;
+        $reqMax = $temTrecho ? max($reqS, $reqD) : null;
+
+        $ocup = collect();
+        foreach ($q->with('passageiros:id,passagem_id,poltrona')->get(['id', 'origem', 'destino']) as $pg) {
+            if ($temTrecho) {
+                $c = $idx($pg->origem); $d = $idx($pg->destino);
+                if ($c !== false && $d !== false) {
+                    [$cMin, $cMax] = [min($c, $d), max($c, $d)];
+                    if (! ($reqMin < $cMax && $cMin < $reqMax)) continue; // não cruza o trecho -> assento livre
+                }
+                // trecho do existente desconhecido: por segurança, considera ocupado
+            }
+            foreach ($pg->passageiros as $pax) if ($pax->poltrona) $ocup->push((string) $pax->poltrona);
+        }
+        return $ocup->unique()->values();
     }
 
     /** JSON: poltronas ocupadas de uma embarcação/viagem (AJAX da tela de cadastro). */
@@ -177,7 +203,8 @@ class PassagemController extends Controller
         return [
             'usa_poltrona' => (bool) $emb->usa_poltrona,
             'qtd' => (int) $emb->poltronas_qtd,
-            'ocupadas' => $this->ocupadas($emb->id, $request->input('data_viagem'), $request->input('viagem_id'))->values(),
+            'colunas' => (int) ($emb->poltronas_colunas ?: 4),
+            'ocupadas' => $this->ocupadas($emb->id, $request->input('data_viagem'), $request->input('viagem_id'), $request->input('rota_id'), $request->input('origem'), $request->input('destino'))->values(),
         ];
     }
 

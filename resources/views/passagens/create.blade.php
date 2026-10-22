@@ -292,7 +292,7 @@
 
       // ---- passageiros ----
       novoPax(){ const t=this.tipos[0]||{nome:'Adulto',percentual:100,paga_taxa:true}; return {id:Date.now()+Math.random(), nome:'', tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, documento:'', poltrona:'', valor_passagem:0, valor_taxa:0}; },
-      addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); },
+      addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       rmPax(i){ this.passageiros.splice(i,1); },
       aplicarTipo(p){
         const t=this.tipos.find(x=>x.nome===p.tipo);
@@ -308,7 +308,7 @@
         if(pr){ this.basePassagem=Number(pr.passagem)||0; this.baseTaxa=Number(pr.taxa_embarque)||0; this.precoInfo=true; this.passageiros.forEach(p=>this.aplicarTipo(p)); }
         else { this.precoInfo=false; }
       },
-      onRota(){ this.resolverLinha(); this.aplicarPreco(); },
+      onRota(){ this.resolverLinha(); this.aplicarPreco(); if(this.usaPoltrona) this.carregarOcupadas(); },
 
       // ---- viagem (igual encomenda) ----
       isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
@@ -358,8 +358,13 @@
       },
       async carregarOcupadas(){
         if(!this.usaPoltrona || !this.embarcacaoSel || !navigator.onLine) return;
-        try{ const u=new URL('/passagens/assentos',location.origin); u.searchParams.set('embarcacao_id',this.embarcacaoSel); if(this.viagemData)u.searchParams.set('data_viagem',this.viagemData);
-          const r=await fetch(u,{headers:{Accept:'application/json'},credentials:'same-origin'}); const j=await r.json(); this.ocupadas=(j.ocupadas||[]).map(String);
+        try{ const u=new URL('/passagens/assentos',location.origin); u.searchParams.set('embarcacao_id',this.embarcacaoSel);
+          if(this.viagemData)u.searchParams.set('data_viagem',this.viagemData);
+          if(this.rotaId)u.searchParams.set('rota_id',this.rotaId);
+          if(this.origemSel)u.searchParams.set('origem',this.origemSel);
+          if(this.destinoSel)u.searchParams.set('destino',this.destinoSel);
+          const r=await fetch(u,{headers:{Accept:'application/json'},credentials:'same-origin'}); const j=await r.json();
+          this.ocupadas=(j.ocupadas||[]).map(String); if(j.colunas)this.colunasPoltrona=j.colunas;
         }catch(e){ this.ocupadas=[]; }
       },
       abrirMapa(i){ this.paxAtual=i; this.mapaAberto=true; this.carregarOcupadas(); },

@@ -221,7 +221,7 @@ tailwind.config = { theme: { extend: {
   </div>
 </nav>
 
-<script src="/js/fbre-offline.js"></script>
+<script src="/js/fbre-offline.js?v={{ @filemtime(public_path('js/fbre-offline.js')) ?: '1' }}"></script>
 <script>
   window.FBRE = {
     csrf: document.querySelector('meta[name=csrf-token]').content,
