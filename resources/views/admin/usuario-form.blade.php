@@ -20,6 +20,10 @@
     </select></div>
 </div>
 <p class="text-xs text-slate-400 -mt-1">Setor e barco principais já entram selecionados na tela de Nova encomenda desse operador.</p>
+<label class="flex items-start gap-3 py-2 cursor-pointer rounded-xl bg-slate-50 px-3">
+  <input type="checkbox" name="checkin_auto" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('checkin_auto', $u->exists ? $u->checkin_auto : true))>
+  <span><span class="font-semibold text-sm">Check-in automático (passagem)</span><br><span class="text-xs text-slate-500">Operador do barco: passageiros já entram com check-in marcado. Desmarque para operador que só vende (check-in validado depois no embarque).</span></span>
+</label>
 <div class="rounded-xl bg-slate-50 p-3 space-y-1">
   <div class="label">Permissões</div>
 
