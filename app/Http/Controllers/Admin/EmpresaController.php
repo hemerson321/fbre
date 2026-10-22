@@ -67,7 +67,11 @@ class EmpresaController extends Controller
             $data['logo'] = 'storage/'.$path;
         }
 
-        $empresa->update($data);
+        try {
+            $empresa->update($data);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['salvar' => 'Erro ao salvar: '.$e->getMessage()])->withInput();
+        }
         return back()->with('ok', 'Dados da empresa salvos.');
     }
 
