@@ -28,7 +28,7 @@
   <p class="text-xs text-slate-400 mb-2">Marque o módulo e, dentro dele, o que o operador pode fazer (cadastrar, dar baixa, imprimir).</p>
   <div class="space-y-1.5 mb-3">
     @foreach(\App\Support\Modulos::LISTA as $mk => [$mrot,$mic,$mcor,$mhex])
-      @php $algum = $u->exists && ($u->permite($mk,'cadastra')||$u->permite($mk,'baixa')||$u->permite($mk,'imprimir')); @endphp
+      @php $algum = $u->exists && $u->temModulo($mk); @endphp
       <div x-data="{ open: {{ $algum ? 'true':'false' }} }" class="border border-slate-200 rounded-xl overflow-hidden">
         <button type="button" @click="open=!open" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50">
           <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $mhex }}"></span>
@@ -36,8 +36,8 @@
           <span class="font-semibold text-sm flex-1">{{ $mrot }}</span>
           <svg class="w-4 h-4 opacity-50 transition" :class="open?'rotate-180':''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
         </button>
-        <div x-show="open" x-cloak class="px-3 pb-3 pt-1 grid grid-cols-3 gap-2 border-t border-slate-100 bg-slate-50/60">
-          @foreach(\App\Models\User::ACOES as $ak => $al)
+        <div x-show="open" x-cloak class="px-3 pb-3 pt-1 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-100 bg-slate-50/60">
+          @foreach(\App\Models\User::ACOES_MODULO[$mk] ?? [] as $ak => $al)
             <label class="flex items-center gap-2 text-sm cursor-pointer">
               <input type="checkbox" name="mod_perms[{{ $mk }}][{{ $ak }}]" value="1" class="w-5 h-5 rounded"
                 @checked(old('mod_perms.'.$mk.'.'.$ak, $u->exists ? $u->permite($mk,$ak) : false))>

@@ -129,7 +129,7 @@ class UsuarioController extends Controller
         foreach ((array) $mp as $mod => $acoes) {
             if (! array_key_exists($mod, User::MODULOS)) continue;
             $row = [];
-            foreach (array_keys(User::ACOES) as $ak) $row[$ak] = ! empty($acoes[$ak]);
+            foreach (array_keys(User::ACOES_MODULO[$mod] ?? []) as $ak) $row[$ak] = ! empty($acoes[$ak]);
             if (array_filter($row)) $clean[$mod] = $row;
         }
         $data['mod_perms'] = $clean ?: null;

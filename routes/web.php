@@ -32,7 +32,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [EncomendaController::class, 'inicio'])->name('inicio');
 
     // ---------------- Encomendas ----------------
-    Route::get('/encomendas', [EncomendaController::class, 'index'])->name('encomendas.index')->middleware('perm:filtro');
+    Route::get('/encomendas', [EncomendaController::class, 'index'])->name('encomendas.index')->middleware('perm:encomenda.ver');
     Route::get('/encomendas/nova', [EncomendaController::class, 'create'])->name('encomendas.create')->middleware('perm:cadastra');
     Route::post('/encomendas', [EncomendaController::class, 'store'])->name('encomendas.store')->middleware('perm:cadastra');
     Route::get('/encomendas/{encomenda}', [EncomendaController::class, 'show'])->name('encomendas.show');
@@ -52,7 +52,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/passagens/{passagem}/cancelar', [\App\Http\Controllers\PassagemController::class, 'cancelar'])->name('passagens.cancelar')->middleware('perm:admin');
 
     // ---------------- Pré-cadastros (operador) ----------------
-    Route::middleware('perm:cadastra')->group(function () {
+    Route::middleware('perm:encomenda.precadastro')->group(function () {
         Route::get('/pre-cadastros', [PreCadastroController::class, 'index'])->name('pre.index');
         Route::get('/pre-cadastros/qr', [PreCadastroController::class, 'qr'])->name('pre.qr');
         Route::post('/pre-cadastros/{pre}/cancelar', [PreCadastroController::class, 'cancelar'])->name('pre.cancelar');

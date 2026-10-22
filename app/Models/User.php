@@ -101,41 +101,65 @@ class User extends Authenticatable
         'recibo'     => 'Recibo',
     ];
 
-    /** Ações possíveis dentro de um módulo. */
-    public const ACOES = [
-        'cadastra' => 'Cadastrar',
-        'baixa'    => 'Dar baixa',
-        'imprimir' => 'Imprimir',
+    /** Ações (possibilidades) de CADA módulo — aparecem na tela de permissões. */
+    public const ACOES_MODULO = [
+        'encomenda'  => ['cadastra' => 'Cadastrar', 'ver' => 'Ver lista / filtro', 'baixa' => 'Dar baixa', 'imprimir' => 'Imprimir', 'precadastro' => 'Pré-cadastros'],
+        'passagem'   => ['cadastra' => 'Vender passagem', 'ver' => 'Ver lista / embarque', 'baixa' => 'Dar baixa / embarque', 'imprimir' => 'Imprimir'],
+        'frete'      => ['cadastra' => 'Cadastrar frete', 'ver' => 'Ver lista', 'baixa' => 'Dar baixa / entrega', 'imprimir' => 'Imprimir'],
+        'camarote'   => ['cadastra' => 'Reservar', 'ver' => 'Ver lista', 'baixa' => 'Dar baixa', 'imprimir' => 'Imprimir'],
+        'lanchonete' => ['vender' => 'Vender', 'ver' => 'Ver vendas', 'imprimir' => 'Imprimir', 'estoque' => 'Controle de estoque'],
+        'wifi'       => ['vender' => 'Vender WiFi', 'ver' => 'Ver vendas'],
+        'avulso'     => ['lancar' => 'Lançar entrada/saída no caixa'],
+        'recibo'     => ['emitir' => 'Emitir recibo', 'ver' => 'Ver recibos', 'imprimir' => 'Imprimir'],
     ];
+
+    /** Ação principal (a de "criar/vender") de cada módulo. */
+    public static function acaoPrincipal(string $mod): string
+    {
+        return match ($mod) {
+            'avulso' => 'lancar',
+            'lanchonete', 'wifi' => 'vender',
+            'recibo' => 'emitir',
+            default => 'cadastra',
+        };
+    }
 
     /**
      * Permissão por módulo e ação. Admin/gerente podem tudo.
-     * Se o módulo não tem config em mod_perms, cai no fallback das colunas antigas.
+     * Sem config em mod_perms, cai no fallback das colunas antigas (compatível).
      */
     public function permite(string $mod, string $acao = 'cadastra'): bool
     {
         if ($this->admin || $this->isSuper() || $this->gerente()) return true;
         $mp = $this->mod_perms[$mod] ?? null;
         if (is_array($mp) && array_key_exists($acao, $mp)) return (bool) $mp[$acao];
-        // fallback (compatível com permissões antigas)
-        return match ($acao) {
-            'cadastra' => $mod === 'encomenda' ? (bool) $this->perm_cadastra : (bool) ($this->{'perm_' . $mod} ?? false),
-            'baixa'    => (bool) $this->perm_baixa,
-            'imprimir' => (bool) $this->perm_imprimir,
-            default    => false,
-        };
+        // fallback compatível
+        if ($mod === 'encomenda') {
+            return match ($acao) {
+                'cadastra', 'precadastro' => (bool) $this->perm_cadastra,
+                'baixa'    => (bool) $this->perm_baixa,
+                'imprimir' => (bool) $this->perm_imprimir,
+                'ver'      => (bool) $this->perm_filtro,
+                default    => false,
+            };
+        }
+        // outros módulos: só a ação principal cai na coluna legada perm_<mod>
+        return $acao === self::acaoPrincipal($mod) ? (bool) ($this->{'perm_' . $mod} ?? false) : false;
     }
 
-    /** Pode cadastrar/vender no módulo informado. */
+    /** Pode fazer a ação principal do módulo (criar/vender). */
     public function podeModulo(string $mod): bool
     {
-        return $this->permite($mod, 'cadastra');
+        return $this->permite($mod, self::acaoPrincipal($mod));
     }
 
-    /** Tem QUALQUER acesso ao módulo (cadastrar, dar baixa ou imprimir). Decide se o módulo aparece pra ele. */
+    /** Tem QUALQUER acesso ao módulo. Decide se o módulo aparece pra ele. */
     public function temModulo(string $mod): bool
     {
-        return $this->permite($mod, 'cadastra') || $this->permite($mod, 'baixa') || $this->permite($mod, 'imprimir');
+        foreach (array_keys(self::ACOES_MODULO[$mod] ?? []) as $acao) {
+            if ($this->permite($mod, $acao)) return true;
+        }
+        return false;
     }
 
     /** Lista de módulos que este usuário pode acessar. */
