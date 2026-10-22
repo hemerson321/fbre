@@ -73,6 +73,11 @@ function captura(){
   return {
     e:@js($e), u:@js($u), s:@js($s),
     origem:'', destino:'', foto:null, enviando:false, msg:'', msgOk:false,
+    init(){
+      try{ const o=localStorage.getItem('fbre_cap_origem'); if(o) this.origem=o; const d=localStorage.getItem('fbre_cap_destino'); if(d) this.destino=d; }catch(e){}
+      this.$watch('origem', v=>{ try{ localStorage.setItem('fbre_cap_origem', v||''); }catch(e){} });
+      this.$watch('destino', v=>{ try{ localStorage.setItem('fbre_cap_destino', v||''); }catch(e){} });
+    },
     escolher(ev){
       const f=ev.target.files && ev.target.files[0]; if(!f) return;
       const r=new FileReader();

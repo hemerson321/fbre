@@ -128,6 +128,28 @@ class CapturaController extends Controller
         return response()->json(['ok' => true, 'lido' => (bool) ($res['ok'] ?? false), 'erro' => $res['erro'] ?? null]);
     }
 
+    /** OCR direto (desktop): operador logado envia a foto e recebe os campos na hora. */
+    public function ocrDireto(Request $request, LeitorDocumento $leitor)
+    {
+        $data = $request->validate(['foto' => 'required|string']);
+        $empresa = Tenant::empresa();
+        $pathRg = $this->salvarFoto($data['foto']);
+        $res = $leitor->extrair($data['foto'], $empresa->iaConfig());
+        $campos = $res['ok'] ? ($res['campos'] ?? []) : [];
+        $rosto = $this->recortarRosto($data['foto'], $campos['foto_box'] ?? null);
+        return response()->json([
+            'ok' => (bool) ($res['ok'] ?? false),
+            'erro' => $res['erro'] ?? null,
+            'foto_rg' => $pathRg,
+            'foto' => $rosto,
+            'nome' => $campos['nome'] ?? null,
+            'nascimento' => $this->paraData($campos['nascimento'] ?? null),
+            'sexo' => $this->paraSexo($campos['sexo'] ?? null),
+            'nacionalidade' => $campos['nacionalidade'] ?? null,
+            'documento' => $campos['documento'] ?? null,
+        ]);
+    }
+
     protected function salvarFoto(string $dataUrl): ?string
     {
         if (preg_match('/^data:image\/\w+;base64,(.+)$/s', $dataUrl, $m)) {

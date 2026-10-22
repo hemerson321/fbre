@@ -140,37 +140,44 @@
       <div class="rounded-xl border border-slate-200 bg-slate-50 lg:max-h-[52vh] lg:overflow-auto p-2 space-y-1.5">
         <template x-for="(p,i) in passageiros" :key="p.id">
           <div class="pax">
-            <div class="flex items-center gap-2 mb-1.5">
+            {{-- linha 1: numero + nome + foto + remover --}}
+            <div class="flex items-center gap-2">
               <span class="w-6 h-6 rounded-full text-white text-[11px] font-bold flex items-center justify-center shrink-0" style="background:var(--cor1)" x-text="i+1"></span>
               <input :id="'pax-nome-'+i" class="field !min-h-0 py-1 flex-1" placeholder="Nome do passageiro" x-model="p.nome" required>
-              <button type="button" class="w-8 h-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none" @click="rmPax(i)" x-show="passageiros.length>1" title="Remover">×</button>
+              <img :src="'/'+(p.foto||p.foto_rg)" x-show="p.foto||p.foto_rg" x-cloak class="h-9 w-9 object-cover rounded-lg border shrink-0 cursor-pointer" @click="window.open('/'+(p.foto_rg||p.foto),'_blank')" title="Foto (clique p/ ver o documento)">
+              <button type="button" class="w-8 h-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none shrink-0" @click="rmPax(i)" x-show="passageiros.length>1" title="Remover">×</button>
             </div>
-            <div><label class="lbl">Tipo</label>
-              <select class="field !min-h-0 py-1 text-sm" x-model="p.tipo_id" @change="aplicarTipo(p)">
-                @foreach($tipos as $t)<option value="{{ $t->id }}">{{ $t->nome }}@if(($t->modo ?? 'valor')==='porcentagem' && !$t->eh_normal) ({{ $t->percentual }}%)@endif</option>@endforeach
-              </select></div>
-            <div class="mt-1 flex items-center justify-between px-0.5">
-              <span class="lbl !mb-0">Valor</span>
-              <span class="text-base font-extrabold" style="color:var(--cor1)" x-text="FBRE.moeda(paxTotal(p))"></span>
+            {{-- linha 2: tipo + valor --}}
+            <div class="grid grid-cols-5 gap-2 mt-1.5 items-end">
+              <div class="col-span-3"><label class="lbl">Tipo</label>
+                <select class="field !min-h-0 py-1 text-sm w-full" x-model="p.tipo_id" @change="aplicarTipo(p)">
+                  @foreach($tipos as $t)<option value="{{ $t->id }}">{{ $t->nome }}@if(($t->modo ?? 'valor')==='porcentagem' && !$t->eh_normal) ({{ $t->percentual }}%)@endif</option>@endforeach
+                </select></div>
+              <div class="col-span-2 text-right"><label class="lbl">Valor</label>
+                <div class="text-base font-extrabold leading-tight" style="color:var(--cor1)" x-text="FBRE.moeda(paxTotal(p))"></div></div>
             </div>
-            <div class="flex items-center gap-2 mt-1.5">
-              <input class="field !min-h-0 py-1 text-sm flex-1" placeholder="Documento (opcional)" x-model="p.documento">
-              <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)">
-                <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑 poltrona'"></span>
+            {{-- linha 3: documento + poltrona --}}
+            <div class="flex items-end gap-2 mt-1.5">
+              <div class="flex-1"><label class="lbl">Documento (RG/CPF)</label>
+                <input class="field !min-h-0 py-1 text-sm w-full" placeholder="opcional" x-model="p.documento"></div>
+              <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)">
+                <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑'"></span>
               </button>
             </div>
-            <div class="flex items-center justify-between gap-2 mt-1.5">
+            {{-- linha 4: acoes --}}
+            <div class="flex items-center justify-between gap-2 mt-2 pt-1.5 border-t border-slate-100">
               <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
-              <div class="flex items-center gap-2">
-                <img :src="'/'+(p.foto||p.foto_rg)" x-show="p.foto||p.foto_rg" x-cloak class="h-8 w-8 object-cover rounded border cursor-pointer" @click="window.open('/'+(p.foto_rg||p.foto),'_blank')" title="Foto (clique p/ ver o documento)">
+              <div class="flex items-center gap-3">
+                <button type="button" class="text-[12px] font-semibold flex items-center gap-1" style="color:var(--cor1)" @click="abrirCam(i)">📷 Foto</button>
                 <button type="button" class="text-[11px] text-slate-500 underline" @click="p._mais=!p._mais" x-text="p._mais?'menos dados':'mais dados'"></button>
               </div>
             </div>
+            {{-- linha 5: dados extras --}}
             <div x-show="p._mais" x-cloak class="grid grid-cols-2 gap-2 mt-1.5">
-              <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
-              <div><label class="lbl">Nascimento</label><input type="date" class="field !min-h-0 py-1 text-sm" x-model="p.nascimento"></div>
-              <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm" x-model="p.telefone" inputmode="tel" placeholder="(00) 00000-0000"></div>
-              <div><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm" x-model="p.nacionalidade" placeholder="Brasileira"></div>
+              <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm w-full" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+              <div><label class="lbl">Nascimento</label><input type="date" class="field !min-h-0 py-1 text-sm w-full" x-model="p.nascimento"></div>
+              <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" inputmode="tel" placeholder="(00) 00000-0000"></div>
+              <div><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.nacionalidade" placeholder="Brasileira"></div>
             </div>
           </div>
         </template>
@@ -262,6 +269,24 @@
     </div>
   </div>
 </div>
+  {{-- MODAL WEBCAM / ARQUIVO (desktop) --}}
+  <div x-show="camAberta" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="fecharCam()">
+    <div class="bg-white rounded-2xl p-4 w-full max-w-md space-y-3">
+      <div class="font-extrabold text-lg" style="color:var(--cor1)">📷 Foto do documento</div>
+      <div class="rounded-xl overflow-hidden bg-black aspect-[4/3] flex items-center justify-center">
+        <video id="cam-video" playsinline autoplay muted class="w-full h-full object-cover"></video>
+      </div>
+      <div class="text-sm text-center min-h-[20px]" :class="camLendo?'text-slate-500':'text-amber-700'" x-text="camStatus"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" @click="trocarCamera()" class="rounded-xl border-2 font-bold py-2.5 text-sm" style="border-color:var(--cor1);color:var(--cor1)">🔄 Virar câmera</button>
+        <label class="rounded-xl border-2 font-bold py-2.5 text-sm text-center cursor-pointer" style="border-color:var(--cor1);color:var(--cor1)">📁 Selecionar arquivo
+          <input type="file" accept="image/*" class="hidden" @change="selecionarArquivo($event)"></label>
+      </div>
+      <button type="button" @click="capturarCam()" :disabled="camLendo" class="w-full rounded-xl text-white font-extrabold py-3 text-lg disabled:opacity-50" style="background:var(--cor1)" x-text="camLendo?'Lendo...':'📸 Tirar foto e ler'"></button>
+      <button type="button" @click="fecharCam()" class="w-full text-slate-500 text-sm py-1">Fechar</button>
+    </div>
+  </div>
+
   {{-- MODAL CAPTURA POR FOTO --}}
   <div x-show="capturaAberta" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" @click.self="fecharCaptura()">
     <div class="bg-white rounded-2xl p-5 w-full max-w-sm text-center space-y-3">
@@ -288,6 +313,7 @@
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4)])->values()),
       podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
       capturaAberta:false, capturaUrl:'', capturaSid:'', capturaDesde:0, capturaTimer:null, capturaStatus:'', capturaAviso:'', _avisoT:null,
+      camAberta:false, camStream:null, camFacing:'environment', camTargetIdx:0, camStatus:'', camLendo:false,
       usaEmbarque:@js($usaTaxaEmbarque ?? false), usaAlim:@js($usaAlimentacao ?? true), labelTaxa:@js($labelTaxa ?? 'Taxa de embarque'), labelAlim:@js($labelAlim ?? 'Alimentação'),
       trechoMap:{}, taxaMap:{},
       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'',
@@ -382,6 +408,33 @@
         this.capturaAviso='📷 '+(it.nome||'Passageiro')+' recebido da foto'+(it.nome?'':' (preencha o nome)');
         clearTimeout(this._avisoT); this._avisoT=setTimeout(()=>this.capturaAviso='',5000);
       },
+      // ---- webcam / arquivo no proprio desktop ----
+      async abrirCam(i){ this.camTargetIdx=i; this.camAberta=true; this.camStatus='';
+        try{ this.camFacing=localStorage.getItem('fbre_cam_facing')||'environment'; }catch(e){}
+        await this.ligarCamera(); },
+      async ligarCamera(){ this.pararCamera();
+        try{ this.camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:this.camFacing}, audio:false});
+          this.$nextTick(()=>{ const v=document.getElementById('cam-video'); if(v){ v.srcObject=this.camStream; v.play().catch(()=>{}); } });
+        }catch(e){ this.camStatus='Não consegui abrir a câmera. Use "Selecionar arquivo". ('+e.message+')'; } },
+      trocarCamera(){ this.camFacing=this.camFacing==='environment'?'user':'environment'; try{ localStorage.setItem('fbre_cam_facing',this.camFacing);}catch(e){} this.ligarCamera(); },
+      pararCamera(){ if(this.camStream){ this.camStream.getTracks().forEach(t=>t.stop()); this.camStream=null; } },
+      fecharCam(){ this.pararCamera(); this.camAberta=false; },
+      redimImg(dataUrl){ return new Promise(res=>{ const img=new Image(); img.onload=()=>{ const max=1600; let w=img.width,h=img.height; if(w>max||h>max){const k=Math.min(max/w,max/h); w=Math.round(w*k); h=Math.round(h*k);} const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); res(c.toDataURL('image/jpeg',0.82)); }; img.onerror=()=>res(dataUrl); img.src=dataUrl; }); },
+      async capturarCam(){ const v=document.getElementById('cam-video'); if(!v||!v.videoWidth){ this.camStatus='Câmera não pronta.'; return; }
+        const max=1600; let w=v.videoWidth,h=v.videoHeight; if(w>max||h>max){const k=Math.min(max/w,max/h); w=Math.round(w*k); h=Math.round(h*k);}
+        const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(v,0,0,w,h);
+        await this.enviarOcr(c.toDataURL('image/jpeg',0.82)); },
+      selecionarArquivo(ev){ const f=ev.target.files&&ev.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>this.redimImg(r.result).then(d=>this.enviarOcr(d)); r.readAsDataURL(f); ev.target.value=''; },
+      async enviarOcr(dataUrl){ this.camLendo=true; this.camStatus='Lendo documento...';
+        try{ const r=await fetch(@js(route('captura.ocr')),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf},body:JSON.stringify({foto:dataUrl})});
+          const j=await r.json(); this.preencherPax(this.camTargetIdx, j);
+          if(j.ok){ this.camStatus='✅ Lido!'; this.fecharCam(); } else { this.camStatus='Foto anexada. Leitura falhou: '+(j.erro||'preencha manualmente'); }
+        }catch(e){ this.camStatus='Erro: '+e.message; }
+        this.camLendo=false; },
+      preencherPax(idx, j){ const p=this.passageiros[idx]; if(!p) return;
+        if(j.nome) p.nome=j.nome; if(j.nascimento) p.nascimento=j.nascimento; if(j.sexo) p.sexo=j.sexo;
+        if(j.nacionalidade) p.nacionalidade=j.nacionalidade; if(j.documento) p.documento=j.documento;
+        if(j.foto) p.foto=j.foto; if(j.foto_rg) p.foto_rg=j.foto_rg; p._mais=true; },
       rmPax(i){ this.passageiros.splice(i,1); },
       aplicarTipo(p){
         const t=this.tipos.find(x=>String(x.id)===String(p.tipo_id)) || this.tipos[0];
