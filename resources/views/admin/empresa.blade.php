@@ -67,16 +67,16 @@
         <option value="openai">OpenAI</option>
       </select></div>
     <div><label class="label">Modelo</label>
-      <input name="ia_modelo" class="input" list="ia-modelos" value="{{ $empresa->config('ia_modelo') }}" :placeholder="prov==='openai' ? 'gpt-4o-mini' : 'claude-sonnet-4-20250514'" autocomplete="off">
+      <input name="ia_modelo" class="input" list="ia-modelos" value="{{ $empresa->config('ia_modelo') }}" :placeholder="prov==='openai' ? 'gpt-4o-mini' : 'claude-3-5-sonnet-20241022'" autocomplete="off">
       <datalist id="ia-modelos">
         <template x-if="prov==='openai'">
           <template x-for="m in ['gpt-4o-mini','gpt-4o','gpt-4.1-mini','gpt-4.1']" :key="m"><option :value="m"></option></template>
         </template>
         <template x-if="prov!=='openai'">
-          <template x-for="m in ['claude-sonnet-4-20250514','claude-3-7-sonnet-latest','claude-3-5-sonnet-latest','claude-3-5-haiku-latest']" :key="m"><option :value="m"></option></template>
+          <template x-for="m in ['claude-3-5-sonnet-20241022','claude-3-5-haiku-20241022','claude-3-5-sonnet-latest','claude-sonnet-4-20250514']" :key="m"><option :value="m"></option></template>
         </template>
       </datalist>
-      <p class="text-xs text-slate-400 mt-1">Pode digitar outro modelo. Em branco usa o padrão (<span x-text="prov==='openai' ? 'gpt-4o-mini' : 'claude-sonnet-4-20250514'"></span>).</p></div>
+      <p class="text-xs text-slate-400 mt-1">Pode digitar outro modelo. Em branco usa o padrão (<span x-text="prov==='openai' ? 'gpt-4o-mini' : 'claude-3-5-sonnet-20241022'"></span>).</p></div>
     <div class="sm:col-span-2"><label class="label">Token da API</label>
       <input name="ia_token" class="input" value="{{ $empresa->config('ia_token') }}" :placeholder="prov==='openai' ? 'sk-...' : 'sk-ant-...'" autocomplete="off"></div>
   </div>
