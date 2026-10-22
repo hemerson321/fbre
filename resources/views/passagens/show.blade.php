@@ -22,15 +22,14 @@
     <div class="divide-y">
       @foreach($p->passageiros as $pax)
         <div class="flex justify-between py-2 text-sm">
-          <div>{{ $pax->nome }}<div class="text-xs text-slate-500">{{ $pax->tipo }} ({{ $pax->percentual }}%)@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif @if($pax->documento)· {{ $pax->documento }}@endif</div><div class="text-xs text-slate-400">Transporte R$ {{ number_format($pax->valor_passagem,2,',','.') }}@if($pax->valor_alimentacao>0) · Alim. R$ {{ number_format($pax->valor_alimentacao,2,',','.') }}@endif@if($pax->valor_taxa>0) · Taxa R$ {{ number_format($pax->valor_taxa,2,',','.') }}@endif</div></div>
+          <div>{{ $pax->nome }}<div class="text-xs text-slate-500">{{ $pax->tipo }} ({{ $pax->percentual }}%)@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif @if($pax->documento)· {{ $pax->documento }}@endif</div><div class="text-xs text-slate-400">Transp. R$ {{ number_format($pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. R$ {{ number_format($pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div></div>
           <div class="text-right font-semibold">R$ {{ number_format($pax->valor_total,2,',','.') }}</div>
         </div>
       @endforeach
     </div>
     <div class="border-t mt-2 pt-2 space-y-1 text-sm">
-      <div class="flex justify-between"><span>Transporte</span><span>R$ {{ number_format($p->subtotal,2,',','.') }}</span></div>
-      @if($p->alimentacao_total>0)<div class="flex justify-between"><span>Alimentação</span><span>R$ {{ number_format($p->alimentacao_total,2,',','.') }}</span></div>@endif
-      @if($p->taxa_total>0)<div class="flex justify-between"><span>Taxa de embarque</span><span>R$ {{ number_format($p->taxa_total,2,',','.') }}</span></div>@endif
+      <div class="flex justify-between"><span>Tarifa de Transporte</span><span>R$ {{ number_format($p->subtotal,2,',','.') }}</span></div>
+      <div class="flex justify-between"><span>Alimentação + Adicional</span><span>R$ {{ number_format($p->alimentacao_total + $p->taxa_total,2,',','.') }}</span></div>
       @if($p->desconto>0)<div class="flex justify-between text-amber-600"><span>Desconto</span><span>- R$ {{ number_format($p->desconto,2,',','.') }}</span></div>@endif
       <div class="flex justify-between text-lg font-bold" style="color:{{ $cor }}"><span>Total</span><span>R$ {{ number_format($p->total,2,',','.') }}</span></div>
       <div class="flex justify-between"><span>Pago</span><span>R$ {{ number_format($p->pago,2,',','.') }}</span></div>

@@ -18,13 +18,12 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}</
 <div class="b">PASSAGEIROS</div>
 <table>
   @foreach($p->passageiros as $pax)
-  <tr><td>{{ $pax->nome }}<div class="sm">{{ $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div><div class="sm">Transporte {{ number_format($pax->valor_passagem,2,',','.') }}@if($pax->valor_alimentacao>0) · Alim. {{ number_format($pax->valor_alimentacao,2,',','.') }}@endif@if($pax->valor_taxa>0) · Taxa {{ number_format($pax->valor_taxa,2,',','.') }}@endif</div></td><td class="r b">{{ number_format($pax->valor_total,2,',','.') }}</td></tr>
+  <tr><td>{{ $pax->nome }}<div class="sm">{{ $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div><div class="sm">Transp. {{ number_format($pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. {{ number_format($pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div></td><td class="r b">{{ number_format($pax->valor_total,2,',','.') }}</td></tr>
   @endforeach
 </table><hr>
 <table>
-  <tr><td>Transporte</td><td class="r">R$ {{ number_format($p->subtotal,2,',','.') }}</td></tr>
-  @if($p->alimentacao_total>0)<tr><td>Alimentação</td><td class="r">R$ {{ number_format($p->alimentacao_total,2,',','.') }}</td></tr>@endif
-  @if($p->taxa_total>0)<tr><td>Taxa de embarque</td><td class="r">R$ {{ number_format($p->taxa_total,2,',','.') }}</td></tr>@endif
+  <tr><td>Tarifa de Transporte</td><td class="r">R$ {{ number_format($p->subtotal,2,',','.') }}</td></tr>
+  <tr><td>Alimentação + Adicional</td><td class="r">R$ {{ number_format($p->alimentacao_total + $p->taxa_total,2,',','.') }}</td></tr>
   @if($p->desconto>0)<tr><td>Desconto</td><td class="r">-{{ number_format($p->desconto,2,',','.') }}</td></tr>@endif
   <tr class="lg"><td class="b">TOTAL</td><td class="r b">R$ {{ number_format($p->total,2,',','.') }}</td></tr>
   <tr><td>Pago</td><td class="r">R$ {{ number_format($p->pago,2,',','.') }}</td></tr>

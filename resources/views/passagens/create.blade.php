@@ -186,7 +186,8 @@
         <p x-show="forma==='faturado'" class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">Faturado: nada é recebido agora.</p>
 
         <div class="rounded-2xl p-2.5 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
-          <div class="flex justify-between text-xs opacity-75"><span>Subtotal</span><span x-text="FBRE.moeda(subPassagem+subTaxa+subAlim)"></span></div>
+          <div class="flex justify-between text-xs opacity-75"><span>Tarifa de Transporte</span><span x-text="FBRE.moeda(subPassagem)"></span></div>
+          <div class="flex justify-between text-xs opacity-75"><span>Alimentação + Adicional</span><span x-text="FBRE.moeda(subAlim+subTaxa)"></span></div>
           <div class="flex justify-between text-xs opacity-75" x-show="desconto>0"><span>Desconto</span><span x-text="'- '+FBRE.moeda(desconto)"></span></div>
           <div class="flex justify-between items-baseline mt-0.5"><span class="text-sm font-semibold opacity-90">Total</span><span class="text-xl font-extrabold tracking-tight" x-text="FBRE.moeda(total)"></span></div>
           <div class="h-px bg-white/20 my-1"></div>
@@ -464,7 +465,7 @@
       const pago=(d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0), devido=Math.max(total-pago,0);
       const linhas=d.passageiros.map(p=>{
         const vt=Number(p.valor_passagem)||0, va=Number(p.valor_alimentacao)||0, vx=Number(p.valor_taxa)||0;
-        let bd='Transporte '+moeda(vt).replace('R$','').trim(); if(va>0) bd+=' · Alim. '+moeda(va).replace('R$','').trim(); if(vx>0) bd+=' · Taxa '+moeda(vx).replace('R$','').trim();
+        let bd='Transp. '+moeda(vt).replace('R$','').trim(); if((va+vx)>0) bd+=' · Alim.+Adic. '+moeda(va+vx).replace('R$','').trim();
         return `<tr><td>${esc(p.nome)}<div class="sm">${esc(p.tipo)}${p.poltrona?(' · poltrona '+esc(p.poltrona)):''}</div><div class="sm">${bd}</div></td><td class="r b">${moeda(vt+va+vx).replace('R$','').trim()}</td></tr>`;
       }).join('');
       const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Passagem ${esc(d.numero_completo)}</title>
@@ -476,7 +477,7 @@
       <div class="c sm">${new Date().toLocaleString('pt-BR')}</div><hr>
       <table><tr><td class="b">ORIGEM</td><td class="r">${esc(d.origem)}</td></tr><tr><td class="b">DESTINO</td><td class="r">${esc(d.destino)}</td></tr>${d.viagem_data?`<tr><td class="b">VIAGEM</td><td class="r">${esc(d.viagem_data)}</td></tr>`:''}</table><hr>
       <div class="b">PASSAGEIROS</div><table>${linhas}</table><hr>
-      <table><tr><td>Transporte</td><td class="r">${moeda(subT)}</td></tr>${subA>0?`<tr><td>Alimentação</td><td class="r">${moeda(subA)}</td></tr>`:''}${subX>0?`<tr><td>Taxa de embarque</td><td class="r">${moeda(subX)}</td></tr>`:''}${desc>0?`<tr><td>Desconto</td><td class="r">-${moeda(desc)}</td></tr>`:''}<tr class="lg"><td class="b">TOTAL</td><td class="r b">${moeda(total)}</td></tr><tr><td>Pago</td><td class="r">${moeda(pago)}</td></tr><tr><td class="b">DEVIDO</td><td class="r b">${moeda(devido)}</td></tr></table>
+      <table><tr><td>Tarifa de Transporte</td><td class="r">${moeda(subT)}</td></tr><tr><td>Alimentação + Adicional</td><td class="r">${moeda(subA+subX)}</td></tr>${desc>0?`<tr><td>Desconto</td><td class="r">-${moeda(desc)}</td></tr>`:''}<tr class="lg"><td class="b">TOTAL</td><td class="r b">${moeda(total)}</td></tr><tr><td>Pago</td><td class="r">${moeda(pago)}</td></tr><tr><td class="b">DEVIDO</td><td class="r b">${moeda(devido)}</td></tr></table>
       ${e.rodape?`<hr><div class="c sm">${esc(e.rodape)}</div>`:''}<hr><div class="c sm">Apresente esta passagem no embarque.</div><br><br></body></html>`;
       const w=window.open('','fbre_print','width=420,height=640'); if(!w)return alert('Permita pop-ups para imprimir.'); w.document.open(); w.document.write(html); w.document.close();
     };
