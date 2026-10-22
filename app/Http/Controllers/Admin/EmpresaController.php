@@ -38,8 +38,9 @@ class EmpresaController extends Controller
             'logo' => 'nullable|image|max:2048',
             'label_taxa_embarque' => 'nullable|string|max:40',
             'label_alimentacao' => 'nullable|string|max:40',
-            'wa_conexao_encomenda' => 'nullable|integer',
-            'wa_conexao_passagem' => 'nullable|integer',
+            'wa_conexao' => 'nullable|array',
+            'wa_conexao.*' => 'nullable|integer',
+            'cores_por_modulo' => 'nullable|boolean',
         ]);
 
         // Componentes da passagem (opcionais): taxa de servico e alimentacao
@@ -48,8 +49,10 @@ class EmpresaController extends Controller
         $config['usa_alimentacao'] = $request->boolean('usa_alimentacao');
         $config['label_taxa_embarque'] = trim((string) $request->input('label_taxa_embarque')) ?: 'Taxa de embarque';
         $config['label_alimentacao'] = trim((string) $request->input('label_alimentacao')) ?: 'Alimentação';
-        $config['wa_conexao_encomenda'] = $request->input('wa_conexao_encomenda') ?: null;
-        $config['wa_conexao_passagem'] = $request->input('wa_conexao_passagem') ?: null;
+        foreach (array_keys(\App\Support\Modulos::LISTA) as $mk) {
+            $config['wa_conexao_'.$mk] = $request->input('wa_conexao.'.$mk) ?: null;
+        }
+        $config['cores_por_modulo'] = $request->boolean('cores_por_modulo');
         $data['config'] = $config;
         unset($data['label_taxa_embarque'], $data['label_alimentacao']);
 

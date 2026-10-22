@@ -25,11 +25,13 @@
     'avulso'    => 'Em breve.',
     'recibo'    => 'Em breve.',
   ];
+  $coresPorModulo = (bool) (\App\Support\Tenant::empresa()?->config('cores_por_modulo', true) ?? true);
+  $corEmp = \App\Support\Tenant::empresa()?->cor_primaria ?? '#0b1a33';
   $mods = [];
   foreach (Modulos::LISTA as $k => [$rot,$ic,$cor,$hex]) {
     if (! $u->temModulo($k)) continue;      // sem o módulo, nem aparece
     if (! isset($rotaCriar[$k])) continue;  // módulo ainda não construído: não mostra "Em breve"
-    $mods[] = ['k'=>$k, 't'=>$rot, 'i'=>$ic, 'hex'=>$hex, 'r'=>$rotaCriar[$k](), 'd'=>$desc[$k] ?? ''];
+    $mods[] = ['k'=>$k, 't'=>$rot, 'i'=>$ic, 'hex'=>($coresPorModulo ? $hex : $corEmp), 'r'=>$rotaCriar[$k](), 'd'=>$desc[$k] ?? ''];
   }
 
   // Ferramentas (caixa, relatório, admin)

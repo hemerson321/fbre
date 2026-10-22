@@ -12,7 +12,8 @@
         request()->routeIs('wifi.*') => 'wifi',
         default => null,
     };
-    $headerCor = $moduloAtual ? \App\Support\Modulos::hex($moduloAtual) : $cor1;
+    $coresPorModulo = (bool) ($empresa?->config('cores_por_modulo', true) ?? true);
+    $headerCor = ($moduloAtual && $coresPorModulo) ? \App\Support\Modulos::hex($moduloAtual) : $cor1;
     $headerGrad = 'linear-gradient(100deg, '.$headerCor.', color-mix(in srgb, '.$headerCor.' 70%, #000))';
 @endphp
 <!doctype html>
@@ -140,6 +141,7 @@ document.addEventListener('alpine:init', () => {
     'Administração' => ['⚙️', '#334155'],
     'GERATEC'       => ['🛠️', '#334155'],
   ];
+  if (! $coresPorModulo) { foreach ($metaGrupo as $k => $v) { $metaGrupo[$k][1] = $cor1; } }
   $ativo = fn($r) => request()->url() === strtok($r, '?');
 @endphp
 

@@ -20,6 +20,14 @@
   <div><label class="label">Cor de destaque</label><input name="cor_secundaria" type="color" class="input !p-1 h-12" value="{{ old('cor_secundaria',$empresa->cor_secundaria) }}"></div>
   <div class="sm:col-span-2 flex items-center gap-4"><div>@if($empresa->logo)<img src="/{{ $empresa->logo }}" class="h-16 rounded-lg border">@endif</div><div class="flex-1"><label class="label">Logo (PNG/JPG)</label><input name="logo" type="file" accept="image/*" class="input !py-2.5"></div></div>
 </div>
+<div class="border-t pt-3 mt-1">
+  <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">Aparência</h2>
+  <label class="flex items-start gap-2 py-1 cursor-pointer">
+    <input type="checkbox" name="cores_por_modulo" value="1" @checked($empresa->config('cores_por_modulo', true)) class="w-5 h-5 rounded mt-0.5">
+    <span><span class="font-semibold text-sm">Cada módulo com sua cor</span><br><span class="text-xs text-slate-500">Ligado: o topo e o menu mudam de cor por módulo (encomenda azul, passagem verde, frete laranja...). Desligado: tudo na cor da empresa.</span></span>
+  </label>
+</div>
+
 <div class="border-t pt-3 mt-1" x-data="{ts:{{ $empresa->config('usa_taxa_embarque', false) ? 'true':'false' }}, al:{{ $empresa->config('usa_alimentacao', true) ? 'true':'false' }}}">
   <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">Componentes da passagem (opcional)</h2>
   <p class="text-xs text-slate-500 mb-2">Ligue só o que você cobra. Ficam separados da tarifa no cadastro e no comprovante.</p>
@@ -37,15 +45,14 @@
   @if($conexoesWa->isEmpty())
     <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">Nenhuma conexão cadastrada ainda. Vá em <b>WhatsApp</b> e cadastre uma (oficial ou não oficial).</p>
   @else
+    <p class="text-xs text-slate-500 mb-2">Cada módulo pode usar um WhatsApp diferente.</p>
     <div class="grid sm:grid-cols-2 gap-3">
-      <div><label class="label">Encomenda</label>
-        <select name="wa_conexao_encomenda" class="input"><option value="">— não usar —</option>
-          @foreach($conexoesWa as $c)<option value="{{ $c->id }}" @selected((int)$empresa->config('wa_conexao_encomenda')===$c->id)>{{ $c->rotulo() }}</option>@endforeach
-        </select></div>
-      <div><label class="label">Passagem <span class="text-slate-400">(futuro)</span></label>
-        <select name="wa_conexao_passagem" class="input"><option value="">— não usar —</option>
-          @foreach($conexoesWa as $c)<option value="{{ $c->id }}" @selected((int)$empresa->config('wa_conexao_passagem')===$c->id)>{{ $c->rotulo() }}</option>@endforeach
-        </select></div>
+      @foreach(\App\Support\Modulos::LISTA as $mk => [$mrot,$mic,$mcor,$mhex])
+        <div><label class="label">{{ $mic }} {{ $mrot }}</label>
+          <select name="wa_conexao[{{ $mk }}]" class="input"><option value="">— não usar —</option>
+            @foreach($conexoesWa as $c)<option value="{{ $c->id }}" @selected((int)$empresa->config('wa_conexao_'.$mk)===$c->id)>{{ $c->rotulo() }}</option>@endforeach
+          </select></div>
+      @endforeach
     </div>
   @endif
 </div>
