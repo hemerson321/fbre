@@ -51,6 +51,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:passagem.baixa');
     Route::post('/passagens/{passagem}/cancelar', [\App\Http\Controllers\PassagemController::class, 'cancelar'])->name('passagens.cancelar')->middleware('perm:admin');
 
+    // ---------- FRETE ----------
+    Route::get('/fretes', [\App\Http\Controllers\FreteController::class, 'index'])->name('fretes.index')->middleware('perm:frete.ver');
+    Route::get('/fretes/novo', [\App\Http\Controllers\FreteController::class, 'create'])->name('fretes.create')->middleware('perm:frete');
+    Route::post('/fretes', [\App\Http\Controllers\FreteController::class, 'store'])->name('fretes.store')->middleware('perm:frete');
+    Route::get('/fretes/{frete}', [\App\Http\Controllers\FreteController::class, 'show'])->name('fretes.show')->middleware('perm:frete.ver');
+    Route::post('/fretes/{frete}/pagar', [\App\Http\Controllers\FreteController::class, 'pagar'])->name('fretes.pagar')->middleware('perm:frete.baixa');
+    Route::post('/fretes/{frete}/entregar', [\App\Http\Controllers\FreteController::class, 'entregar'])->name('fretes.entregar')->middleware('perm:frete.baixa');
+    Route::post('/fretes/{frete}/cancelar', [\App\Http\Controllers\FreteController::class, 'cancelar'])->name('fretes.cancelar')->middleware('perm:admin');
+
     // ---------------- Pré-cadastros (operador) ----------------
     Route::middleware('perm:encomenda.precadastro')->group(function () {
         Route::get('/pre-cadastros', [PreCadastroController::class, 'index'])->name('pre.index');
@@ -71,6 +80,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/sync/bootstrap', [SyncController::class, 'bootstrap'])->name('sync.bootstrap');
     Route::post('/sync/encomenda', [SyncController::class, 'encomenda'])->name('sync.encomenda');
     Route::post('/sync/passagem', [SyncController::class, 'passagem'])->name('sync.passagem');
+    Route::post('/sync/frete', [SyncController::class, 'frete'])->name('sync.frete');
     Route::post('/sync/baixa', [SyncController::class, 'baixa'])->name('sync.baixa');
     Route::view('/offline', 'offline')->name('offline')->withoutMiddleware('auth');
 

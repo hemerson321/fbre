@@ -164,6 +164,30 @@ class SyncController extends Controller
         return ['ok' => true, 'id' => $p->id, 'numero_formatado' => $p->numeroFormatado(), 'url' => route('passagens.show', $p)];
     }
 
+    /** Recebe um frete criado no aparelho. Idempotente por uuid. */
+    public function frete(Request $request, \App\Services\FreteService $svc)
+    {
+        abort_unless(auth()->user()->podeModulo('frete'), 403);
+        $data = $request->validate([
+            'uuid' => 'required|uuid', 'numero_completo' => 'nullable|string|max:30', 'numero_seq' => 'nullable|integer|min:1', 'criada_em' => 'nullable|date',
+            'origem' => 'required|string|max:80', 'destino' => 'required|string|max:80',
+            'embarcacao_id' => 'nullable|integer', 'rota_id' => 'nullable|integer', 'viagem_id' => 'nullable|integer', 'data_viagem' => 'nullable|date',
+            'remetente_nome' => 'required|string|max:120', 'remetente_telefone' => 'nullable|string|max:30', 'remetente_documento' => 'nullable|string|max:20',
+            'destinatario_nome' => 'required|string|max:120', 'destinatario_telefone' => 'nullable|string|max:30', 'destinatario_documento' => 'nullable|string|max:20',
+            'descricao' => 'required|string|max:200', 'peso' => 'nullable|numeric|min:0', 'volumes' => 'required|integer|min:1|max:9999', 'preco_kilo' => 'nullable|numeric|min:0',
+            'subtotal' => 'required|numeric|min:0', 'forma' => 'required|in:avista,areceber,faturado', 'setor' => 'nullable|string|max:60', 'observacao' => 'nullable|string|max:1000', 'desconto' => 'nullable|numeric|min:0',
+            'pagamentos' => 'nullable|array', 'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito', 'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
+        ]);
+        try {
+            $f = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
+        }
+        session(['ultima_origem_frete' => $data['origem'] ?? null]);
+        return ['ok' => true, 'id' => $f->id, 'numero_formatado' => $f->numeroFormatado(), 'url' => route('fretes.show', $f)];
+    }
+
     /** Baixa feita offline (pagamento e/ou entrega). */
     public function baixa(Request $request, EncomendaService $svc)
     {
