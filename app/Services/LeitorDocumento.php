@@ -51,7 +51,9 @@ class LeitorDocumento
             if ($r['ok']) {
                 $campos = $this->parseJson((string) $r['text']);
                 if ($campos) return ['ok' => true, 'campos' => $campos, 'modelo' => $modelo, 'bruto' => $r['text']];
-                return ['ok' => false, 'erro' => 'Não consegui ler o documento.', 'modelo' => $modelo, 'bruto' => $r['text']];
+                $diag = trim((string) $r['text']);
+                if ($diag === '') $diag = mb_substr($r['body'], 0, 240);
+                return ['ok' => false, 'erro' => 'IA respondeu mas não li JSON ('.$modelo.'): '.mb_substr($diag, 0, 240), 'modelo' => $modelo, 'bruto' => $r['text']];
             }
             $ultErro = 'HTTP '.$r['status'].' ('.$modelo.'): '.mb_substr($r['body'], 0, 240);
             $modeloInvalido = $r['status'] === 404 || str_contains(mb_strtolower($r['body']), 'not_found') || str_contains(mb_strtolower($r['body']), 'model');
