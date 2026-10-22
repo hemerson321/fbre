@@ -98,7 +98,7 @@
             <input type="date" class="field" x-model="viagemData" @change="viagemLabel=rotulo(viagemData)"></div>
         </div>
         <div x-show="precoInfo" class="text-[11px] font-semibold" style="color:var(--cor1)" x-cloak>
-          💲 Preço do trecho carregado · tarifa base <span x-text="FBRE.moeda(baseNormal)"></span><template x-if="usaEmbarque && taxaDoTrecho()>0"><span> · <span x-text="labelTaxa"></span> <span x-text="FBRE.moeda(taxaDoTrecho())"></span></span></template>
+          💲 Preço do trecho carregado
         </div>
       </div>
     </section>
@@ -147,20 +147,13 @@
               <select class="field !min-h-0 py-1 text-sm" x-model="p.tipo_id" @change="aplicarTipo(p)">
                 @foreach($tipos as $t)<option value="{{ $t->id }}">{{ $t->nome }}@if(($t->modo ?? 'valor')==='porcentagem' && !$t->eh_normal) ({{ $t->percentual }}%)@endif</option>@endforeach
               </select></div>
-            <div class="grid grid-cols-2 gap-2 mt-1" :class="(usaEmbarque&&usaAlim)?'lg:grid-cols-3':((usaEmbarque||usaAlim)?'lg:grid-cols-3':'lg:grid-cols-1')">
-              <div><label class="lbl">Tarifa</label>
-                <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm" x-model.number="p.valor_passagem" @focus="$event.target.select()"></div>
-              <div x-show="usaEmbarque" x-cloak><label class="lbl" x-text="labelTaxa"></label>
-                <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm" x-model.number="p.valor_taxa" @focus="$event.target.select()"></div>
-              <div x-show="usaAlim" x-cloak><label class="lbl" x-text="labelAlim"></label>
-                <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm" x-model.number="p.valor_alimentacao" @focus="$event.target.select()"></div>
-            </div>
+            <div class="mt-1"><label class="lbl">Valor (R$)</label>
+              <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm font-semibold" :value="paxTotal(p)" @input="setPaxTotal(p,$event.target.value)" @focus="$event.target.select()"></div>
             <div class="flex items-center gap-2 mt-1.5">
               <input class="field !min-h-0 py-1 text-sm flex-1" placeholder="Documento (opcional)" x-model="p.documento">
               <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)">
                 <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑 poltrona'"></span>
               </button>
-              <span class="text-sm font-extrabold whitespace-nowrap" style="color:var(--cor1)" x-text="FBRE.moeda((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))"></span>
             </div>
           </div>
         </template>
@@ -193,9 +186,7 @@
         <p x-show="forma==='faturado'" class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">Faturado: nada é recebido agora.</p>
 
         <div class="rounded-2xl p-2.5 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
-          <div class="flex justify-between text-xs opacity-75"><span>Passagens</span><span x-text="FBRE.moeda(subPassagem)"></span></div>
-          <div class="flex justify-between text-xs opacity-75" x-show="usaEmbarque"><span x-text="labelTaxa"></span><span x-text="FBRE.moeda(subTaxa)"></span></div>
-          <div class="flex justify-between text-xs opacity-75" x-show="usaAlim"><span x-text="labelAlim"></span><span x-text="FBRE.moeda(subAlim)"></span></div>
+          <div class="flex justify-between text-xs opacity-75"><span>Subtotal</span><span x-text="FBRE.moeda(subPassagem+subTaxa+subAlim)"></span></div>
           <div class="flex justify-between text-xs opacity-75" x-show="desconto>0"><span>Desconto</span><span x-text="'- '+FBRE.moeda(desconto)"></span></div>
           <div class="flex justify-between items-baseline mt-0.5"><span class="text-sm font-semibold opacity-90">Total</span><span class="text-xl font-extrabold tracking-tight" x-text="FBRE.moeda(total)"></span></div>
           <div class="h-px bg-white/20 my-1"></div>
@@ -303,6 +294,8 @@
       // ---- passageiros ----
       novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', valor_passagem:0, valor_taxa:0, valor_alimentacao:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
+      paxTotal(p){ return Math.round(((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))*100)/100; },
+      setPaxTotal(p,v){ const total=Math.max(Number(v)||0,0); const fixo=(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0); p.valor_passagem=Math.round(Math.max(total-fixo,0)*100)/100; },
       rmPax(i){ this.passageiros.splice(i,1); },
       aplicarTipo(p){
         const t=this.tipos.find(x=>String(x.id)===String(p.tipo_id)) || this.tipos[0];
