@@ -70,8 +70,8 @@
           <input x-model="t.nome" :name="`tipos[${i}][nome]`" class="input !min-h-[40px]" required maxlength="60" placeholder="Ex.: Criança meia"></div>
         <div><label class="label !text-xs">Cor</label>
           <input type="color" x-model="t.cor" :name="`tipos[${i}][cor]`" class="input !p-1 h-10 w-14"></div>
-        <div><label class="label !text-xs">Modo</label>
-          <select x-model="t.modo" :name="`tipos[${i}][modo]`" class="input !min-h-[40px] !w-48" :disabled="t.eh_normal">
+        <div><label class="label !text-xs">Modo <span x-show="t.eh_normal" class="text-slate-400">(base)</span></label>
+          <select x-model="t.modo" :name="`tipos[${i}][modo]`" class="input !min-h-[40px] !w-48" :class="t.eh_normal ? 'pointer-events-none opacity-60' : ''" @mousedown="t.eh_normal && $event.preventDefault()">
             <option value="valor">Valor (Tarifa+Alim.)</option>
             <option value="porcentagem">Porcentagem do Normal</option>
           </select></div>
