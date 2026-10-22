@@ -13,6 +13,7 @@ use App\Http\Controllers\ViagemController;
 use App\Http\Controllers\Admin\RotaController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\PreCadastroController;
+use App\Http\Controllers\AcertoController;
 use App\Http\Controllers\CapturaController;
 use App\Http\Controllers\PreCadastroPublicController;
 use Illuminate\Support\Facades\Route;
@@ -56,6 +57,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/captura/pendentes', [CapturaController::class, 'pendentes'])->name('captura.pendentes')->middleware('perm:passagem');
     Route::post('/passagens/captura/ocr', [CapturaController::class, 'ocrDireto'])->name('captura.ocr')->middleware('perm:passagem');
     Route::post('/passagens/captura/{captura}/usar', [CapturaController::class, 'usar'])->name('captura.usar')->middleware('perm:passagem');
+    // Revendedor: filiados + acerto
+    Route::get('/meus-filiados', [AcertoController::class, 'meus'])->name('filiados.meus');
+    Route::post('/meus-filiados/salvar/{filiado?}', [AcertoController::class, 'salvarFiliado'])->name('filiados.salvar');
+    Route::post('/meus-filiados/{filiado}/baixa', [AcertoController::class, 'baixaFiliado'])->name('filiados.baixa');
     Route::get('/passagens/{passagem}', [\App\Http\Controllers\PassagemController::class, 'show'])->name('passagens.show')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/pagar', [\App\Http\Controllers\PassagemController::class, 'pagar'])->name('passagens.pagar')->middleware('perm:passagem.baixa');
     Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:passagem.baixa');
@@ -121,6 +126,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/rotas', [RotaController::class, 'store'])->name('rotas.store');
         Route::put('/rotas/{rota}', [RotaController::class, 'update'])->name('rotas.update');
         Route::post('/rotas/{rota}/toggle', [RotaController::class, 'toggle'])->name('rotas.toggle');
+        Route::get('/acertos', [AcertoController::class, 'index'])->name('acertos');
+        Route::post('/acertos/{revendedor}/baixa', [AcertoController::class, 'baixaEmpresa'])->name('acertos.baixa');
         // WhatsApp (conexoes oficiais e nao oficiais)
         Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp');
         Route::post('/whatsapp/{conexao?}', [WhatsappController::class, 'salvar'])->name('whatsapp.salvar');

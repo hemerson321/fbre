@@ -128,6 +128,8 @@ document.addEventListener('alpine:init', () => {
       ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'],
       ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'],
   ];
+  if (($u->isAdmin() || $u->isSuper()) && $empresa?->config('usa_revendedores')) $grupos['Administração'][] = ['r'=>route('admin.acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
+  if ($u->ehRevendedor()) $grupos['Revendedor'] = [['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝']];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
   // cor e ícone de cada grupo do menu (identidade visual por módulo)
   $metaGrupo = [
@@ -138,6 +140,7 @@ document.addEventListener('alpine:init', () => {
     'Lanchonete'    => ['🍔', \App\Support\Modulos::hex('lanchonete')],
     'WiFi'          => ['📶', \App\Support\Modulos::hex('wifi')],
     'Caixa'         => ['💰', '#0b1a33'],
+    'Revendedor'    => ['🤝', '#0e7490'],
     'Administração' => ['⚙️', '#334155'],
     'GERATEC'       => ['🛠️', '#334155'],
   ];

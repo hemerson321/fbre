@@ -112,6 +112,7 @@ class PassagemService
 
             $this->lembrarPessoa($data['comprador_nome'] ?? '', $data['comprador_telefone'] ?? null, $data['comprador_documento'] ?? null);
             $p->recalcular();
+            $this->definirRevendedor($p, $userId);
 
             if ($seq > 0) {
                 \App\Models\User::where('id', $userId)->where('proximo_seq', '<=', $seq)
@@ -148,6 +149,23 @@ class PassagemService
                 $p->forceFill(['embarcou' => true, 'embarcou_em' => now(), 'embarcou_por' => $userId])->save();
             }
         });
+    }
+
+    /** Define a quem a venda pertence (revendedor) e quanto é o repasse de cada nível. */
+    protected function definirRevendedor(\App\Models\Passagem $p, int $userId): void
+    {
+        $seller = \App\Models\User::find($userId);
+        if (! $seller) return;
+        $revId = $seller->revendedorDono();
+        if (! $revId) return; // venda direta da empresa: sem acerto de revendedor
+
+        $total = (float) $p->total;
+        $rev = \App\Models\User::find($revId);
+        $p->forceFill([
+            'revendedor_id' => $revId,
+            'acerto_empresa_valor' => $rev ? $rev->repasseDe($total) : $total,
+            'acerto_revendedor_valor' => $seller->revendedor_id ? $seller->repasseDe($total) : 0,
+        ])->save();
     }
 
     protected function lembrarPessoa(string $nome, ?string $tel, ?string $doc): void
