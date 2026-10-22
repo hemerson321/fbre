@@ -316,6 +316,10 @@
         return this.trechoMap[o+'|'+d+'|'+tipoId] || this.trechoMap[d+'|'+o+'|'+tipoId] || null; },
       precoDoTipo(t){
         if(!t) return {tarifa:0,alim:0};
+        // override salvo para este trecho+tipo (manual) tem prioridade
+        const c=this.trechoGet(t.id);
+        if(c) return {tarifa:Number(c.tarifa)||0, alim:Number(c.alim)||0};
+        // porcentagem automatica: calcula a partir do Normal
         if((t.modo||'valor')==='porcentagem' && !t.eh_normal){
           const n=this.tipos.find(x=>String(x.id)===String(this.normalId));
           const nc=n?this.trechoGet(n.id):null;
@@ -326,8 +330,8 @@
           const alim=(t.pct_sobre==='tudo') ? Math.round(baseA*pct*100)/100 : Math.round(baseA*100)/100;
           return {tarifa:tarifa, alim:alim};
         }
-        const c=this.trechoGet(t.id);
-        return {tarifa: c?Number(c.tarifa)||0:(Number(t.tarifa_padrao)||0), alim: c?Number(c.alim)||0:(Number(t.alimentacao_padrao)||0)};
+        // valor sem linha: usa padrao do tipo
+        return {tarifa: Number(t.tarifa_padrao)||0, alim: Number(t.alimentacao_padrao)||0};
       },
       taxaDoTrecho(){ const o=(this.origemSel||'').trim().toLowerCase(), d=(this.destinoSel||'').trim().toLowerCase();
         return Number(this.taxaMap[o+'|'+d] ?? this.taxaMap[d+'|'+o] ?? 0)||0; },

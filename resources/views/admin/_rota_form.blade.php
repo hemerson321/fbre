@@ -64,16 +64,40 @@
                   <div class="text-[11px] font-bold uppercase leading-tight" :style="`color:${tp.cor}`"
                        x-text="tp.nome + ((tp.modo==='porcentagem' && !tp.eh_normal) ? ' ('+tp.percentual+'%)' : '')"></div>
                   <template x-if="tp.modo==='valor' || tp.eh_normal">
-                    <div class="flex items-end gap-2 mt-1" x-data="{c: ensure(t.key, tp.id, tp)}">
-                      <div><div class="text-[10px] text-slate-400">Tarifa</div>
-                        <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-20 text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
-                      <div x-show="usaAlim"><div class="text-[10px] text-slate-400">Aliment.</div>
-                        <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-20 text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
-                      <div class="text-[11px] font-bold pb-1" :style="`color:${tp.cor}`" x-text="'= '+moeda((Number(c.tarifa)||0)+(usaAlim?(Number(c.alim)||0):0))"></div>
+                    <div class="mt-1" x-data="{c: ensure(t.key, tp.id, tp)}">
+                      <div class="flex items-end gap-2">
+                        <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
+                        <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Alimentação + serviços</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
+                      </div>
+                      <div class="text-[11px] mt-1 leading-tight"><span class="text-slate-500">Transporte</span> <b x-text="moeda(Number(c.tarifa)||0)"></b><template x-if="usaAlim"><span> · <span class="text-slate-500">Alim.+serv.</span> <b x-text="moeda(Number(c.alim)||0)"></b></span></template> · <b :style="`color:${tp.cor}`" x-text="'= '+moeda((Number(c.tarifa)||0)+(usaAlim?(Number(c.alim)||0):0))"></b></div>
                     </div>
                   </template>
                   <template x-if="tp.modo==='porcentagem' && !tp.eh_normal">
-                    <div class="text-sm font-bold mt-1" :style="`color:${tp.cor}`" x-text="'= '+moeda(calcPct(t.key, tp))"></div>
+                    <div class="mt-1 leading-tight" x-data="{c: ensure(t.key, tp.id, tp)}">
+                      {{-- AUTO: calculado a partir do Normal, se ajusta sozinho --}}
+                      <template x-if="!c.manual">
+                        <div>
+                          <div class="text-sm font-bold" :style="`color:${tp.cor}`" x-text="'= '+moeda(calcPct(t.key, tp))"></div>
+                          <div class="text-[11px]"><span class="text-slate-500">Transporte</span> <b x-text="moeda(calcPctTarifa(t.key, tp))"></b><template x-if="usaAlim"><span> · <span class="text-slate-500">Alim.+serv.</span> <b x-text="moeda(calcPctAlim(t.key, tp))"></b></span></template></div>
+                          <button type="button" @click="ajustarManual(t.key, tp)" class="text-[10px] text-sky-600 underline mt-0.5">✎ dividir manual</button>
+                        </div>
+                      </template>
+                      {{-- MANUAL: valores digitados, fixos --}}
+                      <template x-if="c.manual">
+                        <div>
+                          <div class="flex items-end gap-2">
+                            <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
+                              <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
+                            <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Alimentação + serviços</div>
+                              <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
+                          </div>
+                          <div class="text-[11px] mt-1"><b :style="`color:${tp.cor}`" x-text="'= '+moeda((Number(c.tarifa)||0)+(usaAlim?(Number(c.alim)||0):0))"></b>
+                            <button type="button" @click="voltarAuto(t.key, tp)" class="text-[10px] text-slate-500 underline ml-2">↻ voltar ao automático</button></div>
+                        </div>
+                      </template>
+                    </div>
                   </template>
                 </div>
               </template>
@@ -122,21 +146,33 @@ function rotaForm(paradas, precos, tipos, flags){
     get normal(){ return this.tipos.find(t=>t.eh_normal) || this.tipos[0] || null; },
     get valorTipos(){ return this.tipos.filter(t=>t.modo==='valor'||t.eh_normal); },
     cellKey(trechoKey,tipoId){ return trechoKey+'|'+tipoId; },
+    ehPct(tipo){ return tipo && (tipo.modo||'valor')==='porcentagem' && !tipo.eh_normal; },
     ensure(trechoKey,tipoId,tipo){ const k=this.cellKey(trechoKey,tipoId);
-      if(!this.precos[k]) this.precos[k]={tarifa: tipo?Number(tipo.tarifa_padrao)||0:0, alim: tipo?Number(tipo.alimentacao_padrao)||0:0};
+      if(!this.precos[k]){
+        this.precos[k] = this.ehPct(tipo)
+          ? {tarifa:0, alim:0, manual:false}
+          : {tarifa: tipo?Number(tipo.tarifa_padrao)||0:0, alim: tipo?Number(tipo.alimentacao_padrao)||0:0, manual:true};
+      } else if(this.precos[k].manual===undefined){
+        this.precos[k].manual = true; // veio do banco = override salvo
+      }
       return this.precos[k]; },
-    calcPct(trechoKey,tp){ const n=this.normal; if(!n) return 0;
+    ajustarManual(trechoKey,tp){ const c=this.ensure(trechoKey,tp.id,tp); c.tarifa=this.calcPctTarifa(trechoKey,tp); c.alim=this.calcPctAlim(trechoKey,tp); c.manual=true; },
+    voltarAuto(trechoKey,tp){ const c=this.ensure(trechoKey,tp.id,tp); c.manual=false; },
+    calcPctTarifa(trechoKey,tp){ const n=this.normal; if(!n) return 0;
       const nc=this.precos[this.cellKey(trechoKey,n.id)];
       const baseT = nc?Number(nc.tarifa)||0:Number(n.tarifa_padrao)||0;
-      const baseA = this.usaAlim ? (nc?Number(nc.alim)||0:Number(n.alimentacao_padrao)||0) : 0;
-      const pct = (Number(tp.percentual)||0)/100;
-      const tarifa = baseT*pct;
-      const alim = (tp.pct_sobre==='tudo') ? baseA*pct : baseA;
-      return tarifa + alim; },
+      return baseT*(Number(tp.percentual)||0)/100; },
+    calcPctAlim(trechoKey,tp){ const n=this.normal; if(!n || !this.usaAlim) return 0;
+      const nc=this.precos[this.cellKey(trechoKey,n.id)];
+      const baseA = nc?Number(nc.alim)||0:Number(n.alimentacao_padrao)||0;
+      return (tp.pct_sobre==='tudo') ? baseA*(Number(tp.percentual)||0)/100 : baseA; },
+    calcPct(trechoKey,tp){ return this.calcPctTarifa(trechoKey,tp) + this.calcPctAlim(trechoKey,tp); },
     get submitRows(){ const rows=[];
-      this.trechos.forEach(t=>{ this.valorTipos.forEach(tp=>{
+      this.trechos.forEach(t=>{ this.tipos.forEach(tp=>{
         const c=this.precos[this.cellKey(t.key,tp.id)];
-        const tarifa=c?Number(c.tarifa)||0:0; const alim=c?(this.usaAlim?Number(c.alim)||0:0):0;
+        if(!c) return;
+        if(this.ehPct(tp) && !c.manual) return; // porcentagem automatica nao grava linha
+        const tarifa=Number(c.tarifa)||0; const alim=this.usaAlim?Number(c.alim)||0:0;
         if(tarifa>0||alim>0) rows.push({origem:t.o,destino:t.d,tipo_id:tp.id,tarifa,alim});
       }); });
       return rows; },
