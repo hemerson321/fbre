@@ -65,15 +65,17 @@
                        x-text="tp.nome + ((tp.modo==='porcentagem' && !tp.eh_normal) ? ' ('+tp.percentual+'%)' : '')"></div>
                   <template x-if="tp.modo==='valor' || tp.eh_normal">
                     <div class="mt-1" x-data="{c: ensure(t.key, tp.id, tp)}">
-                      <div class="flex items-end gap-2 flex-wrap">
-                        <div><div class="text-[10px] text-slate-500 font-semibold">Preço integral</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.integral" @input="recalcCel(c)" placeholder="0"></div>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div><div class="text-[10px] text-slate-500 font-semibold">Integral</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.integral" placeholder="0"></div>
+                        <div><div class="text-[10px] text-slate-500 font-semibold">Com desconto</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="comDesc(c)" @input="setComDesc(c,$event.target.value)"></div>
+                        <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
                         <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.alim" @input="recalcCel(c)" placeholder="0"></div>
-                        <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
-                          <div class="input !min-h-[32px] !w-24 text-right text-sm flex items-center justify-end bg-slate-50 font-semibold" x-text="moeda(Number(c.tarifa)||0)"></div></div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
                       </div>
-                      <div class="text-[11px] mt-1 leading-tight"><span class="text-slate-500">Transporte</span> <b x-text="moeda(Number(c.tarifa)||0)"></b><template x-if="usaAlim"><span> · <span class="text-slate-500">Alim.+Adic.</span> <b x-text="moeda(Number(c.alim)||0)"></b></span></template> · <b :style="`color:${tp.cor}`" x-text="'= '+moeda(Number(c.integral)||0)"></b></div>
+                      <div class="text-[11px] mt-1 leading-tight"><span class="text-slate-500">Paga</span> <b :style="`color:${tp.cor}`" x-text="moeda(comDesc(c))"></b> <span class="text-slate-400" x-show="Number(c.integral)>comDesc(c)+0.009">(normal <span x-text="moeda(Number(c.integral)||0)"></span>)</span></div>
                     </div>
                   </template>
                   <template x-if="tp.modo==='porcentagem' && !tp.eh_normal">
@@ -90,15 +92,17 @@
                       {{-- MANUAL: valores digitados, fixos --}}
                       <template x-if="c.manual">
                         <div>
-                          <div class="flex items-end gap-2 flex-wrap">
-                            <div><div class="text-[10px] text-slate-500 font-semibold">Preço integral</div>
-                              <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.integral" @input="recalcCel(c)" placeholder="0"></div>
-                            <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>
-                              <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.alim" @input="recalcCel(c)" placeholder="0"></div>
-                            <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
-                              <div class="input !min-h-[32px] !w-24 text-right text-sm flex items-center justify-end bg-slate-50 font-semibold" x-text="moeda(Number(c.tarifa)||0)"></div></div>
-                          </div>
-                          <div class="text-[11px] mt-1"><b :style="`color:${tp.cor}`" x-text="'= '+moeda(Number(c.integral)||0)"></b>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div><div class="text-[10px] text-slate-500 font-semibold">Integral</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.integral" placeholder="0"></div>
+                        <div><div class="text-[10px] text-slate-500 font-semibold">Com desconto</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="comDesc(c)" @input="setComDesc(c,$event.target.value)"></div>
+                        <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
+                        <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] w-full text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
+                      </div>
+                          <div class="text-[11px] mt-1"><span class="text-slate-500">Paga</span> <b :style="`color:${tp.cor}`" x-text="moeda(comDesc(c))"></b> <span class="text-slate-400" x-show="Number(c.integral)>comDesc(c)+0.009">(normal <span x-text="moeda(Number(c.integral)||0)"></span>)</span>
                             <button type="button" @click="voltarAuto(t.key, tp)" class="text-[10px] text-slate-500 underline ml-2">↻ voltar ao automático</button></div>
                         </div>
                       </template>
@@ -163,8 +167,9 @@ function rotaForm(paradas, precos, tipos, flags){
       const c=this.precos[k];
       if(c.integral===undefined) c.integral = (Number(c.tarifa)||0)+(Number(c.alim)||0);
       return c; },
-    recalcCel(c){ c.tarifa = Math.round(Math.max((Number(c.integral)||0)-(this.usaAlim?(Number(c.alim)||0):0),0)*100)/100; },
-    ajustarManual(trechoKey,tp){ const c=this.ensure(trechoKey,tp.id,tp); c.tarifa=this.calcPctTarifa(trechoKey,tp); c.alim=this.calcPctAlim(trechoKey,tp); c.integral=Math.round((c.tarifa+c.alim)*100)/100; c.manual=true; },
+    comDesc(c){ return Math.round(((Number(c.tarifa)||0)+(this.usaAlim?(Number(c.alim)||0):0))*100)/100; },
+    setComDesc(c,v){ const total=Math.max(Number(v)||0,0); c.tarifa=Math.round(Math.max(total-(this.usaAlim?(Number(c.alim)||0):0),0)*100)/100; },
+    ajustarManual(trechoKey,tp){ const c=this.ensure(trechoKey,tp.id,tp); c.tarifa=this.calcPctTarifa(trechoKey,tp); c.alim=this.calcPctAlim(trechoKey,tp); c.integral=Math.round(this.normalIntegral(trechoKey)*100)/100; c.manual=true; },
     voltarAuto(trechoKey,tp){ const c=this.ensure(trechoKey,tp.id,tp); c.manual=false; },
     calcPctTarifa(trechoKey,tp){ const n=this.normal; if(!n) return 0;
       const nc=this.precos[this.cellKey(trechoKey,n.id)];
@@ -183,7 +188,8 @@ function rotaForm(paradas, precos, tipos, flags){
         if(!c) return;
         if(this.ehPct(tp) && !c.manual) return; // porcentagem automatica nao grava linha
         const tarifa=Number(c.tarifa)||0; const alim=this.usaAlim?Number(c.alim)||0:0;
-        if(tarifa>0||alim>0) rows.push({origem:t.o,destino:t.d,tipo_id:tp.id,tarifa,alim});
+        const integral=Math.round(Math.max(Number(c.integral)||0, tarifa+alim)*100)/100;
+        if(tarifa>0||alim>0||integral>0) rows.push({origem:t.o,destino:t.d,tipo_id:tp.id,tarifa,alim,integral});
       }); });
       return rows; },
     get trechos(){

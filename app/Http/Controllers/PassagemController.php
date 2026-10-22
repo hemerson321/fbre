@@ -76,7 +76,7 @@ class PassagemController extends Controller
             $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get($colunas);
         }
         $normalId = optional($tipos->firstWhere('eh_normal', true))->id ?? optional($tipos->first())->id;
-        $trechoPrecos = TrechoPreco::where('ativo', true)->get(['origem', 'destino', 'tipo_passageiro_id', 'tarifa', 'alimentacao']);
+        $trechoPrecos = TrechoPreco::where('ativo', true)->get(['origem', 'destino', 'tipo_passageiro_id', 'tarifa', 'alimentacao', 'integral']);
         $taxas = TaxaEmbarque::where('ativo', true)->get(['origem', 'destino', 'taxa']);
         $localidades = $trechoPrecos->pluck('origem')
             ->merge($trechoPrecos->pluck('destino'))

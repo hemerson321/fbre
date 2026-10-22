@@ -278,7 +278,7 @@
       init(){
         const op=window.FBRE_OP||{}; this.numeroPreview=(op.prefixo||'OP')+'-'+String(op.proximoSeq||1).padStart(4,'0');
         // mapas de preco por tipo e de taxa de embarque (origem|destino[|tipo])
-        (this.trechoPrecos||[]).forEach(r=>{ this.trechoMap[(String(r.origem).toLowerCase())+'|'+(String(r.destino).toLowerCase())+'|'+r.tipo_passageiro_id]={tarifa:Number(r.tarifa)||0, alim:Number(r.alimentacao)||0}; });
+        (this.trechoPrecos||[]).forEach(r=>{ this.trechoMap[(String(r.origem).toLowerCase())+'|'+(String(r.destino).toLowerCase())+'|'+r.tipo_passageiro_id]={tarifa:Number(r.tarifa)||0, alim:Number(r.alimentacao)||0, integral:Number(r.integral)||0}; });
         (this.taxas||[]).forEach(r=>{ this.taxaMap[(String(r.origem).toLowerCase())+'|'+(String(r.destino).toLowerCase())]=Number(r.taxa)||0; });
         // garante tipo_id inicial nos passageiros
         if(this.tipos.length && this.normalId==null) this.normalId=this.tipos[0].id;
@@ -295,7 +295,7 @@
       },
 
       // ---- passageiros ----
-      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', valor_passagem:0, valor_taxa:0, valor_alimentacao:0}; },
+      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       paxTotal(p){ return Math.round(((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))*100)/100; },
       setPaxTotal(p,v){ const total=Math.max(Number(v)||0,0); const fixo=(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0); p.valor_passagem=Math.round(Math.max(total-fixo,0)*100)/100; },
@@ -307,14 +307,15 @@
         p.valor_passagem = pr.tarifa;
         p.valor_alimentacao = this.usaAlim ? pr.alim : 0;
         p.valor_taxa = (this.usaEmbarque && p.paga_taxa) ? this.taxaDoTrecho() : 0;
+        p.valor_integral = Math.max(Number(pr.integral)||0, (Number(p.valor_passagem)||0)+(Number(p.valor_alimentacao)||0)+(Number(p.valor_taxa)||0));
       },
       trechoGet(tipoId){ const o=(this.origemSel||'').trim().toLowerCase(), d=(this.destinoSel||'').trim().toLowerCase();
         return this.trechoMap[o+'|'+d+'|'+tipoId] || this.trechoMap[d+'|'+o+'|'+tipoId] || null; },
       precoDoTipo(t){
-        if(!t) return {tarifa:0,alim:0};
+        if(!t) return {tarifa:0,alim:0,integral:0};
         // override salvo para este trecho+tipo (manual) tem prioridade
         const c=this.trechoGet(t.id);
-        if(c) return {tarifa:Number(c.tarifa)||0, alim:Number(c.alim)||0};
+        if(c){ const tt=Number(c.tarifa)||0, aa=this.usaAlim?Number(c.alim)||0:0; const ii=Math.max(Number(c.integral)||0, tt+aa); return {tarifa:tt, alim:aa, integral:ii}; }
         // porcentagem automatica: calcula a partir do Normal
         if((t.modo||'valor')==='porcentagem' && !t.eh_normal){
           const n=this.tipos.find(x=>String(x.id)===String(this.normalId));
@@ -323,11 +324,13 @@
           const baseA=nc?Number(nc.alim)||0:(n?Number(n.alimentacao_padrao)||0:0);
           const pct=(Number(t.percentual)||0)/100;
           const tarifa=Math.round(baseT*pct*100)/100;
-          const alim=(t.pct_sobre==='tudo') ? Math.round(baseA*pct*100)/100 : Math.round(baseA*100)/100;
-          return {tarifa:tarifa, alim:alim};
+          const alim=this.usaAlim ? ((t.pct_sobre==='tudo') ? Math.round(baseA*pct*100)/100 : Math.round(baseA*100)/100) : 0;
+          const integral=this.integralNormal();
+          return {tarifa:tarifa, alim:alim, integral:Math.max(integral, tarifa+alim)};
         }
         // valor sem linha: usa padrao do tipo
-        return {tarifa: Number(t.tarifa_padrao)||0, alim: Number(t.alimentacao_padrao)||0};
+        const tt=Number(t.tarifa_padrao)||0, aa=this.usaAlim?Number(t.alimentacao_padrao)||0:0;
+        return {tarifa: tt, alim: aa, integral: tt+aa};
       },
       taxaDoTrecho(){ const o=(this.origemSel||'').trim().toLowerCase(), d=(this.destinoSel||'').trim().toLowerCase();
         return Number(this.taxaMap[o+'|'+d] ?? this.taxaMap[d+'|'+o] ?? 0)||0; },
@@ -433,7 +436,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:this.integralNormal()})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
         try{

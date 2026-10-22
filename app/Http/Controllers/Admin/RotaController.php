@@ -62,6 +62,7 @@ class RotaController extends Controller
             'precos.*.tipo_id' => 'required_with:precos|integer',
             'precos.*.tarifa' => 'nullable|numeric|min:0',
             'precos.*.alim' => 'nullable|numeric|min:0',
+            'precos.*.integral' => 'nullable|numeric|min:0',
         ]);
     }
 
@@ -92,11 +93,13 @@ class RotaController extends Controller
             $tipoId = (int) ($pr['tipo_id'] ?? 0);
             $tarifa = (float) ($pr['tarifa'] ?? 0);
             $alim = (float) ($pr['alim'] ?? 0);
+            $integral = (float) ($pr['integral'] ?? 0);
             if ($o === '' || $d === '' || $tipoId <= 0 || mb_strtolower($o) === mb_strtolower($d)) continue;
-            if ($tarifa <= 0 && $alim <= 0) continue;
+            if ($tarifa <= 0 && $alim <= 0 && $integral <= 0) continue;
+            if ($integral <= 0) $integral = $tarifa + $alim;
             TrechoPreco::updateOrCreate(
                 ['empresa_id' => $empresaId, 'origem' => $o, 'destino' => $d, 'tipo_passageiro_id' => $tipoId],
-                ['tarifa' => $tarifa, 'alimentacao' => $alim, 'ativo' => true],
+                ['tarifa' => $tarifa, 'alimentacao' => $alim, 'integral' => $integral, 'ativo' => true],
             );
         }
     }

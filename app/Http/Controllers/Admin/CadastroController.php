@@ -46,8 +46,8 @@ class CadastroController extends Controller
             'categorias' => AvulsoCategoria::orderBy('ordem')->orderBy('nome')->get(),
             'tiposPassageiro' => TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(),
             'taxasEmbarque' => TaxaEmbarque::where('ativo', true)->orderBy('origem')->orderBy('destino')->get(),
-            'trechoPrecosMapa' => \App\Models\TrechoPreco::where('ativo', true)->get(['origem', 'destino', 'tipo_passageiro_id', 'tarifa', 'alimentacao'])
-                ->mapWithKeys(fn ($r) => [mb_strtolower($r->origem.'|'.$r->destino.'|'.$r->tipo_passageiro_id) => ['tarifa' => (float) $r->tarifa, 'alim' => (float) $r->alimentacao]])
+            'trechoPrecosMapa' => \App\Models\TrechoPreco::where('ativo', true)->get(['origem', 'destino', 'tipo_passageiro_id', 'tarifa', 'alimentacao', 'integral'])
+                ->mapWithKeys(fn ($r) => [mb_strtolower($r->origem.'|'.$r->destino.'|'.$r->tipo_passageiro_id) => ['tarifa' => (float) $r->tarifa, 'alim' => (float) $r->alimentacao, 'integral' => (float) $r->integral]])
                 ->toArray(),
             'usaTaxaServico' => (bool) \App\Support\Tenant::empresa()->config('usa_taxa_servico', false),
             'usaAlimentacao' => (bool) \App\Support\Tenant::empresa()->config('usa_alimentacao', false),
