@@ -65,13 +65,15 @@
                        x-text="tp.nome + ((tp.modo==='porcentagem' && !tp.eh_normal) ? ' ('+tp.percentual+'%)' : '')"></div>
                   <template x-if="tp.modo==='valor' || tp.eh_normal">
                     <div class="mt-1" x-data="{c: ensure(t.key, tp.id, tp)}">
-                      <div class="flex items-end gap-2">
-                        <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
-                        <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Alimentação + serviços</div>
-                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
+                      <div class="flex items-end gap-2 flex-wrap">
+                        <div><div class="text-[10px] text-slate-500 font-semibold">Preço integral</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.integral" @input="recalcCel(c)" placeholder="0"></div>
+                        <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>
+                          <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.alim" @input="recalcCel(c)" placeholder="0"></div>
+                        <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
+                          <div class="input !min-h-[32px] !w-24 text-right text-sm flex items-center justify-end bg-slate-50 font-semibold" x-text="moeda(Number(c.tarifa)||0)"></div></div>
                       </div>
-                      <div class="text-[11px] mt-1 leading-tight"><span class="text-slate-500">Transporte</span> <b x-text="moeda(Number(c.tarifa)||0)"></b><template x-if="usaAlim"><span> · <span class="text-slate-500">Alim.+serv.</span> <b x-text="moeda(Number(c.alim)||0)"></b></span></template> · <b :style="`color:${tp.cor}`" x-text="'= '+moeda((Number(c.tarifa)||0)+(usaAlim?(Number(c.alim)||0):0))"></b></div>
+                      <div class="text-[11px] mt-1 leading-tight"><span class="text-slate-500">Transporte</span> <b x-text="moeda(Number(c.tarifa)||0)"></b><template x-if="usaAlim"><span> · <span class="text-slate-500">Alim.+Adic.</span> <b x-text="moeda(Number(c.alim)||0)"></b></span></template> · <b :style="`color:${tp.cor}`" x-text="'= '+moeda(Number(c.integral)||0)"></b></div>
                     </div>
                   </template>
                   <template x-if="tp.modo==='porcentagem' && !tp.eh_normal">
@@ -87,13 +89,15 @@
                       {{-- MANUAL: valores digitados, fixos --}}
                       <template x-if="c.manual">
                         <div>
-                          <div class="flex items-end gap-2">
-                            <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
-                              <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
-                            <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Alimentação + serviços</div>
-                              <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
+                          <div class="flex items-end gap-2 flex-wrap">
+                            <div><div class="text-[10px] text-slate-500 font-semibold">Preço integral</div>
+                              <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.integral" @input="recalcCel(c)" placeholder="0"></div>
+                            <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>
+                              <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-24 text-right text-sm" x-model.number="c.alim" @input="recalcCel(c)" placeholder="0"></div>
+                            <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
+                              <div class="input !min-h-[32px] !w-24 text-right text-sm flex items-center justify-end bg-slate-50 font-semibold" x-text="moeda(Number(c.tarifa)||0)"></div></div>
                           </div>
-                          <div class="text-[11px] mt-1"><b :style="`color:${tp.cor}`" x-text="'= '+moeda((Number(c.tarifa)||0)+(usaAlim?(Number(c.alim)||0):0))"></b>
+                          <div class="text-[11px] mt-1"><b :style="`color:${tp.cor}`" x-text="'= '+moeda(Number(c.integral)||0)"></b>
                             <button type="button" @click="voltarAuto(t.key, tp)" class="text-[10px] text-slate-500 underline ml-2">↻ voltar ao automático</button></div>
                         </div>
                       </template>
@@ -155,8 +159,11 @@ function rotaForm(paradas, precos, tipos, flags){
       } else if(this.precos[k].manual===undefined){
         this.precos[k].manual = true; // veio do banco = override salvo
       }
-      return this.precos[k]; },
-    ajustarManual(trechoKey,tp){ const c=this.ensure(trechoKey,tp.id,tp); c.tarifa=this.calcPctTarifa(trechoKey,tp); c.alim=this.calcPctAlim(trechoKey,tp); c.manual=true; },
+      const c=this.precos[k];
+      if(c.integral===undefined) c.integral = (Number(c.tarifa)||0)+(Number(c.alim)||0);
+      return c; },
+    recalcCel(c){ c.tarifa = Math.round(Math.max((Number(c.integral)||0)-(this.usaAlim?(Number(c.alim)||0):0),0)*100)/100; },
+    ajustarManual(trechoKey,tp){ const c=this.ensure(trechoKey,tp.id,tp); c.tarifa=this.calcPctTarifa(trechoKey,tp); c.alim=this.calcPctAlim(trechoKey,tp); c.integral=Math.round((c.tarifa+c.alim)*100)/100; c.manual=true; },
     voltarAuto(trechoKey,tp){ const c=this.ensure(trechoKey,tp.id,tp); c.manual=false; },
     calcPctTarifa(trechoKey,tp){ const n=this.normal; if(!n) return 0;
       const nc=this.precos[this.cellKey(trechoKey,n.id)];
