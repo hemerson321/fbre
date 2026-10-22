@@ -9,6 +9,8 @@ use App\Models\PassagemPassageiro;
 use App\Models\Pessoa;
 use App\Models\Rota;
 use App\Models\TabelaPreco;
+use App\Models\TaxaEmbarque;
+use App\Models\TrechoPreco;
 use App\Models\TipoPassageiro;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
@@ -63,19 +65,22 @@ class PassagemController extends Controller
         $u = auth()->user();
         $embarcacoes = Embarcacao::where('ativo', true)->orderBy('nome')
             ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas']);
-        $tipos = TipoPassageiro::where('ativo', true)->orderBy('ordem')->orderBy('nome')
-            ->get(['nome', 'percentual', 'paga_taxa', 'modo', 'valor_fixo']);
+        $colunas = ['id', 'nome', 'cor', 'percentual', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao'];
+        $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get($colunas);
         if ($tipos->isEmpty()) {
-            // auto-reparo: garante os tipos padrão desta empresa (evita tela vazia / erro)
-            foreach ([['Adulto', 100, true, 1], ['Estudante', 50, true, 2], ['Criança', 50, true, 3], ['Idoso', 50, true, 4], ['Gratuito', 0, false, 5]] as [$n, $pc, $tx, $o]) {
-                TipoPassageiro::create(['nome' => $n, 'percentual' => $pc, 'paga_taxa' => $tx, 'ativo' => true, 'ordem' => $o]);
+            // auto-reparo: cria o Normal (Adulto) e alguns tipos padrão
+            TipoPassageiro::create(['nome' => 'Adulto', 'modo' => 'valor', 'eh_normal' => true, 'percentual' => 100, 'paga_taxa' => true, 'ativo' => true, 'ordem' => 1]);
+            foreach ([['Criança meia', 50, 2], ['Idoso meia', 50, 3]] as [$n, $pc, $o]) {
+                TipoPassageiro::create(['nome' => $n, 'modo' => 'porcentagem', 'percentual' => $pc, 'paga_taxa' => true, 'ativo' => true, 'ordem' => $o]);
             }
-            $tipos = TipoPassageiro::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get(['nome', 'percentual', 'paga_taxa', 'modo', 'valor_fixo']);
+            $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get($colunas);
         }
-        $precos = TabelaPreco::where('ativo', true)->get(['origem', 'destino', 'passagem', 'taxa_embarque', 'alimentacao']);
-        $localidades = TabelaPreco::where('ativo', true)->pluck('origem')
-            ->merge(TabelaPreco::where('ativo', true)->pluck('destino'))
-            ->merge(Rota::todasLocalidades())->unique()->sort()->values();
+        $normalId = optional($tipos->firstWhere('eh_normal', true))->id ?? optional($tipos->first())->id;
+        $trechoPrecos = TrechoPreco::where('ativo', true)->get(['origem', 'destino', 'tipo_passageiro_id', 'tarifa', 'alimentacao']);
+        $taxas = TaxaEmbarque::where('ativo', true)->get(['origem', 'destino', 'taxa']);
+        $localidades = $trechoPrecos->pluck('origem')
+            ->merge($trechoPrecos->pluck('destino'))
+            ->merge(Rota::todasLocalidades())->filter()->unique()->sort()->values();
         $rotas = Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect();
         // linhas (com paradas) para o JS resolver a viagem a partir de origem/destino (igual ao encomenda)
         $linhas = $rotas->map(fn ($r) => [
@@ -87,7 +92,9 @@ class PassagemController extends Controller
         return view('passagens.create', [
             'embarcacoes' => $embarcacoes,
             'tipos' => $tipos,
-            'precos' => $precos,
+            'normalId' => $normalId,
+            'trechoPrecos' => $trechoPrecos,
+            'taxas' => $taxas,
             'localidades' => $localidades,
             'cidades' => $localidades->values(),
             'linhas' => $linhas,
@@ -96,9 +103,9 @@ class PassagemController extends Controller
             'embarcacaoPrincipal' => session('ultima_embarcacao_pass') ?: $u->embarcacao_principal_id,
             'podeParcial' => $u->podeParcial(),
             'podeRetroativo' => $u->podeRetroativo(),
-            'usaTaxaServico' => (bool) Tenant::empresa()->config('usa_taxa_servico', false),
-            'usaAlimentacao' => (bool) Tenant::empresa()->config('usa_alimentacao', false),
-            'labelTaxa' => Tenant::empresa()->config('label_taxa_servico') ?: 'Taxa de serviço',
+            'usaTaxaEmbarque' => (bool) Tenant::empresa()->config('usa_taxa_embarque', false),
+            'usaAlimentacao' => (bool) Tenant::empresa()->config('usa_alimentacao', true),
+            'labelTaxa' => Tenant::empresa()->config('label_taxa_embarque') ?: 'Taxa de embarque',
             'labelAlim' => Tenant::empresa()->config('label_alimentacao') ?: 'Alimentação',
         ]);
     }

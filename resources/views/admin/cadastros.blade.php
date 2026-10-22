@@ -56,32 +56,89 @@
   </div>
 @endforeach
 
-<div class="card p-4 space-y-2 md:col-span-2">
-  <h2 class="font-bold text-sm text-slate-500 uppercase">Tipos de passageiro (passagem)</h2>
-  <p class="text-xs text-slate-500">Ex.: Adulto 100%, Criança meia 50%, Idoso 50%, PCD. Cada tipo é por <b>porcentagem</b> da tarifa OU <b>valor fixo</b>.</p>
-  <form method="post" action="{{ route('admin.tipos-passageiro.salvar') }}" class="flex flex-wrap gap-2 items-end border-b pb-3" x-data="{modo:'porcentagem'}">@csrf
-    <input name="nome" class="input !min-h-[40px] flex-1 min-w-[140px]" placeholder="Nome (ex.: Criança meia)" required maxlength="60">
-    <select name="modo" x-model="modo" class="input !min-h-[40px] !w-40"><option value="porcentagem">Porcentagem</option><option value="valor">Valor fixo</option></select>
-    <div x-show="modo==='porcentagem'" class="flex items-center gap-1"><input name="percentual" type="number" min="0" max="100" value="100" class="input !min-h-[40px] !w-24 text-right"><span class="text-xs">%</span></div>
-    <div x-show="modo==='valor'" x-cloak><input name="valor_fixo" type="number" step="0.01" min="0" class="input !min-h-[40px] !w-28 text-right" placeholder="R$"></div>
-    <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="paga_taxa" value="1" checked class="w-5 h-5 rounded"> paga taxa</label>
-    <button class="btn btn-accent btn-sm">+ Adicionar</button>
+<div class="card p-4 space-y-2 md:col-span-2" x-data="tiposEditor(@js($tiposPassageiro->map(fn($t)=>[
+     'id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor',
+     'percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,
+     'eh_normal'=>(bool)$t->eh_normal,'paga_taxa'=>(bool)$t->paga_taxa,
+   ])->values()))">
+  <h2 class="font-bold text-sm text-slate-500 uppercase">Tipos de passageiro</h2>
+  <p class="text-xs text-slate-500">Escolha o modo: <b>Valor</b> (Tarifa + Alimentação por rota) ou <b>Porcentagem</b> (% do Normal, automático). Marque qual tipo é o <b>Normal</b> (base do cálculo — ex.: Adulto).</p>
+  <form method="post" action="{{ route('admin.tipos-passageiro.salvar') }}" class="space-y-2">@csrf
+    <template x-for="(t,i) in tipos" :key="i">
+      <div class="rounded-xl border-l-4 border border-slate-200 p-3 flex flex-wrap items-end gap-3" :style="`border-left-color:${t.cor}`">
+        <div class="min-w-[150px] flex-1"><label class="label !text-xs">Nome</label>
+          <input x-model="t.nome" :name="`tipos[${i}][nome]`" class="input !min-h-[40px]" required maxlength="60" placeholder="Ex.: Criança meia"></div>
+        <div><label class="label !text-xs">Cor</label>
+          <input type="color" x-model="t.cor" :name="`tipos[${i}][cor]`" class="input !p-1 h-10 w-14"></div>
+        <div><label class="label !text-xs">Modo</label>
+          <select x-model="t.modo" :name="`tipos[${i}][modo]`" class="input !min-h-[40px] !w-48" :disabled="t.eh_normal">
+            <option value="valor">Valor (Tarifa+Alim.)</option>
+            <option value="porcentagem">Porcentagem do Normal</option>
+          </select></div>
+        <div x-show="t.modo==='porcentagem' && !t.eh_normal" class="flex items-end gap-1"><div><label class="label !text-xs">% do Normal</label>
+          <input type="number" min="0" max="100" x-model.number="t.percentual" :name="`tipos[${i}][percentual]`" class="input !min-h-[40px] !w-24 text-right"></div><span class="text-sm pb-2">%</span></div>
+        <template x-if="t.modo==='valor' || t.eh_normal">
+          <div class="flex items-end gap-2">
+            <div><label class="label !text-xs">Tarifa Padrão</label>
+              <input type="number" step="0.01" min="0" x-model.number="t.tarifa_padrao" :name="`tipos[${i}][tarifa_padrao]`" class="input !min-h-[40px] !w-28 text-right" placeholder="0"></div>
+            <div><label class="label !text-xs">Aliment. Padrão</label>
+              <input type="number" step="0.01" min="0" x-model.number="t.alimentacao_padrao" :name="`tipos[${i}][alimentacao_padrao]`" class="input !min-h-[40px] !w-28 text-right" placeholder="0"></div>
+          </div>
+        </template>
+        <label class="flex items-center gap-1.5 text-sm pb-2 cursor-pointer" title="Base do cálculo das porcentagens">
+          <input type="radio" name="__normal" :checked="t.eh_normal" @change="marcarNormal(i)" class="w-4 h-4"> Normal</label>
+        <input type="hidden" :name="`tipos[${i}][eh_normal]`" :value="t.eh_normal ? 1 : ''">
+        <input type="hidden" :name="`tipos[${i}][paga_taxa]`" :value="t.paga_taxa ? 1 : ''">
+        <button type="button" @click="remover(i)" class="text-red-500 text-xl pb-1" title="Remover">×</button>
+      </div>
+    </template>
+    <div class="flex items-center gap-2 pt-1">
+      <button type="button" @click="adicionar()" class="btn btn-ghost btn-sm">+ Adicionar Tipo</button>
+      <button class="btn btn-accent btn-sm">Salvar Tipos</button>
+    </div>
   </form>
-  <div class="space-y-2">
-    @forelse($tiposPassageiro as $t)
-      <form method="post" action="{{ route('admin.tipos-passageiro.salvar',$t) }}" class="flex flex-wrap items-end gap-2 {{ $t->ativo?'':'opacity-50' }}" x-data="{modo:'{{ $t->modo }}'}">@csrf
-        <div class="flex-1 min-w-[140px]"><input name="nome" class="input !min-h-[38px]" value="{{ $t->nome }}" required></div>
-        <select name="modo" x-model="modo" class="input !min-h-[38px] !w-36"><option value="porcentagem" @selected($t->modo==='porcentagem')>Porcentagem</option><option value="valor" @selected($t->modo==='valor')>Valor fixo</option></select>
-        <div x-show="modo==='porcentagem'" class="flex items-center gap-1"><input name="percentual" type="number" min="0" max="100" value="{{ $t->percentual }}" class="input !min-h-[38px] !w-20 text-right"><span class="text-xs">%</span></div>
-        <div x-show="modo==='valor'" x-cloak><input name="valor_fixo" type="number" step="0.01" min="0" value="{{ number_format($t->valor_fixo,2,'.','') }}" class="input !min-h-[38px] !w-24 text-right"></div>
-        <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="paga_taxa" value="1" @checked($t->paga_taxa) class="w-5 h-5 rounded"> taxa</label>
-        <button class="btn btn-primary btn-sm">Salvar</button>
-        <a href="#" onclick="event.preventDefault(); if(confirm('Remover tipo?')) this.closest('form').nextElementSibling.submit();" class="text-red-500 text-xs pb-2">remover</a>
-      </form>
-      <form method="post" action="{{ route('admin.cadastros.destroy',['tipos_passageiro',$t->id]) }}" class="hidden">@csrf @method('DELETE')</form>
-    @empty <div class="text-slate-400 text-sm">Nenhum tipo ainda.</div> @endforelse
-  </div>
 </div>
+
+@push('scripts')
+<script>
+function tiposEditor(tipos){
+  return {
+    tipos: (tipos&&tipos.length) ? tipos : [{id:null,nome:'Adulto',cor:'#2563eb',modo:'valor',percentual:100,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:true,paga_taxa:true}],
+    adicionar(){ this.tipos.push({id:null,nome:'',cor:'#7c3aed',modo:'porcentagem',percentual:50,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:false,paga_taxa:true}); },
+    remover(i){ const era=this.tipos[i].eh_normal; this.tipos.splice(i,1); if(era && this.tipos.length) this.tipos[0].eh_normal=true; },
+    marcarNormal(i){ this.tipos.forEach((t,k)=>{ t.eh_normal = (k===i); if(k===i) t.modo='valor'; }); },
+  };
+}
+</script>
+@endpush
+
+<div class="card p-4 space-y-2 md:col-span-2" x-data="taxasEditor(@js(($taxasEmbarque ?? collect())->map(fn($t)=>['origem'=>$t->origem,'destino'=>$t->destino,'taxa'=>(float)$t->taxa])->values()))">
+  <h2 class="font-bold text-sm text-slate-500 uppercase">💲 Taxa de embarque</h2>
+  <p class="text-xs text-slate-500">Taxa por trecho (Embarque → Destino), independente do tipo e da rota. Vale nos dois sentidos.</p>
+  <form method="post" action="{{ route('admin.taxas-embarque.salvar') }}" class="space-y-2">@csrf
+    <div class="grid grid-cols-12 gap-2 text-[11px] font-bold text-slate-500 uppercase px-1">
+      <div class="col-span-5">Embarque</div><div class="col-span-5">Destino</div><div class="col-span-2">Taxa (R$)</div>
+    </div>
+    <template x-for="(t,i) in taxas" :key="i">
+      <div class="grid grid-cols-12 gap-2 items-center">
+        <input x-model="t.origem" :name="`taxas[${i}][origem]`" list="locais" class="input !min-h-[38px] col-span-5" placeholder="Embarque">
+        <input x-model="t.destino" :name="`taxas[${i}][destino]`" list="locais" class="input !min-h-[38px] col-span-4" placeholder="Destino">
+        <input x-model.number="t.taxa" :name="`taxas[${i}][taxa]`" type="number" step="0.01" min="0" class="input !min-h-[38px] col-span-2 text-right" placeholder="0,00">
+        <button type="button" @click="taxas.splice(i,1)" class="col-span-1 text-red-500 text-xl">×</button>
+      </div>
+    </template>
+    <div class="flex items-center gap-2 pt-1">
+      <button type="button" @click="taxas.push({origem:'',destino:'',taxa:0})" class="btn btn-ghost btn-sm">+ Adicionar</button>
+      <button class="btn btn-accent btn-sm">Salvar</button>
+    </div>
+  </form>
+</div>
+
+@push('scripts')
+<script>
+function taxasEditor(taxas){ return { taxas: (taxas&&taxas.length)?taxas:[{origem:'',destino:'',taxa:0}] }; }
+</script>
+@endpush
 
 <div class="card p-4 space-y-2 md:col-span-2">
   <h2 class="font-bold text-sm text-slate-500 uppercase">Categorias do caixa (entrada/saída avulsa)</h2>

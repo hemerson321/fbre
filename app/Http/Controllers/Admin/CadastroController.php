@@ -17,6 +17,7 @@ use App\Models\Rota;
 use App\Models\Setor;
 use App\Models\AvulsoCategoria;
 use App\Models\TabelaPreco;
+use App\Models\TaxaEmbarque;
 use App\Models\TipoPassageiro;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
@@ -43,9 +44,10 @@ class CadastroController extends Controller
             'produtos' => Produto::orderBy('nome')->get(),
             'estacoes' => Estacao::orderBy('nome')->get(),
             'categorias' => AvulsoCategoria::orderBy('ordem')->orderBy('nome')->get(),
-            'tiposPassageiro' => TipoPassageiro::orderBy('ordem')->orderBy('nome')->get(),
-            'precosMapa' => TabelaPreco::where('ativo', true)->get(['origem', 'destino', 'passagem', 'taxa_embarque', 'alimentacao'])
-                ->mapWithKeys(fn ($t) => [mb_strtolower($t->origem.'|'.$t->destino) => ['p' => (float) $t->passagem, 't' => (float) $t->taxa_embarque, 'a' => (float) $t->alimentacao]])
+            'tiposPassageiro' => TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(),
+            'taxasEmbarque' => TaxaEmbarque::where('ativo', true)->orderBy('origem')->orderBy('destino')->get(),
+            'trechoPrecosMapa' => \App\Models\TrechoPreco::where('ativo', true)->get(['origem', 'destino', 'tipo_passageiro_id', 'tarifa', 'alimentacao'])
+                ->mapWithKeys(fn ($r) => [mb_strtolower($r->origem.'|'.$r->destino.'|'.$r->tipo_passageiro_id) => ['tarifa' => (float) $r->tarifa, 'alim' => (float) $r->alimentacao]])
                 ->toArray(),
             'usaTaxaServico' => (bool) \App\Support\Tenant::empresa()->config('usa_taxa_servico', false),
             'usaAlimentacao' => (bool) \App\Support\Tenant::empresa()->config('usa_alimentacao', false),
@@ -90,29 +92,60 @@ class CadastroController extends Controller
     }
 
     /** Cria ou edita um tipo de passageiro (porcentagem ou valor fixo). */
-    public function salvarTipoPassageiro(Request $request, ?TipoPassageiro $tipo = null)
+    /** Salva TODOS os tipos de passageiro de uma vez (editor em lote). */
+    public function salvarTiposPassageiro(Request $request)
     {
         $data = $request->validate([
-            'nome' => 'required|string|max:60',
-            'modo' => 'required|in:porcentagem,valor',
-            'percentual' => 'nullable|integer|min:0|max:100',
-            'valor_fixo' => 'nullable|numeric|min:0',
-            'paga_taxa' => 'nullable|boolean',
+            'tipos' => 'required|array|min:1',
+            'tipos.*.id' => 'nullable|integer',
+            'tipos.*.nome' => 'required|string|max:60',
+            'tipos.*.cor' => 'nullable|string|max:9',
+            'tipos.*.modo' => 'required|in:porcentagem,valor',
+            'tipos.*.percentual' => 'nullable|integer|min:0|max:100',
+            'tipos.*.tarifa_padrao' => 'nullable|numeric|min:0',
+            'tipos.*.alimentacao_padrao' => 'nullable|numeric|min:0',
+            'tipos.*.eh_normal' => 'nullable',
+            'tipos.*.paga_taxa' => 'nullable',
         ]);
-        $payload = [
-            'nome' => $data['nome'],
-            'modo' => $data['modo'],
-            'percentual' => $data['modo'] === 'porcentagem' ? (int) ($data['percentual'] ?? 100) : 100,
-            'valor_fixo' => $data['modo'] === 'valor' ? (float) ($data['valor_fixo'] ?? 0) : 0,
-            'paga_taxa' => $request->boolean('paga_taxa'),
-            'ativo' => true,
-        ];
-        if ($tipo && $tipo->exists) {
-            $tipo->update($payload);
-            return back()->with('ok', 'Tipo atualizado.');
+
+        $vistos = [];
+        $ordem = 1;
+        $normalId = null;
+        foreach ($data['tipos'] as $row) {
+            $ehNormal = ! empty($row['eh_normal']);
+            $modo = $ehNormal ? 'valor' : $row['modo']; // o Normal é sempre base de valor
+            $payload = [
+                'nome' => trim($row['nome']),
+                'cor' => $row['cor'] ?: '#2563eb',
+                'modo' => $modo,
+                'percentual' => $modo === 'porcentagem' ? (int) ($row['percentual'] ?? 100) : 100,
+                'tarifa_padrao' => $modo === 'valor' ? (float) ($row['tarifa_padrao'] ?? 0) : 0,
+                'alimentacao_padrao' => $modo === 'valor' ? (float) ($row['alimentacao_padrao'] ?? 0) : 0,
+                'paga_taxa' => ! empty($row['paga_taxa']),
+                'eh_normal' => $ehNormal,
+                'ativo' => true,
+                'ordem' => $ordem++,
+            ];
+            if (! empty($row['id']) && ($t = TipoPassageiro::find($row['id']))) {
+                $t->update($payload);
+            } else {
+                $t = TipoPassageiro::create($payload);
+            }
+            $vistos[] = $t->id;
+            if ($ehNormal && ! $normalId) $normalId = $t->id;
         }
-        TipoPassageiro::create($payload + ['ordem' => (int) (TipoPassageiro::max('ordem') ?? 0) + 1]);
-        return back()->with('ok', 'Tipo criado.');
+
+        // garante exatamente UM normal
+        if (! $normalId && ! empty($vistos)) {
+            $normalId = $vistos[0];
+            TipoPassageiro::whereKey($normalId)->update(['eh_normal' => true, 'modo' => 'valor']);
+        }
+        TipoPassageiro::whereIn('id', $vistos)->where('id', '!=', $normalId)->update(['eh_normal' => false]);
+
+        // removidos: desativa (preserva histórico de passagens)
+        TipoPassageiro::whereNotIn('id', $vistos ?: [0])->update(['ativo' => false]);
+
+        return back()->with('ok', 'Tipos de passageiro salvos.');
     }
 
     /** Configura poltrona de uma embarcação (usa/qtd/colunas). */
@@ -175,5 +208,27 @@ class CadastroController extends Controller
         });
 
         return back()->with('ok', 'Sistema zerado. As encomendas começam do 000001.');
+    }
+
+    /** Salva a tabela de Taxa de Embarque (Embarque → Destino → R$). */
+    public function salvarTaxasEmbarque(Request $request)
+    {
+        $data = $request->validate([
+            'taxas' => 'nullable|array',
+            'taxas.*.origem' => 'nullable|string|max:80',
+            'taxas.*.destino' => 'nullable|string|max:80',
+            'taxas.*.taxa' => 'nullable|numeric|min:0',
+        ]);
+        TaxaEmbarque::query()->delete();
+        foreach ($data['taxas'] ?? [] as $t) {
+            $o = trim($t['origem'] ?? '');
+            $d = trim($t['destino'] ?? '');
+            if ($o === '' || $d === '' || mb_strtolower($o) === mb_strtolower($d)) continue;
+            TaxaEmbarque::updateOrCreate(
+                ['empresa_id' => \App\Support\Tenant::id(), 'origem' => $o, 'destino' => $d],
+                ['taxa' => (float) ($t['taxa'] ?? 0), 'ativo' => true],
+            );
+        }
+        return back()->with('ok', 'Taxas de embarque salvas.');
     }
 }

@@ -1,6 +1,6 @@
 @php $edit = (bool) $rota; @endphp
 <form method="post" action="{{ $edit ? route('admin.rotas.update',$rota) : route('admin.rotas.store') }}"
-      x-data="rotaForm({{ $edit ? $rota->paradas->map(fn($p)=>['localidade'=>$p->localidade,'dia_semana'=>$p->dia_semana,'hora'=>$p->hora? substr($p->hora,0,5):''])->toJson() : '[]' }}, @js($precosMapa ?? []), @js(['taxa'=>($usaTaxaServico ?? false),'alim'=>($usaAlimentacao ?? false)]))" class="space-y-3">
+      x-data="rotaForm({{ $edit ? $rota->paradas->map(fn($p)=>['localidade'=>$p->localidade,'dia_semana'=>$p->dia_semana,'hora'=>$p->hora? substr($p->hora,0,5):''])->toJson() : '[]' }}, @js($trechoPrecosMapa ?? []), @js(($tiposPassageiro ?? collect())->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor','percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,'eh_normal'=>(bool)$t->eh_normal])->values()), @js(['alim'=>($usaAlimentacao ?? true)]))" class="space-y-3">
 @csrf @if($edit) @method('PUT') @endif
 <div class="grid sm:grid-cols-2 gap-3">
   <div><label class="label">Nome da rota</label><input name="nome" class="input" required value="{{ $edit ? $rota->nome : '' }}" placeholder="Ex.: Linha Tefé"></div>
@@ -33,31 +33,49 @@
   <p class="text-xs text-slate-400 mt-1">A 1ª parada define quando a viagem começa (dia da semana da partida).</p>
 </div>
 <div x-show="trechos.length" x-cloak class="border-t pt-3">
-  <label class="label">Preços das passagens (por trecho)</label>
-  <p class="text-xs text-slate-400 mb-2">Digite o valor de cada origem → destino. <b>Tarifa</b> é o transporte<span x-show="usaTaxa"> · <b>Serviço</b> é a taxa de serviço</span><span x-show="usaAlim"> · <b>Alim.</b> é a alimentação</span>. Subida e descida podem ter preços diferentes; se deixar o inverso em branco, usa o outro sentido.</p>
-  <div class="grid gap-x-4 gap-y-1.5" :class="(usaTaxa||usaAlim)?'sm:grid-cols-1':'sm:grid-cols-2'">
+  <label class="label">Preços das passagens (por trecho e por tipo)</label>
+  <p class="text-xs text-slate-400 mb-2">Tipos <b>Valor</b> têm Tarifa (e Alimentação) próprios. Tipos <b>Porcentagem</b> saem automáticos do <b>Normal</b>. Subida e descida podem ter preços diferentes.</p>
+  {{-- legenda de cores --}}
+  <div class="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-xs">
+    <template x-for="tp in tipos" :key="'lg'+tp.id">
+      <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm" :style="`background:${tp.cor}`"></span><span x-text="tp.nome"></span></span>
+    </template>
+  </div>
+  <div class="space-y-3">
     <template x-for="t in trechos" :key="t.key">
-      <div class="flex items-center gap-2 flex-wrap" x-data="{c: ensure(t.key)}">
-        <span class="text-sm flex-1 min-w-[120px] truncate" x-text="t.o + ' → ' + t.d"></span>
-        <label class="flex items-center gap-1 shrink-0"><span class="text-[11px] text-slate-400 w-10 text-right">Tarifa</span>
-          <div class="relative"><span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]">R$</span>
-          <input type="number" step="0.01" min="0" class="input !min-h-[34px] !w-24 !pl-6 text-right text-sm" x-model.number="c.p" placeholder="0,00"></div></label>
-        <label class="flex items-center gap-1 shrink-0" x-show="usaTaxa"><span class="text-[11px] text-slate-400 w-10 text-right">Serviço</span>
-          <div class="relative"><span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]">R$</span>
-          <input type="number" step="0.01" min="0" class="input !min-h-[34px] !w-24 !pl-6 text-right text-sm" x-model.number="c.t" placeholder="0,00"></div></label>
-        <label class="flex items-center gap-1 shrink-0" x-show="usaAlim"><span class="text-[11px] text-slate-400 w-10 text-right">Alim.</span>
-          <div class="relative"><span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]">R$</span>
-          <input type="number" step="0.01" min="0" class="input !min-h-[34px] !w-24 !pl-6 text-right text-sm" x-model.number="c.a" placeholder="0,00"></div></label>
+      <div class="rounded-xl border border-slate-200 p-3">
+        <div class="font-semibold text-sm mb-2 flex items-center gap-1"><span class="text-slate-400">①</span><span x-text="t.o + ' → ' + t.d"></span></div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <template x-for="tp in tipos" :key="t.key+'-'+tp.id">
+            <div class="rounded-lg border p-2" :style="`border-left:4px solid ${tp.cor}`">
+              <div class="text-[11px] font-bold uppercase leading-tight" :style="`color:${tp.cor}`"
+                   x-text="tp.nome + ((tp.modo==='porcentagem' && !tp.eh_normal) ? ' ('+tp.percentual+'%)' : '')"></div>
+              <template x-if="tp.modo==='valor' || tp.eh_normal">
+                <div class="flex items-end gap-2 mt-1" x-data="{c: ensure(t.key, tp.id, tp)}">
+                  <div><div class="text-[10px] text-slate-400">Tarifa</div>
+                    <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-20 text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
+                  <div x-show="usaAlim"><div class="text-[10px] text-slate-400">Aliment.</div>
+                    <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-20 text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
+                  <div class="text-[11px] font-bold pb-1" :style="`color:${tp.cor}`" x-text="'= '+moeda((Number(c.tarifa)||0)+(usaAlim?(Number(c.alim)||0):0))"></div>
+                </div>
+              </template>
+              <template x-if="tp.modo==='porcentagem' && !tp.eh_normal">
+                <div class="text-sm font-bold mt-1" :style="`color:${tp.cor}`" x-text="'= '+moeda(calcPct(t.key, tp))"></div>
+              </template>
+            </div>
+          </template>
+        </div>
       </div>
     </template>
   </div>
-  <template x-for="(t,i) in trechos" :key="'h'+t.key">
+  {{-- hidden: uma linha por (trecho x tipo Valor) --}}
+  <template x-for="(r,i) in submitRows" :key="'h'+i">
     <span class="hidden">
-      <input type="hidden" :name="`precos[${i}][origem]`" :value="t.o">
-      <input type="hidden" :name="`precos[${i}][destino]`" :value="t.d">
-      <input type="hidden" :name="`precos[${i}][valor]`" :value="(precos[t.key]||{}).p || 0">
-      <input type="hidden" :name="`precos[${i}][taxa]`" :value="(precos[t.key]||{}).t || 0">
-      <input type="hidden" :name="`precos[${i}][alim]`" :value="(precos[t.key]||{}).a || 0">
+      <input type="hidden" :name="`precos[${i}][origem]`" :value="r.origem">
+      <input type="hidden" :name="`precos[${i}][destino]`" :value="r.destino">
+      <input type="hidden" :name="`precos[${i}][tipo_id]`" :value="r.tipo_id">
+      <input type="hidden" :name="`precos[${i}][tarifa]`" :value="r.tarifa">
+      <input type="hidden" :name="`precos[${i}][alim]`" :value="r.alim">
     </span>
   </template>
 </div>
@@ -68,18 +86,33 @@
 @once
 @push('scripts')
 <script>
-function rotaForm(paradas, precos, flags){
+function rotaForm(paradas, precos, tipos, flags){
   const p = (paradas && paradas.length) ? paradas : [{localidade:'',dia_semana:'',hora:''},{localidade:'',dia_semana:'',hora:''}];
-  const norm = {};
-  Object.keys(precos||{}).forEach(k=>{ const v=precos[k];
-    norm[k] = (v && typeof v==='object') ? {p:Number(v.p)||0,t:Number(v.t)||0,a:Number(v.a)||0} : {p:Number(v)||0,t:0,a:0};
-  });
   return {
     paradas: p.map(x=>({localidade:x.localidade||'', dia_semana:(x.dia_semana??'')+'', hora:x.hora||''})),
-    precos: norm,
-    usaTaxa: !!(flags&&flags.taxa), usaAlim: !!(flags&&flags.alim),
-    ensure(key){ if(!this.precos[key]) this.precos[key]={p:0,t:0,a:0}; return this.precos[key]; },
+    precos: Object.assign({}, precos||{}),
+    tipos: (tipos||[]).map(t=>({...t})),
+    usaAlim: !!(flags&&flags.alim),
     add(){ this.paradas.push({localidade:'',dia_semana:'',hora:''}); },
+    moeda(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); },
+    get normal(){ return this.tipos.find(t=>t.eh_normal) || this.tipos[0] || null; },
+    get valorTipos(){ return this.tipos.filter(t=>t.modo==='valor'||t.eh_normal); },
+    cellKey(trechoKey,tipoId){ return trechoKey+'|'+tipoId; },
+    ensure(trechoKey,tipoId,tipo){ const k=this.cellKey(trechoKey,tipoId);
+      if(!this.precos[k]) this.precos[k]={tarifa: tipo?Number(tipo.tarifa_padrao)||0:0, alim: tipo?Number(tipo.alimentacao_padrao)||0:0};
+      return this.precos[k]; },
+    calcPct(trechoKey,tp){ const n=this.normal; if(!n) return 0;
+      const nc=this.precos[this.cellKey(trechoKey,n.id)];
+      const baseT = nc?Number(nc.tarifa)||0:Number(n.tarifa_padrao)||0;
+      const baseA = this.usaAlim ? (nc?Number(nc.alim)||0:Number(n.alimentacao_padrao)||0) : 0;
+      return (baseT+baseA)*(Number(tp.percentual)||0)/100; },
+    get submitRows(){ const rows=[];
+      this.trechos.forEach(t=>{ this.valorTipos.forEach(tp=>{
+        const c=this.precos[this.cellKey(t.key,tp.id)];
+        const tarifa=c?Number(c.tarifa)||0:0; const alim=c?(this.usaAlim?Number(c.alim)||0:0):0;
+        if(tarifa>0||alim>0) rows.push({origem:t.o,destino:t.d,tipo_id:tp.id,tarifa,alim});
+      }); });
+      return rows; },
     get trechos(){
       const cidades = this.paradas.map(p=>(p.localidade||'').trim()).filter(Boolean);
       const vistos = new Set(); const out=[];

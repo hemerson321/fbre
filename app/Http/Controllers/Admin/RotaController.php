@@ -7,6 +7,7 @@ use App\Models\Embarcacao;
 use App\Models\Localidade;
 use App\Models\Rota;
 use App\Models\TabelaPreco;
+use App\Models\TrechoPreco;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
 
@@ -23,7 +24,7 @@ class RotaController extends Controller
         $data = $this->validar($request);
         $rota = Rota::create(['nome' => $data['nome'], 'embarcacao_id' => $data['embarcacao_id'] ?? null, 'descricao' => $data['descricao'] ?? null]);
         $this->salvarParadas($rota, $data['paradas']);
-        $this->salvarPrecos($data['precos'] ?? []);
+        $this->salvarPrecos($data['precos'] ?? [], $data['paradas']);
         return back()->with('ok', "Rota {$rota->nome} criada.");
     }
 
@@ -34,7 +35,7 @@ class RotaController extends Controller
         $rota->update(['nome' => $data['nome'], 'embarcacao_id' => $data['embarcacao_id'] ?? null, 'descricao' => $data['descricao'] ?? null]);
         $rota->paradas()->delete();
         $this->salvarParadas($rota, $data['paradas']);
-        $this->salvarPrecos($data['precos'] ?? []);
+        $this->salvarPrecos($data['precos'] ?? [], $data['paradas']);
         return back()->with('ok', 'Rota atualizada.');
     }
 
@@ -58,26 +59,44 @@ class RotaController extends Controller
             'precos' => 'nullable|array',
             'precos.*.origem' => 'required_with:precos|string|max:80',
             'precos.*.destino' => 'required_with:precos|string|max:80',
-            'precos.*.valor' => 'nullable|numeric|min:0',
-            'precos.*.taxa' => 'nullable|numeric|min:0',
+            'precos.*.tipo_id' => 'required_with:precos|integer',
+            'precos.*.tarifa' => 'nullable|numeric|min:0',
             'precos.*.alim' => 'nullable|numeric|min:0',
         ]);
     }
 
-    /** Salva/atualiza o preço de cada trecho (origem→destino) na tabela de preços. */
-    protected function salvarPrecos(array $precos): void
+    /** Salva o preço por TIPO de cada trecho (origem→destino) em trecho_precos. */
+    protected function salvarPrecos(array $precos, array $paradas = []): void
     {
+        $empresaId = Tenant::id();
+
+        // pares (origem,destino) da rota — para limpar antes de regravar (reflete o editor)
+        $cidades = [];
+        foreach ($paradas as $p) {
+            $c = trim($p['localidade'] ?? '');
+            if ($c !== '') $cidades[] = $c;
+        }
+        foreach ($cidades as $o) {
+            foreach ($cidades as $d) {
+                if (mb_strtolower($o) === mb_strtolower($d)) continue;
+                TrechoPreco::where('empresa_id', $empresaId)
+                    ->whereRaw('LOWER(origem)=?', [mb_strtolower($o)])
+                    ->whereRaw('LOWER(destino)=?', [mb_strtolower($d)])
+                    ->delete();
+            }
+        }
+
         foreach ($precos as $pr) {
             $o = trim($pr['origem'] ?? '');
             $d = trim($pr['destino'] ?? '');
-            $v = (float) ($pr['valor'] ?? 0);
-            $tx = (float) ($pr['taxa'] ?? 0);
-            $al = (float) ($pr['alim'] ?? 0);
-            if ($o === '' || $d === '' || mb_strtolower($o) === mb_strtolower($d)) continue;
-            if ($v <= 0 && $tx <= 0 && $al <= 0) continue;
-            TabelaPreco::updateOrCreate(
-                ['empresa_id' => Tenant::id(), 'origem' => $o, 'destino' => $d],
-                ['passagem' => $v, 'taxa_embarque' => $tx, 'alimentacao' => $al, 'ativo' => true],
+            $tipoId = (int) ($pr['tipo_id'] ?? 0);
+            $tarifa = (float) ($pr['tarifa'] ?? 0);
+            $alim = (float) ($pr['alim'] ?? 0);
+            if ($o === '' || $d === '' || $tipoId <= 0 || mb_strtolower($o) === mb_strtolower($d)) continue;
+            if ($tarifa <= 0 && $alim <= 0) continue;
+            TrechoPreco::updateOrCreate(
+                ['empresa_id' => $empresaId, 'origem' => $o, 'destino' => $d, 'tipo_passageiro_id' => $tipoId],
+                ['tarifa' => $tarifa, 'alimentacao' => $alim, 'ativo' => true],
             );
         }
     }

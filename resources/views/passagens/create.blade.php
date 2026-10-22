@@ -98,7 +98,7 @@
             <input type="date" class="field" x-model="viagemData" @change="viagemLabel=rotulo(viagemData)"></div>
         </div>
         <div x-show="precoInfo" class="text-[11px] font-semibold" style="color:var(--cor1)" x-cloak>
-          💲 Tabela: tarifa <span x-text="FBRE.moeda(basePassagem)"></span><template x-if="usaTaxa"><span> · <span x-text="labelTaxa"></span> <span x-text="FBRE.moeda(baseTaxa)"></span></span></template><template x-if="usaAlim"><span> · <span x-text="labelAlim"></span> <span x-text="FBRE.moeda(baseAlim)"></span></span></template>
+          💲 Preço do trecho carregado · tarifa base <span x-text="FBRE.moeda(baseNormal)"></span><template x-if="usaEmbarque && taxaDoTrecho()>0"><span> · <span x-text="labelTaxa"></span> <span x-text="FBRE.moeda(taxaDoTrecho())"></span></span></template>
         </div>
       </div>
     </section>
@@ -144,13 +144,13 @@
               <button type="button" class="w-8 h-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none" @click="rmPax(i)" x-show="passageiros.length>1" title="Remover">×</button>
             </div>
             <div><label class="lbl">Tipo</label>
-              <select class="field !min-h-0 py-1 text-sm" x-model="p.tipo" @change="aplicarTipo(p)">
-                @foreach($tipos as $t)<option value="{{ $t->nome }}">{{ $t->nome }} @if(($t->modo ?? 'porcentagem')==='valor'){{ 'R$ '.number_format($t->valor_fixo,2,',','.') }}@else({{ $t->percentual }}%)@endif</option>@endforeach
+              <select class="field !min-h-0 py-1 text-sm" x-model="p.tipo_id" @change="aplicarTipo(p)">
+                @foreach($tipos as $t)<option value="{{ $t->id }}">{{ $t->nome }}@if(($t->modo ?? 'valor')==='porcentagem' && !$t->eh_normal) ({{ $t->percentual }}%)@endif</option>@endforeach
               </select></div>
-            <div class="grid grid-cols-2 gap-2 mt-1" :class="(usaTaxa&&usaAlim)?'lg:grid-cols-3':((usaTaxa||usaAlim)?'lg:grid-cols-3':'lg:grid-cols-1')">
+            <div class="grid grid-cols-2 gap-2 mt-1" :class="(usaEmbarque&&usaAlim)?'lg:grid-cols-3':((usaEmbarque||usaAlim)?'lg:grid-cols-3':'lg:grid-cols-1')">
               <div><label class="lbl">Tarifa</label>
                 <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm" x-model.number="p.valor_passagem" @focus="$event.target.select()"></div>
-              <div x-show="usaTaxa" x-cloak><label class="lbl" x-text="labelTaxa"></label>
+              <div x-show="usaEmbarque" x-cloak><label class="lbl" x-text="labelTaxa"></label>
                 <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm" x-model.number="p.valor_taxa" @focus="$event.target.select()"></div>
               <div x-show="usaAlim" x-cloak><label class="lbl" x-text="labelAlim"></label>
                 <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm" x-model.number="p.valor_alimentacao" @focus="$event.target.select()"></div>
@@ -194,7 +194,7 @@
 
         <div class="rounded-2xl p-2.5 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
           <div class="flex justify-between text-xs opacity-75"><span>Passagens</span><span x-text="FBRE.moeda(subPassagem)"></span></div>
-          <div class="flex justify-between text-xs opacity-75" x-show="usaTaxa"><span x-text="labelTaxa"></span><span x-text="FBRE.moeda(subTaxa)"></span></div>
+          <div class="flex justify-between text-xs opacity-75" x-show="usaEmbarque"><span x-text="labelTaxa"></span><span x-text="FBRE.moeda(subTaxa)"></span></div>
           <div class="flex justify-between text-xs opacity-75" x-show="usaAlim"><span x-text="labelAlim"></span><span x-text="FBRE.moeda(subAlim)"></span></div>
           <div class="flex justify-between text-xs opacity-75" x-show="desconto>0"><span>Desconto</span><span x-text="'- '+FBRE.moeda(desconto)"></span></div>
           <div class="flex justify-between items-baseline mt-0.5"><span class="text-sm font-semibold opacity-90">Total</span><span class="text-xl font-extrabold tracking-tight" x-text="FBRE.moeda(total)"></span></div>
@@ -263,10 +263,11 @@
   function novaPassagem(){
     return {
       salvando:false, forma:'avista', imprimir:'navegador',
-      cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), precos:@js($precos),
+      cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4)])->values()),
       podeRetroativo:@js($podeRetroativo),
-      usaTaxa:@js($usaTaxaServico ?? false), usaAlim:@js($usaAlimentacao ?? false), labelTaxa:@js($labelTaxa ?? 'Taxa'), labelAlim:@js($labelAlim ?? 'Alimentação'),
+      usaEmbarque:@js($usaTaxaEmbarque ?? false), usaAlim:@js($usaAlimentacao ?? true), labelTaxa:@js($labelTaxa ?? 'Taxa de embarque'), labelAlim:@js($labelAlim ?? 'Alimentação'),
+      trechoMap:{}, taxaMap:{},
       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'',
       embarcacaoSel:@js((string) old('embarcacao_id', $embarcacaoPrincipal)),
       compradorNome:'', compradorTel:'', compradorDoc:'', observacao:'',
@@ -274,7 +275,7 @@
       desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
       meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
       passageiros:[],
-      basePassagem:0, baseTaxa:0, baseAlim:0, precoInfo:false,
+      precoInfo:false,
       // viagem
       rotaId:'', linhaNome:'', paradasInfo:[], viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
       diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
@@ -284,6 +285,11 @@
 
       init(){
         const op=window.FBRE_OP||{}; this.numeroPreview=(op.prefixo||'OP')+'-'+String(op.proximoSeq||1).padStart(4,'0');
+        // mapas de preco por tipo e de taxa de embarque (origem|destino[|tipo])
+        (this.trechoPrecos||[]).forEach(r=>{ this.trechoMap[(String(r.origem).toLowerCase())+'|'+(String(r.destino).toLowerCase())+'|'+r.tipo_passageiro_id]={tarifa:Number(r.tarifa)||0, alim:Number(r.alimentacao)||0}; });
+        (this.taxas||[]).forEach(r=>{ this.taxaMap[(String(r.origem).toLowerCase())+'|'+(String(r.destino).toLowerCase())]=Number(r.taxa)||0; });
+        // garante tipo_id inicial nos passageiros
+        if(this.tipos.length && this.normalId==null) this.normalId=this.tipos[0].id;
         try{ const o=localStorage.getItem('fbre_origem'); if(!this.origemSel && o) this.origemSel=o; }catch(e){}
         if(!this.origemSel && this.cidades.length) this.origemSel=this.cidades[0];
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
@@ -295,24 +301,40 @@
       },
 
       // ---- passageiros ----
-      novoPax(){ const t=this.tipos[0]||{nome:'Adulto',percentual:100,paga_taxa:true,modo:'porcentagem',valor_fixo:0}; return {id:Date.now()+Math.random(), nome:'', tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'porcentagem', valor_fixo:Number(t.valor_fixo)||0, documento:'', poltrona:'', valor_passagem:0, valor_taxa:0, valor_alimentacao:0}; },
+      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', valor_passagem:0, valor_taxa:0, valor_alimentacao:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       rmPax(i){ this.passageiros.splice(i,1); },
       aplicarTipo(p){
-        const t=this.tipos.find(x=>x.nome===p.tipo);
-        if(t){ p.percentual=t.percentual; p.paga_taxa=!!t.paga_taxa; p.modo=t.modo||'porcentagem'; p.valor_fixo=Number(t.valor_fixo)||0; }
-        if((p.modo||'porcentagem')==='valor'){ p.valor_passagem = Number(p.valor_fixo)||0; }
-        else if(this.basePassagem>0){ p.valor_passagem=Math.round(this.basePassagem*(p.percentual/100)*100)/100; }
-        p.valor_taxa = (this.usaTaxa && p.paga_taxa) ? this.baseTaxa : 0;
-        p.valor_alimentacao = this.usaAlim ? this.baseAlim : 0;
+        const t=this.tipos.find(x=>String(x.id)===String(p.tipo_id)) || this.tipos[0];
+        if(t){ p.tipo_id=t.id; p.tipo=t.nome; p.percentual=t.percentual; p.paga_taxa=!!t.paga_taxa; p.modo=t.modo||'valor'; }
+        const pr=this.precoDoTipo(t);
+        p.valor_passagem = pr.tarifa;
+        p.valor_alimentacao = this.usaAlim ? pr.alim : 0;
+        p.valor_taxa = (this.usaEmbarque && p.paga_taxa) ? this.taxaDoTrecho() : 0;
       },
+      trechoGet(tipoId){ const o=(this.origemSel||'').trim().toLowerCase(), d=(this.destinoSel||'').trim().toLowerCase();
+        return this.trechoMap[o+'|'+d+'|'+tipoId] || this.trechoMap[d+'|'+o+'|'+tipoId] || null; },
+      precoDoTipo(t){
+        if(!t) return {tarifa:0,alim:0};
+        if((t.modo||'valor')==='porcentagem' && !t.eh_normal){
+          const n=this.tipos.find(x=>String(x.id)===String(this.normalId));
+          const nc=n?this.trechoGet(n.id):null;
+          const baseT=nc?Number(nc.tarifa)||0:(n?Number(n.tarifa_padrao)||0:0);
+          const baseA=nc?Number(nc.alim)||0:(n?Number(n.alimentacao_padrao)||0:0);
+          const pct=(Number(t.percentual)||0)/100;
+          return {tarifa:Math.round(baseT*pct*100)/100, alim:Math.round(baseA*pct*100)/100};
+        }
+        const c=this.trechoGet(t.id);
+        return {tarifa: c?Number(c.tarifa)||0:(Number(t.tarifa_padrao)||0), alim: c?Number(c.alim)||0:(Number(t.alimentacao_padrao)||0)};
+      },
+      taxaDoTrecho(){ const o=(this.origemSel||'').trim().toLowerCase(), d=(this.destinoSel||'').trim().toLowerCase();
+        return Number(this.taxaMap[o+'|'+d] ?? this.taxaMap[d+'|'+o] ?? 0)||0; },
+      get baseNormal(){ const n=this.tipos.find(x=>String(x.id)===String(this.normalId)); const c=n?this.trechoGet(n.id):null; return c?Number(c.tarifa)||0:(n?Number(n.tarifa_padrao)||0:0); },
 
       // ---- preço pela tabela (origem/destino) ----
       aplicarPreco(){
-        const o=(this.origemSel||'').trim().toLowerCase(), d=(this.destinoSel||'').trim().toLowerCase();
-        const pr=this.precos.find(x=> (String(x.origem).toLowerCase()===o && String(x.destino).toLowerCase()===d) || (String(x.origem).toLowerCase()===d && String(x.destino).toLowerCase()===o));
-        if(pr){ this.basePassagem=Number(pr.passagem)||0; this.baseTaxa=Number(pr.taxa_embarque)||0; this.baseAlim=Number(pr.alimentacao)||0; this.precoInfo=true; this.passageiros.forEach(p=>this.aplicarTipo(p)); }
-        else { this.precoInfo=false; }
+        this.passageiros.forEach(p=>this.aplicarTipo(p));
+        this.precoInfo = this.baseNormal>0 || this.passageiros.some(p=>Number(p.valor_passagem)>0);
       },
       onRota(){ this.resolverLinha(); this.aplicarPreco(); if(this.usaPoltrona) this.carregarOcupadas(); },
 
