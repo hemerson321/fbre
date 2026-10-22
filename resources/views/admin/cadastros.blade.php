@@ -59,10 +59,10 @@
 <div class="card p-4 space-y-2 md:col-span-2" x-data="tiposEditor(@js($tiposPassageiro->map(fn($t)=>[
      'id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor',
      'percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,
-     'eh_normal'=>(bool)$t->eh_normal,'paga_taxa'=>(bool)$t->paga_taxa,'pct_sobre'=>$t->pct_sobre ?: 'tarifa',
+     'eh_normal'=>(bool)$t->eh_normal,'paga_taxa'=>(bool)$t->paga_taxa,'pct_sobre'=>$t->pct_sobre ?: 'tarifa','idade_min'=>$t->idade_min,'idade_max'=>$t->idade_max,
    ])->values()))">
   <h2 class="font-bold text-sm text-slate-500 uppercase">Tipos de passageiro</h2>
-  <p class="text-xs text-slate-500">Escolha o modo: <b>Valor</b> (Tarifa + Alimentação por rota) ou <b>Porcentagem</b> (% do Normal, automático). Marque qual tipo é o <b>Normal</b> (base do cálculo — ex.: Adulto).</p>
+  <p class="text-xs text-slate-500">Escolha o modo: <b>Valor</b> (Tarifa + Alimentação por rota) ou <b>Porcentagem</b> (% do Normal, automático). Marque qual tipo é o <b>Normal</b> (base do cálculo — ex.: Adulto). Defina a <b>Idade</b> (ex.: 1 a 5, 5 a 10) e o sistema escolhe o tipo automaticamente pela data de nascimento do passageiro.</p>
   <form method="post" action="{{ route('admin.tipos-passageiro.salvar') }}" class="space-y-2">@csrf
     <template x-for="(t,i) in tipos" :key="i">
       <div class="rounded-xl border-l-4 border border-slate-200 p-3 flex flex-wrap items-end gap-3" :style="`border-left-color:${t.cor}`">
@@ -70,6 +70,12 @@
           <input x-model="t.nome" :name="`tipos[${i}][nome]`" class="input !min-h-[40px]" required maxlength="60" placeholder="Ex.: Criança meia"></div>
         <div><label class="label !text-xs">Cor</label>
           <input type="color" x-model="t.cor" :name="`tipos[${i}][cor]`" class="input !p-1 h-10 w-14"></div>
+        <div><label class="label !text-xs">Idade (anos)</label>
+          <div class="flex items-center gap-1">
+            <input type="number" min="0" max="120" x-model.number="t.idade_min" :name="`tipos[${i}][idade_min]`" class="input !min-h-[40px] !w-14 text-center" placeholder="—">
+            <span class="text-xs text-slate-400">a</span>
+            <input type="number" min="0" max="120" x-model.number="t.idade_max" :name="`tipos[${i}][idade_max]`" class="input !min-h-[40px] !w-14 text-center" placeholder="—">
+          </div></div>
         <div><label class="label !text-xs">Modo <span x-show="t.eh_normal" class="text-slate-400">(base)</span></label>
           <select x-model="t.modo" :name="`tipos[${i}][modo]`" class="input !min-h-[40px] !w-48" :class="t.eh_normal ? 'pointer-events-none opacity-60' : ''" @mousedown="t.eh_normal && $event.preventDefault()">
             <option value="valor">Valor (Tarifa+Alim.)</option>
@@ -110,8 +116,8 @@
 <script>
 function tiposEditor(tipos){
   return {
-    tipos: (tipos&&tipos.length) ? tipos : [{id:null,nome:'Adulto',cor:'#2563eb',modo:'valor',percentual:100,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:true,paga_taxa:true,pct_sobre:'tarifa'}],
-    adicionar(){ this.tipos.push({id:null,nome:'',cor:'#7c3aed',modo:'porcentagem',percentual:50,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:false,paga_taxa:true,pct_sobre:'tarifa'}); },
+    tipos: (tipos&&tipos.length) ? tipos : [{id:null,nome:'Adulto',cor:'#2563eb',modo:'valor',percentual:100,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:true,paga_taxa:true,pct_sobre:'tarifa',idade_min:null,idade_max:null}],
+    adicionar(){ this.tipos.push({id:null,nome:'',cor:'#7c3aed',modo:'porcentagem',percentual:50,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:false,paga_taxa:true,pct_sobre:'tarifa',idade_min:null,idade_max:null}); },
     remover(i){ const era=this.tipos[i].eh_normal; this.tipos.splice(i,1); if(era && this.tipos.length) this.tipos[0].eh_normal=true; },
     marcarNormal(i){ this.tipos.forEach((t,k)=>{ t.eh_normal = (k===i); if(k===i) t.modo='valor'; }); },
   };
