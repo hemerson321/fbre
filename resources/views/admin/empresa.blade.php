@@ -30,6 +30,26 @@
   <p class="text-xs text-slate-400 mt-1">Depois é só definir os valores de cada trecho em <b>Cadastros gerais → rotas</b>.</p>
 </div>
 
+<div class="border-t pt-3 mt-1">
+  <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">WhatsApp por serviço</h2>
+  <p class="text-xs text-slate-500 mb-2">Escolha qual conexão de WhatsApp cada serviço usa. Cadastre as conexões no menu <b>WhatsApp</b>.</p>
+  @php $conexoesWa = $conexoesWa ?? collect(); @endphp
+  @if($conexoesWa->isEmpty())
+    <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">Nenhuma conexão cadastrada ainda. Vá em <b>WhatsApp</b> e cadastre uma (oficial ou não oficial).</p>
+  @else
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div><label class="label">Encomenda</label>
+        <select name="wa_conexao_encomenda" class="input"><option value="">— não usar —</option>
+          @foreach($conexoesWa as $c)<option value="{{ $c->id }}" @selected((int)$empresa->config('wa_conexao_encomenda')===$c->id)>{{ $c->rotulo() }}</option>@endforeach
+        </select></div>
+      <div><label class="label">Passagem <span class="text-slate-400">(futuro)</span></label>
+        <select name="wa_conexao_passagem" class="input"><option value="">— não usar —</option>
+          @foreach($conexoesWa as $c)<option value="{{ $c->id }}" @selected((int)$empresa->config('wa_conexao_passagem')===$c->id)>{{ $c->rotulo() }}</option>@endforeach
+        </select></div>
+    </div>
+  @endif
+</div>
+
 <button class="btn btn-accent w-full">Salvar</button>
 </form>
 @endsection

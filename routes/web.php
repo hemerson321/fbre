@@ -5,6 +5,7 @@ use App\Http\Controllers\CaixaController;
 use App\Http\Controllers\EncomendaController;
 use App\Http\Controllers\ImpressaoController;
 use App\Http\Controllers\Admin\EmpresaController;
+use App\Http\Controllers\Admin\WhatsappController;
 use App\Http\Controllers\Admin\CadastroController;
 use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\RelatorioController;
@@ -111,6 +112,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/rotas', [RotaController::class, 'store'])->name('rotas.store');
         Route::put('/rotas/{rota}', [RotaController::class, 'update'])->name('rotas.update');
         Route::post('/rotas/{rota}/toggle', [RotaController::class, 'toggle'])->name('rotas.toggle');
+        // WhatsApp (conexoes oficiais e nao oficiais)
+        Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp');
+        Route::post('/whatsapp/{conexao?}', [WhatsappController::class, 'salvar'])->name('whatsapp.salvar');
+        Route::delete('/whatsapp/{conexao}', [WhatsappController::class, 'excluir'])->name('whatsapp.excluir');
+        Route::post('/whatsapp/{conexao}/testar', [WhatsappController::class, 'testar'])->name('whatsapp.testar');
     });
 
     // ---------------- Super-admin (GERATEC) ----------------

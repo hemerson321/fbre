@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\WhatsappConexao;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +33,13 @@ class Empresa extends Model
     public function config(string $chave, $padrao = null)
     {
         return data_get($this->config, $chave, $padrao);
+    }
+
+    /** Conexão de WhatsApp escolhida para um serviço (encomenda, passagem...). */
+    public function whatsappConexao(string $servico = 'encomenda'): ?WhatsappConexao
+    {
+        $id = $this->config('wa_conexao_'.$servico);
+        return $id ? WhatsappConexao::where('ativo', true)->find($id) : null;
     }
 
     public function vencida(): bool

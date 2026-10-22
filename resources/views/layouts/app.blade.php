@@ -57,8 +57,12 @@ document.addEventListener('alpine:init', () => {
       setVal(num); el.value = fmt(num); syncHidden(num);
       try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){}
     };
+    const onFocus = () => { el.value = ''; };
+    const onBlur = () => read(v => { el.value = fmt(v); syncHidden(v); });
     el.addEventListener('input', onInput);
-    cleanup(() => el.removeEventListener('input', onInput));
+    el.addEventListener('focus', onFocus);
+    el.addEventListener('blur', onBlur);
+    cleanup(() => { el.removeEventListener('input', onInput); el.removeEventListener('focus', onFocus); el.removeEventListener('blur', onBlur); });
     read(v => { el.value = fmt(v); syncHidden(v); });
   });
 });
@@ -120,6 +124,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->isAdmin() || $u->isSuper()) $grupos['Administração'] = [
       ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
       ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
+      ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'],
       ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'],
   ];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];

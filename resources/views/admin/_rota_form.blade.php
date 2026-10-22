@@ -69,7 +69,7 @@
                         <div><div class="text-[10px] text-slate-500 font-semibold">Integral</div>
                           <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.integral"></div>
                         <div><div class="text-[10px] text-slate-500 font-semibold">Com desconto</div>
-                          <input type="text" inputmode="numeric" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="FBRE.fmtMoney(comDesc(c))" @input="setComDesc(c, FBRE.parseMoney($event.target.value)); $event.target.value=FBRE.fmtMoney(comDesc(c))"></div>
+                          <input type="text" inputmode="numeric" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="FBRE.fmtMoney(comDesc(c))" @input="setComDesc(c, FBRE.parseMoney($event.target.value)); $event.target.value=FBRE.fmtMoney(comDesc(c))" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(comDesc(c))"></div>
                         <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
                           <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.tarifa"></div>
                         <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>
@@ -96,7 +96,7 @@
                         <div><div class="text-[10px] text-slate-500 font-semibold">Integral</div>
                           <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.integral"></div>
                         <div><div class="text-[10px] text-slate-500 font-semibold">Com desconto</div>
-                          <input type="text" inputmode="numeric" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="FBRE.fmtMoney(comDesc(c))" @input="setComDesc(c, FBRE.parseMoney($event.target.value)); $event.target.value=FBRE.fmtMoney(comDesc(c))"></div>
+                          <input type="text" inputmode="numeric" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="FBRE.fmtMoney(comDesc(c))" @input="setComDesc(c, FBRE.parseMoney($event.target.value)); $event.target.value=FBRE.fmtMoney(comDesc(c))" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(comDesc(c))"></div>
                         <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
                           <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.tarifa"></div>
                         <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>

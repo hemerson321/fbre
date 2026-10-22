@@ -148,7 +148,7 @@
                 @foreach($tipos as $t)<option value="{{ $t->id }}">{{ $t->nome }}@if(($t->modo ?? 'valor')==='porcentagem' && !$t->eh_normal) ({{ $t->percentual }}%)@endif</option>@endforeach
               </select></div>
             <div class="mt-1"><label class="lbl">Valor (R$)</label>
-              <input type="text" inputmode="numeric" class="field !min-h-0 py-1 text-right text-sm font-semibold" :value="FBRE.fmtMoney(paxTotal(p))" @input="setPaxTotal(p, FBRE.parseMoney($event.target.value)); $event.target.value=FBRE.fmtMoney(paxTotal(p))"></div>
+              <input type="text" inputmode="numeric" class="field !min-h-0 py-1 text-right text-sm font-semibold" :value="FBRE.fmtMoney(paxTotal(p))" @input="setPaxTotal(p, FBRE.parseMoney($event.target.value)); $event.target.value=FBRE.fmtMoney(paxTotal(p))" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(paxTotal(p))"></div>
             <div class="flex items-center gap-2 mt-1.5">
               <input class="field !min-h-0 py-1 text-sm flex-1" placeholder="Documento (opcional)" x-model="p.documento">
               <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)">

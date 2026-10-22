@@ -91,8 +91,8 @@
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <div><label class="lbl">Peso (kg)</label><input type="number" step="0.01" min="0" class="field text-right" x-model.number="peso" @input="calcValor()" placeholder="0"></div>
         <div><label class="lbl">Volumes</label><input type="number" min="1" class="field text-center" x-model.number="volumes"></div>
-        <div><label class="lbl">Preço / kg</label><input type="text" inputmode="numeric" class="field text-right" :value="FBRE.fmtMoney(precoKilo)" @input="precoKilo=FBRE.parseMoney($event.target.value); calcValor(); $event.target.value=FBRE.fmtMoney(precoKilo)"></div>
-        <div><label class="lbl">Valor do frete</label><input type="text" inputmode="numeric" class="field text-right font-bold" style="color:var(--cor1)" :value="FBRE.fmtMoney(valor)" @input="valor=FBRE.parseMoney($event.target.value); valorManual=true; $event.target.value=FBRE.fmtMoney(valor)"></div>
+        <div><label class="lbl">Preço / kg</label><input type="text" inputmode="numeric" class="field text-right" :value="FBRE.fmtMoney(precoKilo)" @input="precoKilo=FBRE.parseMoney($event.target.value); calcValor(); $event.target.value=FBRE.fmtMoney(precoKilo)" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(precoKilo)"></div>
+        <div><label class="lbl">Valor do frete</label><input type="text" inputmode="numeric" class="field text-right font-bold" style="color:var(--cor1)" :value="FBRE.fmtMoney(valor)" @input="valor=FBRE.parseMoney($event.target.value); valorManual=true; $event.target.value=FBRE.fmtMoney(valor)" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(valor)"></div>
       </div>
       <p class="text-[11px] text-slate-400" x-show="peso>0 && precoKilo>0 && !valorManual" x-cloak>Calculado: <span x-text="peso"></span> kg × <span x-text="FBRE.moeda(precoKilo)"></span> = <b x-text="FBRE.moeda(peso*precoKilo)"></b></p>
       <input class="field" placeholder="Observação (opcional)" x-model="observacao">
