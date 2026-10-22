@@ -28,6 +28,7 @@
   <p class="text-xs text-slate-400 mb-2">Marque o módulo e, dentro dele, o que o operador pode fazer (cadastrar, dar baixa, imprimir).</p>
   <div class="space-y-1.5 mb-3">
     @foreach(\App\Support\Modulos::LISTA as $mk => [$mrot,$mic,$mcor,$mhex])
+      @continue($mk === 'avulso')
       @php $algum = $u->exists && $u->temModulo($mk); @endphp
       <div x-data="{ open: {{ $algum ? 'true':'false' }} }" class="border border-slate-200 rounded-xl overflow-hidden">
         <button type="button" @click="open=!open" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50">
@@ -48,33 +49,57 @@
       </div>
     @endforeach
   </div>
-  <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 border-t pt-2">Permissões gerais</div>
-  @php $perms = [
-    'perm_filtro'   => ['Ver encomendas / filtro', 'Lista com filtros, totais, protocolo e listagem'],
-    'perm_caixa'    => ['Ver caixa geral', 'Totais por operador e meio de pagamento de toda a empresa'],
-    'perm_relatorio'=> ['Meu relatório', 'Relatório só do que o próprio usuário fez'],
-    'perm_retroativo'=> ['Lançar em datas retroativas', 'Cadastrar em dias anteriores (feito na mão e lançado depois). Gerente já tem.'],
-    'perm_parcial'  => ['Receber pagamento parcial', 'Pode deixar saldo (valor parcial). Sem isso, só pago total ou a receber. Gerente já tem.'],
-    'perm_zerar'    => ['Zerar o sistema', 'Pode apagar TODAS as encomendas/caixa e recomeçar do zero (botão em Cadastros gerais). Use com cuidado.'],
-  ]; @endphp
-  @foreach($perms as $k=>[$l,$d])
-    <label class="flex items-start gap-3 py-1.5 cursor-pointer">
-      <input type="checkbox" name="{{ $k }}" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old($k, $u->exists ? $u->$k : in_array($k,['perm_filtro','perm_relatorio','perm_parcial'])))>
-      <span><span class="font-semibold text-sm">{{ $l }}</span><br><span class="text-xs text-slate-500">{{ $d }}</span></span>
-    </label>
-  @endforeach
+  {{-- CAIXA e RELATÓRIO do próprio operador (por isso fica junto dos módulos) --}}
+  @php $temCaixa = $u->exists && ($u->perm_caixa || $u->perm_avulso || $u->perm_relatorio); @endphp
+  <div x-data="{ open: {{ $temCaixa ? 'true':'false' }} }" class="border border-slate-200 rounded-xl overflow-hidden mb-3">
+    <button type="button" @click="open=!open" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50">
+      <span class="w-2.5 h-2.5 rounded-full" style="background:#475569"></span>
+      <span class="text-base">💵</span>
+      <span class="font-semibold text-sm flex-1">Caixa e relatório</span>
+      <svg class="w-4 h-4 opacity-50 transition" :class="open?'rotate-180':''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div x-show="open" x-cloak class="px-3 pb-3 pt-1 space-y-1 border-t border-slate-100 bg-slate-50/60">
+      @php $caixaPerms = [
+        'perm_caixa'     => ['Ver o caixa', 'Vê o próprio caixa: entradas, saídas e totais do período'],
+        'perm_avulso'    => ['Lançar entrada/saída', 'Registrar entrada e saída avulsa no caixa'],
+        'perm_relatorio' => ['Meu relatório', 'Relatório só do que ele mesmo fez'],
+      ]; @endphp
+      @foreach($caixaPerms as $k=>[$l,$d])
+        <label class="flex items-start gap-2 py-1 cursor-pointer">
+          <input type="checkbox" name="{{ $k }}" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old($k, $u->exists ? $u->$k : true))>
+          <span><span class="font-semibold text-sm">{{ $l }}</span><br><span class="text-xs text-slate-500">{{ $d }}</span></span>
+        </label>
+      @endforeach
+    </div>
+  </div>
+
+  {{-- ADMINISTRATIVO: só o que é geral (ver de todos) ou específico do admin --}}
+  <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 border-t pt-2">Ver de todos (geral)</div>
   <label class="flex items-start gap-3 py-1.5 cursor-pointer">
     <input type="checkbox" name="caixa_todos" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('caixa_todos', $u->caixa_todos))>
-    <span><span class="font-semibold text-sm">Caixa de todos os operadores</span><br><span class="text-xs text-slate-500">Desmarcado = vê só o caixa dele. (precisa de "Ver caixa geral")</span></span>
+    <span><span class="font-semibold text-sm">Caixa de todos os operadores</span><br><span class="text-xs text-slate-500">Desmarcado = vê só o caixa dele. (precisa de "Ver o caixa")</span></span>
   </label>
   <label class="flex items-start gap-3 py-1.5 cursor-pointer">
     <input type="checkbox" name="relatorio_todos" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('relatorio_todos', $u->relatorio_todos))>
     <span><span class="font-semibold text-sm">Relatório de todos</span><br><span class="text-xs text-slate-500">Desmarcado = vê só o relatório dele.</span></span>
   </label>
-  <label class="flex items-start gap-3 py-2 mt-1 border-t cursor-pointer">
+  <label class="flex items-start gap-3 py-2 cursor-pointer">
     <input type="checkbox" name="perm_financeiro" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('perm_financeiro', $u->exists ? $u->perm_financeiro : false))>
     <span><span class="font-semibold text-sm">Financeiro</span><br><span class="text-xs text-slate-500">Só entra no Caixa e Relatório, mas vê TODOS os operadores e TODOS os módulos (filtra por módulo, operador e período). Não cadastra.</span></span>
   </label>
+
+  <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 mt-2 border-t pt-2">Administrativo</div>
+  @php $admPerms = [
+    'perm_retroativo' => ['Lançar em datas retroativas', 'Cadastrar em dias anteriores (feito na mão e lançado depois). Gerente já tem.'],
+    'perm_parcial'    => ['Receber pagamento parcial', 'Pode deixar saldo (valor parcial). Sem isso, só pago total ou a receber. Gerente já tem.'],
+    'perm_zerar'      => ['Zerar o sistema', 'Pode apagar TODAS as encomendas/caixa e recomeçar do zero (botão em Cadastros gerais). Use com cuidado.'],
+  ]; @endphp
+  @foreach($admPerms as $k=>[$l,$d])
+    <label class="flex items-start gap-3 py-1.5 cursor-pointer">
+      <input type="checkbox" name="{{ $k }}" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old($k, $u->exists ? $u->$k : in_array($k,['perm_parcial'])))>
+      <span><span class="font-semibold text-sm">{{ $l }}</span><br><span class="text-xs text-slate-500">{{ $d }}</span></span>
+    </label>
+  @endforeach
   <label class="flex items-start gap-3 py-2 mt-1 border-t cursor-pointer">
     <input type="checkbox" name="admin" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('admin', $u->admin))>
     <span><span class="font-semibold text-sm">Administrador da empresa</span><br><span class="text-xs text-slate-500">Tudo acima + usuários, barcos/locais/produtos e dados da empresa</span></span>

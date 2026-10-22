@@ -133,6 +133,23 @@ class UsuarioController extends Controller
             if (array_filter($row)) $clean[$mod] = $row;
         }
         $data['mod_perms'] = $clean ?: null;
+        // Mantém colunas legadas em sincronia com o acordeão (perm:filtro, impressões, viagens, etc.).
+        // Caixa/avulso/relatório vêm dos checkboxes próprios e NÃO são sincronizados aqui.
+        $sync = [
+            'perm_cadastra'  => ['encomenda', 'cadastra'],
+            'perm_baixa'     => ['encomenda', 'baixa'],
+            'perm_imprimir'  => ['encomenda', 'imprimir'],
+            'perm_filtro'    => ['encomenda', 'ver'],
+            'perm_passagem'  => ['passagem', User::acaoPrincipal('passagem')],
+            'perm_frete'     => ['frete', User::acaoPrincipal('frete')],
+            'perm_camarote'  => ['camarote', User::acaoPrincipal('camarote')],
+            'perm_lanchonete'=> ['lanchonete', User::acaoPrincipal('lanchonete')],
+            'perm_wifi'      => ['wifi', User::acaoPrincipal('wifi')],
+            'perm_recibo'    => ['recibo', User::acaoPrincipal('recibo')],
+        ];
+        foreach ($sync as $col => [$m, $a]) {
+            $data[$col] = (bool) ($clean[$m][$a] ?? false);
+        }
         if (! $u) $data['ativo'] = true;
         return $data;
     }
