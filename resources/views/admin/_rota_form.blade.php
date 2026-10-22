@@ -34,7 +34,7 @@
 </div>
 <div x-show="trechos.length" x-cloak class="border-t pt-3">
   <label class="label">Preços das passagens (por trecho)</label>
-  <p class="text-xs text-slate-400 mb-2">Digite o valor de cada origem → destino. O mesmo valor vale no sentido inverso. Trechos atualizam sozinhos conforme as cidades acima.</p>
+  <p class="text-xs text-slate-400 mb-2">Digite o valor de cada origem → destino. Subida e descida podem ter preços diferentes. Se deixar o inverso em branco, usa o valor do outro sentido. Os trechos atualizam sozinhos.</p>
   <div class="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
     <template x-for="t in trechos" :key="t.key">
       <div class="flex items-center gap-2">
@@ -68,7 +68,7 @@ function rotaForm(paradas, precos){
     get trechos(){
       const cidades = this.paradas.map(p=>(p.localidade||'').trim()).filter(Boolean);
       const vistos = new Set(); const out=[];
-      for(let i=0;i<cidades.length;i++){ for(let j=i+1;j<cidades.length;j++){
+      for(let i=0;i<cidades.length;i++){ for(let j=0;j<cidades.length;j++){ if(i===j) continue;
         const o=cidades[i], d=cidades[j]; if(o.toLowerCase()===d.toLowerCase()) continue;
         const key=(o+'|'+d).toLowerCase(); if(vistos.has(key)) continue; vistos.add(key);
         out.push({o,d,key});

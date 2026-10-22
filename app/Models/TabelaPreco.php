@@ -17,9 +17,10 @@ class TabelaPreco extends Model
     /** Acha o preço da rota (origem/destino), nos dois sentidos. */
     public static function para(string $origem, string $destino): ?self
     {
-        return static::where('ativo', true)->where(function ($q) use ($origem, $destino) {
-            $q->where(fn ($w) => $w->where('origem', $origem)->where('destino', $destino))
-              ->orWhere(fn ($w) => $w->where('origem', $destino)->where('destino', $origem));
-        })->first();
+        // sentido exato primeiro (subida/descida podem ter preços diferentes)
+        $exato = static::where('ativo', true)->where('origem', $origem)->where('destino', $destino)->first();
+        if ($exato) return $exato;
+        // senão, usa o sentido inverso
+        return static::where('ativo', true)->where('origem', $destino)->where('destino', $origem)->first();
     }
 }
