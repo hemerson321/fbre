@@ -18,7 +18,7 @@
 @endpush
 @section('conteudo')
 <form method="post" action="{{ route('fretes.store') }}" x-data="novoFrete()" @submit.prevent="salvar($event)"
-      class="mx-auto max-w-[1440px] space-y-2" style="--cor1:#d97706;--cor2:#fbbf24">
+      class="mx-auto max-w-[1440px] space-y-2" @php $emp=\App\Support\Tenant::empresa(); $corMod=(bool)($emp?->config('cores_por_modulo', true) ?? true); @endphp style="--cor1:{{ $corMod ? '#d97706' : ($emp?->cor_primaria ?? '#0b1a33') }};--cor2:{{ $corMod ? '#fbbf24' : ($emp?->cor_secundaria ?? '#00a8e8') }}">
 @csrf
 <div class="flex items-center justify-between gap-3 flex-wrap">
   <div class="flex items-center gap-x-4 gap-y-1 flex-wrap">

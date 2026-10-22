@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('titulo','Passagem '.$p->numeroFormatado())
-@php $cor = \App\Support\Modulos::hex('passagem'); $u=auth()->user(); @endphp
+@php $__e=\App\Support\Tenant::empresa(); $cor = (($__e?->config('cores_por_modulo', true) ?? true) ? \App\Support\Modulos::hex('passagem') : ($__e?->cor_primaria ?? '#0b1a33')); $u=auth()->user(); @endphp
 @section('conteudo')
 <div class="max-w-2xl mx-auto space-y-4">
   <div class="rounded-2xl px-4 py-3 text-white flex items-center gap-3" style="background:{{ $cor }}">

@@ -26,7 +26,7 @@
 @endpush
 @section('conteudo')
 <form method="post" action="{{ route('passagens.store') }}" x-data="novaPassagem()" @submit.prevent="salvar($event)"
-      class="mx-auto max-w-[1440px] space-y-2" style="--cor1:#059669;--cor2:#34d399">
+      class="mx-auto max-w-[1440px] space-y-2" @php $emp=\App\Support\Tenant::empresa(); $corMod=(bool)($emp?->config('cores_por_modulo', true) ?? true); @endphp style="--cor1:{{ $corMod ? '#059669' : ($emp?->cor_primaria ?? '#0b1a33') }};--cor2:{{ $corMod ? '#34d399' : ($emp?->cor_secundaria ?? '#00a8e8') }}">
 @csrf
 <div class="flex items-center justify-between gap-3 flex-wrap">
   <div class="flex items-center gap-x-4 gap-y-1 flex-wrap">

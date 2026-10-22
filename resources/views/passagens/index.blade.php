@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('titulo','Passagens')
-@php $cor = \App\Support\Modulos::hex('passagem'); @endphp
+@php $__e=\App\Support\Tenant::empresa(); $cor = (($__e?->config('cores_por_modulo', true) ?? true) ? \App\Support\Modulos::hex('passagem') : ($__e?->cor_primaria ?? '#0b1a33')); @endphp
 @section('conteudo')
 <div class="space-y-4 max-w-5xl mx-auto">
   <div class="rounded-2xl px-4 py-3 text-white flex items-center gap-3" style="background:{{ $cor }}">
