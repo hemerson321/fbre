@@ -6,7 +6,37 @@
 <p class="text-xs text-slate-500 -mt-2">As localidades de origem/destino vêm das paradas das linhas (abaixo) — não há lista separada.</p>
 @if(session('token'))<div class="card p-4 bg-amber-50 border-amber-200"><b>Token da estação (copie agora, não será mostrado de novo):</b><code class="block mt-1 break-all text-sm">{{ session('token') }}</code></div>@endif
 <div class="grid md:grid-cols-2 gap-4">
-@foreach([['embarcacoes','Transportes / embarcações',$embarcacoes],['setores','Setores',$setores],['produtos','Produtos (catálogo)',$produtos]] as [$tipo,$titulo,$lista])
+
+  {{-- TRANSPORTES / EMBARCAÇÕES com config de poltrona --}}
+  <div class="card p-4 space-y-2 md:col-span-2">
+    <h2 class="font-bold text-sm text-slate-500 uppercase">Transportes / embarcações</h2>
+    <form method="post" action="{{ route('admin.cadastros.store','embarcacoes') }}" class="flex gap-2">@csrf
+      <input name="nome" class="input !min-h-[42px]" placeholder="Nome do barco/lancha" required>
+      <button class="btn btn-accent btn-sm">+ Adicionar</button>
+    </form>
+    <div class="space-y-2">
+      @forelse($embarcacoes as $e)
+        <form method="post" action="{{ route('admin.embarcacoes.salvar',$e) }}" class="rounded-xl border border-slate-200 p-3 {{ $e->ativo?'':'opacity-50' }}" x-data="{pol: {{ $e->usa_poltrona?'true':'false' }} }">@csrf
+          <div class="flex flex-wrap items-end gap-2">
+            <div class="flex-1 min-w-[160px]"><label class="label">Nome</label><input name="nome" class="input !min-h-[40px]" value="{{ $e->nome }}" required></div>
+            <label class="flex items-center gap-2 text-sm font-medium pb-2 cursor-pointer">
+              <input type="checkbox" name="usa_poltrona" value="1" class="w-5 h-5 rounded" x-model="pol" @checked($e->usa_poltrona)> 🪑 Usa poltrona
+            </label>
+            <div x-show="pol" x-cloak><label class="label">Qtd poltronas</label><input name="poltronas_qtd" type="number" min="0" max="500" class="input !min-h-[40px] !w-28 text-center" value="{{ $e->poltronas_qtd ?: 0 }}"></div>
+            <div x-show="pol" x-cloak><label class="label">Assentos/fileira</label>
+              <select name="poltronas_colunas" class="input !min-h-[40px] !w-32">
+                @foreach([2=>'2 (1+1)',3=>'3 (2+1)',4=>'4 (2+2)',5=>'5 (3+2)',6=>'6 (3+3)'] as $cn=>$cl)<option value="{{ $cn }}" @selected(($e->poltronas_colunas ?: 4)==$cn)>{{ $cl }}</option>@endforeach
+              </select>
+            </div>
+            <button class="btn btn-primary btn-sm">Salvar</button>
+            <a href="#" onclick="event.preventDefault(); if(confirm('Remover embarcação?')) this.closest('form').nextElementSibling.submit();" class="text-red-500 text-xs pb-2">remover</a>
+          </div>
+        </form>
+        <form method="post" action="{{ route('admin.cadastros.destroy',['embarcacoes',$e->id]) }}" class="hidden">@csrf @method('DELETE')</form>
+      @empty <div class="text-slate-400 text-sm">Nenhuma embarcação.</div> @endforelse
+    </div>
+  </div>
+@foreach([['setores','Setores',$setores],['produtos','Produtos (catálogo)',$produtos]] as [$tipo,$titulo,$lista])
   <div class="card p-4 space-y-2">
     <h2 class="font-bold text-sm text-slate-500 uppercase">{{ $titulo }}</h2>
     <form method="post" action="{{ route('admin.cadastros.store',$tipo) }}" class="flex gap-2">@csrf

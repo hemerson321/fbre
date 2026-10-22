@@ -78,6 +78,24 @@ class CadastroController extends Controller
         return back()->with('ok', 'Removido.');
     }
 
+    /** Configura poltrona de uma embarcação (usa/qtd/colunas). */
+    public function salvarEmbarcacao(Request $request, Embarcacao $embarcacao)
+    {
+        $data = $request->validate([
+            'nome' => 'required|string|max:80',
+            'usa_poltrona' => 'nullable|boolean',
+            'poltronas_qtd' => 'nullable|integer|min:0|max:500',
+            'poltronas_colunas' => 'nullable|integer|min:1|max:8',
+        ]);
+        $embarcacao->update([
+            'nome' => $data['nome'],
+            'usa_poltrona' => $request->boolean('usa_poltrona'),
+            'poltronas_qtd' => (int) ($data['poltronas_qtd'] ?? 0),
+            'poltronas_colunas' => (int) ($data['poltronas_colunas'] ?? 4),
+        ]);
+        return back()->with('ok', 'Embarcação atualizada.');
+    }
+
     public function novaEstacao(Request $request)
     {
         $data = $request->validate(['nome' => 'required|string|max:60']);

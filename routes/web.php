@@ -101,6 +101,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/cadastros', [CadastroController::class, 'index'])->name('cadastros');
         Route::post('/cadastros/{tipo}', [CadastroController::class, 'store'])->name('cadastros.store');
         Route::delete('/cadastros/{tipo}/{id}', [CadastroController::class, 'destroy'])->name('cadastros.destroy');
+        Route::post('/embarcacoes/{embarcacao}', [CadastroController::class, 'salvarEmbarcacao'])->name('embarcacoes.salvar');
         Route::post('/estacoes', [CadastroController::class, 'novaEstacao'])->name('estacoes.store');
         Route::post('/estacoes/{estacao}/renomear', [CadastroController::class, 'renomearEstacao'])->name('estacoes.renomear');
         Route::post('/zerar', [CadastroController::class, 'zerar'])->name('zerar');

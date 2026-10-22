@@ -231,11 +231,22 @@
       <span class="chip bg-red-100 text-red-700">ocupada</span>
       <span class="chip" style="background:color-mix(in srgb,var(--cor1) 15%,white);color:var(--cor1)">selecionada</span>
     </div>
-    <div class="grid grid-cols-5 gap-2">
-      <template x-for="n in qtdPoltronas" :key="n">
-        <button type="button" class="aspect-square rounded-lg text-sm font-semibold border" :class="assentoClasse(n)"
-          :disabled="estaOcupada(n) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
-      </template>
+    <div class="mx-auto" style="max-width:260px">
+      <div class="text-center text-[11px] font-bold text-slate-400 mb-1">⬆ PROA (frente)</div>
+      <div class="rounded-t-[36px] rounded-b-2xl border-2 border-slate-300 bg-slate-50 px-2 py-3 space-y-1.5">
+        <template x-for="(f,ri) in fileiras" :key="ri">
+          <div class="flex items-center justify-center gap-1">
+            <div class="flex gap-1.5"><template x-for="n in f.esq" :key="n">
+              <button type="button" class="w-9 h-10 rounded-t-xl rounded-b-md border-2 text-xs font-bold" :class="assentoClasse(n)" :disabled="estaOcupada(n) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
+            </template></div>
+            <div class="w-6 text-center text-[9px] text-slate-300 select-none">║</div>
+            <div class="flex gap-1.5"><template x-for="n in f.dir" :key="n">
+              <button type="button" class="w-9 h-10 rounded-t-xl rounded-b-md border-2 text-xs font-bold" :class="assentoClasse(n)" :disabled="estaOcupada(n) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
+            </template></div>
+          </div>
+        </template>
+      </div>
+      <div class="text-center text-[11px] font-bold text-slate-400 mt-1">POPA (fundo) ⬇</div>
     </div>
   </div>
 </div>
@@ -250,7 +261,7 @@
     return {
       salvando:false, forma:'avista', imprimir:'navegador',
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), precos:@js($precos),
-      embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd])->values()),
+      embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4)])->values()),
       podeRetroativo:@js($podeRetroativo),
       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'',
       embarcacaoSel:@js((string) old('embarcacao_id', $embarcacaoPrincipal)),
@@ -264,7 +275,7 @@
       rotaId:'', linhaNome:'', paradasInfo:[], viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
       diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
       // poltrona
-      usaPoltrona:false, qtdPoltronas:0, ocupadas:[], mapaAberto:false, paxAtual:0,
+      usaPoltrona:false, qtdPoltronas:0, colunasPoltrona:4, ocupadas:[], mapaAberto:false, paxAtual:0,
       numeroPreview:'—',
 
       init(){
@@ -342,7 +353,7 @@
       // ---- poltrona ----
       mudarEmbarcacao(){
         const e=this.embarcacoesData.find(x=>x.id===String(this.embarcacaoSel));
-        this.usaPoltrona=!!(e&&e.poltrona); this.qtdPoltronas=e?e.qtd:0;
+        this.usaPoltrona=!!(e&&e.poltrona); this.qtdPoltronas=e?e.qtd:0; this.colunasPoltrona=e&&e.colunas?e.colunas:4;
         if(this.usaPoltrona) this.carregarOcupadas(); else this.passageiros.forEach(p=>p.poltrona='');
       },
       async carregarOcupadas(){
@@ -356,6 +367,14 @@
       poltronaMinha(n){ return this.passageiros.some(p=>String(p.poltrona)===String(n)); },
       assentoClasse(n){ const minha=String(this.passageiros[this.paxAtual]?.poltrona)===String(n); if(minha) return 'text-white'; if(this.estaOcupada(n)||this.poltronaMinha(n)) return 'bg-red-100 text-red-700 border-red-200 opacity-70'; return 'bg-slate-50 hover:bg-slate-100 border-slate-200'; },
       escolherPoltrona(n){ if(this.estaOcupada(n)&&!this.poltronaMinha(n))return; this.passageiros[this.paxAtual].poltrona=String(n); this.mapaAberto=false; },
+
+      // mapa no formato da lancha: fileiras com corredor no meio
+      get fileiras(){
+        const col=this.colunasPoltrona||4, qtd=this.qtdPoltronas||0, meio=Math.ceil(col/2);
+        const rows=[]; let n=1;
+        while(n<=qtd){ const r=[]; for(let c=0;c<col && n<=qtd;c++){ r.push(n++); } rows.push({esq:r.slice(0,meio), dir:r.slice(meio)}); }
+        return rows;
+      },
 
       // ---- totais ----
       get subPassagem(){ return this.passageiros.reduce((s,p)=>s+(Number(p.valor_passagem)||0),0); },

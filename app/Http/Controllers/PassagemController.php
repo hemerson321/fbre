@@ -62,7 +62,7 @@ class PassagemController extends Controller
     {
         $u = auth()->user();
         $embarcacoes = Embarcacao::where('ativo', true)->orderBy('nome')
-            ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd']);
+            ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas']);
         $tipos = TipoPassageiro::where('ativo', true)->orderBy('ordem')->orderBy('nome')
             ->get(['nome', 'percentual', 'paga_taxa']);
         if ($tipos->isEmpty()) {
