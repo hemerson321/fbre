@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Embarcacao;
 use App\Models\Localidade;
 use App\Models\Rota;
+use App\Models\TabelaPreco;
+use App\Support\Tenant;
 use Illuminate\Http\Request;
 
 class RotaController extends Controller
@@ -21,6 +23,7 @@ class RotaController extends Controller
         $data = $this->validar($request);
         $rota = Rota::create(['nome' => $data['nome'], 'embarcacao_id' => $data['embarcacao_id'] ?? null, 'descricao' => $data['descricao'] ?? null]);
         $this->salvarParadas($rota, $data['paradas']);
+        $this->salvarPrecos($data['precos'] ?? []);
         return back()->with('ok', "Rota {$rota->nome} criada.");
     }
 
@@ -31,6 +34,7 @@ class RotaController extends Controller
         $rota->update(['nome' => $data['nome'], 'embarcacao_id' => $data['embarcacao_id'] ?? null, 'descricao' => $data['descricao'] ?? null]);
         $rota->paradas()->delete();
         $this->salvarParadas($rota, $data['paradas']);
+        $this->salvarPrecos($data['precos'] ?? []);
         return back()->with('ok', 'Rota atualizada.');
     }
 
@@ -51,7 +55,26 @@ class RotaController extends Controller
             'paradas.*.localidade' => 'required|string|max:80',
             'paradas.*.dia_semana' => 'nullable|integer|between:0,6',
             'paradas.*.hora' => 'nullable',
+            'precos' => 'nullable|array',
+            'precos.*.origem' => 'required_with:precos|string|max:80',
+            'precos.*.destino' => 'required_with:precos|string|max:80',
+            'precos.*.valor' => 'nullable|numeric|min:0',
         ]);
+    }
+
+    /** Salva/atualiza o preço de cada trecho (origem→destino) na tabela de preços. */
+    protected function salvarPrecos(array $precos): void
+    {
+        foreach ($precos as $pr) {
+            $o = trim($pr['origem'] ?? '');
+            $d = trim($pr['destino'] ?? '');
+            $v = (float) ($pr['valor'] ?? 0);
+            if ($o === '' || $d === '' || $v <= 0 || mb_strtolower($o) === mb_strtolower($d)) continue;
+            TabelaPreco::updateOrCreate(
+                ['empresa_id' => Tenant::id(), 'origem' => $o, 'destino' => $d],
+                ['passagem' => $v, 'ativo' => true],
+            );
+        }
     }
 
     protected function salvarParadas(Rota $rota, array $paradas): void

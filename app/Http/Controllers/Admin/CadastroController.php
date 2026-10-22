@@ -16,6 +16,7 @@ use App\Models\Produto;
 use App\Models\Rota;
 use App\Models\Setor;
 use App\Models\AvulsoCategoria;
+use App\Models\TabelaPreco;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +41,11 @@ class CadastroController extends Controller
             'produtos' => Produto::orderBy('nome')->get(),
             'estacoes' => Estacao::orderBy('nome')->get(),
             'categorias' => AvulsoCategoria::orderBy('ordem')->orderBy('nome')->get(),
+            'precosMapa' => TabelaPreco::where('ativo', true)->get(['origem', 'destino', 'passagem'])
+                ->flatMap(fn ($t) => [
+                    mb_strtolower($t->origem.'|'.$t->destino) => (float) $t->passagem,
+                    mb_strtolower($t->destino.'|'.$t->origem) => (float) $t->passagem,
+                ])->toArray(),
             'rotas' => \App\Support\Tenant::empresa()->temRecurso('viagens') ? Rota::with(['paradas', 'embarcacao'])->orderBy('nome')->get() : collect(),
             'localidadesNomes' => Rota::todasLocalidades(),
             'dias' => Rota::DIAS,
