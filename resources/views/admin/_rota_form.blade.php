@@ -41,32 +41,48 @@
       <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm" :style="`background:${tp.cor}`"></span><span x-text="tp.nome"></span></span>
     </template>
   </div>
-  <div class="space-y-3">
-    <template x-for="t in trechos" :key="t.key">
-      <div class="rounded-xl border border-slate-200 p-3">
-        <div class="font-semibold text-sm mb-2 flex items-center gap-1"><span class="text-slate-400">①</span><span x-text="t.o + ' → ' + t.d"></span></div>
-        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          <template x-for="tp in tipos" :key="t.key+'-'+tp.id">
-            <div class="rounded-lg border p-2" :style="`border-left:4px solid ${tp.cor}`">
-              <div class="text-[11px] font-bold uppercase leading-tight" :style="`color:${tp.cor}`"
-                   x-text="tp.nome + ((tp.modo==='porcentagem' && !tp.eh_normal) ? ' ('+tp.percentual+'%)' : '')"></div>
-              <template x-if="tp.modo==='valor' || tp.eh_normal">
-                <div class="flex items-end gap-2 mt-1" x-data="{c: ensure(t.key, tp.id, tp)}">
-                  <div><div class="text-[10px] text-slate-400">Tarifa</div>
-                    <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-20 text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
-                  <div x-show="usaAlim"><div class="text-[10px] text-slate-400">Aliment.</div>
-                    <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-20 text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
-                  <div class="text-[11px] font-bold pb-1" :style="`color:${tp.cor}`" x-text="'= '+moeda((Number(c.tarifa)||0)+(usaAlim?(Number(c.alim)||0):0))"></div>
+  {{-- busca + acoes --}}
+  <div class="flex items-center gap-2 mb-2 flex-wrap">
+    <input x-model="filtroTrecho" placeholder="🔎 Filtrar por cidade (origem ou destino)" class="input !min-h-[38px] flex-1 min-w-[180px]">
+    <span class="text-xs text-slate-400 whitespace-nowrap" x-text="trechosFiltrados.length + ' de ' + trechos.length"></span>
+    <button type="button" @click="expandirTodos()" class="btn btn-ghost btn-sm">Abrir todos</button>
+    <button type="button" @click="abertos={}" class="btn btn-ghost btn-sm">Fechar</button>
+  </div>
+  <div class="space-y-1.5">
+    <template x-for="t in trechosFiltrados" :key="t.key">
+      <div class="rounded-xl border border-slate-200 overflow-hidden">
+        <button type="button" @click="toggle(t.key)" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50">
+          <span class="font-semibold text-sm flex-1 truncate" x-text="t.o + ' → ' + t.d"></span>
+          <span class="text-xs whitespace-nowrap" :class="resumoTrecho(t)?'text-emerald-600 font-semibold':'text-slate-300'" x-text="resumoTrecho(t) || 'definir'"></span>
+          <svg class="w-4 h-4 opacity-50 transition shrink-0" :class="aberto(t.key)?'rotate-180':''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <template x-if="aberto(t.key)">
+          <div class="px-3 pb-3 pt-1 border-t border-slate-100 bg-slate-50/50">
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <template x-for="tp in tipos" :key="t.key+'-'+tp.id">
+                <div class="rounded-lg border p-2 bg-white" :style="`border-left:4px solid ${tp.cor}`">
+                  <div class="text-[11px] font-bold uppercase leading-tight" :style="`color:${tp.cor}`"
+                       x-text="tp.nome + ((tp.modo==='porcentagem' && !tp.eh_normal) ? ' ('+tp.percentual+'%)' : '')"></div>
+                  <template x-if="tp.modo==='valor' || tp.eh_normal">
+                    <div class="flex items-end gap-2 mt-1" x-data="{c: ensure(t.key, tp.id, tp)}">
+                      <div><div class="text-[10px] text-slate-400">Tarifa</div>
+                        <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-20 text-right text-sm" x-model.number="c.tarifa" placeholder="0"></div>
+                      <div x-show="usaAlim"><div class="text-[10px] text-slate-400">Aliment.</div>
+                        <input type="number" step="0.01" min="0" class="input !min-h-[32px] !w-20 text-right text-sm" x-model.number="c.alim" placeholder="0"></div>
+                      <div class="text-[11px] font-bold pb-1" :style="`color:${tp.cor}`" x-text="'= '+moeda((Number(c.tarifa)||0)+(usaAlim?(Number(c.alim)||0):0))"></div>
+                    </div>
+                  </template>
+                  <template x-if="tp.modo==='porcentagem' && !tp.eh_normal">
+                    <div class="text-sm font-bold mt-1" :style="`color:${tp.cor}`" x-text="'= '+moeda(calcPct(t.key, tp))"></div>
+                  </template>
                 </div>
               </template>
-              <template x-if="tp.modo==='porcentagem' && !tp.eh_normal">
-                <div class="text-sm font-bold mt-1" :style="`color:${tp.cor}`" x-text="'= '+moeda(calcPct(t.key, tp))"></div>
-              </template>
             </div>
-          </template>
-        </div>
+          </div>
+        </template>
       </div>
     </template>
+    <div x-show="!trechosFiltrados.length" class="text-sm text-slate-400 text-center py-4">Nenhum trecho encontrado.</div>
   </div>
   {{-- hidden: uma linha por (trecho x tipo Valor) --}}
   <template x-for="(r,i) in submitRows" :key="'h'+i">
@@ -93,6 +109,14 @@ function rotaForm(paradas, precos, tipos, flags){
     precos: Object.assign({}, precos||{}),
     tipos: (tipos||[]).map(t=>({...t})),
     usaAlim: !!(flags&&flags.alim),
+    filtroTrecho: '', abertos: {},
+    aberto(k){ return !!this.abertos[k]; },
+    toggle(k){ this.abertos = Object.assign({}, this.abertos, {[k]: !this.abertos[k]}); },
+    expandirTodos(){ const a={}; this.trechosFiltrados.forEach(t=>a[t.key]=true); this.abertos=a; },
+    get trechosFiltrados(){ const f=(this.filtroTrecho||'').trim().toLowerCase(); if(!f) return this.trechos;
+      return this.trechos.filter(t=> (t.o+' '+t.d).toLowerCase().includes(f)); },
+    resumoTrecho(t){ const n=this.normal; if(!n) return ''; const c=this.precos[this.cellKey(t.key,n.id)];
+      const v=c?Number(c.tarifa)||0:0; return v>0 ? (n.nome+' '+this.moeda(v)) : ''; },
     add(){ this.paradas.push({localidade:'',dia_semana:'',hora:''}); },
     moeda(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); },
     get normal(){ return this.tipos.find(t=>t.eh_normal) || this.tipos[0] || null; },
