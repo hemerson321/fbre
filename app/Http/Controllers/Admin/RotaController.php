@@ -59,6 +59,8 @@ class RotaController extends Controller
             'precos.*.origem' => 'required_with:precos|string|max:80',
             'precos.*.destino' => 'required_with:precos|string|max:80',
             'precos.*.valor' => 'nullable|numeric|min:0',
+            'precos.*.taxa' => 'nullable|numeric|min:0',
+            'precos.*.alim' => 'nullable|numeric|min:0',
         ]);
     }
 
@@ -69,10 +71,13 @@ class RotaController extends Controller
             $o = trim($pr['origem'] ?? '');
             $d = trim($pr['destino'] ?? '');
             $v = (float) ($pr['valor'] ?? 0);
-            if ($o === '' || $d === '' || $v <= 0 || mb_strtolower($o) === mb_strtolower($d)) continue;
+            $tx = (float) ($pr['taxa'] ?? 0);
+            $al = (float) ($pr['alim'] ?? 0);
+            if ($o === '' || $d === '' || mb_strtolower($o) === mb_strtolower($d)) continue;
+            if ($v <= 0 && $tx <= 0 && $al <= 0) continue;
             TabelaPreco::updateOrCreate(
                 ['empresa_id' => Tenant::id(), 'origem' => $o, 'destino' => $d],
-                ['passagem' => $v, 'ativo' => true],
+                ['passagem' => $v, 'taxa_embarque' => $tx, 'alimentacao' => $al, 'ativo' => true],
             );
         }
     }

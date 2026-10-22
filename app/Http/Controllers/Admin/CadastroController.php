@@ -44,9 +44,13 @@ class CadastroController extends Controller
             'estacoes' => Estacao::orderBy('nome')->get(),
             'categorias' => AvulsoCategoria::orderBy('ordem')->orderBy('nome')->get(),
             'tiposPassageiro' => TipoPassageiro::orderBy('ordem')->orderBy('nome')->get(),
-            'precosMapa' => TabelaPreco::where('ativo', true)->get(['origem', 'destino', 'passagem'])
-                ->mapWithKeys(fn ($t) => [mb_strtolower($t->origem.'|'.$t->destino) => (float) $t->passagem])
+            'precosMapa' => TabelaPreco::where('ativo', true)->get(['origem', 'destino', 'passagem', 'taxa_embarque', 'alimentacao'])
+                ->mapWithKeys(fn ($t) => [mb_strtolower($t->origem.'|'.$t->destino) => ['p' => (float) $t->passagem, 't' => (float) $t->taxa_embarque, 'a' => (float) $t->alimentacao]])
                 ->toArray(),
+            'usaTaxaServico' => (bool) \App\Support\Tenant::empresa()->config('usa_taxa_servico', false),
+            'usaAlimentacao' => (bool) \App\Support\Tenant::empresa()->config('usa_alimentacao', false),
+            'labelTaxa' => \App\Support\Tenant::empresa()->config('label_taxa_servico') ?: 'Taxa de serviço',
+            'labelAlim' => \App\Support\Tenant::empresa()->config('label_alimentacao') ?: 'Alimentação',
             'rotas' => \App\Support\Tenant::empresa()->temRecurso('viagens') ? Rota::with(['paradas', 'embarcacao'])->orderBy('nome')->get() : collect(),
             'localidadesNomes' => Rota::todasLocalidades(),
             'dias' => Rota::DIAS,

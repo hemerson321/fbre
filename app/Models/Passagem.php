@@ -24,6 +24,7 @@ class Passagem extends Model
         'criada_no_aparelho_em' => 'datetime',
         'subtotal' => 'decimal:2',
         'taxa_total' => 'decimal:2',
+        'alimentacao_total' => 'decimal:2',
         'desconto' => 'decimal:2',
         'total' => 'decimal:2',
         'pago' => 'decimal:2',
@@ -73,9 +74,10 @@ class Passagem extends Model
     {
         $subtotal = (float) $this->passageiros()->sum('valor_passagem');
         $taxa = (float) $this->passageiros()->sum('valor_taxa');
+        $alim = (float) $this->passageiros()->sum('valor_alimentacao');
         $descontoPag = (float) $this->pagamentos()->where('meio', 'desconto')->sum('valor');
         $desconto = max((float) $this->desconto, $descontoPag);
-        $total = max($subtotal + $taxa - $desconto, 0);
+        $total = max($subtotal + $taxa + $alim - $desconto, 0);
         $pago = (float) $this->pagamentos()->where('meio', '!=', 'desconto')->sum('valor');
         $devido = max($total - $pago, 0);
         $status = $devido <= 0.009 ? 'pago' : ($pago > 0 ? 'parcial' : 'pendente');
@@ -83,6 +85,7 @@ class Passagem extends Model
         $this->forceFill([
             'subtotal' => $subtotal,
             'taxa_total' => $taxa,
+            'alimentacao_total' => $alim,
             'desconto' => $desconto,
             'total' => $total,
             'pago' => $pago,

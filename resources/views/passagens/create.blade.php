@@ -98,7 +98,7 @@
             <input type="date" class="field" x-model="viagemData" @change="viagemLabel=rotulo(viagemData)"></div>
         </div>
         <div x-show="precoInfo" class="text-[11px] font-semibold" style="color:var(--cor1)" x-cloak>
-          💲 Tabela: passagem <span x-text="FBRE.moeda(basePassagem)"></span> · taxa <span x-text="FBRE.moeda(baseTaxa)"></span>
+          💲 Tabela: tarifa <span x-text="FBRE.moeda(basePassagem)"></span><template x-if="usaTaxa"><span> · <span x-text="labelTaxa"></span> <span x-text="FBRE.moeda(baseTaxa)"></span></span></template><template x-if="usaAlim"><span> · <span x-text="labelAlim"></span> <span x-text="FBRE.moeda(baseAlim)"></span></span></template>
         </div>
       </div>
     </section>
@@ -143,22 +143,24 @@
               <input :id="'pax-nome-'+i" class="field !min-h-0 py-1 flex-1" placeholder="Nome do passageiro" x-model="p.nome" required>
               <button type="button" class="w-8 h-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none" @click="rmPax(i)" x-show="passageiros.length>1" title="Remover">×</button>
             </div>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
-              <div class="lg:col-span-2"><label class="lbl">Tipo</label>
-                <select class="field !min-h-0 py-1 text-sm" x-model="p.tipo" @change="aplicarTipo(p)">
-                  @foreach($tipos as $t)<option value="{{ $t->nome }}">{{ $t->nome }} @if(($t->modo ?? 'porcentagem')==='valor'){{ 'R$ '.number_format($t->valor_fixo,2,',','.') }}@else({{ $t->percentual }}%)@endif</option>@endforeach
-                </select></div>
-              <div><label class="lbl">Passagem</label>
+            <div><label class="lbl">Tipo</label>
+              <select class="field !min-h-0 py-1 text-sm" x-model="p.tipo" @change="aplicarTipo(p)">
+                @foreach($tipos as $t)<option value="{{ $t->nome }}">{{ $t->nome }} @if(($t->modo ?? 'porcentagem')==='valor'){{ 'R$ '.number_format($t->valor_fixo,2,',','.') }}@else({{ $t->percentual }}%)@endif</option>@endforeach
+              </select></div>
+            <div class="grid grid-cols-2 gap-2 mt-1" :class="(usaTaxa&&usaAlim)?'lg:grid-cols-3':((usaTaxa||usaAlim)?'lg:grid-cols-3':'lg:grid-cols-1')">
+              <div><label class="lbl">Tarifa</label>
                 <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm" x-model.number="p.valor_passagem" @focus="$event.target.select()"></div>
-              <div><label class="lbl">Taxa</label>
+              <div x-show="usaTaxa" x-cloak><label class="lbl" x-text="labelTaxa"></label>
                 <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm" x-model.number="p.valor_taxa" @focus="$event.target.select()"></div>
+              <div x-show="usaAlim" x-cloak><label class="lbl" x-text="labelAlim"></label>
+                <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm" x-model.number="p.valor_alimentacao" @focus="$event.target.select()"></div>
             </div>
             <div class="flex items-center gap-2 mt-1.5">
               <input class="field !min-h-0 py-1 text-sm flex-1" placeholder="Documento (opcional)" x-model="p.documento">
               <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)">
                 <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑 poltrona'"></span>
               </button>
-              <span class="text-sm font-extrabold whitespace-nowrap" style="color:var(--cor1)" x-text="FBRE.moeda((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0))"></span>
+              <span class="text-sm font-extrabold whitespace-nowrap" style="color:var(--cor1)" x-text="FBRE.moeda((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))"></span>
             </div>
           </div>
         </template>
@@ -192,7 +194,8 @@
 
         <div class="rounded-2xl p-2.5 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
           <div class="flex justify-between text-xs opacity-75"><span>Passagens</span><span x-text="FBRE.moeda(subPassagem)"></span></div>
-          <div class="flex justify-between text-xs opacity-75"><span>Taxa de embarque</span><span x-text="FBRE.moeda(subTaxa)"></span></div>
+          <div class="flex justify-between text-xs opacity-75" x-show="usaTaxa"><span x-text="labelTaxa"></span><span x-text="FBRE.moeda(subTaxa)"></span></div>
+          <div class="flex justify-between text-xs opacity-75" x-show="usaAlim"><span x-text="labelAlim"></span><span x-text="FBRE.moeda(subAlim)"></span></div>
           <div class="flex justify-between text-xs opacity-75" x-show="desconto>0"><span>Desconto</span><span x-text="'- '+FBRE.moeda(desconto)"></span></div>
           <div class="flex justify-between items-baseline mt-0.5"><span class="text-sm font-semibold opacity-90">Total</span><span class="text-xl font-extrabold tracking-tight" x-text="FBRE.moeda(total)"></span></div>
           <div class="h-px bg-white/20 my-1"></div>
@@ -263,6 +266,7 @@
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), precos:@js($precos),
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4)])->values()),
       podeRetroativo:@js($podeRetroativo),
+      usaTaxa:@js($usaTaxaServico ?? false), usaAlim:@js($usaAlimentacao ?? false), labelTaxa:@js($labelTaxa ?? 'Taxa'), labelAlim:@js($labelAlim ?? 'Alimentação'),
       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'',
       embarcacaoSel:@js((string) old('embarcacao_id', $embarcacaoPrincipal)),
       compradorNome:'', compradorTel:'', compradorDoc:'', observacao:'',
@@ -270,7 +274,7 @@
       desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
       meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
       passageiros:[],
-      basePassagem:0, baseTaxa:0, precoInfo:false,
+      basePassagem:0, baseTaxa:0, baseAlim:0, precoInfo:false,
       // viagem
       rotaId:'', linhaNome:'', paradasInfo:[], viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
       diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
@@ -291,7 +295,7 @@
       },
 
       // ---- passageiros ----
-      novoPax(){ const t=this.tipos[0]||{nome:'Adulto',percentual:100,paga_taxa:true,modo:'porcentagem',valor_fixo:0}; return {id:Date.now()+Math.random(), nome:'', tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'porcentagem', valor_fixo:Number(t.valor_fixo)||0, documento:'', poltrona:'', valor_passagem:0, valor_taxa:0}; },
+      novoPax(){ const t=this.tipos[0]||{nome:'Adulto',percentual:100,paga_taxa:true,modo:'porcentagem',valor_fixo:0}; return {id:Date.now()+Math.random(), nome:'', tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'porcentagem', valor_fixo:Number(t.valor_fixo)||0, documento:'', poltrona:'', valor_passagem:0, valor_taxa:0, valor_alimentacao:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       rmPax(i){ this.passageiros.splice(i,1); },
       aplicarTipo(p){
@@ -299,14 +303,15 @@
         if(t){ p.percentual=t.percentual; p.paga_taxa=!!t.paga_taxa; p.modo=t.modo||'porcentagem'; p.valor_fixo=Number(t.valor_fixo)||0; }
         if((p.modo||'porcentagem')==='valor'){ p.valor_passagem = Number(p.valor_fixo)||0; }
         else if(this.basePassagem>0){ p.valor_passagem=Math.round(this.basePassagem*(p.percentual/100)*100)/100; }
-        p.valor_taxa = p.paga_taxa ? this.baseTaxa : 0;
+        p.valor_taxa = (this.usaTaxa && p.paga_taxa) ? this.baseTaxa : 0;
+        p.valor_alimentacao = this.usaAlim ? this.baseAlim : 0;
       },
 
       // ---- preço pela tabela (origem/destino) ----
       aplicarPreco(){
         const o=(this.origemSel||'').trim().toLowerCase(), d=(this.destinoSel||'').trim().toLowerCase();
         const pr=this.precos.find(x=> (String(x.origem).toLowerCase()===o && String(x.destino).toLowerCase()===d) || (String(x.origem).toLowerCase()===d && String(x.destino).toLowerCase()===o));
-        if(pr){ this.basePassagem=Number(pr.passagem)||0; this.baseTaxa=Number(pr.taxa_embarque)||0; this.precoInfo=true; this.passageiros.forEach(p=>this.aplicarTipo(p)); }
+        if(pr){ this.basePassagem=Number(pr.passagem)||0; this.baseTaxa=Number(pr.taxa_embarque)||0; this.baseAlim=Number(pr.alimentacao)||0; this.precoInfo=true; this.passageiros.forEach(p=>this.aplicarTipo(p)); }
         else { this.precoInfo=false; }
       },
       onRota(){ this.resolverLinha(); this.aplicarPreco(); if(this.usaPoltrona) this.carregarOcupadas(); },
@@ -385,7 +390,8 @@
       // ---- totais ----
       get subPassagem(){ return this.passageiros.reduce((s,p)=>s+(Number(p.valor_passagem)||0),0); },
       get subTaxa(){ return this.passageiros.reduce((s,p)=>s+(Number(p.valor_taxa)||0),0); },
-      get total(){ return Math.max(this.subPassagem+this.subTaxa-(Number(this.desconto)||0),0); },
+      get subAlim(){ return this.passageiros.reduce((s,p)=>s+(Number(p.valor_alimentacao)||0),0); },
+      get total(){ return Math.max(this.subPassagem+this.subTaxa+this.subAlim-(Number(this.desconto)||0),0); },
       get pago(){ return this.forma==='faturado'?0:Object.values(this.pag).reduce((s,v)=>s+(Number(v)||0),0); },
       get pagoSemDinheiro(){ return (Number(this.pag.pix)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0); },
       get devido(){ return Math.max(this.total-this.pago,0); },
@@ -402,7 +408,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
         try{
@@ -429,10 +435,10 @@
       const e=(b&&b.empresa)||{}; const d=item.dados;
       const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
       const moeda=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-      const sub=d.passageiros.reduce((s,p)=>s+(Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0),0);
+      const sub=d.passageiros.reduce((s,p)=>s+(Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0),0);
       const desc=Number(d.desconto)||0, total=Math.max(sub-desc,0);
       const pago=(d.pagamentos||[]).reduce((s,p)=>s+(Number(p.valor)||0),0), devido=Math.max(total-pago,0);
-      const linhas=d.passageiros.map(p=>`<tr><td>${esc(p.nome)}<div class="sm">${esc(p.tipo)}${p.poltrona?(' · poltrona '+esc(p.poltrona)):''}</div></td><td class="r b">${moeda((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)).replace('R$','').trim()}</td></tr>`).join('');
+      const linhas=d.passageiros.map(p=>`<tr><td>${esc(p.nome)}<div class="sm">${esc(p.tipo)}${p.poltrona?(' · poltrona '+esc(p.poltrona)):''}</div></td><td class="r b">${moeda((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0)).replace('R$','').trim()}</td></tr>`).join('');
       const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Passagem ${esc(d.numero_completo)}</title>
       <style>@page{margin:0;size:80mm auto}*{box-sizing:border-box}body{margin:0;padding:3mm 4mm;width:80mm;font-family:"Courier New",monospace;font-size:11.5px}
       .c{text-align:center}.r{text-align:right}.b{font-weight:bold}.xl{font-size:18px}.lg{font-size:14px}.sm{font-size:10px;color:#333}hr{border:0;border-top:1px dashed #000;margin:4px 0}

@@ -72,7 +72,7 @@ class PassagemController extends Controller
             }
             $tipos = TipoPassageiro::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get(['nome', 'percentual', 'paga_taxa', 'modo', 'valor_fixo']);
         }
-        $precos = TabelaPreco::where('ativo', true)->get(['origem', 'destino', 'passagem', 'taxa_embarque']);
+        $precos = TabelaPreco::where('ativo', true)->get(['origem', 'destino', 'passagem', 'taxa_embarque', 'alimentacao']);
         $localidades = TabelaPreco::where('ativo', true)->pluck('origem')
             ->merge(TabelaPreco::where('ativo', true)->pluck('destino'))
             ->merge(Rota::todasLocalidades())->unique()->sort()->values();
@@ -96,6 +96,10 @@ class PassagemController extends Controller
             'embarcacaoPrincipal' => session('ultima_embarcacao_pass') ?: $u->embarcacao_principal_id,
             'podeParcial' => $u->podeParcial(),
             'podeRetroativo' => $u->podeRetroativo(),
+            'usaTaxaServico' => (bool) Tenant::empresa()->config('usa_taxa_servico', false),
+            'usaAlimentacao' => (bool) Tenant::empresa()->config('usa_alimentacao', false),
+            'labelTaxa' => Tenant::empresa()->config('label_taxa_servico') ?: 'Taxa de serviço',
+            'labelAlim' => Tenant::empresa()->config('label_alimentacao') ?: 'Alimentação',
         ]);
     }
 
@@ -139,6 +143,7 @@ class PassagemController extends Controller
             'passageiros.*.poltrona' => 'nullable|string|max:10',
             'passageiros.*.valor_passagem' => 'required|numeric|min:0',
             'passageiros.*.valor_taxa' => 'nullable|numeric|min:0',
+            'passageiros.*.valor_alimentacao' => 'nullable|numeric|min:0',
             'passageiros.*.observacao' => 'nullable|string|max:200',
             'pagamentos' => 'nullable|array',
             'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito',

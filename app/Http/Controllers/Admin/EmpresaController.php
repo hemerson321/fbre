@@ -35,7 +35,18 @@ class EmpresaController extends Controller
             'cor_secundaria' => 'required|string|max:9',
             'rodape_comprovante' => 'nullable|string|max:500',
             'logo' => 'nullable|image|max:2048',
+            'label_taxa_servico' => 'nullable|string|max:40',
+            'label_alimentacao' => 'nullable|string|max:40',
         ]);
+
+        // Componentes da passagem (opcionais): taxa de servico e alimentacao
+        $config = $empresa->config ?? [];
+        $config['usa_taxa_servico'] = $request->boolean('usa_taxa_servico');
+        $config['usa_alimentacao'] = $request->boolean('usa_alimentacao');
+        $config['label_taxa_servico'] = trim((string) $request->input('label_taxa_servico')) ?: 'Taxa de serviço';
+        $config['label_alimentacao'] = trim((string) $request->input('label_alimentacao')) ?: 'Alimentação';
+        $data['config'] = $config;
+        unset($data['label_taxa_servico'], $data['label_alimentacao']);
 
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');

@@ -20,6 +20,16 @@
   <div><label class="label">Cor de destaque</label><input name="cor_secundaria" type="color" class="input !p-1 h-12" value="{{ old('cor_secundaria',$empresa->cor_secundaria) }}"></div>
   <div class="sm:col-span-2 flex items-center gap-4"><div>@if($empresa->logo)<img src="/{{ $empresa->logo }}" class="h-16 rounded-lg border">@endif</div><div class="flex-1"><label class="label">Logo (PNG/JPG)</label><input name="logo" type="file" accept="image/*" class="input !py-2.5"></div></div>
 </div>
+<div class="border-t pt-3 mt-1" x-data="{ts:{{ $empresa->config('usa_taxa_servico', false) ? 'true':'false' }}, al:{{ $empresa->config('usa_alimentacao', false) ? 'true':'false' }}}">
+  <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">Componentes da passagem (opcional)</h2>
+  <p class="text-xs text-slate-500 mb-2">Ligue só o que você cobra. Ficam separados da tarifa no cadastro e no comprovante.</p>
+  <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="usa_taxa_servico" value="1" x-model="ts" class="w-5 h-5 rounded"> <span class="font-semibold">Cobrar taxa de serviço</span></label>
+  <div x-show="ts" x-cloak class="pl-7 pb-2"><label class="label !text-xs">Nome que aparece</label><input name="label_taxa_servico" class="input !min-h-[38px]" value="{{ $empresa->config('label_taxa_servico') ?: 'Taxa de serviço' }}" maxlength="40"></div>
+  <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="usa_alimentacao" value="1" x-model="al" class="w-5 h-5 rounded"> <span class="font-semibold">Cobrar alimentação</span></label>
+  <div x-show="al" x-cloak class="pl-7 pb-1"><label class="label !text-xs">Nome que aparece</label><input name="label_alimentacao" class="input !min-h-[38px]" value="{{ $empresa->config('label_alimentacao') ?: 'Alimentação' }}" maxlength="40"></div>
+  <p class="text-xs text-slate-400 mt-1">Depois é só definir os valores de cada trecho em <b>Cadastros gerais → rotas</b>.</p>
+</div>
+
 <button class="btn btn-accent w-full">Salvar</button>
 </form>
 @endsection

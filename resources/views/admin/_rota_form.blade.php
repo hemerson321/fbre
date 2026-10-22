@@ -1,6 +1,6 @@
 @php $edit = (bool) $rota; @endphp
 <form method="post" action="{{ $edit ? route('admin.rotas.update',$rota) : route('admin.rotas.store') }}"
-      x-data="rotaForm({{ $edit ? $rota->paradas->map(fn($p)=>['localidade'=>$p->localidade,'dia_semana'=>$p->dia_semana,'hora'=>$p->hora? substr($p->hora,0,5):''])->toJson() : '[]' }}, @js($precosMapa ?? []))" class="space-y-3">
+      x-data="rotaForm({{ $edit ? $rota->paradas->map(fn($p)=>['localidade'=>$p->localidade,'dia_semana'=>$p->dia_semana,'hora'=>$p->hora? substr($p->hora,0,5):''])->toJson() : '[]' }}, @js($precosMapa ?? []), @js(['taxa'=>($usaTaxaServico ?? false),'alim'=>($usaAlimentacao ?? false)]))" class="space-y-3">
 @csrf @if($edit) @method('PUT') @endif
 <div class="grid sm:grid-cols-2 gap-3">
   <div><label class="label">Nome da rota</label><input name="nome" class="input" required value="{{ $edit ? $rota->nome : '' }}" placeholder="Ex.: Linha Tefé"></div>
@@ -34,13 +34,20 @@
 </div>
 <div x-show="trechos.length" x-cloak class="border-t pt-3">
   <label class="label">Preços das passagens (por trecho)</label>
-  <p class="text-xs text-slate-400 mb-2">Digite o valor de cada origem → destino. Subida e descida podem ter preços diferentes. Se deixar o inverso em branco, usa o valor do outro sentido. Os trechos atualizam sozinhos.</p>
-  <div class="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
+  <p class="text-xs text-slate-400 mb-2">Digite o valor de cada origem → destino. <b>Tarifa</b> é o transporte<span x-show="usaTaxa"> · <b>Serviço</b> é a taxa de serviço</span><span x-show="usaAlim"> · <b>Alim.</b> é a alimentação</span>. Subida e descida podem ter preços diferentes; se deixar o inverso em branco, usa o outro sentido.</p>
+  <div class="grid gap-x-4 gap-y-1.5" :class="(usaTaxa||usaAlim)?'sm:grid-cols-1':'sm:grid-cols-2'">
     <template x-for="t in trechos" :key="t.key">
-      <div class="flex items-center gap-2">
-        <span class="text-sm flex-1 truncate" x-text="t.o + ' → ' + t.d"></span>
-        <div class="relative shrink-0"><span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">R$</span>
-          <input type="number" step="0.01" min="0" class="input !min-h-[36px] !w-28 !pl-7 text-right" x-model.number="precos[t.key]" placeholder="0,00"></div>
+      <div class="flex items-center gap-2 flex-wrap" x-data="{c: ensure(t.key)}">
+        <span class="text-sm flex-1 min-w-[120px] truncate" x-text="t.o + ' → ' + t.d"></span>
+        <label class="flex items-center gap-1 shrink-0"><span class="text-[11px] text-slate-400 w-10 text-right">Tarifa</span>
+          <div class="relative"><span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]">R$</span>
+          <input type="number" step="0.01" min="0" class="input !min-h-[34px] !w-24 !pl-6 text-right text-sm" x-model.number="c.p" placeholder="0,00"></div></label>
+        <label class="flex items-center gap-1 shrink-0" x-show="usaTaxa"><span class="text-[11px] text-slate-400 w-10 text-right">Serviço</span>
+          <div class="relative"><span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]">R$</span>
+          <input type="number" step="0.01" min="0" class="input !min-h-[34px] !w-24 !pl-6 text-right text-sm" x-model.number="c.t" placeholder="0,00"></div></label>
+        <label class="flex items-center gap-1 shrink-0" x-show="usaAlim"><span class="text-[11px] text-slate-400 w-10 text-right">Alim.</span>
+          <div class="relative"><span class="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]">R$</span>
+          <input type="number" step="0.01" min="0" class="input !min-h-[34px] !w-24 !pl-6 text-right text-sm" x-model.number="c.a" placeholder="0,00"></div></label>
       </div>
     </template>
   </div>
@@ -48,7 +55,9 @@
     <span class="hidden">
       <input type="hidden" :name="`precos[${i}][origem]`" :value="t.o">
       <input type="hidden" :name="`precos[${i}][destino]`" :value="t.d">
-      <input type="hidden" :name="`precos[${i}][valor]`" :value="precos[t.key] || 0">
+      <input type="hidden" :name="`precos[${i}][valor]`" :value="(precos[t.key]||{}).p || 0">
+      <input type="hidden" :name="`precos[${i}][taxa]`" :value="(precos[t.key]||{}).t || 0">
+      <input type="hidden" :name="`precos[${i}][alim]`" :value="(precos[t.key]||{}).a || 0">
     </span>
   </template>
 </div>
@@ -59,11 +68,17 @@
 @once
 @push('scripts')
 <script>
-function rotaForm(paradas, precos){
+function rotaForm(paradas, precos, flags){
   const p = (paradas && paradas.length) ? paradas : [{localidade:'',dia_semana:'',hora:''},{localidade:'',dia_semana:'',hora:''}];
+  const norm = {};
+  Object.keys(precos||{}).forEach(k=>{ const v=precos[k];
+    norm[k] = (v && typeof v==='object') ? {p:Number(v.p)||0,t:Number(v.t)||0,a:Number(v.a)||0} : {p:Number(v)||0,t:0,a:0};
+  });
   return {
     paradas: p.map(x=>({localidade:x.localidade||'', dia_semana:(x.dia_semana??'')+'', hora:x.hora||''})),
-    precos: Object.assign({}, precos||{}),
+    precos: norm,
+    usaTaxa: !!(flags&&flags.taxa), usaAlim: !!(flags&&flags.alim),
+    ensure(key){ if(!this.precos[key]) this.precos[key]={p:0,t:0,a:0}; return this.precos[key]; },
     add(){ this.paradas.push({localidade:'',dia_semana:'',hora:''}); },
     get trechos(){
       const cidades = this.paradas.map(p=>(p.localidade||'').trim()).filter(Boolean);

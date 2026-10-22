@@ -70,6 +70,7 @@ class PassagemService
             foreach ($data['passageiros'] as $pax) {
                 $vp = round((float) ($pax['valor_passagem'] ?? 0), 2);
                 $vt = round((float) ($pax['valor_taxa'] ?? 0), 2);
+                $va = round((float) ($pax['valor_alimentacao'] ?? 0), 2);
                 $p->passageiros()->create([
                     'nome' => $pax['nome'],
                     'tipo' => $pax['tipo'] ?? 'Adulto',
@@ -79,7 +80,8 @@ class PassagemService
                     'poltrona' => $pax['poltrona'] ?? null,
                     'valor_passagem' => $vp,
                     'valor_taxa' => $vt,
-                    'valor_total' => round($vp + $vt, 2),
+                    'valor_alimentacao' => $va,
+                    'valor_total' => round($vp + $vt + $va, 2),
                     'observacao' => $pax['observacao'] ?? null,
                 ]);
                 $this->lembrarPessoa($pax['nome'], null, $pax['documento'] ?? null);
