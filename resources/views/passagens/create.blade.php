@@ -133,6 +133,7 @@
       <span class="n">3</span><span class="t">Passageiros</span>
       <span class="ml-auto text-[13px] font-bold">(<span x-text="passageiros.length"></span>)</span>
       <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold" @click="addPax()">＋ passageiro</button>
+      <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1" @click="abrirCaptura()">📷 Captura</button>
     </div>
     <div class="sec-b">
       <div class="rounded-xl border border-slate-200 bg-slate-50 lg:max-h-[52vh] lg:overflow-auto p-2 space-y-1.5">
@@ -156,6 +157,19 @@
               <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)">
                 <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑 poltrona'"></span>
               </button>
+            </div>
+            <div class="flex items-center justify-between gap-2 mt-1.5">
+              <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
+              <div class="flex items-center gap-2">
+                <img :src="'/'+p.foto_rg" x-show="p.foto_rg" x-cloak class="h-8 rounded border cursor-pointer" @click="window.open('/'+p.foto_rg,'_blank')" title="Foto do RG">
+                <button type="button" class="text-[11px] text-slate-500 underline" @click="p._mais=!p._mais" x-text="p._mais?'menos dados':'mais dados'"></button>
+              </div>
+            </div>
+            <div x-show="p._mais" x-cloak class="grid grid-cols-2 gap-2 mt-1.5">
+              <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+              <div><label class="lbl">Nascimento</label><input type="date" class="field !min-h-0 py-1 text-sm" x-model="p.nascimento"></div>
+              <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm" x-model="p.telefone" inputmode="tel" placeholder="(00) 00000-0000"></div>
+              <div><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm" x-model="p.nacionalidade" placeholder="Brasileira"></div>
             </div>
           </div>
         </template>
@@ -247,10 +261,22 @@
     </div>
   </div>
 </div>
+  {{-- MODAL CAPTURA POR FOTO --}}
+  <div x-show="capturaAberta" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" @click.self="fecharCaptura()">
+    <div class="bg-white rounded-2xl p-5 w-full max-w-sm text-center space-y-3">
+      <div class="font-extrabold text-lg" style="color:var(--cor1)">📷 Captura por foto</div>
+      <p class="text-sm text-slate-500">Abra a câmera do celular e aponte pro QR. Tire a foto do RG — o passageiro é preenchido aqui sozinho.</p>
+      <div id="qr-captura" class="inline-block p-3 bg-white rounded-xl border border-slate-200 mx-auto"></div>
+      <div class="text-sm font-semibold" style="color:var(--cor1)" x-text="capturaStatus"></div>
+      <div class="text-[11px] text-slate-400 break-all" x-show="capturaUrl" x-text="capturaUrl"></div>
+      <button type="button" @click="fecharCaptura()" class="w-full rounded-xl border-2 font-bold py-2.5" style="border-color:var(--cor1);color:var(--cor1)">Fechar</button>
+    </div>
+  </div>
 </form>
 @endsection
 
 @push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
   window.FBRE_OP = @js(['prefixo'=>auth()->user()->prefixo ?: 'OP'.auth()->id(), 'proximoSeq'=>(int)(auth()->user()->proximo_seq ?: 1)]);
 
@@ -259,7 +285,8 @@
       salvando:false, forma:'avista', imprimir:'navegador',
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4)])->values()),
-      podeRetroativo:@js($podeRetroativo),
+      podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
+      capturaAberta:false, capturaUrl:'', capturaSid:'', capturaDesde:0, capturaTimer:null, capturaStatus:'',
       usaEmbarque:@js($usaTaxaEmbarque ?? false), usaAlim:@js($usaAlimentacao ?? true), labelTaxa:@js($labelTaxa ?? 'Taxa de embarque'), labelAlim:@js($labelAlim ?? 'Alimentação'),
       trechoMap:{}, taxaMap:{},
       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'',
@@ -297,10 +324,53 @@
       },
 
       // ---- passageiros ----
-      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
+      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', foto_rg:'', checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       paxTotal(p){ return Math.round(((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))*100)/100; },
       setPaxTotal(p,v){ const total=Math.max(Number(v)||0,0); const fixo=(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0); p.valor_passagem=Math.round(Math.max(total-fixo,0)*100)/100; },
+      // ---- captura por foto (QR -> celular -> IA -> autofill) ----
+      async abrirCaptura(){
+        this.capturaAberta=true; this.capturaStatus='Gerando QR...'; this.capturaUrl='';
+        try{
+          const r=await fetch(@js(route('captura.novo')),{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}});
+          const j=await r.json(); this.capturaSid=j.sid; this.capturaUrl=j.url; this.capturaDesde=0;
+          this.$nextTick(()=>this.renderQr());
+          this.capturaStatus='Aponte a câmera do celular pro QR.';
+          this.iniciarPoll();
+        }catch(e){ this.capturaStatus='Erro ao gerar QR: '+e.message; }
+      },
+      renderQr(){ const el=document.getElementById('qr-captura'); if(!el||!window.QRCode) return; el.innerHTML=''; new QRCode(el,{text:this.capturaUrl,width:220,height:220,correctLevel:QRCode.CorrectLevel.M}); },
+      iniciarPoll(){ this.pararPoll(); this.capturaTimer=setInterval(()=>this.pollCaptura(),2500); },
+      pararPoll(){ if(this.capturaTimer){ clearInterval(this.capturaTimer); this.capturaTimer=null; } },
+      fecharCaptura(){ this.capturaAberta=false; this.pararPoll(); },
+      async pollCaptura(){
+        if(!this.capturaSid) return;
+        try{
+          const r=await fetch(@js(route('captura.pendentes'))+'?s='+encodeURIComponent(this.capturaSid)+'&desde='+this.capturaDesde,{headers:{Accept:'application/json'}});
+          const j=await r.json();
+          (j.itens||[]).forEach(it=>{
+            this.aplicarCaptura(it);
+            this.capturaDesde=Math.max(this.capturaDesde, it.id);
+            fetch('/passagens/captura/'+it.id+'/usar',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf}});
+          });
+        }catch(e){}
+      },
+      aplicarCaptura(it){
+        let idx=this.passageiros.findIndex(p=>!(p.nome||'').trim());
+        if(idx<0){ const np=this.novoPax(); this.aplicarTipo(np); this.passageiros.push(np); idx=this.passageiros.length-1; }
+        const p=this.passageiros[idx];
+        if(it.nome) p.nome=it.nome;
+        if(it.nascimento) p.nascimento=it.nascimento;
+        if(it.sexo) p.sexo=it.sexo;
+        if(it.nacionalidade) p.nacionalidade=it.nacionalidade;
+        if(it.documento) p.documento=it.documento;
+        if(it.foto_rg) p.foto_rg=it.foto_rg;
+        p._mais=true;
+        if(it.origem){ this.origemSel=it.origem; }
+        if(it.destino){ this.destinoSel=it.destino; }
+        if(it.origem||it.destino){ this.onRota(); }
+        this.capturaStatus='✅ '+(it.nome||'Passageiro')+' recebido! Pode enviar o próximo.';
+      },
       rmPax(i){ this.passageiros.splice(i,1); },
       aplicarTipo(p){
         const t=this.tipos.find(x=>String(x.id)===String(p.tipo_id)) || this.tipos[0];
@@ -438,7 +508,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
         try{

@@ -13,6 +13,7 @@ use App\Http\Controllers\ViagemController;
 use App\Http\Controllers\Admin\RotaController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\PreCadastroController;
+use App\Http\Controllers\CapturaController;
 use App\Http\Controllers\PreCadastroPublicController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/pre/{slug}', [PreCadastroPublicController::class, 'form'])->where('slug', '[a-z0-9-]+')->name('pre.form');
 Route::post('/pre/{slug}', [PreCadastroPublicController::class, 'store'])->where('slug', '[a-z0-9-]+')->name('pre.store');
 Route::get('/pre/{slug}/ok/{codigo}', [PreCadastroPublicController::class, 'ok'])->where('slug', '[a-z0-9-]+')->name('pre.ok');
+
+// ---------------- Captura por foto (celular lê RG, sem login) ----------------
+Route::get('/c', [CapturaController::class, 'mobile'])->name('captura.mobile');
+Route::post('/c/enviar', [CapturaController::class, 'enviar'])->name('captura.enviar');
 
 // ---------------- Autenticação ----------------
 Route::middleware('guest')->group(function () {
@@ -47,6 +52,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/nova', [\App\Http\Controllers\PassagemController::class, 'create'])->name('passagens.create')->middleware('perm:passagem');
     Route::post('/passagens', [\App\Http\Controllers\PassagemController::class, 'store'])->name('passagens.store')->middleware('perm:passagem');
     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos')->middleware('perm:passagem.ver');
+    Route::post('/passagens/captura/novo', [CapturaController::class, 'novo'])->name('captura.novo')->middleware('perm:passagem');
+    Route::get('/passagens/captura/pendentes', [CapturaController::class, 'pendentes'])->name('captura.pendentes')->middleware('perm:passagem');
+    Route::post('/passagens/captura/{captura}/usar', [CapturaController::class, 'usar'])->name('captura.usar')->middleware('perm:passagem');
     Route::get('/passagens/{passagem}', [\App\Http\Controllers\PassagemController::class, 'show'])->name('passagens.show')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/pagar', [\App\Http\Controllers\PassagemController::class, 'pagar'])->name('passagens.pagar')->middleware('perm:passagem.baixa');
     Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:passagem.baixa');
