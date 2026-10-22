@@ -57,6 +57,33 @@
 @endforeach
 
 <div class="card p-4 space-y-2 md:col-span-2">
+  <h2 class="font-bold text-sm text-slate-500 uppercase">Tipos de passageiro (passagem)</h2>
+  <p class="text-xs text-slate-500">Ex.: Adulto 100%, Criança meia 50%, Idoso 50%, PCD. Cada tipo é por <b>porcentagem</b> da tarifa OU <b>valor fixo</b>.</p>
+  <form method="post" action="{{ route('admin.tipos-passageiro.salvar') }}" class="flex flex-wrap gap-2 items-end border-b pb-3" x-data="{modo:'porcentagem'}">@csrf
+    <input name="nome" class="input !min-h-[40px] flex-1 min-w-[140px]" placeholder="Nome (ex.: Criança meia)" required maxlength="60">
+    <select name="modo" x-model="modo" class="input !min-h-[40px] !w-40"><option value="porcentagem">Porcentagem</option><option value="valor">Valor fixo</option></select>
+    <div x-show="modo==='porcentagem'" class="flex items-center gap-1"><input name="percentual" type="number" min="0" max="100" value="100" class="input !min-h-[40px] !w-24 text-right"><span class="text-xs">%</span></div>
+    <div x-show="modo==='valor'" x-cloak><input name="valor_fixo" type="number" step="0.01" min="0" class="input !min-h-[40px] !w-28 text-right" placeholder="R$"></div>
+    <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="paga_taxa" value="1" checked class="w-5 h-5 rounded"> paga taxa</label>
+    <button class="btn btn-accent btn-sm">+ Adicionar</button>
+  </form>
+  <div class="space-y-2">
+    @forelse($tiposPassageiro as $t)
+      <form method="post" action="{{ route('admin.tipos-passageiro.salvar',$t) }}" class="flex flex-wrap items-end gap-2 {{ $t->ativo?'':'opacity-50' }}" x-data="{modo:'{{ $t->modo }}'}">@csrf
+        <div class="flex-1 min-w-[140px]"><input name="nome" class="input !min-h-[38px]" value="{{ $t->nome }}" required></div>
+        <select name="modo" x-model="modo" class="input !min-h-[38px] !w-36"><option value="porcentagem" @selected($t->modo==='porcentagem')>Porcentagem</option><option value="valor" @selected($t->modo==='valor')>Valor fixo</option></select>
+        <div x-show="modo==='porcentagem'" class="flex items-center gap-1"><input name="percentual" type="number" min="0" max="100" value="{{ $t->percentual }}" class="input !min-h-[38px] !w-20 text-right"><span class="text-xs">%</span></div>
+        <div x-show="modo==='valor'" x-cloak><input name="valor_fixo" type="number" step="0.01" min="0" value="{{ number_format($t->valor_fixo,2,'.','') }}" class="input !min-h-[38px] !w-24 text-right"></div>
+        <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" name="paga_taxa" value="1" @checked($t->paga_taxa) class="w-5 h-5 rounded"> taxa</label>
+        <button class="btn btn-primary btn-sm">Salvar</button>
+        <a href="#" onclick="event.preventDefault(); if(confirm('Remover tipo?')) this.closest('form').nextElementSibling.submit();" class="text-red-500 text-xs pb-2">remover</a>
+      </form>
+      <form method="post" action="{{ route('admin.cadastros.destroy',['tipos_passageiro',$t->id]) }}" class="hidden">@csrf @method('DELETE')</form>
+    @empty <div class="text-slate-400 text-sm">Nenhum tipo ainda.</div> @endforelse
+  </div>
+</div>
+
+<div class="card p-4 space-y-2 md:col-span-2">
   <h2 class="font-bold text-sm text-slate-500 uppercase">Categorias do caixa (entrada/saída avulsa)</h2>
   <p class="text-xs text-slate-500">O operador escolhe uma destas ao lançar entrada/saída no caixa. Só o admin cria aqui.</p>
   <form method="post" action="{{ route('admin.cadastros.store','categorias') }}" class="flex flex-wrap gap-2 items-end">@csrf

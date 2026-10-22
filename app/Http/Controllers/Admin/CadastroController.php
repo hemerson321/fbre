@@ -17,6 +17,7 @@ use App\Models\Rota;
 use App\Models\Setor;
 use App\Models\AvulsoCategoria;
 use App\Models\TabelaPreco;
+use App\Models\TipoPassageiro;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,7 @@ class CadastroController extends Controller
         'setores' => Setor::class,
         'produtos' => Produto::class,
         'categorias' => AvulsoCategoria::class,
+        'tipos_passageiro' => TipoPassageiro::class,
     ];
 
     public function index()
@@ -41,6 +43,7 @@ class CadastroController extends Controller
             'produtos' => Produto::orderBy('nome')->get(),
             'estacoes' => Estacao::orderBy('nome')->get(),
             'categorias' => AvulsoCategoria::orderBy('ordem')->orderBy('nome')->get(),
+            'tiposPassageiro' => TipoPassageiro::orderBy('ordem')->orderBy('nome')->get(),
             'precosMapa' => TabelaPreco::where('ativo', true)->get(['origem', 'destino', 'passagem'])
                 ->mapWithKeys(fn ($t) => [mb_strtolower($t->origem.'|'.$t->destino) => (float) $t->passagem])
                 ->toArray(),
@@ -77,9 +80,35 @@ class CadastroController extends Controller
         abort_unless(isset($this->tipos[$tipo]) || $tipo === 'estacoes', 404);
         $m = $tipo === 'estacoes' ? Estacao::class : $this->tipos[$tipo];
         $reg = $m::findOrFail($id);
-        if (in_array($tipo, ['setores', 'estacoes', 'categorias'])) { $reg->delete(); }
+        if (in_array($tipo, ['setores', 'estacoes', 'categorias', 'tipos_passageiro'])) { $reg->delete(); }
         else { $reg->update(['ativo' => false]); }
         return back()->with('ok', 'Removido.');
+    }
+
+    /** Cria ou edita um tipo de passageiro (porcentagem ou valor fixo). */
+    public function salvarTipoPassageiro(Request $request, ?TipoPassageiro $tipo = null)
+    {
+        $data = $request->validate([
+            'nome' => 'required|string|max:60',
+            'modo' => 'required|in:porcentagem,valor',
+            'percentual' => 'nullable|integer|min:0|max:100',
+            'valor_fixo' => 'nullable|numeric|min:0',
+            'paga_taxa' => 'nullable|boolean',
+        ]);
+        $payload = [
+            'nome' => $data['nome'],
+            'modo' => $data['modo'],
+            'percentual' => $data['modo'] === 'porcentagem' ? (int) ($data['percentual'] ?? 100) : 100,
+            'valor_fixo' => $data['modo'] === 'valor' ? (float) ($data['valor_fixo'] ?? 0) : 0,
+            'paga_taxa' => $request->boolean('paga_taxa'),
+            'ativo' => true,
+        ];
+        if ($tipo && $tipo->exists) {
+            $tipo->update($payload);
+            return back()->with('ok', 'Tipo atualizado.');
+        }
+        TipoPassageiro::create($payload + ['ordem' => (int) (TipoPassageiro::max('ordem') ?? 0) + 1]);
+        return back()->with('ok', 'Tipo criado.');
     }
 
     /** Configura poltrona de uma embarcação (usa/qtd/colunas). */

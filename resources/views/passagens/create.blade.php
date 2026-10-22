@@ -146,7 +146,7 @@
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
               <div class="lg:col-span-2"><label class="lbl">Tipo</label>
                 <select class="field !min-h-0 py-1 text-sm" x-model="p.tipo" @change="aplicarTipo(p)">
-                  @foreach($tipos as $t)<option value="{{ $t->nome }}">{{ $t->nome }} ({{ $t->percentual }}%)</option>@endforeach
+                  @foreach($tipos as $t)<option value="{{ $t->nome }}">{{ $t->nome }} @if(($t->modo ?? 'porcentagem')==='valor'){{ 'R$ '.number_format($t->valor_fixo,2,',','.') }}@else({{ $t->percentual }}%)@endif</option>@endforeach
                 </select></div>
               <div><label class="lbl">Passagem</label>
                 <input type="number" step="0.01" min="0" class="field !min-h-0 py-1 text-right text-sm" x-model.number="p.valor_passagem" @focus="$event.target.select()"></div>
@@ -291,13 +291,14 @@
       },
 
       // ---- passageiros ----
-      novoPax(){ const t=this.tipos[0]||{nome:'Adulto',percentual:100,paga_taxa:true}; return {id:Date.now()+Math.random(), nome:'', tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, documento:'', poltrona:'', valor_passagem:0, valor_taxa:0}; },
+      novoPax(){ const t=this.tipos[0]||{nome:'Adulto',percentual:100,paga_taxa:true,modo:'porcentagem',valor_fixo:0}; return {id:Date.now()+Math.random(), nome:'', tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'porcentagem', valor_fixo:Number(t.valor_fixo)||0, documento:'', poltrona:'', valor_passagem:0, valor_taxa:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       rmPax(i){ this.passageiros.splice(i,1); },
       aplicarTipo(p){
         const t=this.tipos.find(x=>x.nome===p.tipo);
-        if(t){ p.percentual=t.percentual; p.paga_taxa=!!t.paga_taxa; }
-        if(this.basePassagem>0) p.valor_passagem=Math.round(this.basePassagem*(p.percentual/100)*100)/100;
+        if(t){ p.percentual=t.percentual; p.paga_taxa=!!t.paga_taxa; p.modo=t.modo||'porcentagem'; p.valor_fixo=Number(t.valor_fixo)||0; }
+        if((p.modo||'porcentagem')==='valor'){ p.valor_passagem = Number(p.valor_fixo)||0; }
+        else if(this.basePassagem>0){ p.valor_passagem=Math.round(this.basePassagem*(p.percentual/100)*100)/100; }
         p.valor_taxa = p.paga_taxa ? this.baseTaxa : 0;
       },
 
@@ -401,7 +402,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, documento:p.documento||null, poltrona:p.poltrona||null, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
         try{
