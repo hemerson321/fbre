@@ -198,6 +198,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/agentes', [AgenteController::class, 'index'])->name('agentes');
         Route::post('/agentes/{agente?}', [AgenteController::class, 'salvar'])->name('agentes.salvar');
         Route::delete('/agentes/{agente}', [AgenteController::class, 'excluir'])->name('agentes.excluir');
+        Route::post('/agentes/{agente}/testar', [AgenteController::class, 'testar'])->name('agentes.testar');
     });
 
     // ---------------- Super-admin (GERATEC) ----------------

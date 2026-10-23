@@ -7,6 +7,7 @@ use App\Models\Agente;
 use App\Models\LlmProvedor;
 use App\Models\PagamentoApi;
 use App\Models\WhatsappConexao;
+use App\Services\AgenteBot;
 use App\Support\Modulos;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
@@ -76,6 +77,15 @@ class AgenteController extends Controller
         }
         Agente::create($payload);
         return back()->with('ok', 'Agente criado.');
+    }
+
+    public function testar(Request $request, Agente $agente, AgenteBot $bot)
+    {
+        abort_unless($agente->empresa_id === Tenant::id(), 404);
+        $msg = trim((string) $request->input('msg')) ?: 'Oi, quero uma passagem';
+        $r = $bot->responderTeste($agente, $msg);
+        return back()->with($r['ok'] ? 'ok' : 'erro',
+            $r['ok'] ? ('🤖 Resposta do agente: '.$r['texto']) : ('Falhou: '.($r['erro'] ?? 'erro')));
     }
 
     public function excluir(Agente $agente)

@@ -38,7 +38,10 @@ class WebhookController extends Controller
 
             foreach ($msgs as $m) {
                 if (($m['texto'] ?? '') === '' || ($m['telefone'] ?? '') === '') continue;
-                $at->registrarEntrada($c, $m['telefone'], $m['texto'], $m['nome'] ?? null, $m['wa_id'] ?? null);
+                $msg = $at->registrarEntrada($c, $m['telefone'], $m['texto'], $m['nome'] ?? null, $m['wa_id'] ?? null);
+                if ($msg && $msg->conversa) {
+                    app(\App\Services\AgenteBot::class)->processar($msg->conversa);
+                }
             }
         } catch (\Throwable $e) {
             Log::warning('Webhook WA erro: '.$e->getMessage());

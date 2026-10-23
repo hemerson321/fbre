@@ -114,6 +114,7 @@ class WhatsApp
         $base = $this->evoBase($c);
         if (! $base) return ['ok' => false, 'erro' => 'sem base'];
         try {
+            // Evolution v2 (formato aninhado)
             $r = $this->evoHttp($c)->post("{$base}/webhook/set/{$c->instancia}", [
                 'webhook' => [
                     'enabled' => true,
@@ -123,7 +124,16 @@ class WhatsApp
                     'events' => ['MESSAGES_UPSERT'],
                 ],
             ]);
-            return ['ok' => $r->successful(), 'erro' => $r->successful() ? null : ('HTTP '.$r->status())];
+            if (! $r->successful()) {
+                // fallback: formato plano (versões mais antigas)
+                $r = $this->evoHttp($c)->post("{$base}/webhook/set/{$c->instancia}", [
+                    'enabled' => true,
+                    'url' => $url,
+                    'webhook_by_events' => false,
+                    'events' => ['MESSAGES_UPSERT'],
+                ]);
+            }
+            return ['ok' => $r->successful(), 'erro' => $r->successful() ? null : ('HTTP '.$r->status().': '.mb_substr($r->body(),0,150))];
         } catch (\Throwable $e) {
             return ['ok' => false, 'erro' => $e->getMessage()];
         }

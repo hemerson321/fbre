@@ -55,4 +55,10 @@
     <button class="btn btn-primary btn-sm">{{ $a ? 'Salvar agente' : 'Criar agente' }}</button>
   </div>
 </form>
+@if($a)
+<form method="post" action="{{ route('admin.agentes.testar',$a) }}" class="mt-2 flex gap-2">@csrf
+  <input name="msg" class="input !min-h-[38px] flex-1" placeholder="Simular mensagem do cliente (ex.: tem passagem pra Parintins?)">
+  <button class="btn btn-ghost btn-sm">🧪 Testar agente</button>
+</form>
+@endif
 @if($a)<form id="del-{{ $a->id }}" method="post" action="{{ route('admin.agentes.excluir',$a) }}" class="hidden" onsubmit="return confirm('Remover agente?')">@csrf @method('delete')</form>@endif
