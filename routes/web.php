@@ -5,6 +5,7 @@ use App\Http\Controllers\CaixaController;
 use App\Http\Controllers\EncomendaController;
 use App\Http\Controllers\ImpressaoController;
 use App\Http\Controllers\Admin\EmpresaController;
+use App\Http\Controllers\Admin\PagamentoController;
 use App\Http\Controllers\Admin\WhatsappController;
 use App\Http\Controllers\Admin\CadastroController;
 use App\Http\Controllers\Admin\UsuarioController;
@@ -163,6 +164,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/whatsapp/{conexao?}', [WhatsappController::class, 'salvar'])->name('whatsapp.salvar');
         Route::delete('/whatsapp/{conexao}', [WhatsappController::class, 'excluir'])->name('whatsapp.excluir');
         Route::post('/whatsapp/{conexao}/testar', [WhatsappController::class, 'testar'])->name('whatsapp.testar');
+        // Pagamentos (APIs: Mercado Pago) — atrelado por módulo
+        Route::get('/pagamentos', [PagamentoController::class, 'index'])->name('pagamentos');
+        Route::post('/pagamentos/atribuir', [PagamentoController::class, 'atribuir'])->name('pagamentos.atribuir');
+        Route::post('/pagamentos/{api?}', [PagamentoController::class, 'salvar'])->name('pagamentos.salvar');
+        Route::delete('/pagamentos/{api}', [PagamentoController::class, 'excluir'])->name('pagamentos.excluir');
+        Route::post('/pagamentos/{api}/testar', [PagamentoController::class, 'testar'])->name('pagamentos.testar');
     });
 
     // ---------------- Super-admin (GERATEC) ----------------

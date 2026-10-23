@@ -52,6 +52,19 @@ class Empresa extends Model
         return $id ? WhatsappConexao::where('ativo', true)->find($id) : null;
     }
 
+    /** API de pagamento escolhida para um módulo (passagem, encomenda, frete...). */
+    public function pagamentoApi(string $modulo): ?PagamentoApi
+    {
+        $id = $this->config('pgto_api_'.$modulo);
+        return $id ? PagamentoApi::where('ativo', true)->find($id) : null;
+    }
+
+    /** PIX dinâmico habilitado para o módulo? (precisa de uma API atrelada ativa). */
+    public function usaPix(string $modulo): bool
+    {
+        return (bool) $this->config('pix_'.$modulo) && $this->pagamentoApi($modulo) !== null;
+    }
+
     /** Ícones quadrados do PWA (gera a partir da logo se faltarem). */
     public function iconesPwa(): array
     {
