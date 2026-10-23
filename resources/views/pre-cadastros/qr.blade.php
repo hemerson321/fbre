@@ -3,11 +3,20 @@
 @push('head')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
+  .cartaz{ --c1:{{ $empresa->cor_primaria ?? '#0b1a33' }}; --c2:{{ $empresa->cor_secundaria ?? '#00a8e8' }}; }
+  .qrwrap{ position:relative; display:inline-block; padding:14px; background:#fff; border-radius:18px; }
+  .qrwrap::before,.qrwrap::after,.qrwrap>span.c1,.qrwrap>span.c2{ content:""; position:absolute; width:26px; height:26px; border:4px solid var(--c2); }
+  .qrwrap::before{ top:0; left:0; border-right:0; border-bottom:0; border-top-left-radius:10px; }
+  .qrwrap::after{ top:0; right:0; border-left:0; border-bottom:0; border-top-right-radius:10px; }
+  .qrwrap>span.c1{ bottom:0; left:0; border-right:0; border-top:0; border-bottom-left-radius:10px; }
+  .qrwrap>span.c2{ bottom:0; right:0; border-left:0; border-top:0; border-bottom-right-radius:10px; }
+  .passo-n{ flex:0 0 auto; width:30px; height:30px; border-radius:9999px; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:15px; }
   @media print {
-    body { background:#fff !important; }
-    .no-print, header, nav, aside { display:none !important; }
-    .cartaz { box-shadow:none !important; border:none !important; margin:0 !important; width:100% !important; }
-    @page { margin: 8mm; }
+    body{ background:#fff !important; }
+    .no-print, header, nav, aside{ display:none !important; }
+    .cartaz{ box-shadow:none !important; border:none !important; margin:0 auto !important; }
+    .cartaz, .cartaz *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    @page{ margin:10mm; }
   }
 </style>
 @endpush
@@ -23,7 +32,7 @@
     <div class="flex items-start justify-between gap-2 flex-wrap">
       <div>
         <h1 class="text-xl font-bold">QR e cartaz do pré-cadastro</h1>
-        <p class="text-xs text-slate-500">Imprima o cartaz e cole na parede. O cliente escaneia, preenche e aparece na sua fila.</p>
+        <p class="text-xs text-slate-500">Imprima o cartaz e cole na parede. O cliente escaneia, preenche e já cai na sua fila.</p>
       </div>
       <a href="{{ route('pre.index') }}" class="btn btn-ghost btn-sm">← Fila</a>
     </div>
@@ -42,23 +51,63 @@
     <p class="text-[11px] text-slate-400">Dica: pra mandar pra gráfica, clique em “Imprimir” e escolha <b>Salvar como PDF</b>, ou baixe o PNG do QR e use na arte de vocês.</p>
   </div>
 
-  {{-- cartaz (é o que imprime) --}}
-  <div class="cartaz mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden" style="max-width:520px">
-    <div class="p-6 text-white text-center" style="background:linear-gradient(140deg,{{ $cor1 }},color-mix(in srgb,{{ $cor1 }} 60%,{{ $cor2 }}))">
-      @if($empresa->logo)<img src="/{{ $empresa->logo }}" class="h-16 w-16 rounded-xl object-cover bg-white/90 p-1 mx-auto mb-2">@endif
-      <div class="text-xl font-extrabold leading-tight">{{ $empresa->nomeExibicao() }}</div>
-      <div class="text-sm opacity-90 mt-1">Adiante seu atendimento</div>
-    </div>
-    <div class="p-6 text-center">
-      <div class="text-2xl font-black" style="color:{{ $cor1 }}">PRÉ-CADASTRE SUA ENCOMENDA</div>
-      <p class="text-slate-500 text-sm mt-1">Aponte a câmera do celular para o QR abaixo</p>
-      <div id="qr" class="inline-block p-3 bg-white rounded-xl border border-slate-200 my-4"></div>
-      <div class="text-left max-w-xs mx-auto space-y-2 text-sm">
-        <div class="flex gap-2"><span class="font-black" style="color:{{ $cor2 }}">1</span> Escaneie e preencha origem, destino e o que vai enviar.</div>
-        <div class="flex gap-2"><span class="font-black" style="color:{{ $cor2 }}">2</span> Receba um <b>código</b> na tela.</div>
-        <div class="flex gap-2"><span class="font-black" style="color:{{ $cor2 }}">3</span> No balcão, mostre o <b>código</b> ou diga seu <b>nome</b>. Pronto!</div>
+  {{-- ===== CARTAZ (é o que imprime) ===== --}}
+  <div class="cartaz mx-auto bg-white rounded-[28px] shadow-lg border border-slate-100 overflow-hidden" style="max-width:540px">
+
+    {{-- topo --}}
+    <div class="relative px-8 pt-8 pb-7 text-white text-center" style="background:linear-gradient(145deg,{{ $cor1 }},color-mix(in srgb,{{ $cor1 }} 55%,{{ $cor2 }}))">
+      @if($empresa->logo)
+        <img src="/{{ $empresa->logo }}" class="h-20 w-20 rounded-2xl object-contain bg-white p-1.5 mx-auto mb-3 shadow-md">
+      @endif
+      <div class="text-2xl font-extrabold leading-tight">{{ $empresa->nomeExibicao() }}</div>
+      <div class="inline-flex items-center gap-1.5 mt-2 text-[12px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-white/15">
+        📦 Encomendas · adiante seu atendimento
       </div>
-      <div class="mt-4 text-xs text-slate-400 break-all">{{ $url }}</div>
+    </div>
+
+    {{-- faixa de chamada --}}
+    <div class="px-8 pt-7 text-center">
+      <div class="text-[26px] font-black leading-tight" style="color:{{ $cor1 }}">PRÉ-CADASTRE<br>SUA ENCOMENDA</div>
+      <p class="inline-flex items-center gap-1.5 text-slate-500 text-sm mt-2 font-medium">
+        <span style="color:{{ $cor2 }}">📷</span> Aponte a câmera do celular para o QR
+      </p>
+    </div>
+
+    {{-- QR com moldura --}}
+    <div class="flex justify-center my-6">
+      <div class="qrwrap shadow-sm">
+        <span class="c1"></span><span class="c2"></span>
+        <div id="qr"></div>
+      </div>
+    </div>
+
+    {{-- passos --}}
+    <div class="px-8 pb-2 space-y-3 max-w-sm mx-auto">
+      <div class="flex items-center gap-3">
+        <span class="passo-n" style="background:{{ $cor2 }}">1</span>
+        <span class="text-[15px] text-slate-700 leading-snug">Escaneie e preencha <b>origem</b>, <b>destino</b> e o que vai enviar.</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="passo-n" style="background:{{ $cor2 }}">2</span>
+        <span class="text-[15px] text-slate-700 leading-snug">Receba um <b>código</b> direto na tela do celular.</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="passo-n" style="background:{{ $cor2 }}">3</span>
+        <span class="text-[15px] text-slate-700 leading-snug">No balcão, mostre o <b>código</b> ou diga seu <b>nome</b>. Pronto!</span>
+      </div>
+    </div>
+
+    {{-- benefícios --}}
+    <div class="flex justify-center gap-5 mt-5 px-8 text-center text-[12px] font-semibold" style="color:{{ $cor1 }}">
+      <div>⚡<br><span class="opacity-80">Sem fila</span></div>
+      <div>🕒<br><span class="opacity-80">Mais rápido</span></div>
+      <div>✅<br><span class="opacity-80">Código na hora</span></div>
+    </div>
+
+    {{-- rodapé com link --}}
+    <div class="mt-6 px-8 py-4 text-center" style="background:color-mix(in srgb,{{ $cor1 }} 6%,#fff)">
+      <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">ou acesse pelo link</div>
+      <div class="text-sm font-bold break-all" style="color:{{ $cor1 }}">{{ preg_replace('#^https?://#','',$url) }}</div>
     </div>
   </div>
 </div>
@@ -66,7 +115,7 @@
 <script>
   var qrcode = new QRCode(document.getElementById("qr"), {
     text: @json($url),
-    width: 240, height: 240,
+    width: 230, height: 230,
     colorDark: @json($cor1), colorLight: "#ffffff",
     correctLevel: QRCode.CorrectLevel.M
   });
