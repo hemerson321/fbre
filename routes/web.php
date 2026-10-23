@@ -35,6 +35,31 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 Route::view('/bloqueado', 'auth.bloqueado')->middleware('auth')->name('bloqueado');
 
+// Manifest dinamico do PWA: usa a logo da empresa como icone do app instalado
+Route::get('/manifest.webmanifest', function () {
+    $e = \App\Support\Tenant::empresa();
+    $nome = $e?->nomeExibicao() ?: 'FBRE';
+    $icones = $e ? $e->iconesPwa() : [];
+    $i192 = $icones['192'] ?? ($e?->logo ?: 'img/icon.png');
+    $i512 = $icones['512'] ?? ($e?->logo ?: 'img/icon.png');
+    $v = $e?->updated_at?->timestamp ?? 1;
+    $cor = $e?->cor_primaria ?: '#0b2a4a';
+    return response()->json([
+        'name' => $nome,
+        'short_name' => \Illuminate\Support\Str::limit($nome, 15, ''),
+        'start_url' => '/',
+        'scope' => '/',
+        'display' => 'standalone',
+        'background_color' => '#ffffff',
+        'theme_color' => $cor,
+        'icons' => [
+            ['src' => '/'.ltrim($i192, '/').'?v='.$v, 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+            ['src' => '/'.ltrim($i512, '/').'?v='.$v, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+            ['src' => '/'.ltrim($i512, '/').'?v='.$v, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+        ],
+    ], 200, ['Content-Type' => 'application/manifest+json'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+})->name('manifest');
+
 Route::middleware('auth')->group(function () {
     Route::get('/', [EncomendaController::class, 'inicio'])->name('inicio');
 

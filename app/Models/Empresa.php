@@ -52,6 +52,27 @@ class Empresa extends Model
         return $id ? WhatsappConexao::where('ativo', true)->find($id) : null;
     }
 
+    /** Ícones quadrados do PWA (gera a partir da logo se faltarem). */
+    public function iconesPwa(): array
+    {
+        $i192 = $this->config('icon_192');
+        $i512 = $this->config('icon_512');
+        if ($i192 && $i512 && is_file(public_path($i192)) && is_file(public_path($i512))) {
+            return ['192' => $i192, '512' => $i512];
+        }
+        if (! $this->logo || ! is_file(public_path($this->logo))) {
+            return [];
+        }
+        $paths = app(\App\Services\IconePwa::class)->gerar(public_path($this->logo), $this->id);
+        if ($paths) {
+            $cfg = $this->config ?? [];
+            $cfg['icon_192'] = $paths['192'] ?? null;
+            $cfg['icon_512'] = $paths['512'] ?? null;
+            $this->forceFill(['config' => $cfg])->save();
+        }
+        return $paths;
+    }
+
     public function vencida(): bool
     {
         return $this->validade && $this->validade->isPast();

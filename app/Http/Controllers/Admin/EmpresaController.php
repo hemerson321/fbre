@@ -67,10 +67,16 @@ class EmpresaController extends Controller
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
             $data['logo'] = 'storage/'.$path;
+            // limpa cache de icones p/ regenerar a partir da nova logo
+            unset($config['icon_192'], $config['icon_512']);
+            $data['config'] = $config;
         }
 
         try {
             $empresa->update($data);
+            if ($request->hasFile('logo')) {
+                $empresa->refresh()->iconesPwa(); // gera icones quadrados do PWA
+            }
         } catch (\Throwable $e) {
             return back()->withErrors(['salvar' => 'Erro ao salvar: '.$e->getMessage()])->withInput();
         }
