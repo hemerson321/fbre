@@ -79,6 +79,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/passagens', [\App\Http\Controllers\PassagemController::class, 'store'])->name('passagens.store')->middleware('perm:passagem');
     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos')->middleware('perm:passagem.ver');
     Route::get('/passagens/minhas-vendas', [\App\Http\Controllers\PassagemController::class, 'minhasVendas'])->name('passagens.minhas-vendas')->middleware('perm:passagem.ver');
+    Route::get('/passagens/checkin', [\App\Http\Controllers\PassagemController::class, 'scanner'])->name('passagens.scanner')->middleware('perm:passagem.baixa');
+    Route::get('/passagens/checkin/buscar', [\App\Http\Controllers\PassagemController::class, 'buscarCheckin'])->name('passagens.scanner.buscar')->middleware('perm:passagem.baixa');
     Route::post('/passagens/captura/novo', [CapturaController::class, 'novo'])->name('captura.novo')->middleware('perm:passagem');
     Route::get('/passagens/captura/pendentes', [CapturaController::class, 'pendentes'])->name('captura.pendentes')->middleware('perm:passagem');
     Route::post('/passagens/captura/ocr', [CapturaController::class, 'ocrDireto'])->name('captura.ocr')->middleware('perm:passagem');

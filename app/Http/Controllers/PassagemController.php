@@ -301,6 +301,29 @@ class PassagemController extends Controller
         return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo'));
     }
 
+    /** Tela de check-in (hub): escaneia o QR do bilhete ou busca pelo numero. */
+    public function scanner()
+    {
+        return view('passagens.scanner');
+    }
+
+    /** Resolve o numero digitado -> abre o check-in daquela passagem. */
+    public function buscarCheckin(Request $request)
+    {
+        $n = trim((string) $request->query('numero', ''));
+        if ($n === '') {
+            return redirect()->route('passagens.scanner')->withErrors(['numero' => 'Informe o número da passagem.']);
+        }
+        $num = preg_replace('/\D/', '', $n);
+        $p = Passagem::where('numero_completo', $n)
+            ->when($num !== '', fn ($q) => $q->orWhere('numero', (int) $num))
+            ->first();
+        if (! $p) {
+            return redirect()->route('passagens.scanner')->withErrors(['numero' => "Passagem \"$n\" não encontrada."]);
+        }
+        return redirect()->route('checkin', $p);
+    }
+
     public function comprovante(Passagem $passagem)
     {
         abort_unless($passagem->empresa_id === Tenant::id(), 404);
