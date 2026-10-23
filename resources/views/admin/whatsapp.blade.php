@@ -73,11 +73,62 @@
           <input form="teste-{{ $c->id }}" name="telefone" class="input !min-h-[38px]" placeholder="92 99999-9999"></div>
         <button form="teste-{{ $c->id }}" class="btn btn-ghost btn-sm">Enviar teste</button>
       </div>
+      {{-- Gerenciar instância Evolution (criar/QR/status) pelo sistema --}}
+      <div x-show="tipo==='nao_oficial'" x-data="evo({{ $c->id }})" x-init="verStatus()" class="border-t pt-3 space-y-2">
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-slate-500">Status:</span>
+          <span class="font-bold" :class="conectado?'text-emerald-600':'text-slate-400'" x-text="estadoTxt"></span>
+          <button type="button" class="text-xs underline text-slate-400" @click="verStatus()">atualizar</button>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('criar-{{ $c->id }}').submit()">Criar instância</button>
+          <button type="button" class="btn btn-primary btn-sm" style="background:var(--cor1)" @click="abrirQr()">Conectar (QR)</button>
+          <button type="button" class="btn btn-ghost btn-sm text-red-500" onclick="if(confirm('Desconectar este WhatsApp?'))document.getElementById('desc-{{ $c->id }}').submit()">Desconectar</button>
+        </div>
+        <div x-show="qrAberto" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" @click.self="fecharQr()">
+          <div class="bg-white rounded-2xl p-5 max-w-xs w-full text-center space-y-3">
+            <div class="font-bold">Conectar WhatsApp</div>
+            <p class="text-xs text-slate-500">No celular: WhatsApp → Aparelhos conectados → Conectar um aparelho, e aponte pro QR.</p>
+            <template x-if="qr"><img :src="qr" class="w-56 h-56 mx-auto rounded-lg border"></template>
+            <template x-if="!qr"><div class="text-sm text-slate-400 py-16" x-text="qrMsg"></div></template>
+            <div class="text-sm font-semibold" :class="conectado?'text-emerald-600':'text-amber-600'" x-text="conectado?'Conectado ✅':'Aguardando leitura…'"></div>
+            <button type="button" class="btn btn-ghost btn-sm w-full" @click="fecharQr()">Fechar</button>
+          </div>
+        </div>
+      </div>
     </form>
     <form id="teste-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.testar',$c) }}" class="hidden">@csrf</form>
+    <form id="criar-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.criar',$c) }}" class="hidden">@csrf</form>
+    <form id="desc-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.desconectar',$c) }}" class="hidden">@csrf</form>
     <form method="post" action="{{ route('admin.whatsapp.excluir',$c) }}" class="form-excluir hidden">@csrf @method('DELETE')</form>
   @empty
     <div class="text-sm text-slate-400 text-center py-4">Nenhuma conexão ainda. Cadastre a primeira acima.</div>
   @endforelse
 </div>
+
+<script>
+function evo(id){
+  return {
+    conectado:false, estadoTxt:'—', qrAberto:false, qr:null, qrMsg:'Gerando QR…', timer:null,
+    async verStatus(){
+      try{ var r=await fetch('/admin/whatsapp/'+id+'/status',{headers:{'X-Requested-With':'fetch'}}); var d=await r.json();
+        if(d.ok){ this.conectado=d.conectado; this.estadoTxt=d.conectado?'Conectado':(d.estado||'desconectado'); }
+        else { this.estadoTxt='—'; }
+      }catch(e){}
+    },
+    async abrirQr(){
+      this.qrAberto=true; this.qr=null; this.qrMsg='Gerando QR…';
+      try{ var r=await fetch('/admin/whatsapp/'+id+'/conectar',{headers:{'X-Requested-With':'fetch'}}); var d=await r.json();
+        if(d.ok && d.base64){ this.qr = (''+d.base64).indexOf('data:')===0 ? d.base64 : ('data:image/png;base64,'+d.base64); }
+        else if(d.ok){ this.qrMsg='Já conectado ou sem QR.'; this.verStatus(); }
+        else { this.qrMsg = d.erro || 'Falhou'; }
+      }catch(e){ this.qrMsg='Erro de conexão'; }
+      if(this.timer) clearInterval(this.timer);
+      this.timer=setInterval(()=>this.checar(), 3000);
+    },
+    async checar(){ await this.verStatus(); if(this.conectado && this.timer){ clearInterval(this.timer); } },
+    fecharQr(){ this.qrAberto=false; if(this.timer) clearInterval(this.timer); }
+  }
+}
+</script>
 @endsection

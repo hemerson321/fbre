@@ -73,4 +73,104 @@ class WhatsApp
             ? ['ok' => true, 'resposta' => $r->json()]
             : ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.$r->body()];
     }
+    // ====================== Gerenciar instância Evolution (criar/QR/status) ======================
+
+    protected function evoBase(WhatsappConexao $c): ?string
+    {
+        $b = rtrim((string) $c->base_url, '/');
+        return ($b && $c->instancia) ? $b : null;
+    }
+
+    protected function evoHttp(WhatsappConexao $c)
+    {
+        return Http::timeout(25)->withHeaders(['apikey' => (string) $c->api_key]);
+    }
+
+    /** Cria a instância na Evolution (se não existir) e já configura o webhook. */
+    public function evoCriar(WhatsappConexao $c, string $webhookUrl): array
+    {
+        $base = $this->evoBase($c);
+        if (! $base) return ['ok' => false, 'erro' => 'Configure URL base e instância.'];
+        try {
+            $r = $this->evoHttp($c)->post("{$base}/instance/create", [
+                'instanceName' => $c->instancia,
+                'integration' => 'WHATSAPP-BAILEYS',
+                'qrcode' => true,
+            ]);
+            // 403/409 = já existe -> segue pra configurar webhook mesmo assim
+            $this->evoWebhook($c, $webhookUrl);
+            if ($r->successful() || in_array($r->status(), [403, 409])) {
+                return ['ok' => true, 'ja_existia' => ! $r->successful()];
+            }
+            return ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 200)];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
+    /** Define o webhook da instância apontando pro sistema. */
+    public function evoWebhook(WhatsappConexao $c, string $url): array
+    {
+        $base = $this->evoBase($c);
+        if (! $base) return ['ok' => false, 'erro' => 'sem base'];
+        try {
+            $r = $this->evoHttp($c)->post("{$base}/webhook/set/{$c->instancia}", [
+                'webhook' => [
+                    'enabled' => true,
+                    'url' => $url,
+                    'byEvents' => false,
+                    'base64' => false,
+                    'events' => ['MESSAGES_UPSERT'],
+                ],
+            ]);
+            return ['ok' => $r->successful(), 'erro' => $r->successful() ? null : ('HTTP '.$r->status())];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
+    /** Pega o QR code (base64) para conectar o WhatsApp. */
+    public function evoConectar(WhatsappConexao $c): array
+    {
+        $base = $this->evoBase($c);
+        if (! $base) return ['ok' => false, 'erro' => 'Configure URL base e instância.'];
+        try {
+            $r = $this->evoHttp($c)->get("{$base}/instance/connect/{$c->instancia}");
+            if (! $r->successful()) return ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 200)];
+            $j = $r->json();
+            $base64 = $j['base64'] ?? ($j['qrcode']['base64'] ?? null);
+            return ['ok' => true, 'base64' => $base64, 'code' => $j['code'] ?? ($j['pairingCode'] ?? null)];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
+    /** Estado da conexão: open (conectado) | connecting | close. */
+    public function evoStatus(WhatsappConexao $c): array
+    {
+        $base = $this->evoBase($c);
+        if (! $base) return ['ok' => false, 'erro' => 'sem base'];
+        try {
+            $r = $this->evoHttp($c)->get("{$base}/instance/connectionState/{$c->instancia}");
+            if (! $r->successful()) return ['ok' => false, 'erro' => 'HTTP '.$r->status()];
+            $j = $r->json();
+            $estado = $j['instance']['state'] ?? ($j['state'] ?? 'desconhecido');
+            return ['ok' => true, 'estado' => $estado, 'conectado' => $estado === 'open'];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
+    /** Desconecta (logout) a instância. */
+    public function evoDesconectar(WhatsappConexao $c): array
+    {
+        $base = $this->evoBase($c);
+        if (! $base) return ['ok' => false, 'erro' => 'sem base'];
+        try {
+            $r = $this->evoHttp($c)->delete("{$base}/instance/logout/{$c->instancia}");
+            return ['ok' => $r->successful(), 'erro' => $r->successful() ? null : ('HTTP '.$r->status())];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
 }

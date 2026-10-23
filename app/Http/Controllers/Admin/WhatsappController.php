@@ -52,6 +52,34 @@ class WhatsappController extends Controller
         return back()->with('ok', 'Conexão removida.');
     }
 
+    public function criar(WhatsappConexao $conexao, WhatsApp $wa)
+    {
+        abort_unless($conexao->empresa_id === Tenant::id(), 404);
+        $r = $wa->evoCriar($conexao, route('wa.webhook', $conexao->id));
+        return back()->with($r['ok'] ? 'ok' : 'erro',
+            $r['ok'] ? 'Instância pronta e webhook configurado. Clique em “Conectar (QR)”.' : ('Falhou: '.($r['erro'] ?? 'erro')));
+    }
+
+    public function conectar(WhatsappConexao $conexao, WhatsApp $wa)
+    {
+        abort_unless($conexao->empresa_id === Tenant::id(), 404);
+        $wa->evoWebhook($conexao, route('wa.webhook', $conexao->id)); // garante webhook
+        return response()->json($wa->evoConectar($conexao));
+    }
+
+    public function status(WhatsappConexao $conexao, WhatsApp $wa)
+    {
+        abort_unless($conexao->empresa_id === Tenant::id(), 404);
+        return response()->json($wa->evoStatus($conexao));
+    }
+
+    public function desconectar(WhatsappConexao $conexao, WhatsApp $wa)
+    {
+        abort_unless($conexao->empresa_id === Tenant::id(), 404);
+        $r = $wa->evoDesconectar($conexao);
+        return back()->with($r['ok'] ? 'ok' : 'erro', $r['ok'] ? 'Desconectado.' : ('Falhou: '.($r['erro'] ?? 'erro')));
+    }
+
     public function testar(Request $request, WhatsappConexao $conexao, WhatsApp $wa)
     {
         abort_unless($conexao->empresa_id === Tenant::id(), 404);
