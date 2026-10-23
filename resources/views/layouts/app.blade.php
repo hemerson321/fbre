@@ -252,7 +252,10 @@ document.addEventListener('alpine:init', () => {
 {{-- ===== CONTEÚDO ===== --}}
 <main class="mx-auto max-w-[1440px] p-3 sm:p-4 lg:p-4 pb-24 lg:pb-4">
   @if(session('ok'))
-    <div class="mb-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm no-print">{{ session('ok') }}</div>
+    <div class="mb-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm no-print whitespace-pre-wrap">{{ session('ok') }}</div>
+  @endif
+  @if(session('erro'))
+    <div class="mb-3 rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm no-print whitespace-pre-wrap">{{ session('erro') }}</div>
   @endif
   @if($errors->any())
     <div class="mb-3 rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm no-print">
