@@ -14,6 +14,8 @@ use App\Http\Controllers\ViagemController;
 use App\Http\Controllers\Admin\RotaController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\PreCadastroController;
+use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\AtendimentoController;
 use App\Http\Controllers\AcertoController;
 use App\Http\Controllers\CapturaController;
 use App\Http\Controllers\PreCadastroPublicController;
@@ -23,6 +25,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/pre/{slug}', [PreCadastroPublicController::class, 'form'])->where('slug', '[a-z0-9-]+')->name('pre.form');
 Route::post('/pre/{slug}', [PreCadastroPublicController::class, 'store'])->where('slug', '[a-z0-9-]+')->name('pre.store');
 Route::get('/pre/{slug}/ok/{codigo}', [PreCadastroPublicController::class, 'ok'])->where('slug', '[a-z0-9-]+')->name('pre.ok');
+
+// Webhook de WhatsApp (publico, sem login) — Evolution (nao oficial) e Meta Cloud (oficial)
+Route::get('/wa/webhook/{conexao}', [WebhookController::class, 'verificar'])->where('conexao', '[0-9]+')->name('wa.webhook.verify');
+Route::post('/wa/webhook/{conexao}', [WebhookController::class, 'receber'])->where('conexao', '[0-9]+')->name('wa.webhook');
 
 // ---------------- Captura por foto (celular lê RG, sem login) ----------------
 Route::get('/c', [CapturaController::class, 'mobile'])->name('captura.mobile');
@@ -82,6 +88,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/minhas-vendas', [\App\Http\Controllers\PassagemController::class, 'minhasVendas'])->name('passagens.minhas-vendas')->middleware('perm:passagem.ver');
     Route::get('/passagens/checkin', [\App\Http\Controllers\PassagemController::class, 'scanner'])->name('passagens.scanner')->middleware('perm:passagem.baixa');
     Route::get('/passagens/checkin/buscar', [\App\Http\Controllers\PassagemController::class, 'buscarCheckin'])->name('passagens.scanner.buscar')->middleware('perm:passagem.baixa');
+    // Canal de atendimento (WhatsApp) — caixa de conversas
+    Route::get('/passagens/atendimento', [AtendimentoController::class, 'index'])->name('atendimento.index')->middleware('perm:passagem.ver');
+    Route::get('/passagens/atendimento/{conversa}', [AtendimentoController::class, 'show'])->name('atendimento.show')->middleware('perm:passagem.ver');
+    Route::get('/passagens/atendimento/{conversa}/mensagens', [AtendimentoController::class, 'mensagens'])->name('atendimento.mensagens')->middleware('perm:passagem.ver');
+    Route::post('/passagens/atendimento/{conversa}/responder', [AtendimentoController::class, 'responder'])->name('atendimento.responder')->middleware('perm:passagem.ver');
+    Route::post('/passagens/atendimento/{conversa}/assumir', [AtendimentoController::class, 'assumir'])->name('atendimento.assumir')->middleware('perm:passagem.ver');
+    Route::post('/passagens/atendimento/{conversa}/fechar', [AtendimentoController::class, 'fechar'])->name('atendimento.fechar')->middleware('perm:passagem.ver');
     Route::post('/passagens/captura/novo', [CapturaController::class, 'novo'])->name('captura.novo')->middleware('perm:passagem');
     Route::get('/passagens/captura/pendentes', [CapturaController::class, 'pendentes'])->name('captura.pendentes')->middleware('perm:passagem');
     Route::post('/passagens/captura/ocr', [CapturaController::class, 'ocrDireto'])->name('captura.ocr')->middleware('perm:passagem');
