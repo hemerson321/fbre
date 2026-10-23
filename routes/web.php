@@ -6,6 +6,8 @@ use App\Http\Controllers\EncomendaController;
 use App\Http\Controllers\ImpressaoController;
 use App\Http\Controllers\Admin\EmpresaController;
 use App\Http\Controllers\Admin\PagamentoController;
+use App\Http\Controllers\Admin\LlmController;
+use App\Http\Controllers\Admin\AgenteController;
 use App\Http\Controllers\Admin\WhatsappController;
 use App\Http\Controllers\Admin\CadastroController;
 use App\Http\Controllers\Admin\UsuarioController;
@@ -183,6 +185,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/pagamentos/{api?}', [PagamentoController::class, 'salvar'])->name('pagamentos.salvar');
         Route::delete('/pagamentos/{api}', [PagamentoController::class, 'excluir'])->name('pagamentos.excluir');
         Route::post('/pagamentos/{api}/testar', [PagamentoController::class, 'testar'])->name('pagamentos.testar');
+        // Provedores de LLM (IA) — multi
+        Route::get('/llm', [LlmController::class, 'index'])->name('llm');
+        Route::post('/llm/{provedor?}', [LlmController::class, 'salvar'])->name('llm.salvar');
+        Route::delete('/llm/{provedor}', [LlmController::class, 'excluir'])->name('llm.excluir');
+        Route::post('/llm/{provedor}/testar', [LlmController::class, 'testar'])->name('llm.testar');
+        // Agentes IA — multi
+        Route::get('/agentes', [AgenteController::class, 'index'])->name('agentes');
+        Route::post('/agentes/{agente?}', [AgenteController::class, 'salvar'])->name('agentes.salvar');
+        Route::delete('/agentes/{agente}', [AgenteController::class, 'excluir'])->name('agentes.excluir');
     });
 
     // ---------------- Super-admin (GERATEC) ----------------

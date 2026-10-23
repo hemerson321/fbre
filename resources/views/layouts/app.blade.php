@@ -131,6 +131,8 @@ document.addEventListener('alpine:init', () => {
       ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
       ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'],
       ['r'=>route('admin.pagamentos'), 'l'=>'Pagamentos (APIs)', 'i'=>'💳'],
+      ['r'=>route('admin.llm'), 'l'=>'Provedores de IA', 'i'=>'🧠'],
+      ['r'=>route('admin.agentes'), 'l'=>'Agentes IA', 'i'=>'🤖'],
       ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'],
   ];
   if (($u->isAdmin() || $u->isSuper()) && $empresa?->config('usa_revendedores')) $grupos['Administração'][] = ['r'=>route('admin.acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
