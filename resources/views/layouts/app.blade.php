@@ -179,13 +179,18 @@ document.addEventListener('alpine:init', () => {
   {{-- ===== MENU HORIZONTAL (desktop) ===== --}}
   <nav class="hidden lg:block bg-white border-b border-slate-200" x-data="{ aberto:null }" @click.outside="aberto=null">
     <div class="mx-auto max-w-[1440px] px-4 flex items-stretch h-12 gap-1">
+      <a href="{{ route('inicio') }}"
+         class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-slate-50"
+         style="{{ $ativo(route('inicio')) ? 'color:'.$cor1.';background:color-mix(in srgb,'.$cor1.' 12%,white);box-shadow:inset 0 -3px 0 '.$cor1 : 'color:#334155' }}">
+        <span class="text-base">👋</span>Bem Vindo
+      </a>
       @foreach($grupos as $titulo => $itens)
         @php [$gi,$gc] = $metaGrupo[$titulo] ?? ['•','#475569']; $temAtivo = collect($itens)->contains(fn($it)=>$ativo($it['r'])); @endphp
         <div class="relative flex items-center">
           <button type="button" @click="aberto = (aberto==='{{ $titulo }}' ? null : '{{ $titulo }}')"
             class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-slate-50"
             :class="aberto==='{{ $titulo }}' ? 'bg-slate-50' : ''"
-            style="{{ $temAtivo ? 'color:'.$gc : 'color:#334155' }}">
+            style="{{ $temAtivo ? 'color:'.$gc.';background:color-mix(in srgb,'.$gc.' 12%,white);box-shadow:inset 0 -3px 0 '.$gc : 'color:#334155' }}">
             <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $gc }}"></span>
             <span class="text-base">{{ $gi }}</span>{{ $titulo }}
             @php $badge = collect($itens)->sum(fn($it)=>(int)($it['b'] ?? 0)); @endphp
@@ -219,11 +224,14 @@ document.addEventListener('alpine:init', () => {
     <button @click="menu=false" class="p-2">✕</button>
   </div>
   <nav class="p-3 space-y-3 text-sm">
+    <a href="{{ route('inicio') }}" @if($ativo(route('inicio'))) style="border-left:4px solid var(--cor1)" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo(route('inicio')) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
+      <span class="text-lg w-6 text-center">👋</span>Bem Vindo
+    </a>
     @foreach($grupos as $titulo => $itens)
       <div>
         <div class="px-3 pb-1 text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{{ $titulo }}</div>
         @foreach($itens as $it)
-          <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo($it['r']) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
+          <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif @if($ativo($it['r'])) style="border-left:4px solid var(--cor1)" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo($it['r']) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
             <span class="text-lg w-6 text-center">{{ $it['i'] }}</span>{{ $it['l'] }}
             @if(!empty($it['b']))<span class="ml-auto min-w-[20px] text-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5">{{ $it['b'] }}</span>@endif</a>
         @endforeach
