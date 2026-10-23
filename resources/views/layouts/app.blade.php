@@ -47,7 +47,8 @@ document.addEventListener('alpine:init', () => {
     if (nm) { hidden = document.createElement('input'); hidden.type = 'hidden'; hidden.name = nm; el.removeAttribute('name'); el.insertAdjacentElement('afterend', hidden); }
     const hasExpr = expression && expression.trim();
     const getVal = hasExpr ? evaluateLater(expression) : null;
-    const setVal = v => { if (hasExpr) { try { Alpine.evaluate(el, expression + ' = __money', { __money: v }); } catch(e){} } else { el._m = v; } };
+    const setLater = hasExpr ? evaluateLater(expression + ' = __money') : null;
+    const setVal = v => { if (hasExpr) { try { setLater(()=>{}, { scope: { __money: v } }); } catch(e){} } else { el._m = v; } };
     const read = cb => { if (hasExpr) getVal(cb); else cb(el._m || 0); };
     const syncHidden = v => { if (hidden) hidden.value = (Number(v)||0).toFixed(2); };
     const render = () => read(v => { if (document.activeElement !== el) el.value = fmt(v); syncHidden(v); });
@@ -112,6 +113,7 @@ document.addEventListener('alpine:init', () => {
   $g = [];
   if ($u->permite('passagem','cadastra')) $g[] = ['r'=>route('passagens.create'), 'l'=>'Nova passagem', 'i'=>'🎫'];
   if ($u->permite('passagem','ver'))  $g[] = ['r'=>route('passagens.index'), 'l'=>'Passagens / embarque', 'i'=>'🧾'];
+  if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if ($g) $grupos['Passagem'] = $g;
   // Frete
   $g = [];

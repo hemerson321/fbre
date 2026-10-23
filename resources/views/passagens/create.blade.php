@@ -196,9 +196,14 @@
       <div class="sec-b">
         <div class="flex gap-1.5">
           @foreach(\App\Models\Passagem::FORMAS as $k=>$l)
+          @if(empty($soAvista) || $k==='avista')
           <label class="forma" :class="forma==='{{ $k }}' && 'on'"><input type="radio" value="{{ $k }}" x-model="forma" class="sr-only"> {{ $l }}</label>
+          @endif
           @endforeach
         </div>
+        @if(!empty($soAvista))
+        <p class="text-xs text-slate-500 -mt-1">Revendedor: venda à vista. O acerto (a receber/faturado) é entre você e a empresa.</p>
+        @endif
         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
             <div><label class="lbl" x-text="m.l"></label>

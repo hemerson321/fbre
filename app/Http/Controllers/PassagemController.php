@@ -110,12 +110,14 @@ class PassagemController extends Controller
             'usaAlimentacao' => (bool) Tenant::empresa()->config('usa_alimentacao', true),
             'labelTaxa' => Tenant::empresa()->config('label_taxa_embarque') ?: 'Taxa de embarque',
             'labelAlim' => Tenant::empresa()->config('label_alimentacao') ?: 'Alimentação',
+            'soAvista' => $u->revendedorDono() !== null,
         ]);
     }
 
     public function store(Request $request)
     {
         $data = $this->validar($request);
+        if (auth()->user()->revendedorDono() !== null) { $data['forma'] = 'avista'; }
         $this->checarPoltronas($data);
         $p = app(\App\Services\PassagemService::class)->criar($data, auth()->id(), $request->input('uuid'));
         session(['ultima_origem_pass' => $data['origem']]);
@@ -259,6 +261,46 @@ class PassagemController extends Controller
     }
 
     /** Comprovante 80mm (impressão/PDF) com QR de check-in. */
+    /** Minhas vendas (revendedor/vendedor): resumo do que vendeu no periodo + o que falta acertar. */
+    public function minhasVendas(Request $request)
+    {
+        $u = auth()->user();
+        [$inicio, $fim, $periodo] = \App\Http\Controllers\CaixaController::periodo($request);
+
+        $vendas = Passagem::where('user_id', $u->id)->where('cancelada', false)
+            ->whereBetween('created_at', [$inicio, $fim])
+            ->with(['passageiros:id,passagem_id', 'embarcacao:id,nome'])
+            ->orderByDesc('id')->get();
+
+        $totais = [
+            'qtd'         => $vendas->count(),
+            'passageiros' => (int) $vendas->sum(fn ($p) => $p->passageiros->count()),
+            'total'       => (float) $vendas->sum(fn ($p) => (float) $p->total),
+            'recebido'    => (float) $vendas->sum(fn ($p) => (float) $p->total - (float) $p->devido),
+            'devido'      => (float) $vendas->sum(fn ($p) => (float) $p->devido),
+        ];
+
+        // o que falta acertar (revendedor -> empresa | vendedor -> revendedor)
+        $acerto = null;
+        if ($u->ehRevendedor()) {
+            $base = Passagem::where('revendedor_id', $u->id)->where('cancelada', false);
+            $acerto = [
+                'titulo'   => 'Acerto com a empresa',
+                'pendente' => (float) (clone $base)->where('acerto_empresa', false)->sum('acerto_empresa_valor'),
+                'acertado' => (float) (clone $base)->where('acerto_empresa', true)->sum('acerto_empresa_valor'),
+            ];
+        } elseif ($u->revendedor_id) {
+            $base = Passagem::where('user_id', $u->id)->where('cancelada', false);
+            $acerto = [
+                'titulo'   => 'Acerto com o revendedor',
+                'pendente' => (float) (clone $base)->where('acerto_revendedor', false)->sum('acerto_revendedor_valor'),
+                'acertado' => (float) (clone $base)->where('acerto_revendedor', true)->sum('acerto_revendedor_valor'),
+            ];
+        }
+
+        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo'));
+    }
+
     public function comprovante(Passagem $passagem)
     {
         abort_unless($passagem->empresa_id === Tenant::id(), 404);
