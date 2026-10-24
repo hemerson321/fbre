@@ -24,7 +24,7 @@ class WebhookController extends Controller
         return response('ok', 200);
     }
 
-    public function receber(Request $request, int $conexao, Atendimento $at)
+    public function receber(Request $request, int $conexao, Atendimento $at, \App\Services\WhatsApp $wa)
     {
         $c = WhatsappConexao::withoutGlobalScopes()->find($conexao);
         if (! $c) {
@@ -39,11 +39,23 @@ class WebhookController extends Controller
                 : $this->extrairEvolution($request->all());
 
             foreach ($msgs as $m) {
-                if (($m['texto'] ?? '') === '' || ($m['telefone'] ?? '') === '') continue;
-                $msg = $at->registrarEntrada($c, $m['telefone'], $m['texto'], $m['nome'] ?? null, $m['wa_id'] ?? null);
-                if ($msg && $msg->conversa) {
-                    app(\App\Services\AgenteBot::class)->processar($msg->conversa);
+                if (($m['telefone'] ?? '') === '') continue;
+                $ehImagem = ($m['tipo'] ?? 'texto') === 'imagem';
+                $texto = (string) ($m['texto'] ?? '');
+                if ($texto === '' && ! $ehImagem) continue;
+                if ($ehImagem && $texto === '') $texto = '📷 (foto enviada)';
+
+                $msg = $at->registrarEntrada($c, $m['telefone'], $texto, $m['nome'] ?? null, $m['wa_id'] ?? null);
+                if (! $msg || ! $msg->conversa) continue;
+
+                if ($ehImagem && $c->tipo === 'nao_oficial') {
+                    $mid = $wa->evoBaixarMidia($c, $m['key'] ?? []);
+                    if (($mid['ok'] ?? false)) {
+                        app(\App\Services\AgenteBot::class)->processarFoto($msg->conversa, $mid['base64'], $mid['mime'] ?? 'image/jpeg');
+                        continue;
+                    }
                 }
+                app(\App\Services\AgenteBot::class)->processar($msg->conversa);
             }
         } catch (\Throwable $e) {
             Log::warning('Webhook WA erro: '.$e->getMessage());
@@ -69,17 +81,20 @@ class WebhookController extends Controller
             $jid = (string) ($key['remoteJid'] ?? '');
             if ($jid === '' || str_contains($jid, '@g.us')) continue; // ignora grupos
             $msg = $d['message'] ?? [];
+            $ehImagem = isset($msg['imageMessage']);
             $texto = $msg['conversation']
                 ?? ($msg['extendedTextMessage']['text'] ?? null)
                 ?? ($msg['imageMessage']['caption'] ?? null)
                 ?? ($msg['buttonsResponseMessage']['selectedDisplayText'] ?? null)
                 ?? ($msg['listResponseMessage']['title'] ?? null);
-            if (! $texto) continue;
+            if (! $texto && ! $ehImagem) continue;
             $out[] = [
                 'telefone' => explode('@', $jid)[0],
-                'texto' => (string) $texto,
+                'texto' => (string) ($texto ?? ''),
                 'nome' => $d['pushName'] ?? null,
                 'wa_id' => $key['id'] ?? null,
+                'tipo' => $ehImagem ? 'imagem' : 'texto',
+                'key' => $key,
             ];
         }
         return $out;

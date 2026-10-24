@@ -69,6 +69,62 @@ class AgenteBot
         }
     }
 
+    /** Cliente mandou foto do documento: lê por OCR, guarda os dados e o agente confirma. */
+    public function processarFoto(Conversa $conversa, string $base64, string $mime = 'image/jpeg'): void
+    {
+        try {
+            $agente = Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
+            if (! $agente || $agente->regra('desligado') || ! $this->deveResponder($agente, $conversa)) return;
+            $prov = $agente->llm;
+            if (! $prov) return;
+
+            $conversa->forceFill(['status' => 'ia', 'ia_ativa' => true, 'atendida' => true])->save();
+
+            $cfg = ['provider' => $prov->provider, 'token' => (string) $prov->token, 'modelo' => (string) $prov->modelo];
+            $dataUri = 'data:'.$mime.';base64,'.$base64;
+            $r = app(\App\Services\LeitorDocumento::class)->extrair($dataUri, $cfg);
+
+            if (! ($r['ok'] ?? false) || empty($r['campos'])) {
+                $this->atendimento->registrarSaida($conversa, "Recebi a foto, mas não consegui ler direito. Pode me mandar por escrito o nome completo, o documento (RG ou CPF) e a data de nascimento?", 'ia');
+                return;
+            }
+
+            $campos = $r['campos'];
+            $ctx = $conversa->contexto ?? [];
+            $pax = $ctx['passageiros'] ?? [];
+            $pax[] = [
+                'nome' => $campos['nome'] ?? null,
+                'documento' => $campos['documento'] ?? null,
+                'nascimento' => $campos['nascimento'] ?? null,
+                'sexo' => $campos['sexo'] ?? null,
+                'nacionalidade' => $campos['nacionalidade'] ?? null,
+            ];
+            $ctx['passageiros'] = $pax;
+            $conversa->forceFill(['contexto' => $ctx])->save();
+
+            $lido = "DADOS LIDOS DA FOTO DO DOCUMENTO -> nome: ".($campos['nome'] ?? '?')
+                .", documento: ".($campos['documento'] ?? '?')
+                .", nascimento: ".($campos['nascimento'] ?? '?')
+                .", sexo: ".($campos['sexo'] ?? '?').".";
+
+            $sistema = $this->promptSistema($agente)."\n\n".$lido
+                ." Confirme esses dados com o cliente de forma natural (ex.: 'Peguei aqui: Fulano, nascimento tal, confere?') e siga a venda.";
+
+            $hist = $conversa->mensagens()->reorder()->orderByDesc('id')->limit(16)->get()
+                ->sortBy('id')->values()
+                ->map(fn ($m) => ['role' => $m->direcao === 'entrada' ? 'user' : 'assistant', 'content' => (string) $m->texto])
+                ->all();
+            $hist[] = ['role' => 'user', 'content' => '(enviei a foto do meu documento)'];
+
+            $rr = $this->llm->chat($prov, $hist, $sistema, 400);
+            if ($rr['ok'] ?? false) {
+                $this->atendimento->registrarSaida($conversa, trim((string) $rr['texto']), 'ia');
+            }
+        } catch (\Throwable $e) {
+            Log::warning('processarFoto erro: '.$e->getMessage());
+        }
+    }
+
     /** Teste manual: roda o agente numa mensagem e devolve a resposta (não envia WhatsApp). */
     public function responderTeste(Agente $a, string $texto): array
     {

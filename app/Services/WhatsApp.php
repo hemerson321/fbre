@@ -212,6 +212,26 @@ class WhatsApp
         }
     }
 
+    /** Baixa a mídia (base64) de uma mensagem do Evolution (ex.: foto do documento). */
+    public function evoBaixarMidia(WhatsappConexao $c, array $key): array
+    {
+        $base = $this->evoBase($c);
+        if (! $base || empty($key)) return ['ok' => false, 'erro' => 'sem base/chave'];
+        try {
+            $r = $this->evoHttp($c)->post("{$base}/chat/getBase64FromMediaMessage/{$c->instancia}", [
+                'message' => ['key' => $key],
+                'convertToMp4' => false,
+            ]);
+            if (! $r->successful()) return ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 150)];
+            $j = $r->json();
+            $b64 = $j['base64'] ?? ($j['media'] ?? null);
+            $mime = $j['mimetype'] ?? ($j['mime'] ?? 'image/jpeg');
+            return $b64 ? ['ok' => true, 'base64' => $b64, 'mime' => $mime] : ['ok' => false, 'erro' => 'sem base64 na resposta'];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
     /** Remove a instância do Evolution (logout + delete). Best-effort. */
     public function evoDeletar(WhatsappConexao $c): array
     {
