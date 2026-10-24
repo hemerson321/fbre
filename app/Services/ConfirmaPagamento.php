@@ -76,14 +76,20 @@ class ConfirmaPagamento
 
         return true;
     }
-    /** Cadastra a passagem no sistema a partir dos dados da venda coletados na conversa. */
+    /** Cadastra a passagem no sistema a partir dos dados da venda; operador = usuário do agente. */
     protected function criarPassagem(Conversa $conv, Cobranca $cob): void
     {
         try {
             $ctx = $conv->contexto ?? [];
-            if (! empty($ctx['passagem_id'])) return; // já criada
+            if (! empty($ctx['passagem_id'])) return;
             $venda = $ctx['venda'] ?? null;
             if (! $venda || empty($venda['origem']) || empty($venda['destino'])) return;
+
+            $agente = \App\Models\Agente::where('modulo', $conv->modulo)->where('ativo', true)->first();
+            $checkinAuto = $agente ? (bool) ($agente->regras['checkin_auto'] ?? false) : false;
+            $op = $agente ? $this->operadorDoAgente($agente)
+                : \App\Models\User::withoutGlobalScopes()->where('empresa_id', $conv->empresa_id)->orderByDesc('admin')->first();
+            if (! $op) return;
 
             $paxList = $venda['passageiros'] ?? ($ctx['passageiros'] ?? []);
             if (! $paxList) $paxList = [['nome' => $conv->cliente_nome ?: 'Passageiro']];
@@ -97,12 +103,8 @@ class ConfirmaPagamento
                 'nascimento' => $this->dataIso($px['nascimento'] ?? null),
                 'valor_passagem' => $unit,
                 'valor_integral' => $unit,
+                'checkin' => $checkinAuto,
             ], $paxList);
-
-            $op = \App\Models\User::withoutGlobalScopes()
-                ->where('empresa_id', $conv->empresa_id)
-                ->orderByDesc('admin')->orderByDesc('super_admin')->first();
-            if (! $op) return;
 
             $dados = [
                 'origem' => $venda['origem'],
@@ -113,16 +115,66 @@ class ConfirmaPagamento
                 'forma' => 'avista',
                 'passageiros' => $passageiros,
             ];
-
             $p = $this->pas->criar($dados, (int) $op->id);
-            $this->pas->baixa($p, ['pix' => (float) $cob->valor], (int) $op->id);
+
+            // registra o pagamento PIX SEM embarcar (o cliente embarca depois, no check-in)
+            \App\Models\Pagamento::create([
+                'empresa_id' => $p->empresa_id, 'modulo' => 'passagem', 'origem_id' => $p->id, 'encomenda_id' => null,
+                'meio' => 'pix', 'valor' => (float) $cob->valor, 'user_id' => (int) $op->id, 'momento' => 'baixa', 'tipo_mov' => 'entrada',
+            ]);
+            $p->recalcular();
 
             $ctx['passagem_id'] = $p->id;
             $conv->forceFill(['contexto' => $ctx])->save();
             $cob->forceFill(['referencia_tipo' => \App\Models\Passagem::class, 'referencia_id' => $p->id])->save();
+
+            // envia o código da passagem pro cliente (texto)
+            try {
+                $num = $p->numeroFormatado();
+                $quando = $p->data_viagem ? \Carbon\Carbon::parse($p->data_viagem)->format('d/m/Y') : '';
+                $nomes = collect($passageiros)->pluck('nome')->implode(', ');
+                $msg = "🎫 Passagem emitida!\nNº *{$num}*\n{$venda['origem']} → {$venda['destino']}".($quando ? "\nData: {$quando}" : '')."\nPassageiro(s): {$nomes}\n\nGuarde esse número — no embarque é só apresentar.";
+                $this->at->registrarSaida($conv, $msg, 'sistema');
+            } catch (\Throwable $e) {}
         } catch (\Throwable $e) {
             Log::warning('criarPassagem (agente) erro: '.$e->getMessage());
         }
+    }
+
+    /** Usuário-operador do agente (cria uma vez e reaproveita). Faz a passagem aparecer como o agente. */
+    protected function operadorDoAgente(\App\Models\Agente $a): ?\App\Models\User
+    {
+        $uid = $a->regras['user_id'] ?? null;
+        if ($uid && ($u = \App\Models\User::withoutGlobalScopes()->find($uid))) return $u;
+        try {
+            $u = \App\Models\User::create([
+                'empresa_id' => $a->empresa_id,
+                'name' => $a->nome ?: 'Agente IA',
+                'login' => 'agente-'.$a->id.'-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(4)),
+                'password' => \Illuminate\Support\Str::random(24),
+                'prefixo' => $this->prefixoLivre(),
+                'ativo' => true,
+                'admin' => false,
+                'perm_passagem' => true,
+                'perm_imprimir' => true,
+                'setor' => 'Agente IA',
+            ]);
+            $regras = $a->regras ?? [];
+            $regras['user_id'] = $u->id;
+            $a->forceFill(['regras' => $regras])->save();
+            return $u;
+        } catch (\Throwable $e) {
+            Log::warning('operadorDoAgente: '.$e->getMessage());
+            return \App\Models\User::withoutGlobalScopes()->where('empresa_id', $a->empresa_id)->orderByDesc('admin')->first();
+        }
+    }
+
+    protected function prefixoLivre(): string
+    {
+        foreach (['IA', 'AG', 'IA1', 'AG1', 'AG2', 'BOT', 'AI'] as $pfx) {
+            if (! \App\Models\User::withoutGlobalScopes()->where('prefixo', $pfx)->exists()) return $pfx;
+        }
+        return 'IA'.random_int(10, 99);
     }
 
     /** dd/mm/aaaa -> aaaa-mm-dd (ou null). */

@@ -61,6 +61,7 @@ class AgenteController extends Controller
                 'nao_revela_robo' => (bool) ($request->input('regras.nao_revela_robo')),
                 'sensiveis_humano' => (bool) ($request->input('regras.sensiveis_humano')),
                 'nunca_inventa' => (bool) ($request->input('regras.nunca_inventa')),
+                'checkin_auto' => (bool) ($request->input('regras.checkin_auto')),
             ],
             'horario' => [
                 'modo' => $data['hr_modo'],

@@ -166,6 +166,7 @@ class AgenteBot
         $p[] = "- No máximo 1 emoji, e só às vezes.";
         $p[] = "- Entenda português informal e erros de digitação. Não cite trechos/assuntos que o cliente não mencionou.";
         $p[] = "- Seja proativo pra fechar: assim que tiver trecho + data + nº de pessoas, mande o resumo com o TOTAL e pergunte se pode gerar o PIX.";
+        $p[] = "- HORÁRIOS: use só o que está nos DADOS. A SAÍDA da origem é o dia/hora da parada de origem; a CHEGADA no destino é o dia/hora da parada de destino. NUNCA invente horário, hora de chegada ou duração ('X horas de viagem'). Se perguntarem algo que não está nos DADOS, diga que confirma com um atendente.";
 
         $p[] = "OBJETIVO (feche a venda rápido, sem enrolar, um passo por vez):";
         $p[] = "1) TRECHO que ele quer (origem → destino). Confirme que existe nos DADOS.";
@@ -218,11 +219,12 @@ class AgenteBot
         // horários/dias de saída (rotas) + próximas datas concretas
         $rotas = \App\Models\Rota::with('paradas')->get();
         if ($rotas->isNotEmpty()) {
-            $linhas[] = "\nDias e horários de saída (use pra oferecer datas reais ao cliente):";
+            $linhas[] = "\nRotas (paradas na ordem, com dia e hora de cada parada — a saída de cada cidade é esse dia/hora):";
             foreach ($rotas as $r) {
                 $cal = method_exists($r, 'resumoCalendario') ? $r->resumoCalendario() : $r->nome;
                 $prox = $this->proximasDatas($r);
-                $linhas[] = "- ".$cal.($prox ? "  | próximas saídas: ".$prox : "");
+                $linhas[] = "- ".$r->nome.": ".$cal;
+                if ($prox) $linhas[] = "   próximas saídas (da 1ª parada): ".$prox;
             }
         }
 
