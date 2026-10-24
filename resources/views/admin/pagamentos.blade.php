@@ -17,6 +17,14 @@
         <button class="btn btn-ghost btn-sm">🔌 Testar conexão</button>
       </form>
     </div>
+    <div class="rounded-lg bg-slate-50 border p-2.5 text-xs space-y-1">
+      <div class="font-semibold text-slate-600">Webhook do Mercado Pago — cole esta URL no MP (campo “URL de produção”):</div>
+      <div class="flex gap-2">
+        <input class="input !min-h-[34px] font-mono text-[11px]" readonly onclick="this.select()" value="{{ route('mp.webhook',$api) }}">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('{{ route('mp.webhook',$api) }}')">copiar</button>
+      </div>
+      <div class="text-slate-400">No MP marque o evento <b>Pagamentos</b>. Depois copie a <b>assinatura secreta</b> que o MP gerar e cole aqui embaixo em “Webhook secret”.</div>
+    </div>
     <form method="post" action="{{ route('admin.pagamentos.salvar',$api) }}" class="grid sm:grid-cols-2 gap-3">@csrf
       <div><label class="label">Nome</label><input name="nome" class="input" value="{{ $api->nome }}" required maxlength="80"></div>
       <div><label class="label">Provedor</label>

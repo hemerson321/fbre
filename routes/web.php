@@ -18,6 +18,7 @@ use App\Http\Controllers\SyncController;
 use App\Http\Controllers\PreCadastroController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\CobrancaController;
+use App\Http\Controllers\MpWebhookController;
 use App\Http\Controllers\AtendimentoController;
 use App\Http\Controllers\AcertoController;
 use App\Http\Controllers\CapturaController;
@@ -32,6 +33,9 @@ Route::get('/pre/{slug}/ok/{codigo}', [PreCadastroPublicController::class, 'ok']
 // Webhook de WhatsApp (publico, sem login) — Evolution (nao oficial) e Meta Cloud (oficial)
 Route::get('/wa/webhook/{conexao}', [WebhookController::class, 'verificar'])->where('conexao', '[0-9]+')->name('wa.webhook.verify');
 Route::post('/wa/webhook/{conexao}', [WebhookController::class, 'receber'])->where('conexao', '[0-9]+')->name('wa.webhook');
+
+// Webhook do Mercado Pago (publico) — confirma pagamento e da baixa
+Route::match(['get', 'post'], '/mp/webhook/{api}', [MpWebhookController::class, 'receber'])->where('api', '[0-9]+')->name('mp.webhook');
 
 // ---------------- Captura por foto (celular lê RG, sem login) ----------------
 Route::get('/c', [CapturaController::class, 'mobile'])->name('captura.mobile');
