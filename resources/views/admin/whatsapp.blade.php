@@ -138,7 +138,7 @@ function evo(id){
       try{ var r=await fetch('/admin/whatsapp/'+id+'/conectar',{headers:{'X-Requested-With':'fetch'}}); var d=await r.json();
         if(d.ok && d.base64){ this.qr = (''+d.base64).indexOf('data:')===0 ? d.base64 : ('data:image/png;base64,'+d.base64); }
         else if(d.ok && d.code){ this.temCode=true; var self=this; this.$nextTick(function(){ try{ self.$refs.qrdiv.innerHTML=''; new QRCode(self.$refs.qrdiv,{text:d.code,width:224,height:224,correctLevel:QRCode.CorrectLevel.L}); }catch(e){ self.temCode=false; self.qrMsg='Não consegui desenhar o QR.'; } }); }
-        else if(d.ok){ this.qrMsg='Já conectado ou sem QR.'; this.verStatus(); }
+        else if(d.ok){ this.qrMsg = d.bruto ? ('Evolution sem QR: '+d.bruto) : 'Já conectado ou sem QR.'; this.verStatus(); }
         else { this.qrMsg = 'Erro: ' + (d.erro || 'falhou. Confira a URL base e se a API Key é a chave global do Evolution.'); }
       }catch(e){ this.qrMsg='Erro de conexão com o servidor.'; }
       if(this.timer) clearInterval(this.timer);
