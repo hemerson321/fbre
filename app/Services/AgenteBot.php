@@ -33,6 +33,12 @@ class AgenteBot
             $prov = $agente->llm;
             if (! $prov) { Log::info('Agente sem provedor de IA.'); return; }
 
+            // debounce: cliente costuma mandar em partes ("1" / "so eu"). Espera e, se chegou msg nova,
+            // deixa o próximo processamento responder com a conversa completa (evita resposta dupla).
+            $ultimoId = (int) $conversa->mensagens()->max('id');
+            sleep(3);
+            if ((int) $conversa->mensagens()->max('id') !== $ultimoId) return;
+
             $conversa->forceFill(['status' => 'ia', 'ia_ativa' => true, 'atendida' => true])->save();
 
             $sistema = $this->promptSistema($agente);
@@ -49,8 +55,11 @@ class AgenteBot
             $texto = trim((string) $r['texto']);
             if ($texto === '') return;
 
-            $texto = $this->tratarPix($agente, $conversa, $texto);
-            $this->atendimento->registrarSaida($conversa, $texto, 'ia');
+            $res = $this->tratarPix($agente, $conversa, $texto);
+            $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia');
+            if (! empty($res['pix'])) {
+                $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
+            }
         } catch (\Throwable $e) {
             Log::warning('AgenteBot erro: '.$e->getMessage());
         }
@@ -84,6 +93,9 @@ class AgenteBot
 
         $p = [];
         $p[] = "Você é o atendimento de vendas de passagem da {$nome} (transporte fluvial) no WhatsApp.";
+        $hoje = now();
+        $diaHoje = \App\Models\Rota::DIAS[$hoje->dayOfWeek] ?? '';
+        $p[] = "Hoje é {$diaHoje}, ".$hoje->format('d/m/Y').". Use isso pra entender 'hoje', 'amanhã', 'essa semana', 'semana que vem'.";
         if ($a->persona) $p[] = "Orientações do dono: ".trim($a->persona);
 
         $p[] = "COMO CONVERSAR:";
@@ -94,13 +106,13 @@ class AgenteBot
         $p[] = "- Entenda português informal e erros de digitação. Não cite trechos/assuntos que o cliente não mencionou.";
         $p[] = "- Seja proativo pra fechar: assim que tiver trecho + data + nº de pessoas, mande o resumo com o TOTAL e pergunte se pode gerar o PIX.";
 
-        $p[] = "OBJETIVO (feche a venda, um passo de cada vez):";
-        $p[] = "1) Descubra o TRECHO que ele quer (origem → destino). Confira se existe nos DADOS.";
-        $p[] = "2) Pergunte a DATA da viagem.";
-        $p[] = "3) Pergunte QUANTAS pessoas vão (se disser 'só eu', é 1).";
-        $p[] = "4) Confirme o resumo: trecho, data, nº de pessoas e o VALOR TOTAL (preço do trecho × pessoas).";
-        $p[] = "5) Quando ele confirmar e quiser pagar, gere o PIX (veja PAGAMENTO).";
-        $p[] = "Não repita perguntas já respondidas. Se o cliente já disse o trecho, siga para a data.";
+        $p[] = "OBJETIVO (feche a venda rápido, sem enrolar, um passo por vez):";
+        $p[] = "1) TRECHO que ele quer (origem → destino). Confirme que existe nos DADOS.";
+        $p[] = "2) DATA. Se o cliente disser 'qualquer dia', 'semana que vem' ou não souber, NÃO devolva a pergunta: OFEREÇA as próximas saídas REAIS da rota (estão nos DADOS em 'próximas saídas') e peça pra ele escolher uma.";
+        $p[] = "3) QUANTAS pessoas (se disser 'só eu', é 1 — não pergunte de novo).";
+        $p[] = "4) Mande o resumo curto: trecho, data escolhida, nº de pessoas e VALOR TOTAL (preço do trecho × pessoas), e pergunte 'posso gerar o PIX?'.";
+        $p[] = "5) Ele confirmando, gere o PIX (veja PAGAMENTO).";
+        $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo.";
 
         if ($a->regra('nao_revela_robo')) {
             $p[] = "Você é um atendente da empresa. NUNCA diga que é IA, robô, bot ou assistente virtual.";
@@ -140,6 +152,17 @@ class AgenteBot
             }
         }
 
+        // horários/dias de saída (rotas) + próximas datas concretas
+        $rotas = \App\Models\Rota::with('paradas')->get();
+        if ($rotas->isNotEmpty()) {
+            $linhas[] = "\nDias e horários de saída (use pra oferecer datas reais ao cliente):";
+            foreach ($rotas as $r) {
+                $cal = method_exists($r, 'resumoCalendario') ? $r->resumoCalendario() : $r->nome;
+                $prox = $this->proximasDatas($r);
+                $linhas[] = "- ".$cal.($prox ? "  | próximas saídas: ".$prox : "");
+            }
+        }
+
         $tipos = TipoPassageiro::where('ativo', true)->orderByDesc('eh_normal')->get();
         if ($tipos->isNotEmpty()) {
             $linhas[] = "\nTipos de passageiro:";
@@ -155,11 +178,30 @@ class AgenteBot
         return $linhas ? implode("\n", $linhas) : "Sem tabela de preços cadastrada ainda.";
     }
 
-    /** Detecta [[PIX:valor;descricao]], gera a cobrança no Mercado Pago e devolve o texto com o código. */
-    protected function tratarPix(Agente $a, Conversa $c, string $texto): string
+    /** Próximas 3 datas de saída de uma rota (a partir do dia-da-semana da 1ª parada). */
+    protected function proximasDatas(\App\Models\Rota $r): string
+    {
+        $p = $r->paradas->first();
+        if (! $p || $p->dia_semana === null) return '';
+        $dia = (int) $p->dia_semana; // 0=Dom .. 6=Sáb (igual Carbon)
+        $hora = $p->hora ? ' '.substr($p->hora, 0, 5) : '';
+        $base = now()->startOfDay();
+        $datas = [];
+        $d = $base->copy();
+        for ($i = 0; $i < 70 && count($datas) < 3; $i++) {
+            if ($d->dayOfWeek === $dia) {
+                $datas[] = $d->format('d/m').' ('.(\App\Models\Rota::DIAS_CURTO[$dia] ?? '').$hora.')';
+            }
+            $d->addDay();
+        }
+        return implode(', ', $datas);
+    }
+
+    /** Detecta [[PIX:valor;descricao]], gera a cobrança no Mercado Pago. Retorna texto limpo + o código PIX à parte. */
+    protected function tratarPix(Agente $a, Conversa $c, string $texto): array
     {
         if (! preg_match('/\[\[PIX:\s*([\d.,]+)\s*;\s*([^\]]+)\]\]/i', $texto, $m)) {
-            return $texto;
+            return ['texto' => $texto, 'pix' => null];
         }
         $marcador = $m[0];
         $raw = (string) $m[1];
@@ -170,13 +212,13 @@ class AgenteBot
 
         $api = $a->pagamentoApi;
         if (! $api || $valor <= 0) {
-            return trim(str_replace($marcador, '', $texto));
+            return ['texto' => trim(str_replace($marcador, '', $texto)), 'pix' => null];
         }
 
         $r = $this->mp->cobrarPix($api, $valor, $descricao, ['nome' => $c->cliente_nome, 'telefone' => $c->cliente_telefone]);
         if (! $r['ok']) {
             Log::warning('Agente PIX falhou: '.($r['erro'] ?? ''));
-            return trim(str_replace($marcador, "\n(No momento não consegui gerar o PIX, um atendente vai te ajudar.)", $texto));
+            return ['texto' => trim(str_replace($marcador, "\n(No momento não consegui gerar o PIX, um atendente vai te ajudar.)", $texto)), 'pix' => null];
         }
 
         Cobranca::create([
@@ -195,8 +237,9 @@ class AgenteBot
         ]);
         $c->forceFill(['funil' => 'aguardando_pagamento'])->save();
 
-        $pix = $r['copia_cola'] ?? '';
-        $bloco = "\n\n💳 PIX copia e cola (R$ ".number_format($valor, 2, ',', '.')."):\n".$pix."\n\nAssim que o pagamento cair eu confirmo aqui. 😉";
-        return trim(str_replace($marcador, $bloco, $texto));
+        $pix = (string) ($r['copia_cola'] ?? '');
+        $aviso = "Pronto! É só pagar os R$ ".number_format($valor, 2, ',', '.')." no PIX copia e cola que vou te mandar agora. Assim que cair, confirmo aqui. 😉";
+        $textoLimpo = trim(str_replace($marcador, $aviso, $texto));
+        return ['texto' => $textoLimpo, 'pix' => $pix ?: null];
     }
 }
