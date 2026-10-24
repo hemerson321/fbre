@@ -86,8 +86,8 @@ class AtendimentoController extends Controller
     public function fechar(Conversa $conversa)
     {
         abort_unless($conversa->empresa_id === Tenant::id(), 404);
-        $conversa->update(['status' => 'fechada', 'atendida' => true, 'nao_lidas' => 0]);
-        return redirect()->route('atendimento.index')->with('ok', 'Conversa fechada.');
+        $conversa->update(['status' => 'fechada', 'atendida' => true, 'nao_lidas' => 0, 'funil' => 'finalizado']);
+        return redirect()->route('atendimento.index')->with('ok', 'Pedido finalizado.');
     }
 
     /** Polling: mensagens novas desde um id (JSON). */

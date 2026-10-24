@@ -35,6 +35,20 @@ class Conversa extends Model
 
     public function statusLabel(): string { return self::STATUS[$this->status] ?? $this->status; }
 
+    public const FUNIL = [
+        'novo' => 'Novo',
+        'cotacao' => 'Cotação',
+        'aguardando_pagamento' => 'Aguardando pagamento',
+        'pago' => 'Pago',
+        'finalizado' => 'Finalizado',
+        'perdido' => 'Perdido',
+    ];
+
+    public function funilLabel(): ?string
+    {
+        return $this->funil ? (self::FUNIL[$this->funil] ?? $this->funil) : null;
+    }
+
     public function cor(): string
     {
         return match ($this->status) {
