@@ -17,8 +17,12 @@ class Atendimento
     public function __construct(protected WhatsApp $wa) {}
 
     /** Mensagem recebida do cliente -> grava e atualiza a conversa. */
-    public function registrarEntrada(WhatsappConexao $conexao, string $telefone, string $texto, ?string $nome = null, ?string $waId = null): Mensagem
+    public function registrarEntrada(WhatsappConexao $conexao, string $telefone, string $texto, ?string $nome = null, ?string $waId = null): ?Mensagem
     {
+        // dedupe: Evolution às vezes manda o mesmo evento 2x
+        if ($waId && Mensagem::where('empresa_id', $conexao->empresa_id)->where('wa_message_id', $waId)->exists()) {
+            return null;
+        }
         $fone = $this->wa->normalizar($telefone);
 
         $conversa = Conversa::firstOrNew([
