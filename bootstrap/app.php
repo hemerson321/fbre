@@ -17,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->web(append: [DefinirEmpresa::class]);
+        // webhooks externos (Evolution/WhatsApp e Mercado Pago) nao enviam token CSRF
+        $middleware->validateCsrfTokens(except: [
+            'wa/webhook/*',
+            'mp/webhook/*',
+        ]);
         $middleware->alias([
             'perm' => Permissao::class,
         ]);
