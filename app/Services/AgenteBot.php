@@ -59,6 +59,7 @@ class AgenteBot
             $texto = trim((string) $r['texto']);
             if ($texto === '') return;
 
+            $texto = $this->tratarVenda($conversa, $texto);
             $res = $this->tratarPix($agente, $conversa, $texto);
             $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia');
             if (! empty($res['pix'])) {
@@ -186,7 +187,8 @@ class AgenteBot
         $p[] = "\nDADOS (trechos e preços):\n".$this->dados();
 
         if ($a->pagamento_api_id) {
-            $p[] = "\nPAGAMENTO: só quando o cliente confirmar a compra (trecho + data + nº de pessoas definidos) e quiser pagar, gere o PIX escrevendo numa linha isolada, exatamente: [[PIX:VALOR;DESCRICAO]] — valor total em reais com ponto decimal e descrição curta do próprio trecho. Ex.: [[PIX:200.00;2 passagens Manaus-Coari 24/10]]. O sistema troca esse marcador pelo código PIX. Nunca escreva o marcador antes do cliente confirmar, e nunca invente o valor.";
+            $p[] = "\nPAGAMENTO: só quando o cliente confirmar a compra (trecho + data + nº de pessoas + dados do passageiro definidos) e quiser pagar, gere o PIX escrevendo numa linha isolada, exatamente: [[PIX:VALOR;DESCRICAO]] — valor total em reais com ponto decimal. Ex.: [[PIX:200.00;2 passagens Manaus-Coari 26/10]]. Nunca invente o valor.";
+            $p[] = "NA MESMA MENSAGEM, antes do PIX, inclua TAMBÉM numa linha isolada os dados da venda pro sistema cadastrar a passagem (o cliente NÃO vê, o sistema remove): [[VENDA: origem=<origem>; destino=<destino>; data=<dd/mm/aaaa>; passageiros=<Nome>|<documento>|<nascimento dd/mm/aaaa>]]. Separe vários passageiros com ' ;; '. Use os dados informados pelo cliente ou lidos da foto.";
         } else {
             $p[] = "\nPAGAMENTO: combinado com o atendente/no balcão (não há PIX automático).";
         }
@@ -256,6 +258,31 @@ class AgenteBot
             $d->addDay();
         }
         return implode(', ', $datas);
+    }
+
+    /** Captura [[VENDA: origem=..; destino=..; data=..; passageiros=..]] (oculto), guarda em contexto e remove do texto. */
+    protected function tratarVenda(Conversa $c, string $texto): string
+    {
+        if (! preg_match('/\[\[VENDA:(.+?)\]\]/is', $texto, $m)) return $texto;
+        $corpo = $m[1];
+        $venda = $c->contexto['venda'] ?? [];
+        foreach (['origem', 'destino', 'data'] as $k) {
+            if (preg_match('/'.$k.'\s*=\s*([^;]+)/i', $corpo, $mm)) $venda[$k] = trim($mm[1]);
+        }
+        if (preg_match('/passageiros\s*=\s*(.+)$/is', $corpo, $mm)) {
+            $pax = [];
+            foreach (preg_split('/\s*;;\s*/', trim($mm[1])) as $linha) {
+                $parts = array_map('trim', explode('|', $linha));
+                if (($parts[0] ?? '') !== '') {
+                    $pax[] = ['nome' => $parts[0], 'documento' => $parts[1] ?? null, 'nascimento' => $parts[2] ?? null];
+                }
+            }
+            if ($pax) $venda['passageiros'] = $pax;
+        }
+        $ctx = $c->contexto ?? [];
+        $ctx['venda'] = $venda;
+        $c->forceFill(['contexto' => $ctx])->save();
+        return trim(str_replace($m[0], '', $texto));
     }
 
     /** Detecta [[PIX:valor;descricao]], gera a cobrança no Mercado Pago. Retorna texto limpo + o código PIX à parte. */
