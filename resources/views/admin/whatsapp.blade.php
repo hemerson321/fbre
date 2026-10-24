@@ -101,6 +101,11 @@
           <button type="button" class="btn btn-primary btn-sm" style="background:var(--cor1)" @click="abrirQr()">Conectar (QR)</button>
           <button type="button" class="btn btn-ghost btn-sm text-red-500" onclick="if(confirm('Desconectar este WhatsApp?'))document.getElementById('desc-{{ $c->id }}').submit()">Desconectar</button>
         </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn btn-ghost btn-sm" @click="diag()">🔍 Diagnóstico (recebimento)</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('recfg-{{ $c->id }}').submit()">Reconfigurar webhook</button>
+        </div>
+        <pre x-show="diagTxt" x-cloak x-text="diagTxt" class="text-[10px] leading-tight bg-slate-900 text-emerald-300 p-2 rounded-lg overflow-auto max-h-56 whitespace-pre-wrap"></pre>
         <div x-show="qrAberto" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" @click.self="fecharQr()">
           <div class="bg-white rounded-2xl p-5 max-w-xs w-full text-center space-y-3">
             <div class="font-bold">Conectar WhatsApp</div>
@@ -117,6 +122,7 @@
     <form id="teste-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.testar',$c) }}" class="hidden">@csrf</form>
     <form id="criar-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.criar',$c) }}" class="hidden">@csrf</form>
     <form id="desc-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.desconectar',$c) }}" class="hidden">@csrf</form>
+    <form id="recfg-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.reconfigurar',$c) }}" class="hidden">@csrf</form>
     <form id="del-wa-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.excluir',$c) }}" class="hidden">@csrf @method('DELETE')</form>
   @empty
     <div class="text-sm text-slate-400 text-center py-4">Nenhuma conexão ainda. Cadastre a primeira acima.</div>
@@ -126,7 +132,7 @@
 <script>
 function evo(id){
   return {
-    conectado:false, estadoTxt:'—', qrAberto:false, qr:null, temCode:false, qrMsg:'Gerando QR…', timer:null,
+    conectado:false, estadoTxt:'—', qrAberto:false, qr:null, temCode:false, qrMsg:'Gerando QR…', timer:null, diagTxt:'',
     async verStatus(){
       try{ var r=await fetch('/admin/whatsapp/'+id+'/status',{headers:{'X-Requested-With':'fetch'}}); var d=await r.json();
         if(d.ok){ this.conectado=d.conectado; this.estadoTxt=d.conectado?'Conectado':(d.estado||'desconectado'); }
@@ -145,6 +151,7 @@ function evo(id){
       this.timer=setInterval(()=>this.checar(), 3000);
     },
     async checar(){ await this.verStatus(); if(this.conectado){ if(this.timer) clearInterval(this.timer); var self=this; setTimeout(function(){ self.fecharQr(); }, 1500); } },
+    async diag(){ this.diagTxt='Consultando…'; try{ var r=await fetch('/admin/whatsapp/'+id+'/diagnostico',{headers:{'X-Requested-With':'fetch'}}); var d=await r.json(); this.diagTxt=JSON.stringify(d,null,2); }catch(e){ this.diagTxt='Erro: '+e; } },
     fecharQr(){ this.qrAberto=false; if(this.timer) clearInterval(this.timer); }
   }
 }

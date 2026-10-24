@@ -8,6 +8,7 @@ use App\Services\WhatsApp;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class WhatsappController extends Controller
 {
@@ -112,6 +113,27 @@ class WhatsappController extends Controller
             $r = $wa->evoConectar($conexao);
         }
         return response()->json($r);
+    }
+
+    public function diagnostico(WhatsappConexao $conexao, WhatsApp $wa)
+    {
+        abort_unless($conexao->empresa_id === Tenant::id(), 404);
+        $webhookEsperado = route('wa.webhook', $conexao->id);
+        $cfg = $wa->evoVerWebhook($conexao);
+        $hit = Cache::get('wa_hit_'.$conexao->id);
+        return response()->json([
+            'webhook_esperado' => $webhookEsperado,
+            'webhook_no_evolution' => $cfg,
+            'ultimo_recebido' => $hit,
+            'status' => $wa->evoStatus($conexao),
+        ]);
+    }
+
+    public function reconfigurar(WhatsappConexao $conexao, WhatsApp $wa)
+    {
+        abort_unless($conexao->empresa_id === Tenant::id(), 404);
+        $r = $wa->evoWebhook($conexao, route('wa.webhook', $conexao->id));
+        return back()->with($r['ok'] ? 'ok' : 'erro', $r['ok'] ? 'Webhook reconfigurado.' : ('Falhou: '.($r['erro'] ?? 'erro')));
     }
 
     public function status(WhatsappConexao $conexao, WhatsApp $wa)

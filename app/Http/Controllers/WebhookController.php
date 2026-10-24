@@ -6,6 +6,7 @@ use App\Models\WhatsappConexao;
 use App\Services\Atendimento;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -30,6 +31,7 @@ class WebhookController extends Controller
             return response()->json(['ok' => false], 200); // responde 200 p/ não gerar retry infinito
         }
         Tenant::set($c->empresa_id);
+        try { Cache::put('wa_hit_'.$c->id, ['at' => now()->toDateTimeString(), 'raw' => mb_substr($request->getContent(), 0, 600)], now()->addDay()); } catch (\Throwable $e) {}
 
         try {
             $msgs = $c->tipo === 'oficial'

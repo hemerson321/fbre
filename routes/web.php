@@ -183,6 +183,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/whatsapp/{conexao}/criar', [WhatsappController::class, 'criar'])->name('whatsapp.criar');
         Route::get('/whatsapp/{conexao}/conectar', [WhatsappController::class, 'conectar'])->name('whatsapp.conectar');
         Route::get('/whatsapp/{conexao}/status', [WhatsappController::class, 'status'])->name('whatsapp.status');
+        Route::get('/whatsapp/{conexao}/diagnostico', [WhatsappController::class, 'diagnostico'])->name('whatsapp.diagnostico');
+        Route::post('/whatsapp/{conexao}/reconfigurar', [WhatsappController::class, 'reconfigurar'])->name('whatsapp.reconfigurar');
         Route::post('/whatsapp/{conexao}/desconectar', [WhatsappController::class, 'desconectar'])->name('whatsapp.desconectar');
         // Pagamentos (APIs: Mercado Pago) — atrelado por módulo
         Route::get('/pagamentos', [PagamentoController::class, 'index'])->name('pagamentos');

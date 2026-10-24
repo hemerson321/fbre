@@ -182,6 +182,20 @@ class WhatsApp
         return ['ok' => true, 'base64' => null, 'code' => null, 'bruto' => mb_substr($ultBody, 0, 220)];
     }
 
+    /** Lê a config de webhook da instância no Evolution (diagnóstico). */
+    public function evoVerWebhook(WhatsappConexao $c): array
+    {
+        $base = $this->evoBase($c);
+        if (! $base) return ['ok' => false, 'erro' => 'sem base'];
+        try {
+            $r = $this->evoHttp($c)->get("{$base}/webhook/find/{$c->instancia}");
+            if (! $r->successful()) return ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 200)];
+            return ['ok' => true, 'config' => $r->json()];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
     /** Estado da conexão: open (conectado) | connecting | close. */
     public function evoStatus(WhatsappConexao $c): array
     {
