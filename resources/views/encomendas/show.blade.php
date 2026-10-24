@@ -16,6 +16,10 @@
 <div class="card p-3 flex flex-wrap gap-2">
   @if($u->podeImprimir())
   <button class="btn btn-ghost btn-sm" onclick="FBRE.abrirImpressao('{{ route('imprimir.comprovante',$e) }}')">🧾 Comprovante</button>
+  @php $emp = \App\Support\Tenant::empresa(); @endphp
+  @if($emp && $emp->usaPix('encomenda') && $e->devido > 0)
+  <button class="btn btn-accent btn-sm" onclick="FBRE.abrirImpressao('{{ route('imprimir.pix',$e) }}')">💠 PIX (imprimir QR)</button>
+  @endif
   <button class="btn btn-ghost btn-sm" onclick="FBRE.abrirImpressao('{{ route('imprimir.etiqueta',$e) }}')">🏷 Etiquetas ({{ $e->volumes }})</button>
   @if($empresa->temRecurso('print_agent'))
     <button class="btn btn-ghost btn-sm" @click="direto('comprovante')">⚡ Comprovante direto</button>

@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\RotaController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\PreCadastroController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\CobrancaController;
 use App\Http\Controllers\AtendimentoController;
 use App\Http\Controllers\AcertoController;
 use App\Http\Controllers\CapturaController;
@@ -131,6 +132,7 @@ Route::middleware('auth')->group(function () {
     // ---------------- Impressão ----------------
     Route::middleware('perm:imprimir')->group(function () {
         Route::get('/imprimir/comprovante/{encomenda}', [ImpressaoController::class, 'comprovante'])->name('imprimir.comprovante');
+        Route::get('/imprimir/pix/{encomenda}', [CobrancaController::class, 'pixEncomenda'])->name('imprimir.pix');
         Route::get('/imprimir/etiqueta/{encomenda}', [ImpressaoController::class, 'etiqueta'])->name('imprimir.etiqueta');
         Route::get('/imprimir/protocolo', [ImpressaoController::class, 'protocolo'])->name('imprimir.protocolo')->middleware('perm:filtro');
         Route::get('/imprimir/listagem', [ImpressaoController::class, 'listagem'])->name('imprimir.listagem')->middleware('perm:filtro');
