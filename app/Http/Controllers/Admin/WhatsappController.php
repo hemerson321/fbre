@@ -131,7 +131,7 @@ class WhatsappController extends Controller
         $cfg = $wa->evoVerWebhook($conexao);
         $hit = Cache::get('wa_hit_'.$conexao->id);
         return response()->json([
-            'VERSAO_CODIGO' => 'agente-v4-datas-pix-separado',
+            'VERSAO_CODIGO' => 'agente-v5-reabrir-limpo',
             'webhook_esperado' => $webhookEsperado,
             'webhook_no_evolution' => $cfg,
             'ultimo_recebido' => $hit,

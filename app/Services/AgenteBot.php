@@ -42,8 +42,12 @@ class AgenteBot
             $conversa->forceFill(['status' => 'ia', 'ia_ativa' => true, 'atendida' => true])->save();
 
             $sistema = $this->promptSistema($agente);
+            // atendimento reaberto: só considera mensagens a partir do reinício (ignora conversa já finalizada)
+            $reinicio = (int) ($conversa->contexto['reinicio_id'] ?? 0);
             // últimas 16 mensagens em ordem CRONOLÓGICA (mais antiga -> mais nova)
-            $historico = $conversa->mensagens()->reorder()->orderByDesc('id')->limit(16)->get()
+            $historico = $conversa->mensagens()->reorder()
+                ->when($reinicio > 0, fn ($q) => $q->where('id', '>=', $reinicio))
+                ->orderByDesc('id')->limit(16)->get()
                 ->sortBy('id')->values()
                 ->map(fn ($m) => ['role' => $m->direcao === 'entrada' ? 'user' : 'assistant', 'content' => (string) $m->texto])
                 ->all();

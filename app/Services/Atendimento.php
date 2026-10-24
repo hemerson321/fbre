@@ -34,9 +34,10 @@ class Atendimento
             $conversa->status = 'aguardando';
             $conversa->funil = 'novo';
         }
+        $reabrindo = $conversa->exists && $conversa->status === 'fechada';
         $conversa->whatsapp_conexao_id = $conexao->id;
         if ($nome && ! $conversa->cliente_nome) $conversa->cliente_nome = mb_substr($nome, 0, 120);
-        if ($conversa->status === 'fechada') $conversa->status = 'aguardando';
+        if ($reabrindo) { $conversa->status = 'aguardando'; $conversa->funil = 'novo'; }
         $conversa->atendida = false;
         $conversa->cliente_respondeu_em = now();
         $conversa->ultima_msg_texto = mb_substr($texto, 0, 255);
@@ -45,7 +46,7 @@ class Atendimento
         $conversa->nao_lidas = (int) $conversa->nao_lidas + 1;
         $conversa->save();
 
-        return Mensagem::create([
+        $msg = Mensagem::create([
             'empresa_id' => $conexao->empresa_id,
             'conversa_id' => $conversa->id,
             'direcao' => 'entrada',
@@ -54,6 +55,15 @@ class Atendimento
             'wa_message_id' => $waId,
             'lida' => false,
         ]);
+
+        // conversa reaberta apos fechar = atendimento novo: agente so olha daqui pra frente
+        if ($reabrindo) {
+            $ctx = $conversa->contexto ?? [];
+            $ctx['reinicio_id'] = $msg->id;
+            $conversa->forceFill(['contexto' => $ctx])->save();
+        }
+
+        return $msg;
     }
 
     /** Mensagem enviada ao cliente (humano/ia/sistema) -> envia pelo WhatsApp e grava. */
