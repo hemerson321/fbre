@@ -19,11 +19,15 @@ class MercadoPago
     public function validar(PagamentoApi $api): array
     {
         try {
-            $r = Http::timeout(20)->withToken((string) $api->access_token)->get($this->base.'/users/me');
+            // endpoint que qualquer Access Token valido acessa (confirma token + conectividade)
+            $r = Http::timeout(20)->withToken((string) $api->access_token)->get($this->base.'/v1/payment_methods');
             if ($r->successful()) {
-                return ['ok' => true, 'conta' => $r->json('nickname') ?? $r->json('email') ?? 'conta MP'];
+                return ['ok' => true, 'conta' => 'token válido ('.count((array) $r->json()).' meios de pagamento)'];
             }
-            return ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.$r->body()];
+            if (in_array($r->status(), [401, 403])) {
+                return ['ok' => false, 'erro' => 'Token recusado ('.$r->status().'). Confirme que é o ACCESS TOKEN de produção (não a Public Key). '.mb_substr($r->body(), 0, 160)];
+            }
+            return ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 200)];
         } catch (\Throwable $e) {
             return ['ok' => false, 'erro' => $e->getMessage()];
         }
