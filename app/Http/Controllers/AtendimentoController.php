@@ -67,6 +67,22 @@ class AtendimentoController extends Controller
         return back()->with('ok', 'Você assumiu o atendimento.');
     }
 
+    public function reiniciar(Conversa $conversa)
+    {
+        abort_unless($conversa->empresa_id === Tenant::id(), 404);
+        $ultimo = (int) $conversa->mensagens()->max('id');
+        $ctx = $conversa->contexto ?? [];
+        $ctx['reinicio_id'] = $ultimo + 1; // agente ignora tudo que veio ate aqui
+        $conversa->forceFill([
+            'contexto' => $ctx,
+            'funil' => 'novo',
+            'status' => 'aguardando',
+            'ia_ativa' => false,
+            'assumida_por' => null,
+        ])->save();
+        return back()->with('ok', 'Sessão reiniciada — o agente vai atender como novo a partir da próxima mensagem.');
+    }
+
     public function fechar(Conversa $conversa)
     {
         abort_unless($conversa->empresa_id === Tenant::id(), 404);

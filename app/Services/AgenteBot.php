@@ -114,9 +114,10 @@ class AgenteBot
         $p[] = "1) TRECHO que ele quer (origem → destino). Confirme que existe nos DADOS.";
         $p[] = "2) DATA. Se o cliente disser 'qualquer dia', 'semana que vem' ou não souber, NÃO devolva a pergunta: OFEREÇA as próximas saídas REAIS da rota (estão nos DADOS em 'próximas saídas') e peça pra ele escolher uma.";
         $p[] = "3) QUANTAS pessoas (se disser 'só eu', é 1 — não pergunte de novo).";
-        $p[] = "4) Mande o resumo curto: trecho, data escolhida, nº de pessoas e VALOR TOTAL (preço do trecho × pessoas), e pergunte 'posso gerar o PIX?'.";
-        $p[] = "5) Ele confirmando, gere o PIX (veja PAGAMENTO).";
-        $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo.";
+        $p[] = "4) DADOS DO(S) PASSAGEIRO(S) para o bilhete: peça NOME COMPLETO, DOCUMENTO (RG ou CPF) e DATA DE NASCIMENTO de cada passageiro. Diga que, se preferir, pode mandar uma FOTO do RG ou CNH que você já pega os dados. Peça um de cada vez se for mais de uma pessoa.";
+        $p[] = "5) Mande o resumo curto: trecho, data, nº de pessoas, nome(s) e VALOR TOTAL (preço do trecho × pessoas), e pergunte 'posso gerar o PIX?'.";
+        $p[] = "6) Ele confirmando, gere o PIX (veja PAGAMENTO).";
+        $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
 
         if ($a->regra('nao_revela_robo')) {
             $p[] = "Você é um atendente da empresa. NUNCA diga que é IA, robô, bot ou assistente virtual.";

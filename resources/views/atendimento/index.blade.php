@@ -52,6 +52,7 @@
         @if($sel->status!=='humano')
         <form method="post" action="{{ route('atendimento.assumir',$sel) }}">@csrf<button class="btn btn-primary btn-sm" style="background:var(--cor1)">Assumir</button></form>
         @endif
+        <form method="post" action="{{ route('atendimento.reiniciar',$sel) }}" onsubmit="return confirm('Reiniciar a sessão? O agente atende como novo.')">@csrf<button class="btn btn-ghost btn-sm" title="Agente esquece o historico e atende como novo">🔄 Reiniciar</button></form>
         <form method="post" action="{{ route('atendimento.fechar',$sel) }}" onsubmit="return confirm('Fechar conversa?')">@csrf<button class="btn btn-ghost btn-sm">Fechar</button></form>
       </div>
 
