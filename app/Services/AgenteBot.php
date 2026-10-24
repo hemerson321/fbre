@@ -60,11 +60,13 @@ class AgenteBot
             if ($texto === '') return;
 
             $texto = $this->tratarVenda($conversa, $texto);
+            $texto = $this->tratarPax($conversa, $texto);
             $res = $this->tratarPix($agente, $conversa, $texto);
             $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia');
             if (! empty($res['pix'])) {
                 $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
             }
+            app(\App\Services\ConfirmaPagamento::class)->tentarCriarPassagem($conversa); // cria se já pagou e já tem dados
         } catch (\Throwable $e) {
             Log::warning('AgenteBot erro: '.$e->getMessage());
         }
@@ -121,6 +123,7 @@ class AgenteBot
             if ($rr['ok'] ?? false) {
                 $this->atendimento->registrarSaida($conversa, trim((string) $rr['texto']), 'ia');
             }
+            app(\App\Services\ConfirmaPagamento::class)->tentarCriarPassagem($conversa);
         } catch (\Throwable $e) {
             Log::warning('processarFoto erro: '.$e->getMessage());
         }
@@ -172,9 +175,9 @@ class AgenteBot
         $p[] = "1) TRECHO que ele quer (origem → destino). Confirme que existe nos DADOS.";
         $p[] = "2) DATA. Se o cliente disser 'qualquer dia', 'semana que vem' ou não souber, NÃO devolva a pergunta: OFEREÇA as próximas saídas REAIS da rota (estão nos DADOS em 'próximas saídas') e peça pra ele escolher uma.";
         $p[] = "3) QUANTAS pessoas (se disser 'só eu', é 1 — não pergunte de novo).";
-        $p[] = "4) DADOS DO(S) PASSAGEIRO(S) para o bilhete: peça NOME COMPLETO, DOCUMENTO (RG ou CPF) e DATA DE NASCIMENTO de cada passageiro. Diga que, se preferir, pode mandar uma FOTO do RG ou CNH que você já pega os dados. Peça um de cada vez se for mais de uma pessoa.";
-        $p[] = "5) Mande o resumo curto: trecho, data, nº de pessoas, nome(s) e VALOR TOTAL (preço do trecho × pessoas), e pergunte 'posso gerar o PIX?'.";
-        $p[] = "6) Ele confirmando, gere o PIX (veja PAGAMENTO).";
+        $p[] = "4) Mande o resumo curto: trecho, data e VALOR TOTAL (preço do trecho × pessoas) e pergunte 'posso gerar o PIX?'. (NÃO peça dados de passageiro ainda.)";
+        $p[] = "5) Confirmando, gere o PIX (veja PAGAMENTO). Primeiro o pagamento.";
+        $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os DADOS DO(S) PASSAGEIRO(S): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO — ou diga que pode mandar a FOTO do RG/CNH que você pega os dados. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
 
         if ($a->regra('nao_revela_robo')) {
@@ -189,7 +192,7 @@ class AgenteBot
 
         if ($a->pagamento_api_id) {
             $p[] = "\nPAGAMENTO: só quando o cliente confirmar a compra (trecho + data + nº de pessoas + dados do passageiro definidos) e quiser pagar, gere o PIX escrevendo numa linha isolada, exatamente: [[PIX:VALOR;DESCRICAO]] — valor total em reais com ponto decimal. Ex.: [[PIX:200.00;2 passagens Manaus-Coari 26/10]]. Nunca invente o valor.";
-            $p[] = "NA MESMA MENSAGEM, antes do PIX, inclua TAMBÉM numa linha isolada os dados da venda pro sistema cadastrar a passagem (o cliente NÃO vê, o sistema remove): [[VENDA: origem=<origem>; destino=<destino>; data=<dd/mm/aaaa>; passageiros=<Nome>|<documento>|<nascimento dd/mm/aaaa>]]. Separe vários passageiros com ' ;; '. Use os dados informados pelo cliente ou lidos da foto.";
+            $p[] = "NA MESMA MENSAGEM, antes do PIX, inclua numa linha isolada (o cliente NÃO vê, o sistema remove): [[VENDA: origem=<origem>; destino=<destino>; data=<dd/mm/aaaa>]]. Os dados dos passageiros são coletados DEPOIS do pagamento (via marcador [[PAX:...]]).";
         } else {
             $p[] = "\nPAGAMENTO: combinado com o atendente/no balcão (não há PIX automático).";
         }
@@ -260,6 +263,25 @@ class AgenteBot
             $d->addDay();
         }
         return implode(', ', $datas);
+    }
+
+    /** Captura [[PAX: nome|doc|nasc ;; ...]] (oculto), guarda os passageiros em contexto e remove do texto. */
+    protected function tratarPax(Conversa $c, string $texto): string
+    {
+        if (! preg_match('/\[\[PAX:(.+?)\]\]/is', $texto, $m)) return $texto;
+        $pax = [];
+        foreach (preg_split('/\s*;;\s*/', trim($m[1])) as $linha) {
+            $parts = array_map('trim', explode('|', $linha));
+            if (($parts[0] ?? '') !== '') {
+                $pax[] = ['nome' => $parts[0], 'documento' => $parts[1] ?? null, 'nascimento' => $parts[2] ?? null];
+            }
+        }
+        if ($pax) {
+            $ctx = $c->contexto ?? [];
+            $ctx['passageiros'] = $pax;
+            $c->forceFill(['contexto' => $ctx])->save();
+        }
+        return trim(str_replace($m[0], '', $texto));
     }
 
     /** Captura [[VENDA: origem=..; destino=..; data=..; passageiros=..]] (oculto), guarda em contexto e remove do texto. */

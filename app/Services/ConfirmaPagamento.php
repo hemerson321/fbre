@@ -61,10 +61,14 @@ class ConfirmaPagamento
         if ($cob->referencia_tipo === Conversa::class && $cob->referencia_id) {
             $conv = Conversa::withoutGlobalScopes()->find($cob->referencia_id);
             if ($conv) {
-                $conv->forceFill(['funil' => 'pago'])->save();
-                $this->criarPassagem($conv, $cob); // best-effort: cadastra a passagem no sistema
-                $msg = "✅ Pagamento confirmado! Recebi seu PIX de R$ {$valorFmt}. Sua passagem está garantida. Qualquer coisa, é só chamar. 🙏";
-                try { $this->at->registrarSaida($conv, $msg, 'sistema'); } catch (\Throwable $e) {}
+                $ctx = $conv->contexto ?? [];
+                $ctx['pago'] = true;
+                $conv->forceFill(['funil' => 'pago', 'contexto' => $ctx])->save();
+                try { $this->at->registrarSaida($conv, "✅ Pagamento confirmado! Recebi seu PIX de R$ {$valorFmt}.", 'sistema'); } catch (\Throwable $e) {}
+                // venda primeiro, dados depois: se ainda não tem dados do passageiro, pede agora
+                if (! $this->tentarCriarPassagem($conv)) {
+                    try { $this->at->registrarSaida($conv, "Agora pra emitir sua passagem, me passa o *nome completo*, o *documento* (RG ou CPF) e a *data de nascimento* do passageiro — ou manda a *foto do RG/CNH* que eu pego os dados. 😊", 'sistema'); } catch (\Throwable $e) {}
+                }
             }
         } elseif ($cob->referencia_tipo === Encomenda::class && $cob->referencia_id) {
             $e = Encomenda::withoutGlobalScopes()->find($cob->referencia_id);
@@ -76,7 +80,28 @@ class ConfirmaPagamento
 
         return true;
     }
-    /** Cadastra a passagem no sistema a partir dos dados da venda; operador = usuário do agente. */
+    /** Cria a passagem SE já pagou e já tem venda + dados do passageiro. Retorna true se já existe/criou. */
+    public function tentarCriarPassagem(Conversa $conv): bool
+    {
+        $ctx = $conv->contexto ?? [];
+        if (! empty($ctx['passagem_id'])) return true;
+        if (empty($ctx['pago'])) return false;
+        $venda = $ctx['venda'] ?? null;
+        if (! $venda || empty($venda['origem']) || empty($venda['destino'])) return false;
+        $pax = $venda['passageiros'] ?? ($ctx['passageiros'] ?? []);
+        if (! $pax) return false;
+
+        $cob = Cobranca::withoutGlobalScopes()
+            ->where('referencia_tipo', Conversa::class)->where('referencia_id', $conv->id)
+            ->where('status', 'pago')->latest('id')->first();
+        if (! $cob) return false;
+
+        Tenant::set($conv->empresa_id);
+        $this->criarPassagem($conv, $cob);
+        return ! empty($conv->fresh()->contexto['passagem_id']);
+    }
+
+    /** Cadastra a passagem no sistema a partir dos dados da venda; operador = usuário do agente. */    /** Cadastra a passagem no sistema a partir dos dados da venda; operador = usuário do agente. */
     protected function criarPassagem(Conversa $conv, Cobranca $cob): void
     {
         try {
