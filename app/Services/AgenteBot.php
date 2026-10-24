@@ -36,8 +36,9 @@ class AgenteBot
             $conversa->forceFill(['status' => 'ia', 'ia_ativa' => true, 'atendida' => true])->save();
 
             $sistema = $this->promptSistema($agente);
-            $historico = $conversa->mensagens()->orderByDesc('id')->limit(16)->get()
-                ->reverse()->values()
+            // últimas 16 mensagens em ordem CRONOLÓGICA (mais antiga -> mais nova)
+            $historico = $conversa->mensagens()->reorder()->orderByDesc('id')->limit(16)->get()
+                ->sortBy('id')->values()
                 ->map(fn ($m) => ['role' => $m->direcao === 'entrada' ? 'user' : 'assistant', 'content' => (string) $m->texto])
                 ->all();
             if (! $historico) return;
