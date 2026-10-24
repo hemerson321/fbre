@@ -81,7 +81,7 @@
       <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="ativo" value="1" @checked($c->ativo) class="w-5 h-5 rounded"> Ativa</label>
       <div class="flex flex-wrap gap-2 items-center">
         <button class="btn btn-primary btn-sm">Salvar</button>
-        <button type="button" onclick="if(confirm('Remover esta conexão?')) this.closest('.card').querySelector('.form-excluir').submit()" class="btn btn-ghost btn-sm text-red-500">Remover</button>
+        <button type="button" onclick="if(confirm('Remover esta conexão?')) document.getElementById('del-wa-{{ $c->id }}').submit()" class="btn btn-ghost btn-sm text-red-500">Remover</button>
       </div>
       {{-- teste rápido --}}
       <div class="border-t pt-3 flex flex-wrap items-end gap-2">
@@ -117,7 +117,7 @@
     <form id="teste-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.testar',$c) }}" class="hidden">@csrf</form>
     <form id="criar-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.criar',$c) }}" class="hidden">@csrf</form>
     <form id="desc-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.desconectar',$c) }}" class="hidden">@csrf</form>
-    <form method="post" action="{{ route('admin.whatsapp.excluir',$c) }}" class="form-excluir hidden">@csrf @method('DELETE')</form>
+    <form id="del-wa-{{ $c->id }}" method="post" action="{{ route('admin.whatsapp.excluir',$c) }}" class="hidden">@csrf @method('DELETE')</form>
   @empty
     <div class="text-sm text-slate-400 text-center py-4">Nenhuma conexão ainda. Cadastre a primeira acima.</div>
   @endforelse

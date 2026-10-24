@@ -171,6 +171,20 @@ class WhatsApp
         }
     }
 
+    /** Remove a instância do Evolution (logout + delete). Best-effort. */
+    public function evoDeletar(WhatsappConexao $c): array
+    {
+        $base = $this->evoBase($c);
+        if (! $base) return ['ok' => false, 'erro' => 'sem base'];
+        try {
+            $this->evoHttp($c)->delete("{$base}/instance/logout/{$c->instancia}");
+            $r = $this->evoHttp($c)->delete("{$base}/instance/delete/{$c->instancia}");
+            return ['ok' => $r->successful(), 'erro' => $r->successful() ? null : ('HTTP '.$r->status())];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
     /** Desconecta (logout) a instância. */
     public function evoDesconectar(WhatsappConexao $c): array
     {

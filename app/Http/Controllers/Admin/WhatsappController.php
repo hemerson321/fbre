@@ -67,9 +67,12 @@ class WhatsappController extends Controller
         return back()->with('ok', 'Conexão criada.');
     }
 
-    public function excluir(WhatsappConexao $conexao)
+    public function excluir(WhatsappConexao $conexao, WhatsApp $wa)
     {
         abort_unless($conexao->empresa_id === Tenant::id(), 404);
+        if ($conexao->tipo === 'nao_oficial' && $conexao->base_url && $conexao->api_key) {
+            $wa->evoDeletar($conexao); // best-effort: limpa a instância no Evolution
+        }
         $conexao->delete();
         return back()->with('ok', 'Conexão removida.');
     }
