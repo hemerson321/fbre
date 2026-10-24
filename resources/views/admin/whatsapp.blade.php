@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('titulo','WhatsApp')
 @section('conteudo')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <div class="max-w-2xl mx-auto space-y-4">
   <div>
     <h1 class="text-xl font-bold">Conexões de WhatsApp</h1>
@@ -8,6 +9,17 @@
   </div>
 
   @if(session('erro'))<div class="rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">{{ session('erro') }}</div>@endif
+
+  {{-- SERVIDOR EVOLUTION (configurar uma vez) --}}
+  <form method="post" action="{{ route('admin.whatsapp.servidor') }}" class="card p-4 space-y-3">@csrf
+    <div class="font-semibold text-sm">Servidor Evolution <span class="text-xs font-normal text-slate-400">(configure uma vez)</span></div>
+    <p class="text-xs text-slate-500">Com isso, cada nova conexão cria a instância sozinha no seu Evolution — você só dá um nome.</p>
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div class="sm:col-span-2"><label class="label">URL do servidor</label><input name="evo_url" class="input" value="{{ $empresa->config('evo_url') }}" placeholder="https://evolution.seudominio.com"></div>
+      <div class="sm:col-span-2"><label class="label">Chave global (API Key global do Evolution)</label><input name="evo_key" type="password" class="input font-mono text-sm" placeholder="{{ $empresa->config('evo_key') ? '•••• deixe em branco para manter' : 'AUTHENTICATION_API_KEY do Evolution' }}" autocomplete="off"></div>
+    </div>
+    <button class="btn btn-primary btn-sm">Salvar servidor</button>
+  </form>
 
   {{-- NOVA CONEXÃO --}}
   <form method="post" action="{{ route('admin.whatsapp.salvar') }}" class="card p-4 space-y-3" x-data="{tipo:'nao_oficial'}">@csrf
@@ -19,11 +31,15 @@
           @foreach(\App\Models\WhatsappConexao::TIPOS as $k=>$l)<option value="{{ $k }}">{{ $l }}</option>@endforeach
         </select></div>
     </div>
-    {{-- não oficial --}}
-    <div x-show="tipo==='nao_oficial'" class="grid sm:grid-cols-2 gap-3">
-      <div class="sm:col-span-2"><label class="label">URL base (Evolution)</label><input name="base_url" class="input" placeholder="https://evo.seudominio.com"></div>
-      <div><label class="label">Instância</label><input name="instancia" class="input" placeholder="nome-da-instancia"></div>
-      <div><label class="label">API Key</label><input name="api_key" class="input" placeholder="chave da instância"></div>
+    {{-- não oficial: instância criada automaticamente --}}
+    <div x-show="tipo==='nao_oficial'" x-data="{adv:false}" class="space-y-2">
+      <p class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">✅ A instância é criada automaticamente no seu Servidor Evolution. Você só precisa do <b>nome</b> acima.</p>
+      <button type="button" class="text-xs text-slate-500 underline" @click="adv=!adv" x-text="adv?'ocultar avançado':'opções avançadas (manual)'"></button>
+      <div x-show="adv" x-cloak class="grid sm:grid-cols-2 gap-3">
+        <div class="sm:col-span-2"><label class="label">URL base (sobrepõe o servidor)</label><input name="base_url" class="input" placeholder="em branco = usa o servidor"></div>
+        <div><label class="label">Instância (em branco = gera)</label><input name="instancia" class="input" placeholder="auto"></div>
+        <div><label class="label">API Key (em branco = chave global)</label><input name="api_key" class="input" placeholder="auto"></div>
+      </div>
     </div>
     {{-- oficial --}}
     <div x-show="tipo==='oficial'" x-cloak class="grid sm:grid-cols-2 gap-3">
@@ -90,7 +106,8 @@
             <div class="font-bold">Conectar WhatsApp</div>
             <p class="text-xs text-slate-500">No celular: WhatsApp → Aparelhos conectados → Conectar um aparelho, e aponte pro QR.</p>
             <template x-if="qr"><img :src="qr" class="w-56 h-56 mx-auto rounded-lg border"></template>
-            <template x-if="!qr"><div class="text-sm text-slate-400 py-16" x-text="qrMsg"></div></template>
+            <div x-show="!qr && temCode" class="flex justify-center"><div x-ref="qrdiv"></div></div>
+            <template x-if="!qr && !temCode"><div class="text-sm text-slate-400 py-16" x-text="qrMsg"></div></template>
             <div class="text-sm font-semibold" :class="conectado?'text-emerald-600':'text-amber-600'" x-text="conectado?'Conectado ✅':'Aguardando leitura…'"></div>
             <button type="button" class="btn btn-ghost btn-sm w-full" @click="fecharQr()">Fechar</button>
           </div>
@@ -109,7 +126,7 @@
 <script>
 function evo(id){
   return {
-    conectado:false, estadoTxt:'—', qrAberto:false, qr:null, qrMsg:'Gerando QR…', timer:null,
+    conectado:false, estadoTxt:'—', qrAberto:false, qr:null, temCode:false, qrMsg:'Gerando QR…', timer:null,
     async verStatus(){
       try{ var r=await fetch('/admin/whatsapp/'+id+'/status',{headers:{'X-Requested-With':'fetch'}}); var d=await r.json();
         if(d.ok){ this.conectado=d.conectado; this.estadoTxt=d.conectado?'Conectado':(d.estado||'desconectado'); }
@@ -117,12 +134,13 @@ function evo(id){
       }catch(e){}
     },
     async abrirQr(){
-      this.qrAberto=true; this.qr=null; this.qrMsg='Gerando QR…';
+      this.qrAberto=true; this.qr=null; this.temCode=false; this.qrMsg='Gerando QR…';
       try{ var r=await fetch('/admin/whatsapp/'+id+'/conectar',{headers:{'X-Requested-With':'fetch'}}); var d=await r.json();
         if(d.ok && d.base64){ this.qr = (''+d.base64).indexOf('data:')===0 ? d.base64 : ('data:image/png;base64,'+d.base64); }
+        else if(d.ok && d.code){ this.temCode=true; var self=this; this.$nextTick(function(){ try{ self.$refs.qrdiv.innerHTML=''; new QRCode(self.$refs.qrdiv,{text:d.code,width:224,height:224,correctLevel:QRCode.CorrectLevel.L}); }catch(e){ self.temCode=false; self.qrMsg='Não consegui desenhar o QR.'; } }); }
         else if(d.ok){ this.qrMsg='Já conectado ou sem QR.'; this.verStatus(); }
-        else { this.qrMsg = d.erro || 'Falhou'; }
-      }catch(e){ this.qrMsg='Erro de conexão'; }
+        else { this.qrMsg = 'Erro: ' + (d.erro || 'falhou. Confira a URL base e se a API Key é a chave global do Evolution.'); }
+      }catch(e){ this.qrMsg='Erro de conexão com o servidor.'; }
       if(this.timer) clearInterval(this.timer);
       this.timer=setInterval(()=>this.checar(), 3000);
     },

@@ -176,6 +176,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/acertos/{revendedor}/baixa', [AcertoController::class, 'baixaEmpresa'])->name('acertos.baixa');
         // WhatsApp (conexoes oficiais e nao oficiais)
         Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp');
+        Route::post('/whatsapp-servidor', [WhatsappController::class, 'servidor'])->name('whatsapp.servidor');
         Route::post('/whatsapp/{conexao?}', [WhatsappController::class, 'salvar'])->name('whatsapp.salvar');
         Route::delete('/whatsapp/{conexao}', [WhatsappController::class, 'excluir'])->name('whatsapp.excluir');
         Route::post('/whatsapp/{conexao}/testar', [WhatsappController::class, 'testar'])->name('whatsapp.testar');

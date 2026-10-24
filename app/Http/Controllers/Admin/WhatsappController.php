@@ -7,6 +7,7 @@ use App\Models\WhatsappConexao;
 use App\Services\WhatsApp;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class WhatsappController extends Controller
 {
@@ -41,7 +42,28 @@ class WhatsappController extends Controller
             $conexao->update($data);
             return back()->with('ok', 'Conexão atualizada.');
         }
-        WhatsappConexao::create($data);
+
+        // Não oficial: usa o Servidor Evolution da empresa e cria a instância sozinho
+        if (($data['tipo'] ?? '') === 'nao_oficial') {
+            $empresa = Tenant::empresa();
+            $data['base_url'] = ($data['base_url'] ?? '') ?: $empresa->config('evo_url');
+            $data['api_key'] = ($data['api_key'] ?? '') ?: $empresa->config('evo_key');
+            if (empty($data['instancia'])) {
+                $data['instancia'] = Str::slug($data['nome']).'-'.Str::lower(Str::random(4));
+            }
+        }
+
+        $nova = WhatsappConexao::create($data);
+
+        if ($nova->tipo === 'nao_oficial') {
+            if (! $nova->base_url || ! $nova->api_key) {
+                return back()->with('erro', 'Conexão criada, mas configure o Servidor Evolution (URL + chave global) no topo para criar a instância automaticamente.');
+            }
+            $r = app(WhatsApp::class)->evoCriar($nova, route('wa.webhook', $nova->id));
+            return back()->with($r['ok'] ? 'ok' : 'erro', $r['ok']
+                ? 'Conexão criada e instância gerada no Evolution. Agora clique em “Conectar (QR)”.'
+                : ('Conexão criada, mas falhou criar no Evolution: '.($r['erro'] ?? 'erro')));
+        }
         return back()->with('ok', 'Conexão criada.');
     }
 
@@ -50,6 +72,21 @@ class WhatsappController extends Controller
         abort_unless($conexao->empresa_id === Tenant::id(), 404);
         $conexao->delete();
         return back()->with('ok', 'Conexão removida.');
+    }
+
+    /** Salva o Servidor Evolution da empresa (URL base + chave global) — usado p/ criar instâncias sozinho. */
+    public function servidor(Request $request)
+    {
+        $data = $request->validate([
+            'evo_url' => 'nullable|string|max:255',
+            'evo_key' => 'nullable|string|max:255',
+        ]);
+        $empresa = Tenant::empresa();
+        $cfg = $empresa->config ?? [];
+        $cfg['evo_url'] = trim((string) ($data['evo_url'] ?? '')) !== '' ? rtrim(trim($data['evo_url']), '/') : null;
+        if (filled($data['evo_key'] ?? null)) $cfg['evo_key'] = trim($data['evo_key']); // mantém se vazio
+        $empresa->forceFill(['config' => $cfg])->save();
+        return back()->with('ok', 'Servidor Evolution salvo.');
     }
 
     public function criar(WhatsappConexao $conexao, WhatsApp $wa)
@@ -63,8 +100,15 @@ class WhatsappController extends Controller
     public function conectar(WhatsappConexao $conexao, WhatsApp $wa)
     {
         abort_unless($conexao->empresa_id === Tenant::id(), 404);
-        $wa->evoWebhook($conexao, route('wa.webhook', $conexao->id)); // garante webhook
-        return response()->json($wa->evoConectar($conexao));
+        // garante que a instância existe + webhook, depois pede o QR
+        $wa->evoCriar($conexao, route('wa.webhook', $conexao->id));
+        $r = $wa->evoConectar($conexao);
+        // se não veio QR, tenta mais uma vez (o Evolution às vezes demora a gerar)
+        if (($r['ok'] ?? false) && empty($r['base64']) && empty($r['code'])) {
+            usleep(1200000);
+            $r = $wa->evoConectar($conexao);
+        }
+        return response()->json($r);
     }
 
     public function status(WhatsappConexao $conexao, WhatsApp $wa)
