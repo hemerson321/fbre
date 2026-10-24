@@ -229,6 +229,8 @@ class AgenteBot
             'empresa_id' => $c->empresa_id,
             'pagamento_api_id' => $api->id,
             'modulo' => $c->modulo,
+            'referencia_tipo' => \App\Models\Conversa::class,
+            'referencia_id' => $c->id,
             'provider' => 'mercadopago',
             'provider_payment_id' => $r['payment_id'] ?? null,
             'valor' => $valor,

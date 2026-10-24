@@ -42,8 +42,7 @@ class MpWebhookController extends Controller
 
             $st = $mp->consultar($apiModel, (string) $paymentId); // fonte da verdade
             if (($st['ok'] ?? false) && ($st['pago'] ?? false)) {
-                $cob->forceFill(['status' => 'pago', 'pago_em' => now()])->save();
-                $this->darBaixa($cob);
+                app(\App\Services\ConfirmaPagamento::class)->aplicar($cob);
             }
         } catch (\Throwable $e) {
             Log::warning('MP webhook erro: '.$e->getMessage());
