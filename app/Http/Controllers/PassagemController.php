@@ -257,6 +257,7 @@ class PassagemController extends Controller
         abort_if($passagem->cancelada, 422, 'Passagem cancelada.');
         abort_if($passagem->devido > 0.009 && $passagem->forma !== 'faturado', 422, 'Registre o pagamento antes do embarque.');
         app(\App\Services\PassagemService::class)->baixa($passagem, ['embarcar' => true], auth()->id());
+        $passagem->passageiros()->update(['checkin' => true]); // confirmar embarque marca o check-in dos passageiros
         return redirect()->route('passagens.show', $passagem)->with('ok', 'Embarque confirmado.');
     }
 
