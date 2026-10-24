@@ -144,7 +144,7 @@ function evo(id){
       if(this.timer) clearInterval(this.timer);
       this.timer=setInterval(()=>this.checar(), 3000);
     },
-    async checar(){ await this.verStatus(); if(this.conectado && this.timer){ clearInterval(this.timer); } },
+    async checar(){ await this.verStatus(); if(this.conectado){ if(this.timer) clearInterval(this.timer); var self=this; setTimeout(function(){ self.fecharQr(); }, 1500); } },
     fecharQr(){ this.qrAberto=false; if(this.timer) clearInterval(this.timer); }
   }
 }
