@@ -84,19 +84,28 @@ class WhatsappController extends Controller
         $data = $request->validate([
             'evo_url' => 'nullable|string|max:255',
             'evo_key' => 'nullable|string|max:255',
+            'evo_webhook_base' => 'nullable|string|max:255',
         ]);
         $empresa = Tenant::empresa();
         $cfg = $empresa->config ?? [];
         $cfg['evo_url'] = trim((string) ($data['evo_url'] ?? '')) !== '' ? rtrim(trim($data['evo_url']), '/') : null;
+        $cfg['evo_webhook_base'] = trim((string) ($data['evo_webhook_base'] ?? '')) !== '' ? rtrim(trim($data['evo_webhook_base']), '/') : null;
         if (filled($data['evo_key'] ?? null)) $cfg['evo_key'] = trim($data['evo_key']); // mantém se vazio
         $empresa->forceFill(['config' => $cfg])->save();
         return back()->with('ok', 'Servidor Evolution salvo.');
     }
 
+    /** URL do webhook: usa o endereço interno (se configurado) p/ Evolution no mesmo servidor. */
+    protected function webhookUrl(int $id): string
+    {
+        $base = Tenant::empresa()?->config('evo_webhook_base');
+        return $base ? rtrim((string) $base, '/').'/wa/webhook/'.$id : route('wa.webhook', $id);
+    }
+
     public function criar(WhatsappConexao $conexao, WhatsApp $wa)
     {
         abort_unless($conexao->empresa_id === Tenant::id(), 404);
-        $r = $wa->evoCriar($conexao, route('wa.webhook', $conexao->id));
+        $r = $wa->evoCriar($conexao, $this->webhookUrl($conexao->id));
         return back()->with($r['ok'] ? 'ok' : 'erro',
             $r['ok'] ? 'Instância pronta e webhook configurado. Clique em “Conectar (QR)”.' : ('Falhou: '.($r['erro'] ?? 'erro')));
     }
@@ -105,7 +114,7 @@ class WhatsappController extends Controller
     {
         abort_unless($conexao->empresa_id === Tenant::id(), 404);
         // garante que a instância existe + webhook, depois pede o QR
-        $wa->evoCriar($conexao, route('wa.webhook', $conexao->id));
+        $wa->evoCriar($conexao, $this->webhookUrl($conexao->id));
         $r = $wa->evoConectar($conexao);
         // se não veio QR, tenta mais uma vez (o Evolution às vezes demora a gerar)
         if (($r['ok'] ?? false) && empty($r['base64']) && empty($r['code'])) {
@@ -118,7 +127,7 @@ class WhatsappController extends Controller
     public function diagnostico(WhatsappConexao $conexao, WhatsApp $wa)
     {
         abort_unless($conexao->empresa_id === Tenant::id(), 404);
-        $webhookEsperado = route('wa.webhook', $conexao->id);
+        $webhookEsperado = $this->webhookUrl($conexao->id);
         $cfg = $wa->evoVerWebhook($conexao);
         $hit = Cache::get('wa_hit_'.$conexao->id);
         return response()->json([
@@ -132,7 +141,7 @@ class WhatsappController extends Controller
     public function reconfigurar(WhatsappConexao $conexao, WhatsApp $wa)
     {
         abort_unless($conexao->empresa_id === Tenant::id(), 404);
-        $r = $wa->evoWebhook($conexao, route('wa.webhook', $conexao->id));
+        $r = $wa->evoWebhook($conexao, $this->webhookUrl($conexao->id));
         return back()->with($r['ok'] ? 'ok' : 'erro', $r['ok'] ? 'Webhook reconfigurado.' : ('Falhou: '.($r['erro'] ?? 'erro')));
     }
 

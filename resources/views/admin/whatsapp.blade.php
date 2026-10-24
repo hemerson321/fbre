@@ -17,6 +17,7 @@
     <div class="grid sm:grid-cols-2 gap-3">
       <div class="sm:col-span-2"><label class="label">URL do servidor</label><input name="evo_url" class="input" value="{{ $empresa->config('evo_url') }}" placeholder="https://evolution.seudominio.com"></div>
       <div class="sm:col-span-2"><label class="label">Chave global (API Key global do Evolution)</label><input name="evo_key" type="password" class="input font-mono text-sm" placeholder="{{ $empresa->config('evo_key') ? '•••• deixe em branco para manter' : 'AUTHENTICATION_API_KEY do Evolution' }}" autocomplete="off"></div>
+      <div class="sm:col-span-2"><label class="label">URL interna do webhook (opcional)</label><input name="evo_webhook_base" class="input font-mono text-sm" value="{{ $empresa->config('evo_webhook_base') }}" placeholder="ex.: http://fbre  (use se Evolution e FBRE estão no mesmo servidor)"><p class="text-[11px] text-slate-400 mt-0.5">Se o Evolution não entrega no domínio público, aponte pro endereço interno do FBRE no EasyPanel. Deixe em branco pra usar {{ url('/') }}.</p></div>
     </div>
     <button class="btn btn-primary btn-sm">Salvar servidor</button>
   </form>
