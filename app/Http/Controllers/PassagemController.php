@@ -213,12 +213,18 @@ class PassagemController extends Controller
     /** Mapa de ocupação/reservas dos camarotes por data de viagem (+ baixa dos reservados). */
     public function camarotesMapa(Request $request)
     {
-        $data = $request->input('data');
+        $viagemId = $request->input('viagem_id');
         $camarotes = Camarote::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
 
+        // viagens geradas pelas rotas (igual passagem/encomenda)
+        $rotas = Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect();
+        $viagens = $rotas->flatMap(fn ($r) => $r->proximasViagens(1, 8))
+            ->filter()->unique('id')->sortBy('data_partida')->values()
+            ->map(fn ($v) => ['id' => $v->id, 'label' => $v->nome ?: ('Viagem '.$v->numero)]);
+
         $vendas = Passagem::where('tipo', 'camarote')->where('cancelada', false)
-            ->when($data, fn ($q) => $q->whereDate('data_viagem', $data))
-            ->when(! $data, fn ($q) => $q->whereDate('data_viagem', '>=', today()))
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->when(! $viagemId, fn ($q) => $q->whereDate('data_viagem', '>=', today()))
             ->with('passageiros')
             ->orderBy('data_viagem')->orderBy('origem')->get()
             ->groupBy('camarote_id');
@@ -226,7 +232,8 @@ class PassagemController extends Controller
         return view('passagens.camarotes', [
             'camarotes' => $camarotes,
             'vendas' => $vendas,
-            'data' => $data,
+            'viagens' => $viagens,
+            'viagemId' => $viagemId,
         ]);
     }
 

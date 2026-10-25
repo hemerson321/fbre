@@ -11,11 +11,17 @@
   </div>
 
   <form method="GET" class="card p-3 flex items-end gap-2">
-    <label class="block flex-1"><span class="text-xs text-slate-500">Data da viagem</span>
-      <input type="date" name="data" value="{{ $data }}" class="input py-2"></label>
+    <label class="block flex-1"><span class="text-xs text-slate-500">Viagem</span>
+      <select name="viagem_id" onchange="this.form.submit()" class="input py-2">
+        <option value="">Próximas viagens</option>
+        @foreach($viagens as $v)
+          <option value="{{ $v['id'] }}" @selected((string)$viagemId === (string)$v['id'])>{{ $v['label'] }}</option>
+        @endforeach
+      </select></label>
     <button class="btn btn-sm btn-ghost">Filtrar</button>
-    @if($data)<a href="{{ route('passagens.camarotes') }}" class="btn btn-sm btn-ghost">Próximas</a>@endif
+    @if($viagemId)<a href="{{ route('passagens.camarotes') }}" class="btn btn-sm btn-ghost">Próximas</a>@endif
   </form>
+  @if($viagens->isEmpty())<p class="text-xs text-amber-600">Cadastre uma rota com paradas pra gerar as viagens.</p>@endif
 
   @forelse($camarotes as $c)
     @php $lista = $vendas[$c->id] ?? collect(); @endphp
@@ -62,7 +68,7 @@
           </div>
         </div>
       @empty
-        <p class="text-xs text-slate-400">Nenhuma venda/reserva {{ $data ? 'nessa data' : 'nas próximas viagens' }}.</p>
+        <p class="text-xs text-slate-400">Nenhuma venda/reserva {{ $viagemId ? 'nessa viagem' : 'nas próximas viagens' }}.</p>
       @endforelse
     </div>
   @empty
