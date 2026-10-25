@@ -87,11 +87,14 @@
             <button type="button" @click="abrirCal()" class="field text-left w-full" :class="viagemDia===null?'text-slate-400':''">
               📅 <span x-text="viagemLabel || (viagemDia===null ? 'escolha origem/destino' : 'escolher')"></span>
             </button>
-            <div x-show="calAberto" x-cloak @click.outside="calAberto=false" class="absolute top-full left-0 mt-1 z-40 bg-white rounded-xl border shadow-xl p-2 w-64 text-slate-700">
+            <div x-show="calAberto" x-cloak class="mt-1 bg-white rounded-xl border border-slate-200 shadow p-2 w-full text-slate-700">
               <div class="flex items-center justify-between mb-1">
                 <button type="button" @click="mudarMes(-1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">‹</button>
                 <div class="text-sm font-bold capitalize" x-text="nomeMes"></div>
-                <button type="button" @click="mudarMes(1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">›</button>
+                <div class="flex items-center gap-1">
+                  <button type="button" @click="mudarMes(1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">›</button>
+                  <button type="button" @click="calAberto=false" class="w-7 h-7 rounded hover:bg-slate-100 text-slate-400 text-sm leading-none">✕</button>
+                </div>
               </div>
               <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1">
                 <template x-for="(d,i) in ['D','S','T','Q','Q','S','S']" :key="i"><div x-text="d"></div></template>
