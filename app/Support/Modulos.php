@@ -11,9 +11,9 @@ class Modulos
     /** [chave => [rótulo, ícone, cor base Tailwind, hex principal]] */
     public const LISTA = [
         'encomenda'  => ['Encomendas', '📦', 'blue',    '#2563eb'],
-        'passagem'   => ['Passagem',   '🎫', 'emerald', '#059669'],
-        'frete'      => ['Frete',      '🚢', 'amber',   '#d97706'],
-        'camarote'   => ['Camarote',   '🛏️', 'violet',  '#7c3aed'],
+        'passagem'   => ['Passagens',  '🎫', 'emerald', '#059669'],
+        'frete'      => ['Fretes',     '🚢', 'amber',   '#d97706'],
+        'camarote'   => ['Camarotes',  '🛏️', 'violet',  '#7c3aed'],
         'lanchonete' => ['Lanchonete', '🍔', 'rose',    '#e11d48'],
         'wifi'       => ['WiFi',       '📶', 'cyan',     '#0891b2'],
         'avulso'     => ['Avulso',     '💵', 'slate',   '#475569'],
