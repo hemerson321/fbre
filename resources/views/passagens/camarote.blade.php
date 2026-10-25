@@ -33,12 +33,12 @@
 
       <div class="grid grid-cols-2 gap-2">
         <label class="block"><span class="text-xs text-slate-500">Origem</span>
-          <select x-model="origem" @change="recalc()" class="input" required>
+          <select x-model="origem" @change="onTrecho()" class="input" required>
             <option value="">—</option>
             @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
           </select></label>
         <label class="block"><span class="text-xs text-slate-500">Destino</span>
-          <select x-model="destino" @change="recalc()" class="input" required>
+          <select x-model="destino" @change="onTrecho()" class="input" required>
             <option value="">—</option>
             @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
           </select></label>
@@ -57,15 +57,21 @@
 
       <div class="grid grid-cols-2 gap-2">
         <label class="block"><span class="text-xs text-slate-500">Data da viagem</span>
-          <input type="date" name="data_viagem" x-model="dataViagem" @change="resolveViagem()" class="input"></label>
+          <input type="date" name="data_viagem" x-model="dataViagem" @change="viagemLabel=rotuloData(dataViagem)" class="input"></label>
         @if($rotas->isNotEmpty())
-        <label class="block"><span class="text-xs text-slate-500">Rota (opcional)</span>
-          <select x-model.number="rotaId" class="input">
+        <label class="block"><span class="text-xs text-slate-500">Rota</span>
+          <select x-model.number="rotaId" @change="resolveData(true)" class="input">
             <option value="">Automático</option>
             @foreach($rotas as $r)<option value="{{ $r->id }}">{{ $r->nome }}</option>@endforeach
           </select></label>
         @endif
       </div>
+      <template x-if="viagemLabel">
+        <div class="text-xs text-cyan-700">📅 Saída de <span x-text="origem"></span>: <b x-text="viagemLabel"></b></div>
+      </template>
+      <template x-if="origem && viagemDia===null">
+        <div class="text-[11px] text-amber-600">Sem dia de saída cadastrado pra essa origem — confira a data manualmente.</div>
+      </template>
     </div>
 
     {{-- ocupantes --}}
@@ -160,7 +166,7 @@ function vendaCamarote(){
     linhas: @json($linhas),
     camId:'', cam:null,
     origem: @json($ultimaOrigem ?? ''), destino:'',
-    dataViagem:'', rotaId:'', viagemId:'',
+    dataViagem:'', rotaId:'', viagemId:'', viagemDia:null, viagemHora:'', viagemLabel:'',
     base:null,
     ocupantes:[{nome:'',documento:'',nascimento:'',adicional:0,checkin:{{ $checkinAuto ? 'true':'false' }}}],
     comprador:{nome:'',telefone:'',documento:''},
@@ -181,7 +187,25 @@ function vendaCamarote(){
     adicionalTotal(){ let s=0; this.ocupantes.forEach((o,i)=>{ if(this.papel(i)==='Adicional') s+=Number(o.adicional||0); }); return s; },
     total(){ return (this.base||0) + this.adicionalTotal(); },
     compradorDoTitular(){ const t=this.ocupantes[0]; if(t){ this.comprador.nome=t.nome; this.comprador.documento=t.documento||''; } },
-    resolveViagem(){ /* resolução fica no servidor via rota_id + data */ },
+    onTrecho(){ this.recalc(); this.resolveData(); },
+    proximaData(dia){ const d=new Date(); d.setHours(0,0,0,0); for(let i=0;i<70;i++){ if(d.getDay()===dia){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; } d.setDate(d.getDate()+1);} return ''; },
+    rotuloData(iso){ if(!iso) return ''; const [y,m,dd]=iso.split('-').map(Number); const d=new Date(y,m-1,dd); const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; return dias[d.getDay()]+' '+String(dd).padStart(2,'0')+'/'+String(m).padStart(2,'0')+(this.viagemHora?' '+this.viagemHora:''); },
+    resolveData(forcar){
+      const idx=(L,c)=>L.paradas.findIndex(p=>(p.n||'').toLowerCase()===(c||'').toLowerCase());
+      let linha=null;
+      if(this.rotaId){ linha=this.linhas.find(L=>L.id===this.rotaId)||null; }
+      if(!linha && this.origem && this.destino){
+        linha=this.linhas.find(L=>{const io=idx(L,this.origem),id=idx(L,this.destino);return io>=0&&id>=0&&io<id;})
+            ||this.linhas.find(L=>idx(L,this.origem)>=0);
+      }
+      if(!linha){ this.viagemDia=null; this.viagemHora=''; this.viagemLabel=''; return; }
+      this.rotaId=linha.id;
+      const p=linha.paradas.find(pp=>(pp.n||'').toLowerCase()===(this.origem||'').toLowerCase());
+      if(!p || p.d===null || p.d===undefined || p.d===''){ this.viagemDia=null; this.viagemHora=''; this.viagemLabel=''; return; }
+      this.viagemDia=Number(p.d); this.viagemHora=p.h||'';
+      if(forcar || !this.dataViagem){ this.dataViagem=this.proximaData(this.viagemDia); }
+      this.viagemLabel=this.rotuloData(this.dataViagem);
+    },
     prep(){ if(!this.comprador.nome && this.ocupantes[0]) this.comprador.nome=this.ocupantes[0].nome; },
   };
 }

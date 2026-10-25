@@ -93,8 +93,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens', [\App\Http\Controllers\PassagemController::class, 'index'])->name('passagens.index')->middleware('perm:passagem.ver');
     Route::get('/passagens/nova', [\App\Http\Controllers\PassagemController::class, 'create'])->name('passagens.create')->middleware('perm:passagem');
     Route::post('/passagens', [\App\Http\Controllers\PassagemController::class, 'store'])->name('passagens.store')->middleware('perm:passagem');
-    Route::get('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteCreate'])->name('passagens.camarote.create')->middleware('perm:passagem');
-    Route::post('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteStore'])->name('passagens.camarote.store')->middleware('perm:passagem');
+    Route::get('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteCreate'])->name('passagens.camarote.create')->middleware('perm:camarote');
+    Route::post('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteStore'])->name('passagens.camarote.store')->middleware('perm:camarote');
     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos')->middleware('perm:passagem.ver');
     Route::get('/passagens/minhas-vendas', [\App\Http\Controllers\PassagemController::class, 'minhasVendas'])->name('passagens.minhas-vendas')->middleware('perm:passagem.ver');
     Route::get('/passagens/checkin', [\App\Http\Controllers\PassagemController::class, 'scanner'])->name('passagens.scanner')->middleware('perm:passagem.baixa');

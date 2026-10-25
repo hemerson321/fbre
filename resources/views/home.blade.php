@@ -13,13 +13,14 @@
   $rotaCriar = [
     'encomenda' => fn() => route('encomendas.create'),
     'passagem'  => fn() => route('passagens.create'),
+    'camarote'  => fn() => route('passagens.camarote.create'),
     'frete'     => fn() => route('fretes.create'),
   ];
   $desc = [
     'encomenda' => 'Cadastrar encomenda, comprovante e etiqueta.',
     'passagem'  => 'Vender passagem por tipo de passageiro.',
     'frete'     => 'Em breve.',
-    'camarote'  => 'Em breve.',
+    'camarote'  => 'Vender suíte/camarote por trecho.',
     'lanchonete'=> 'Em breve.',
     'wifi'      => 'Em breve.',
     'avulso'    => 'Em breve.',
@@ -38,7 +39,6 @@
   $tools = [];
   if ($u->temModulo('encomenda') || $u->podeFiltrar()) $tools[] = ['r'=>route('encomendas.index'), 'i'=>'📦', 't'=>'Encomendas / baixa'];
   if ($u->temModulo('passagem')) $tools[] = ['r'=>route('passagens.index'), 'i'=>'🧾', 't'=>'Passagens / embarque'];
-  if ($u->temModulo('passagem')) $tools[] = ['r'=>route('passagens.camarote.create'), 'i'=>'🛏️', 't'=>'Vender suíte/camarote'];
   if ($u->temModulo('frete')) $tools[] = ['r'=>route('fretes.index'), 'i'=>'📦', 't'=>'Fretes / entrega'];
   if ($u->podeVerCaixa())  $tools[] = ['r'=>route('caixa.index'), 'i'=>'💰', 't'=>$u->caixaTodos()?'Caixa geral':'Meu caixa'];
   if ($u->podeRelatorio()) $tools[] = ['r'=>route('relatorio.meu'), 'i'=>'📋', 't'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório'];

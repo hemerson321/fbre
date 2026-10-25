@@ -117,6 +117,10 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','ver'))   $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if ($g) $grupos['Passagem'] = $g;
+  // Camarote / Suítes (módulo próprio, permissão separada)
+  $g = [];
+  if ($u->permite('camarote','cadastra')) $g[] = ['r'=>route('passagens.camarote.create'), 'l'=>'Vender suíte/camarote', 'i'=>'🛏️'];
+  if ($g) $grupos['Camarote'] = $g;
   // Frete
   $g = [];
   if ($u->permite('frete','cadastra')) $g[] = ['r'=>route('fretes.create'), 'l'=>'Novo frete', 'i'=>'🚢'];
@@ -143,6 +147,7 @@ document.addEventListener('alpine:init', () => {
   $metaGrupo = [
     'Encomendas'    => ['📦', \App\Support\Modulos::hex('encomenda')],
     'Passagem'      => ['🎫', \App\Support\Modulos::hex('passagem')],
+    'Camarote'      => ['🛏️', \App\Support\Modulos::hex('camarote')],
     'Frete'         => ['🚢', \App\Support\Modulos::hex('frete')],
     'Camarote'      => ['🛏️', \App\Support\Modulos::hex('camarote')],
     'Lanchonete'    => ['🍔', \App\Support\Modulos::hex('lanchonete')],
