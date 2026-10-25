@@ -81,17 +81,8 @@
               @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
             </select></div>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div><label class="lbl">Data</label>
-            <input type="date" class="field" name="data_viagem" x-model="dataViagem" @change="viagemLabel=rotuloData(dataViagem)"></div>
-          @if($rotas->isNotEmpty())
-          <div><label class="lbl">Rota</label>
-            <select class="field" x-model.number="rotaId" @change="resolveData(true)">
-              <option value="">Automático</option>
-              @foreach($rotas as $r)<option value="{{ $r->id }}">{{ $r->nome }}</option>@endforeach
-            </select></div>
-          @endif
-        </div>
+        <div><label class="lbl">Data da viagem</label>
+          <input type="date" class="field" name="data_viagem" x-model="dataViagem" @change="viagemLabel=rotuloData(dataViagem)"></div>
         <template x-if="cam && origem && destino">
           <div>
             <template x-if="base!==null">
