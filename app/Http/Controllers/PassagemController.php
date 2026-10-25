@@ -129,6 +129,47 @@ class PassagemController extends Controller
     }
 
     // ---------------- SUÍTES / CAMAROTES ----------------
+    /**
+     * Camarote já ocupado num trecho que se cruza, na mesma viagem?
+     * Mesma lógica das poltronas: Manaus→Tefé bloqueia Coari→Tefé (trechos se sobrepõem),
+     * mas não bloqueia um trecho que não se cruza. Sem rota conhecida, qualquer venda do
+     * camarote na viagem conta como conflito (por segurança).
+     */
+    protected function camaroteConflito(int $camaroteId, $rotaId, $dataViagem, $viagemId, string $origem, string $destino): ?Passagem
+    {
+        if (! $viagemId && ! $dataViagem) return null; // sem viagem/data não dá pra escopar
+
+        $rota = $rotaId ? Rota::find($rotaId) : null;
+        if (! $rota) {
+            $rota = Rota::with('paradas')->get()->first(function ($r) use ($origem, $destino) {
+                $locs = array_map('mb_strtolower', $r->localidades());
+                return in_array(mb_strtolower($origem), $locs, true) && in_array(mb_strtolower($destino), $locs, true);
+            });
+        }
+        $ordem = $rota ? array_map('mb_strtolower', $rota->localidades()) : [];
+        $idx = fn ($c) => array_search(mb_strtolower((string) $c), $ordem, true);
+        $reqS = $idx($origem); $reqD = $idx($destino);
+        $temTrecho = $ordem && $reqS !== false && $reqD !== false;
+        $reqMin = $temTrecho ? min($reqS, $reqD) : null;
+        $reqMax = $temTrecho ? max($reqS, $reqD) : null;
+
+        $q = Passagem::where('tipo', 'camarote')->where('camarote_id', $camaroteId)->where('cancelada', false)
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->when(! $viagemId && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem));
+
+        foreach ($q->get(['id', 'numero', 'numero_completo', 'origem', 'destino', 'comprador_nome']) as $pg) {
+            if ($temTrecho) {
+                $c = $idx($pg->origem); $d = $idx($pg->destino);
+                if ($c !== false && $d !== false) {
+                    [$cMin, $cMax] = [min($c, $d), max($c, $d)];
+                    if (! ($reqMin < $cMax && $cMin < $reqMax)) continue; // não cruza -> livre
+                }
+            }
+            return $pg; // conflito
+        }
+        return null;
+    }
+
     public function camaroteCreate()
     {
         $u = auth()->user();
@@ -169,6 +210,26 @@ class PassagemController extends Controller
         ]);
     }
 
+    /** Mapa de ocupação/reservas dos camarotes por data de viagem (+ baixa dos reservados). */
+    public function camarotesMapa(Request $request)
+    {
+        $data = $request->input('data');
+        $camarotes = Camarote::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
+
+        $vendas = Passagem::where('tipo', 'camarote')->where('cancelada', false)
+            ->when($data, fn ($q) => $q->whereDate('data_viagem', $data))
+            ->when(! $data, fn ($q) => $q->whereDate('data_viagem', '>=', today()))
+            ->with('passageiros')
+            ->orderBy('data_viagem')->orderBy('origem')->get()
+            ->groupBy('camarote_id');
+
+        return view('passagens.camarotes', [
+            'camarotes' => $camarotes,
+            'vendas' => $vendas,
+            'data' => $data,
+        ]);
+    }
+
     public function camaroteStore(Request $request)
     {
         $data = $request->validate([
@@ -206,6 +267,13 @@ class PassagemController extends Controller
         $base = $cam->precoPara($data['origem'], $data['destino']);
         abort_if($base === null, 422, 'Não há preço cadastrado para esse trecho neste camarote.');
         $cap = max((int) $cam->capacidade, 1);
+
+        // não vender o mesmo camarote em trecho que se sobrepõe na mesma viagem
+        $conf = $this->camaroteConflito($cam->id, $data['rota_id'] ?? null, $data['data_viagem'] ?? null, $data['viagem_id'] ?? null, $data['origem'], $data['destino']);
+        if ($conf) {
+            $num = $conf->numero_completo ?: $conf->numero;
+            abort(422, "Esse camarote ({$cam->nome}) já está ocupado/reservado nessa viagem no trecho {$conf->origem} → {$conf->destino} (Nº {$num}".($conf->comprador_nome ? ', '.$conf->comprador_nome : '').").");
+        }
 
         $passageiros = [];
         foreach (array_values($data['ocupantes']) as $i => $oc) {
