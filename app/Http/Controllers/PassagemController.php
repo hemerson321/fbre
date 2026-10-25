@@ -211,6 +211,34 @@ class PassagemController extends Controller
         ]);
     }
 
+    /** Lista de CAMAROTES com filtro detalhado (igual Passagens/embarque, só tipo camarote). */
+    public function camaroteLista(Request $request)
+    {
+        $f = $this->filtros($request);
+        $base = Passagem::filtrar($f)->where('tipo', 'camarote');
+
+        $totais = [
+            'qtd'         => (clone $base)->count(),
+            'passageiros' => (clone $base)->sum('qtd_passageiros'),
+            'total'       => (clone $base)->sum('total'),
+            'recebido'    => (clone $base)->sum('pago'),
+            'a_receber'   => (clone $base)->sum('devido'),
+        ];
+
+        $passagens = (clone $base)->with(['embarcacao', 'operador', 'camarote'])
+            ->orderByDesc('id')->paginate(50)->withQueryString();
+
+        return view('passagens.camarote_lista', [
+            'passagens' => $passagens,
+            'totais' => $totais,
+            'f' => $f,
+            'localidades' => \App\Models\TabelaPreco::select('origem')->distinct()->pluck('origem')
+                ->merge(Rota::todasLocalidades())->filter()->unique()->sort()->values(),
+            'camarotes' => Camarote::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
+            'operadores' => \App\Models\User::where('ativo', true)->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
     /** Lista de passageiros (manifesto) do filtro atual — inclui ocupantes de camarote. */
     public function manifesto(Request $request)
     {

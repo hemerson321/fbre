@@ -20,7 +20,7 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.q
     <div class="c b xl">CAMAROTE {{ $p->numeroFormatado() }}</div>
     <div class="c sm">Bilhete {{ $i+1 }}/{{ $tot }} · {{ $p->created_at->format('d/m/Y H:i') }} · {{ $p->operador?->name }}</div><hr>
     <div class="pax-nome">{{ strtoupper($pax->nome ?: 'PASSAGEIRO') }}</div>
-    <div class="c sm">{{ ucfirst($pax->papel ?: 'ocupante') }}@if($pax->documento) · Doc {{ $pax->documento }}@endif@if($pax->nascimento) · Nasc {{ \Carbon\Carbon::parse($pax->nascimento)->format('d/m/Y') }}@endif</div>
+    <div class="c sm">{{ ucfirst($pax->papel ?: 'ocupante') }}@if($pax->documento) · Doc {{ $pax->documento }}@endif@if($pax->nascimento) · Nasc {{ $pax->nascimento->format('d/m/Y') }}@endif</div>
     <hr>
     <table>
       <tr><td class="b">ORIGEM</td><td class="r">{{ $p->origem }}</td></tr>

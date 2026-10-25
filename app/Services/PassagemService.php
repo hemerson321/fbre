@@ -80,7 +80,7 @@ class PassagemService
                     'papel' => $pax['papel'] ?? null,
                     'percentual' => (int) ($pax['percentual'] ?? 100),
                     'documento' => $pax['documento'] ?? null,
-                    'nascimento' => $pax['nascimento'] ?? null,
+                    'nascimento' => ($pax['nascimento'] ?? null) ?: null,
                     'sexo' => $pax['sexo'] ?? null,
                     'telefone' => $pax['telefone'] ?? null,
                     'nacionalidade' => $pax['nacionalidade'] ?? null,
