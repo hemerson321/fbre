@@ -129,6 +129,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->isAdmin() || $u->isSuper()) $grupos['Administração'] = [
       ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
       ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
+      ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'],
       ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'],
       ['r'=>route('admin.pagamentos'), 'l'=>'Pagamentos (APIs)', 'i'=>'💳'],
       ['r'=>route('admin.llm'), 'l'=>'Provedores de IA', 'i'=>'🧠'],
