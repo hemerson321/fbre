@@ -205,6 +205,7 @@ class PassagemController extends Controller
             'rotas' => $rotas,
             'linhas' => $linhas,
             'ultimaOrigem' => session('ultima_origem_pass') ?: (Tenant::empresa()->cidade ?: $locs->first()),
+            'ultimaSuite' => session('ultima_suite_cam'),
             'checkinAuto' => (bool) $u->checkin_auto,
             'soAvista' => $u->revendedorDono() !== null,
         ]);
@@ -304,7 +305,7 @@ class PassagemController extends Controller
         ];
 
         $p = app(\App\Services\PassagemService::class)->criar($payload, auth()->id(), $request->input('uuid'));
-        session(['ultima_origem_pass' => $data['origem']]);
+        session(['ultima_origem_pass' => $data['origem'], 'ultima_suite_cam' => $cam->id]);
         $imprimir = $request->input('imprimir', 'navegador');
         return redirect()->route('passagens.show', ['passagem' => $p, 'print' => $imprimir === 'navegador' ? 1 : 0])
             ->with('ok', "Camarote {$cam->nome} · passagem {$p->numeroFormatado()} salva.");

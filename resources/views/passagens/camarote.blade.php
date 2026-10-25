@@ -24,7 +24,7 @@
 @endpush
 @section('conteudo')
 @php $emp=\App\Support\Tenant::empresa(); $corMod=(bool)($emp?->config('cores_por_modulo', true) ?? true); @endphp
-<form method="post" action="{{ route('passagens.camarote.store') }}" x-data="vendaCamarote()" @submit="prep()"
+<form method="post" action="{{ route('passagens.camarote.store') }}" x-data="vendaCamarote()" x-init="boot()" @submit="prep()"
       class="mx-auto max-w-[1440px] space-y-2"
       style="--cor1:{{ $corMod ? '#7c3aed' : ($emp?->cor_primaria ?? '#0b1a33') }};--cor2:{{ $corMod ? '#a78bfa' : ($emp?->cor_secundaria ?? '#00a8e8') }}">
 @csrf
@@ -246,7 +246,7 @@ function vendaCamarote(){
   return {
     camarotes: @json($camarotes),
     linhas: @json($linhas),
-    camId:'', cam:null,
+    camId: @json($ultimaSuite ?? '') , cam:null,
     origem: @json($ultimaOrigem ?? ''), destino:'',
     dataViagem:'', rotaId:'', viagemId:'', viagemDia:null, viagemHora:'', viagemLabel:'',
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'], calAberto:false, calMes:null,
@@ -312,6 +312,7 @@ function vendaCamarote(){
       return out;
     },
     escolherDia(iso){ this.dataViagem=iso; this.viagemLabel=this.rotuloData(iso); this.calAberto=false; },
+    boot(){ if(this.camId){ this.trocaCam(); } this.resolveData(); },
     prep(){ if(!this.comprador.nome && this.ocupantes[0]) this.comprador.nome=this.ocupantes[0].nome; },
   };
 }
