@@ -5,9 +5,9 @@
     $cor2 = $empresa?->cor_secundaria ?? '#00a8e8';
     // módulo atual (pela rota) -> cor do topo acompanha o módulo
     $moduloAtual = match (true) {
+        request()->routeIs('passagens.camarote.*', 'passagens.camarotes', 'admin.camarotes', 'admin.camarotes.*') => 'camarote',
         request()->routeIs('passagens.*') => 'passagem',
         request()->routeIs('fretes.*') => 'frete',
-        request()->routeIs('camarotes.*') => 'camarote',
         request()->routeIs('lanchonete.*') => 'lanchonete',
         request()->routeIs('wifi.*') => 'wifi',
         default => null,
@@ -150,7 +150,6 @@ document.addEventListener('alpine:init', () => {
     'Passagem'      => ['🎫', \App\Support\Modulos::hex('passagem')],
     'Camarote'      => ['🛏️', \App\Support\Modulos::hex('camarote')],
     'Frete'         => ['🚢', \App\Support\Modulos::hex('frete')],
-    'Camarote'      => ['🛏️', \App\Support\Modulos::hex('camarote')],
     'Lanchonete'    => ['🍔', \App\Support\Modulos::hex('lanchonete')],
     'WiFi'          => ['📶', \App\Support\Modulos::hex('wifi')],
     'Caixa'         => ['💰', '#0b1a33'],
