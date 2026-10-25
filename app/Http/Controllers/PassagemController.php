@@ -215,7 +215,7 @@ class PassagemController extends Controller
     public function manifesto(Request $request)
     {
         $f = $this->filtros($request);
-        $passagens = Passagem::filtrar($f)->with(['passageiros', 'camarote'])
+        $passagens = Passagem::filtrar($f)->with(['passageiros', 'camarote', 'embarcacao'])
             ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
 
         $linhas = collect();
@@ -224,24 +224,34 @@ class PassagemController extends Controller
                 $linhas->push((object) [
                     'nome' => $pax->nome,
                     'documento' => $pax->documento,
-                    'origem' => $p->origem,
+                    'nacionalidade' => $pax->nacionalidade ?: 'Brasil',
+                    'nascimento' => $pax->nascimento,
                     'destino' => $p->destino,
-                    'data' => $p->data_viagem,
-                    'tipo' => $p->tipo === 'camarote'
-                        ? ('🛏️ '.($p->camarote?->nome ?: 'Camarote').($pax->papel ? ' · '.ucfirst($pax->papel) : ''))
-                        : ($pax->tipo ?: 'Adulto'),
-                    'poltrona' => $pax->poltrona,
-                    'checkin' => (bool) $pax->checkin,
-                    'embarcou' => (bool) $p->embarcou,
                     'numero' => $p->numeroFormatado(),
+                    'camarote' => $p->tipo === 'camarote' ? ($p->camarote?->nome ?: 'Camarote') : null,
                 ]);
             }
         }
+
+        // cabeçalho da lista (igual ao modelo da Marinha)
+        $embs = $passagens->map(fn ($p) => $p->embarcacao?->nome)->filter()->unique()->values();
+        $origens = $passagens->pluck('origem')->filter()->unique()->values();
+        $destinos = $passagens->pluck('destino')->filter()->unique()->values();
+        $datas = $passagens->pluck('data_viagem')->filter()->unique()->values();
+        $hora = optional($passagens->first()?->embarcacao)->nome ? null : null;
+
+        $cab = [
+            'embarcacao' => $embs->count() === 1 ? $embs->first() : ($embs->count() > 1 ? 'Vários' : '—'),
+            'porto_part' => $origens->count() === 1 ? $origens->first() : ($origens->count() > 1 ? 'Vários' : '—'),
+            'porto_cheg' => $destinos->count() === 1 ? $destinos->first() : ($destinos->count() > 1 ? 'Vários' : '—'),
+            'data' => $datas->count() === 1 ? \Carbon\Carbon::parse($datas->first())->format('d/m/Y') : (($f['inicio'] ?? '') && ($f['fim'] ?? '') ? ($f['inicio'].' a '.$f['fim']) : '—'),
+        ];
 
         return view('passagens.manifesto', [
             'linhas' => $linhas,
             'f' => $f,
             'empresa' => Tenant::empresa(),
+            'cab' => $cab,
         ]);
     }
 
