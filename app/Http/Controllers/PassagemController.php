@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Camarote;
 use App\Models\Embarcacao;
 use App\Models\Pagamento;
 use App\Models\Passagem;
@@ -125,6 +126,118 @@ class PassagemController extends Controller
         $imprimir = $request->input('imprimir', 'navegador');
         return redirect()->route('passagens.show', ['passagem' => $p, 'print' => $imprimir === 'navegador' ? 1 : 0])
             ->with('ok', "Passagem {$p->numeroFormatado()} salva.");
+    }
+
+    // ---------------- SUÍTES / CAMAROTES ----------------
+    public function camaroteCreate()
+    {
+        $u = auth()->user();
+        $lista = Camarote::where('ativo', true)->with('precos')->orderBy('ordem')->orderBy('nome')->get();
+        $camarotes = $lista->map(function ($c) {
+            $precos = [];
+            foreach ($c->precos as $pr) {
+                $precos[mb_strtolower($pr->origem.'|'.$pr->destino)] = (float) $pr->valor;
+                $precos[mb_strtolower($pr->destino.'|'.$pr->origem)] = (float) $pr->valor;
+            }
+            return [
+                'id' => $c->id, 'nome' => $c->nome, 'capacidade' => (int) $c->capacidade,
+                'descricao' => $c->descricao, 'adicional' => (float) $c->valor_adicional,
+                'precos' => $precos,
+                'trechos' => $c->precos->map(fn ($pr) => ['o' => $pr->origem, 'd' => $pr->destino, 'v' => (float) $pr->valor])->values(),
+            ];
+        })->values();
+
+        $locs = $lista->flatMap(fn ($c) => $c->precos->pluck('origem')->merge($c->precos->pluck('destino')))
+            ->merge(Rota::todasLocalidades())->filter()->unique()->sort()->values();
+        $cidadesPerm = $u->cidadesPermitidas();
+        if ($cidadesPerm) $locs = $locs->intersect($cidadesPerm)->values();
+
+        $rotas = Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect();
+        $linhas = $rotas->map(fn ($r) => [
+            'id' => $r->id, 'nome' => $r->nome,
+            'paradas' => $r->paradas->map(fn ($pp) => ['n' => $pp->localidade, 'd' => $pp->dia_semana, 'h' => $pp->hora ? substr($pp->hora, 0, 5) : null])->values(),
+        ])->values();
+
+        return view('passagens.camarote', [
+            'camarotes' => $camarotes,
+            'localidades' => $locs,
+            'rotas' => $rotas,
+            'linhas' => $linhas,
+            'ultimaOrigem' => session('ultima_origem_pass') ?: (Tenant::empresa()->cidade ?: $locs->first()),
+            'checkinAuto' => (bool) $u->checkin_auto,
+            'soAvista' => $u->revendedorDono() !== null,
+        ]);
+    }
+
+    public function camaroteStore(Request $request)
+    {
+        $data = $request->validate([
+            'uuid' => 'nullable|uuid',
+            'camarote_id' => 'required|integer',
+            'origem' => 'required|string|max:80',
+            'destino' => 'required|string|max:80',
+            'rota_id' => 'nullable|integer',
+            'viagem_id' => 'nullable|integer',
+            'data_viagem' => 'nullable|date',
+            'comprador_nome' => 'nullable|string|max:120',
+            'comprador_telefone' => 'nullable|string|max:30',
+            'comprador_documento' => 'nullable|string|max:20',
+            'forma' => 'required|in:avista,areceber,faturado',
+            'observacao' => 'nullable|string|max:1000',
+            'ocupantes' => 'required|array|min:1',
+            'ocupantes.*.nome' => 'required|string|max:120',
+            'ocupantes.*.documento' => 'nullable|string|max:20',
+            'ocupantes.*.nascimento' => 'nullable|date',
+            'ocupantes.*.telefone' => 'nullable|string|max:30',
+            'ocupantes.*.adicional' => 'nullable|numeric|min:0',
+            'ocupantes.*.checkin' => 'nullable|boolean',
+            'pagamentos' => 'nullable|array',
+            'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito',
+            'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
+            'imprimir' => 'nullable|in:navegador,direto,nao',
+        ]);
+
+        $cam = Camarote::where('id', $data['camarote_id'])->firstOrFail();
+        abort_unless($cam->empresa_id === Tenant::id(), 404);
+        abort_if($data['origem'] === $data['destino'], 422, 'Origem e destino não podem ser iguais.');
+        if (auth()->user()->revendedorDono() !== null) $data['forma'] = 'avista';
+
+        $base = $cam->precoPara($data['origem'], $data['destino']);
+        abort_if($base === null, 422, 'Não há preço cadastrado para esse trecho neste camarote.');
+        $cap = max((int) $cam->capacidade, 1);
+
+        $passageiros = [];
+        foreach (array_values($data['ocupantes']) as $i => $oc) {
+            if ($i === 0) { $papel = 'titular'; $valor = (float) $base; $obs = 'Camarote '.$cam->nome; }
+            elseif ($i < $cap) { $papel = 'incluido'; $valor = 0.0; $obs = 'Incluído no camarote'; }
+            else { $papel = 'adicional'; $valor = round((float) ($oc['adicional'] ?? $cam->valor_adicional), 2); $obs = 'Adicional'; }
+            $passageiros[] = [
+                'nome' => $oc['nome'], 'tipo' => 'Camarote', 'papel' => $papel, 'percentual' => 100,
+                'documento' => $oc['documento'] ?? null, 'nascimento' => $oc['nascimento'] ?? null,
+                'telefone' => $oc['telefone'] ?? null, 'checkin' => (bool) ($oc['checkin'] ?? true),
+                'valor_passagem' => $valor, 'valor_taxa' => 0, 'valor_alimentacao' => 0, 'valor_integral' => $valor,
+                'observacao' => $obs,
+            ];
+        }
+
+        $payload = [
+            'tipo' => 'camarote', 'camarote_id' => $cam->id,
+            'origem' => $data['origem'], 'destino' => $data['destino'],
+            'rota_id' => $data['rota_id'] ?? null, 'viagem_id' => $data['viagem_id'] ?? null,
+            'data_viagem' => $data['data_viagem'] ?? null,
+            'comprador_nome' => $data['comprador_nome'] ?? null,
+            'comprador_telefone' => $data['comprador_telefone'] ?? null,
+            'comprador_documento' => $data['comprador_documento'] ?? null,
+            'forma' => $data['forma'], 'observacao' => $data['observacao'] ?? null,
+            'passageiros' => $passageiros,
+            'pagamentos' => $data['pagamentos'] ?? [],
+        ];
+
+        $p = app(\App\Services\PassagemService::class)->criar($payload, auth()->id(), $request->input('uuid'));
+        session(['ultima_origem_pass' => $data['origem']]);
+        $imprimir = $request->input('imprimir', 'navegador');
+        return redirect()->route('passagens.show', ['passagem' => $p, 'print' => $imprimir === 'navegador' ? 1 : 0])
+            ->with('ok', "Camarote {$cam->nome} · passagem {$p->numeroFormatado()} salva.");
     }
 
     protected function validar(Request $request): array

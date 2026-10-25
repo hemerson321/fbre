@@ -11,6 +11,7 @@
   </div>
 
   <div class="card p-4 space-y-1 text-sm">
+    @if($p->tipo==='camarote' && $p->camarote)<div class="flex justify-between"><span class="text-slate-500">Suíte/Camarote</span><b>🛏️ {{ $p->camarote->nome }}</b></div>@endif
     <div class="flex justify-between"><span class="text-slate-500">Embarcação</span><b>{{ $p->embarcacao?->nome ?: '—' }}</b></div>
     <div class="flex justify-between"><span class="text-slate-500">Comprador</span><b>{{ $p->comprador_nome ?: '—' }}</b></div>
     <div class="flex justify-between"><span class="text-slate-500">Operador</span><b>{{ $p->operador?->name }}</b></div>

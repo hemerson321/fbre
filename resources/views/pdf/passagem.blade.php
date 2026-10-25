@@ -29,6 +29,7 @@
 
     <table>
       <tr><td class="b">Trecho</td><td class="r">{{ $p->origem }} → {{ $p->destino }}</td></tr>
+      @if($p->tipo==='camarote' && $p->camarote)<tr><td class="b">Suíte/Camarote</td><td class="r">{{ $p->camarote->nome }}</td></tr>@endif
       @if($p->data_viagem)<tr><td class="b">Data</td><td class="r">{{ \Carbon\Carbon::parse($p->data_viagem)->format('d/m/Y') }}</td></tr>@endif
       @if($p->embarcacao)<tr><td class="b">Embarcação</td><td class="r">{{ $p->embarcacao->nome }}</td></tr>@endif
       <tr><td class="b">Comprador</td><td class="r">{{ $p->comprador_nome }}</td></tr>

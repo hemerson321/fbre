@@ -45,6 +45,7 @@ class Passagem extends Model
     public function embarcacao(): BelongsTo { return $this->belongsTo(Embarcacao::class); }
     public function viagem(): BelongsTo { return $this->belongsTo(Viagem::class); }
     public function rota(): BelongsTo { return $this->belongsTo(Rota::class); }
+    public function camarote(): BelongsTo { return $this->belongsTo(Camarote::class); }
     public function operador(): BelongsTo { return $this->belongsTo(User::class, 'user_id'); }
     public function embarcouPor(): BelongsTo { return $this->belongsTo(User::class, 'embarcou_por'); }
 
@@ -94,6 +95,8 @@ class Passagem extends Model
             'status_pagamento' => $status,
         ])->save();
     }
+
+    public function isCamarote(): bool { return $this->tipo === 'camarote'; }
 
     public function numeroFormatado(): string
     {

@@ -56,6 +56,8 @@ class PassagemService
                 'data_viagem' => $data['data_viagem'] ?? null,
                 'origem' => $data['origem'],
                 'destino' => $data['destino'],
+                'tipo' => $data['tipo'] ?? 'comum',
+                'camarote_id' => ($data['camarote_id'] ?? null) ?: null,
                 'comprador_nome' => $data['comprador_nome'] ?? null,
                 'comprador_telefone' => $data['comprador_telefone'] ?? null,
                 'comprador_documento' => $data['comprador_documento'] ?? null,
@@ -75,6 +77,7 @@ class PassagemService
                 $p->passageiros()->create([
                     'nome' => $pax['nome'],
                     'tipo' => $pax['tipo'] ?? 'Adulto',
+                    'papel' => $pax['papel'] ?? null,
                     'percentual' => (int) ($pax['percentual'] ?? 100),
                     'documento' => $pax['documento'] ?? null,
                     'nascimento' => $pax['nascimento'] ?? null,

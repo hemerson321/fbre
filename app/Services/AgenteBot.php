@@ -172,7 +172,8 @@ class AgenteBot
         $p[] = "- No máximo 1 emoji, e só às vezes.";
         $p[] = "- Entenda português informal e erros de digitação. Não cite trechos/assuntos que o cliente não mencionou.";
         $p[] = "- Seja proativo pra fechar: assim que tiver trecho + data + nº de pessoas, mande o resumo com o TOTAL e pergunte se pode gerar o PIX.";
-        $p[] = "- HORÁRIOS: use só o que está nos DADOS. A SAÍDA da origem é o dia/hora da parada de origem; a CHEGADA no destino é o dia/hora da parada de destino. NUNCA invente horário, hora de chegada ou duração ('X horas de viagem'). Se perguntarem algo que não está nos DADOS, diga que confirma com um atendente.";
+        $p[] = "- HORÁRIOS: use SÓ o que está nos DADOS (seção ROTAS E SAÍDAS). A SAÍDA de uma cidade é o DIA e a HORA da parada DELA — ex.: se Manaus sai Terça 11:00, use Terça 11:00 e as datas em 'próximas' de Manaus. NUNCA troque o dia/hora por outro, NUNCA use o de outra cidade/rota e NUNCA invente hora, dia, chegada ou duração ('X horas de viagem'). Se não estiver nos DADOS, diga que confirma com um atendente.";
+        $p[] = "- Ao oferecer datas, copie as datas da linha 'próximas' da parada de ORIGEM com o dia e a hora exatos daquela parada. Confira: a data que você escrever TEM que cair no mesmo dia-da-semana da parada.";
 
         $p[] = "OBJETIVO (feche a venda rápido, sem enrolar, um passo por vez):";
         $p[] = "1) TRECHO que ele quer (origem → destino). Confirme que existe nos DADOS.";
@@ -222,15 +223,22 @@ class AgenteBot
             }
         }
 
-        // horários/dias de saída (rotas) + próximas datas concretas
+        // horários/dias de saída (rotas) — a saída de CADA cidade é o dia/hora da parada DELA
         $rotas = \App\Models\Rota::with('paradas')->get();
         if ($rotas->isNotEmpty()) {
-            $linhas[] = "\nRotas (paradas na ordem, com dia e hora de cada parada — a saída de cada cidade é esse dia/hora):";
+            $linhas[] = "\nROTAS E SAÍDAS (use EXATAMENTE estes dias/horas — a saída de uma cidade é o dia e a hora da parada DELA; não use a de outra cidade/rota):";
             foreach ($rotas as $r) {
-                $cal = method_exists($r, 'resumoCalendario') ? $r->resumoCalendario() : $r->nome;
-                $prox = $this->proximasDatas($r);
-                $linhas[] = "- ".$r->nome.": ".$cal;
-                if ($prox) $linhas[] = "   próximas saídas (da 1ª parada): ".$prox;
+                $linhas[] = "- Rota ".$r->nome.":";
+                foreach ($r->paradas as $pp) {
+                    if ($pp->dia_semana === null) {
+                        $linhas[] = "   • ".$pp->localidade.": sem dia/hora definido";
+                        continue;
+                    }
+                    $diaN = \App\Models\Rota::DIAS[$pp->dia_semana] ?? '?';
+                    $hora = $pp->hora ? substr($pp->hora, 0, 5) : '(hora não definida)';
+                    $prox = $this->proximasDatasDia((int) $pp->dia_semana);
+                    $linhas[] = "   • ".$pp->localidade.": sai ".$diaN." ".$hora.($prox ? " — próximas: ".$prox : '');
+                }
             }
         }
 
@@ -247,6 +255,18 @@ class AgenteBot
         }
 
         return $linhas ? implode("\n", $linhas) : "Sem tabela de preços cadastrada ainda.";
+    }
+
+    /** Próximas 3 datas (dd/mm) de um dia-da-semana (0=Dom..6=Sáb), a partir de hoje. */
+    protected function proximasDatasDia(int $dia): string
+    {
+        $d = now()->startOfDay();
+        $datas = [];
+        for ($i = 0; $i < 70 && count($datas) < 3; $i++) {
+            if ($d->dayOfWeek === $dia) $datas[] = $d->format('d/m');
+            $d->addDay();
+        }
+        return implode(', ', $datas);
     }
 
     /** Próximas 3 datas de saída de uma rota (a partir do dia-da-semana da 1ª parada). */

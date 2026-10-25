@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\PagamentoController;
 use App\Http\Controllers\Admin\LlmController;
 use App\Http\Controllers\Admin\AgenteController;
 use App\Http\Controllers\Admin\AgenteDemoController;
+use App\Http\Controllers\Admin\CamaroteController;
 use App\Http\Controllers\Admin\WhatsappController;
 use App\Http\Controllers\Admin\CadastroController;
 use App\Http\Controllers\Admin\UsuarioController;
@@ -92,6 +93,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens', [\App\Http\Controllers\PassagemController::class, 'index'])->name('passagens.index')->middleware('perm:passagem.ver');
     Route::get('/passagens/nova', [\App\Http\Controllers\PassagemController::class, 'create'])->name('passagens.create')->middleware('perm:passagem');
     Route::post('/passagens', [\App\Http\Controllers\PassagemController::class, 'store'])->name('passagens.store')->middleware('perm:passagem');
+    Route::get('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteCreate'])->name('passagens.camarote.create')->middleware('perm:passagem');
+    Route::post('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteStore'])->name('passagens.camarote.store')->middleware('perm:passagem');
     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos')->middleware('perm:passagem.ver');
     Route::get('/passagens/minhas-vendas', [\App\Http\Controllers\PassagemController::class, 'minhasVendas'])->name('passagens.minhas-vendas')->middleware('perm:passagem.ver');
     Route::get('/passagens/checkin', [\App\Http\Controllers\PassagemController::class, 'scanner'])->name('passagens.scanner')->middleware('perm:passagem.baixa');
@@ -180,6 +183,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/rotas', [RotaController::class, 'store'])->name('rotas.store');
         Route::put('/rotas/{rota}', [RotaController::class, 'update'])->name('rotas.update');
         Route::post('/rotas/{rota}/toggle', [RotaController::class, 'toggle'])->name('rotas.toggle');
+        // Suítes / Camarotes (catálogo + preços por trecho)
+        Route::get('/camarotes', [CamaroteController::class, 'index'])->name('camarotes');
+        Route::post('/camarotes/{camarote?}', [CamaroteController::class, 'salvar'])->name('camarotes.salvar');
+        Route::delete('/camarotes/{camarote}', [CamaroteController::class, 'excluir'])->name('camarotes.excluir');
+        Route::post('/camarotes/{camarote}/precos', [CamaroteController::class, 'salvarPrecos'])->name('camarotes.precos');
         Route::get('/acertos', [AcertoController::class, 'index'])->name('acertos');
         Route::post('/acertos/{revendedor}/baixa', [AcertoController::class, 'baixaEmpresa'])->name('acertos.baixa');
         // WhatsApp (conexoes oficiais e nao oficiais)

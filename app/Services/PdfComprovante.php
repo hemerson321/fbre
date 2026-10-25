@@ -16,7 +16,7 @@ class PdfComprovante
     {
         if (! class_exists(\Dompdf\Dompdf::class)) return null;
         try {
-            $p->loadMissing('passageiros', 'operador', 'embarcacao');
+            $p->loadMissing('passageiros', 'operador', 'embarcacao', 'camarote');
             $empresa = Tenant::empresa();
             $qr = $this->qr(route('checkin', $p));
 

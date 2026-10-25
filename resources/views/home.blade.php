@@ -38,12 +38,14 @@
   $tools = [];
   if ($u->temModulo('encomenda') || $u->podeFiltrar()) $tools[] = ['r'=>route('encomendas.index'), 'i'=>'📦', 't'=>'Encomendas / baixa'];
   if ($u->temModulo('passagem')) $tools[] = ['r'=>route('passagens.index'), 'i'=>'🧾', 't'=>'Passagens / embarque'];
+  if ($u->temModulo('passagem')) $tools[] = ['r'=>route('passagens.camarote.create'), 'i'=>'🛏️', 't'=>'Vender suíte/camarote'];
   if ($u->temModulo('frete')) $tools[] = ['r'=>route('fretes.index'), 'i'=>'📦', 't'=>'Fretes / entrega'];
   if ($u->podeVerCaixa())  $tools[] = ['r'=>route('caixa.index'), 'i'=>'💰', 't'=>$u->caixaTodos()?'Caixa geral':'Meu caixa'];
   if ($u->podeRelatorio()) $tools[] = ['r'=>route('relatorio.meu'), 'i'=>'📋', 't'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório'];
   if ($u->isAdmin() || $u->isSuper()) {
     $tools[] = ['r'=>route('admin.usuarios.index'), 'i'=>'👥', 't'=>'Usuários'];
     $tools[] = ['r'=>route('admin.cadastros'), 'i'=>'🗂️', 't'=>'Cadastros gerais'];
+    $tools[] = ['r'=>route('admin.camarotes'), 'i'=>'🛏️', 't'=>'Suítes / Camarotes'];
     $tools[] = ['r'=>route('admin.empresa'), 'i'=>'🏢', 't'=>'Minha empresa'];
   }
   if ($u->isSuper() && ! config('fbre.single')) $tools[] = ['r'=>route('super.empresas'), 'i'=>'🛠️', 't'=>'Empresas'];
