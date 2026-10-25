@@ -211,6 +211,40 @@ class PassagemController extends Controller
         ]);
     }
 
+    /** Lista de passageiros (manifesto) do filtro atual — inclui ocupantes de camarote. */
+    public function manifesto(Request $request)
+    {
+        $f = $this->filtros($request);
+        $passagens = Passagem::filtrar($f)->with(['passageiros', 'camarote'])
+            ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
+
+        $linhas = collect();
+        foreach ($passagens as $p) {
+            foreach ($p->passageiros as $pax) {
+                $linhas->push((object) [
+                    'nome' => $pax->nome,
+                    'documento' => $pax->documento,
+                    'origem' => $p->origem,
+                    'destino' => $p->destino,
+                    'data' => $p->data_viagem,
+                    'tipo' => $p->tipo === 'camarote'
+                        ? ('🛏️ '.($p->camarote?->nome ?: 'Camarote').($pax->papel ? ' · '.ucfirst($pax->papel) : ''))
+                        : ($pax->tipo ?: 'Adulto'),
+                    'poltrona' => $pax->poltrona,
+                    'checkin' => (bool) $pax->checkin,
+                    'embarcou' => (bool) $p->embarcou,
+                    'numero' => $p->numeroFormatado(),
+                ]);
+            }
+        }
+
+        return view('passagens.manifesto', [
+            'linhas' => $linhas,
+            'f' => $f,
+            'empresa' => Tenant::empresa(),
+        ]);
+    }
+
     /** Mapa de ocupação/reservas dos camarotes por data de viagem (+ baixa dos reservados). */
     public function camarotesMapa(Request $request)
     {

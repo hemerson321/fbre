@@ -6,7 +6,8 @@
   <div class="rounded-2xl px-4 py-3 text-white flex items-center gap-3" style="background:{{ $cor }}">
     <span class="text-2xl">🧾</span><div class="font-bold">Passagens / embarque</div>
     @can('cadastra', null)@endcan
-    <a href="{{ route('passagens.create') }}" class="ml-auto btn btn-sm bg-white/20 text-white">+ Nova</a>
+    <a href="{{ route('passagens.manifesto', array_merge(request()->query(), ['print'=>1])) }}" target="_blank" class="ml-auto btn btn-sm bg-white/20 text-white">📋 Lista (PDF)</a>
+    <a href="{{ route('passagens.create') }}" class="btn btn-sm bg-white/20 text-white">+ Nova</a>
   </div>
 
   {{-- filtro --}}
