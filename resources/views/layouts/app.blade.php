@@ -116,17 +116,17 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','baixa')) $g[] = ['r'=>route('passagens.scanner'), 'l'=>'Check-in / embarque', 'i'=>'📷'];
   if ($u->permite('passagem','ver'))   $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
-  if ($g) $grupos['Passagem'] = $g;
+  if ($g) $grupos['Passagens'] = $g;
   // Camarote / Suítes (módulo próprio, permissão separada)
   $g = [];
   if ($u->permite('camarote','cadastra')) $g[] = ['r'=>route('passagens.camarote.create'), 'l'=>'Vender suíte/camarote', 'i'=>'🛏️'];
   if ($u->temModulo('camarote')) $g[] = ['r'=>route('passagens.camarotes'), 'l'=>'Ocupação / reservas', 'i'=>'🗺️'];
-  if ($g) $grupos['Camarote'] = $g;
+  if ($g) $grupos['Camarotes'] = $g;
   // Frete
   $g = [];
   if ($u->permite('frete','cadastra')) $g[] = ['r'=>route('fretes.create'), 'l'=>'Novo frete', 'i'=>'🚢'];
   if ($u->permite('frete','ver'))      $g[] = ['r'=>route('fretes.index'), 'l'=>'Fretes / entrega', 'i'=>'📦'];
-  if ($g) $grupos['Frete'] = $g;
+  if ($g) $grupos['Fretes'] = $g;
   $g = [];
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰'];
   if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
@@ -147,9 +147,9 @@ document.addEventListener('alpine:init', () => {
   // cor e ícone de cada grupo do menu (identidade visual por módulo)
   $metaGrupo = [
     'Encomendas'    => ['📦', \App\Support\Modulos::hex('encomenda')],
-    'Passagem'      => ['🎫', \App\Support\Modulos::hex('passagem')],
-    'Camarote'      => ['🛏️', \App\Support\Modulos::hex('camarote')],
-    'Frete'         => ['🚢', \App\Support\Modulos::hex('frete')],
+    'Passagens'     => ['🎫', \App\Support\Modulos::hex('passagem')],
+    'Camarotes'     => ['🛏️', \App\Support\Modulos::hex('camarote')],
+    'Fretes'        => ['🚢', \App\Support\Modulos::hex('frete')],
     'Lanchonete'    => ['🍔', \App\Support\Modulos::hex('lanchonete')],
     'WiFi'          => ['📶', \App\Support\Modulos::hex('wifi')],
     'Caixa'         => ['💰', '#0b1a33'],
