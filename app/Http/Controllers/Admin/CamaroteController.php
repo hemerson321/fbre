@@ -14,8 +14,15 @@ class CamaroteController extends Controller
 {
     public function index()
     {
+        $rotas = Rota::with('paradas')->orderBy('nome')->get()->map(fn ($r) => [
+            'id' => $r->id,
+            'nome' => $r->nome,
+            'cidades' => $r->paradas->pluck('localidade')->filter()->values(),
+        ])->values();
+
         return view('admin.camarotes', [
             'camarotes' => Camarote::with('precos')->orderBy('ordem')->orderBy('nome')->get(),
+            'rotas' => $rotas,
             'localidades' => Rota::todasLocalidades(),
         ]);
     }
@@ -58,26 +65,27 @@ class CamaroteController extends Controller
     {
         abort_unless($camarote->empresa_id === Tenant::id(), 404);
         $linhas = $request->input('precos', []);
-        $vistos = [];
+        $salvos = 0;
         foreach ($linhas as $l) {
             $o = trim((string) ($l['origem'] ?? ''));
             $d = trim((string) ($l['destino'] ?? ''));
-            $raw = (string) ($l['valor'] ?? '0');
+            $raw = (string) ($l['valor'] ?? '');
             if (str_contains($raw, ',') && str_contains($raw, '.')) { $raw = str_replace(['.', ','], ['', '.'], $raw); }
             elseif (str_contains($raw, ',')) { $raw = str_replace(',', '.', $raw); }
             $v = (float) preg_replace('/[^\d.]/', '', $raw);
             if ($o === '' || $d === '' || $o === $d) continue;
-            if ($v <= 0) continue;
-            CamarotePreco::updateOrCreate(
-                ['empresa_id' => Tenant::id(), 'camarote_id' => $camarote->id, 'origem' => $o, 'destino' => $d],
-                ['valor' => $v]
-            );
-            $vistos[] = mb_strtolower($o.'|'.$d);
+
+            if ($v > 0) {
+                CamarotePreco::updateOrCreate(
+                    ['empresa_id' => Tenant::id(), 'camarote_id' => $camarote->id, 'origem' => $o, 'destino' => $d],
+                    ['valor' => $v]
+                );
+                $salvos++;
+            } else {
+                // valor zerado/limpo = remove esse trecho (não mexe nos trechos de outras rotas)
+                CamarotePreco::where('camarote_id', $camarote->id)->where('origem', $o)->where('destino', $d)->delete();
+            }
         }
-        // remove os trechos que sumiram da tela
-        foreach ($camarote->precos()->get() as $pre) {
-            if (! in_array(mb_strtolower($pre->origem.'|'.$pre->destino), $vistos, true)) $pre->delete();
-        }
-        return back()->with('ok', 'Preços do '.$camarote->nome.' salvos.');
+        return back()->with('ok', "Preços do {$camarote->nome} salvos ({$salvos} trecho(s)).");
     }
 }
