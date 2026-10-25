@@ -184,6 +184,7 @@ class PassagemController extends Controller
             'comprador_documento' => 'nullable|string|max:20',
             'forma' => 'required|in:avista,areceber,faturado',
             'observacao' => 'nullable|string|max:1000',
+            'desconto' => 'nullable|numeric|min:0',
             'ocupantes' => 'required|array|min:1',
             'ocupantes.*.nome' => 'required|string|max:120',
             'ocupantes.*.documento' => 'nullable|string|max:20',
@@ -229,6 +230,7 @@ class PassagemController extends Controller
             'comprador_telefone' => $data['comprador_telefone'] ?? null,
             'comprador_documento' => $data['comprador_documento'] ?? null,
             'forma' => $data['forma'], 'observacao' => $data['observacao'] ?? null,
+            'desconto' => $data['desconto'] ?? 0,
             'passageiros' => $passageiros,
             'pagamentos' => $data['pagamentos'] ?? [],
         ];

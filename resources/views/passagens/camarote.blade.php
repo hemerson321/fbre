@@ -1,163 +1,225 @@
 @extends('layouts.app')
 @section('titulo','Vender suíte / camarote')
+@push('head')
+<style type="text/tailwindcss">
+  .sec { @apply rounded-2xl overflow-hidden flex flex-col; background:#fff; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px -12px rgba(15,23,42,.18); }
+  .sec-h { @apply flex items-center gap-2.5 px-3.5 py-2 text-white; background: linear-gradient(90deg, var(--cor1), color-mix(in srgb, var(--cor1) 70%, var(--cor2))); }
+  .sec-h .n { @apply inline-flex w-6 h-6 rounded-full items-center justify-center text-[12px] font-extrabold text-slate-900; background: var(--cor2); }
+  .sec-h .t { @apply text-[13px] font-bold uppercase tracking-wide flex-1; }
+  .sec-b { @apply p-3 flex-1 flex flex-col gap-2.5; }
+  .field { @apply rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[15px] w-full transition; min-height: 44px; }
+  .field:focus { @apply outline-none bg-white; border-color: var(--cor2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor2) 25%, transparent); }
+  .lbl { @apply block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1; }
+  .forma { @apply flex-1 rounded-xl border-2 py-2.5 text-[13px] font-bold text-center cursor-pointer transition text-slate-500 border-slate-200 bg-white; }
+  .forma.on { background: var(--cor1); color:#fff; border-color: var(--cor1); }
+  .pessoa { @apply rounded-xl p-2.5 space-y-1.5 border; background: color-mix(in srgb, var(--cor2) 7%, white); border-color: color-mix(in srgb, var(--cor2) 30%, white); }
+  @media (min-width:1024px){
+    .field{min-height:36px;font-size:14px;padding-top:.3rem;padding-bottom:.3rem}
+    .sec-b{padding:.55rem .6rem;gap:.45rem}
+    .sec-h{padding-top:.3rem;padding-bottom:.3rem}
+    .lbl{margin-bottom:.1rem;font-size:10px}
+    .forma{padding-top:.4rem;padding-bottom:.4rem}
+  }
+</style>
+@endpush
 @section('conteudo')
-<div class="max-w-xl mx-auto" x-data="vendaCamarote()">
-  <div class="flex items-center justify-between mb-3">
-    <h1 class="text-lg font-bold">🛏️ Vender Suíte / Camarote</h1>
-    <a href="{{ route('passagens.create') }}" class="text-xs text-slate-400 hover:underline">Passagem comum →</a>
+@php $emp=\App\Support\Tenant::empresa(); $corMod=(bool)($emp?->config('cores_por_modulo', true) ?? true); @endphp
+<form method="post" action="{{ route('passagens.camarote.store') }}" x-data="vendaCamarote()" @submit="prep()"
+      class="mx-auto max-w-[1440px] space-y-2"
+      style="--cor1:{{ $corMod ? '#7c3aed' : ($emp?->cor_primaria ?? '#0b1a33') }};--cor2:{{ $corMod ? '#a78bfa' : ($emp?->cor_secundaria ?? '#00a8e8') }}">
+@csrf
+<input type="hidden" name="camarote_id" :value="cam?cam.id:''">
+<input type="hidden" name="rota_id" :value="rotaId||''">
+<input type="hidden" name="viagem_id" :value="viagemId||''">
+
+{{-- cabeçalho --}}
+<div class="flex items-center justify-between gap-3 flex-wrap">
+  <div class="flex items-center gap-x-4 gap-y-1 flex-wrap">
+    <h1 class="text-lg font-extrabold" style="color:var(--cor1)">🛏️ Vender Suíte / Camarote</h1>
+    <template x-if="cam">
+      <span class="text-[11px] font-bold rounded-lg px-2 py-0.5 text-white" style="background:var(--cor1)" x-text="cam.nome+' · até '+cam.capacidade"></span>
+    </template>
+    <template x-if="viagemLabel">
+      <div class="flex items-center gap-1.5">
+        <span class="lbl !mb-0 whitespace-nowrap">Viagem</span>
+        <span class="field !min-h-0 !py-1 text-sm font-semibold whitespace-nowrap" style="width:auto">📅 <span x-text="viagemLabel"></span></span>
+      </div>
+    </template>
+  </div>
+  <a href="{{ route('passagens.create') }}" class="text-sm text-slate-500 hover:underline">Passagem comum →</a>
+</div>
+
+@if(collect($camarotes)->isEmpty())
+  <div class="sec"><div class="sec-b text-sm text-amber-700">
+    Nenhuma suíte/camarote cadastrada. <a href="{{ route('admin.camarotes') }}" class="underline font-semibold">Cadastrar agora</a>.
+  </div></div>
+@else
+<div class="grid gap-2 lg:grid-cols-12 items-start">
+
+  {{-- COLUNA 1: suíte/rota + comprador --}}
+  <div class="lg:col-span-3 space-y-2">
+    <section class="sec shrink-0">
+      <div class="sec-h"><span class="n">1</span><span class="t">Suíte / Rota</span></div>
+      <div class="sec-b">
+        <div><label class="lbl">Suíte / Camarote</label>
+          <select class="field" x-model.number="camId" @change="trocaCam()" required>
+            <option value="">—</option>
+            <template x-for="c in camarotes" :key="c.id"><option :value="c.id" x-text="c.nome+' (até '+c.capacidade+')'"></option></template>
+          </select></div>
+        <template x-if="cam && cam.descricao">
+          <div class="text-[11px] text-slate-500 bg-slate-50 rounded-lg p-2 whitespace-pre-line" x-text="cam.descricao"></div>
+        </template>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="lbl">Origem</label>
+            <select class="field" x-model="origem" @change="onTrecho()" required>
+              <option value="">—</option>
+              @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
+            </select></div>
+          <div><label class="lbl">Destino</label>
+            <select class="field" x-model="destino" @change="onTrecho()" required>
+              <option value="">—</option>
+              @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
+            </select></div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="lbl">Data</label>
+            <input type="date" class="field" name="data_viagem" x-model="dataViagem" @change="viagemLabel=rotuloData(dataViagem)"></div>
+          @if($rotas->isNotEmpty())
+          <div><label class="lbl">Rota</label>
+            <select class="field" x-model.number="rotaId" @change="resolveData(true)">
+              <option value="">Automático</option>
+              @foreach($rotas as $r)<option value="{{ $r->id }}">{{ $r->nome }}</option>@endforeach
+            </select></div>
+          @endif
+        </div>
+        <template x-if="cam && origem && destino">
+          <div>
+            <template x-if="base!==null">
+              <div class="text-[11px] font-semibold" style="color:var(--cor1)">💲 Camarote <span x-text="origem"></span>→<span x-text="destino"></span>: R$ <span x-text="fmt(base)"></span> <span class="text-slate-400 font-normal">(até <span x-text="cam.capacidade"></span>)</span></div>
+            </template>
+            <template x-if="base===null">
+              <div class="text-[11px] text-red-600">Sem preço nesse trecho. <a href="{{ route('admin.camarotes') }}" class="underline">Cadastrar</a>.</div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <section class="sec shrink-0">
+      <div class="sec-h"><span class="n">2</span><span class="t">Comprador (opcional)</span>
+        <button type="button" @click="compradorDoTitular()" class="text-[10px] bg-white/20 rounded px-1.5 py-0.5">1º ocupante</button></div>
+      <div class="sec-b">
+        <div><label class="lbl">Nome</label><input class="field" name="comprador_nome" x-model="comprador.nome" placeholder="Quem está comprando"></div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="lbl">WhatsApp</label><input class="field" name="comprador_telefone" x-model="comprador.telefone"></div>
+          <div><label class="lbl">CPF</label><input class="field" name="comprador_documento" x-model="comprador.documento"></div>
+        </div>
+      </div>
+    </section>
   </div>
 
-  @if(collect($camarotes)->isEmpty())
-    <div class="card p-4 text-sm text-amber-700 bg-amber-50">
-      Nenhuma suíte/camarote cadastrada ainda.
-      <a href="{{ route('admin.camarotes') }}" class="underline font-semibold">Cadastrar agora</a>.
-    </div>
-  @else
-  <form method="POST" action="{{ route('passagens.camarote.store') }}" class="space-y-4" @submit="prep()">
-    @csrf
-    <input type="hidden" name="camarote_id" :value="cam?cam.id:''">
-    <input type="hidden" name="rota_id" :value="rotaId||''">
-    <input type="hidden" name="viagem_id" :value="viagemId||''">
-
-    {{-- camarote --}}
-    <div class="card p-4 space-y-3">
-      <label class="block"><span class="text-xs text-slate-500">Suíte / Camarote</span>
-        <select x-model.number="camId" @change="trocaCam()" class="input" required>
-          <option value="">Escolha…</option>
-          <template x-for="c in camarotes" :key="c.id"><option :value="c.id" x-text="c.nome+' (até '+c.capacidade+' pessoas)'"></option></template>
-        </select>
-      </label>
-      <template x-if="cam && cam.descricao">
-        <div class="text-xs text-slate-500 bg-slate-50 rounded-lg p-2 whitespace-pre-line" x-text="cam.descricao"></div>
-      </template>
-
-      <div class="grid grid-cols-2 gap-2">
-        <label class="block"><span class="text-xs text-slate-500">Origem</span>
-          <select x-model="origem" @change="onTrecho()" class="input" required>
-            <option value="">—</option>
-            @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
-          </select></label>
-        <label class="block"><span class="text-xs text-slate-500">Destino</span>
-          <select x-model="destino" @change="onTrecho()" class="input" required>
-            <option value="">—</option>
-            @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
-          </select></label>
+  {{-- COLUNA 2: ocupantes --}}
+  <div class="lg:col-span-6">
+    <section class="sec">
+      <div class="sec-h"><span class="n">3</span><span class="t">Ocupantes (um bilhete por pessoa)</span>
+        <span class="text-[11px] bg-white/20 rounded px-1.5 py-0.5" x-text="ocupantes.length+' / '+(cam?cam.capacidade:'?')"></span>
+        <button type="button" @click="addOcup()" class="text-[11px] bg-white/25 rounded px-2 py-0.5 font-bold">＋ pessoa</button></div>
+      <div class="sec-b">
+        <template x-for="(o,i) in ocupantes" :key="i">
+          <div class="pessoa">
+            <div class="flex items-center justify-between">
+              <span class="inline-flex items-center gap-1.5">
+                <span class="w-6 h-6 rounded-full inline-flex items-center justify-center text-[12px] font-extrabold text-white" style="background:var(--cor1)" x-text="i+1"></span>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                      :class="papel(i)==='Titular'?'bg-violet-100 text-violet-700':(papel(i)==='Adicional'?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-600')"
+                      x-text="papel(i)"></span>
+              </span>
+              <button type="button" x-show="ocupantes.length>1" @click="ocupantes.splice(i,1)" class="text-red-500 text-xl leading-none">×</button>
+            </div>
+            <input class="field" :name="`ocupantes[${i}][nome]`" x-model="o.nome" placeholder="Nome do passageiro" required>
+            <div class="grid grid-cols-2 gap-2">
+              <input class="field" :name="`ocupantes[${i}][documento]`" x-model="o.documento" placeholder="RG/CPF">
+              <input class="field" :name="`ocupantes[${i}][nascimento]`" x-model="o.nascimento" type="date">
+            </div>
+            <div class="grid grid-cols-2 gap-2 items-end">
+              <template x-if="papel(i)==='Adicional'">
+                <div><label class="lbl text-amber-600">Adicional (R$)</label>
+                  <input class="field text-right font-semibold" type="number" step="0.01" min="0" x-model.number="o.adicional"></div>
+              </template>
+              <label class="flex items-center gap-2 text-[13px] text-slate-600 pb-2"><input type="checkbox" :name="`ocupantes[${i}][checkin]`" value="1" x-model="o.checkin" class="w-5 h-5 rounded"> Check-in</label>
+            </div>
+          </div>
+        </template>
+        <input class="field" name="observacao" x-model="observacao" placeholder="Observação (opcional)">
       </div>
+    </section>
+  </div>
 
-      <template x-if="cam && origem && destino">
-        <div>
-          <template x-if="base!==null">
-            <div class="text-sm text-emerald-700 font-semibold">Camarote <span x-text="origem"></span> → <span x-text="destino"></span>: R$ <span x-text="fmt(base)"></span> <span class="font-normal text-slate-400">(cobre até <span x-text="cam.capacidade"></span> pessoa(s))</span></div>
-          </template>
-          <template x-if="base===null">
-            <div class="text-sm text-red-600">Sem preço cadastrado para esse trecho nesta suíte. <a href="{{ route('admin.camarotes') }}" class="underline">Cadastrar preço</a>.</div>
-          </template>
+  {{-- COLUNA 3: pagamento --}}
+  <div class="lg:col-span-3 space-y-2">
+    <section class="sec shrink-0">
+      <div class="sec-h"><span class="n">4</span><span class="t">Pagamento</span></div>
+      <div class="sec-b">
+        <div class="flex gap-1.5">
+          @foreach(\App\Models\Passagem::FORMAS as $k=>$l)
+          @if(empty($soAvista) || $k==='avista')
+          <label class="forma" :class="forma==='{{ $k }}' && 'on'"><input type="radio" value="{{ $k }}" x-model="forma" class="sr-only"> {{ $l }}</label>
+          @endif
+          @endforeach
         </div>
-      </template>
-
-      <div class="grid grid-cols-2 gap-2">
-        <label class="block"><span class="text-xs text-slate-500">Data da viagem</span>
-          <input type="date" name="data_viagem" x-model="dataViagem" @change="viagemLabel=rotuloData(dataViagem)" class="input"></label>
-        @if($rotas->isNotEmpty())
-        <label class="block"><span class="text-xs text-slate-500">Rota</span>
-          <select x-model.number="rotaId" @change="resolveData(true)" class="input">
-            <option value="">Automático</option>
-            @foreach($rotas as $r)<option value="{{ $r->id }}">{{ $r->nome }}</option>@endforeach
-          </select></label>
+        <input type="hidden" name="forma" :value="forma">
+        @if(!empty($soAvista))
+        <p class="text-xs text-slate-500 -mt-1">Revendedor: venda à vista.</p>
         @endif
-      </div>
-      <template x-if="viagemLabel">
-        <div class="text-xs text-cyan-700">📅 Saída de <span x-text="origem"></span>: <b x-text="viagemLabel"></b></div>
-      </template>
-      <template x-if="origem && viagemDia===null">
-        <div class="text-[11px] text-amber-600">Sem dia de saída cadastrado pra essa origem — confira a data manualmente.</div>
-      </template>
-    </div>
 
-    {{-- ocupantes --}}
-    <div class="card p-4 space-y-3">
-      <div class="flex items-center justify-between">
-        <span class="font-semibold text-sm">Ocupantes (um bilhete por pessoa)</span>
-        <span class="text-[11px] text-slate-400" x-text="ocupantes.length+' / '+(cam?cam.capacidade:'?')+' incluído(s)'"></span>
-      </div>
-
-      <template x-for="(o,i) in ocupantes" :key="i">
-        <div class="rounded-xl border border-slate-200 p-3 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                  :class="papel(i)==='Titular'?'bg-cyan-100 text-cyan-700':(papel(i)==='Adicional'?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-600')"
-                  x-text="'Pessoa '+(i+1)+' · '+papel(i)"></span>
-            <button type="button" x-show="ocupantes.length>1" @click="ocupantes.splice(i,1);recalc()" class="text-red-500 text-sm">remover</button>
-          </div>
-          <input :name="`ocupantes[${i}][nome]`" x-model="o.nome" placeholder="Nome completo" class="input py-2" required>
-          <div class="grid grid-cols-2 gap-2">
-            <input :name="`ocupantes[${i}][documento]`" x-model="o.documento" placeholder="RG/CPF" class="input py-2 text-sm">
-            <input :name="`ocupantes[${i}][nascimento]`" x-model="o.nascimento" type="date" class="input py-2 text-sm">
-          </div>
-          <template x-if="papel(i)==='Adicional'">
-            <label class="block"><span class="text-[11px] text-amber-600">Adicional desta pessoa (R$) — pode editar ou deixar 0</span>
-              <input :name="`ocupantes[${i}][adicional]`" x-model.number="o.adicional" @input="recalc()" type="number" step="0.01" min="0" class="input py-2 text-sm"></label>
+        <div x-show="forma==='avista'" class="grid grid-cols-2 gap-2">
+          <template x-for="m in meios" :key="m.k">
+            <div><label class="lbl" x-text="m.l"></label><input class="field text-right font-semibold" x-money="pag[m.k]"></div>
           </template>
-          <label class="flex items-center gap-2 text-xs text-slate-500"><input type="checkbox" :name="`ocupantes[${i}][checkin]`" value="1" x-model="o.checkin" class="w-4 h-4"> Já fazer check-in</label>
+          <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+          <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition" style="border-color:var(--cor1);color:var(--cor1)" @click="pag.dinheiro=+Math.max(total()-pagoSemDinheiro(),0).toFixed(2)">Tudo em dinheiro</button></div>
         </div>
-      </template>
+        <p x-show="forma==='faturado'" class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">Faturado: nada é recebido agora.</p>
 
-      <button type="button" @click="addOcup()" class="btn btn-sm btn-ghost w-full">+ Adicionar pessoa</button>
-    </div>
+        {{-- pagamentos ocultos --}}
+        <template x-for="m in meios" :key="'h'+m.k">
+          <span class="hidden">
+            <input type="hidden" :name="`pagamentos[${m.k}][meio]`" :value="m.k">
+            <input type="hidden" :name="`pagamentos[${m.k}][valor]`" :value="(forma==='avista'?(pag[m.k]||0):0)">
+          </span>
+        </template>
+        <input type="hidden" name="desconto" :value="desconto||0">
 
-    {{-- comprador + pagamento --}}
-    <div class="card p-4 space-y-3">
-      <div class="flex items-center justify-between">
-        <span class="font-semibold text-sm">Comprador</span>
-        <button type="button" @click="compradorDoTitular()" class="text-[11px] text-cyan-600 underline">usar 1º ocupante</button>
-      </div>
-      <input name="comprador_nome" x-model="comprador.nome" placeholder="Nome do comprador" class="input py-2">
-      <div class="grid grid-cols-2 gap-2">
-        <input name="comprador_telefone" x-model="comprador.telefone" placeholder="Telefone" class="input py-2 text-sm">
-        <input name="comprador_documento" x-model="comprador.documento" placeholder="Documento" class="input py-2 text-sm">
-      </div>
-
-      <label class="block"><span class="text-xs text-slate-500">Forma</span>
-        <select name="forma" x-model="forma" class="input py-2">
-          <option value="avista">À vista</option>
-          @unless($soAvista)
-          <option value="areceber">A receber</option>
-          <option value="faturado">Faturado</option>
-          @endunless
-        </select></label>
-
-      <template x-if="forma==='avista'">
-        <div class="grid grid-cols-2 gap-2">
-          <template x-for="(lbl,meio) in meios" :key="meio">
-            <label class="block"><span class="text-[11px] text-slate-500" x-text="lbl"></span>
-              <input type="number" step="0.01" min="0" x-model.number="pag[meio]" class="input py-2 text-sm" placeholder="0,00"></label>
-          </template>
+        <div class="rounded-2xl p-2.5 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
+          <div class="flex justify-between text-xs opacity-75"><span>Camarote</span><span x-text="'R$ '+fmt(base||0)"></span></div>
+          <div class="flex justify-between text-xs opacity-75" x-show="adicionalTotal()>0"><span>Adicionais</span><span x-text="'R$ '+fmt(adicionalTotal())"></span></div>
+          <div class="flex justify-between text-xs opacity-75" x-show="(desconto||0)>0"><span>Desconto</span><span x-text="'- R$ '+fmt(desconto||0)"></span></div>
+          <div class="flex justify-between items-baseline mt-0.5"><span class="text-sm font-semibold opacity-90">Total</span><span class="text-xl font-extrabold tracking-tight" x-text="'R$ '+fmt(total())"></span></div>
+          <div class="h-px bg-white/20 my-1"></div>
+          <div class="flex justify-between text-sm"><span>Pago</span><span x-text="'R$ '+fmt(pago())"></span></div>
+          <div class="flex justify-between items-center text-sm font-bold mt-0.5">
+            <span>Devido</span>
+            <span class="rounded-lg px-2 py-0.5" :class="devido()>0.009 ? 'bg-amber-400 text-slate-900' : 'bg-emerald-400 text-slate-900'" x-text="devido()>0.009 ? ('R$ '+fmt(devido())) : 'Pago ✓'"></span>
+          </div>
         </div>
-      </template>
-      {{-- pagamentos ocultos p/ envio --}}
-      <template x-for="(lbl,meio) in meios" :key="'h'+meio">
-        <span>
-          <input type="hidden" :name="`pagamentos[${meio}][meio]`" :value="meio">
-          <input type="hidden" :name="`pagamentos[${meio}][valor]`" :value="(forma==='avista'?(pag[meio]||0):0)">
-        </span>
-      </template>
-    </div>
-
-    {{-- total + enviar --}}
-    <div class="card p-4 space-y-3">
-      <div class="flex items-center justify-between text-lg font-bold">
-        <span>Total</span><span>R$ <span x-text="fmt(total())"></span></span>
       </div>
-      <div class="text-[11px] text-slate-400" x-show="adicionalTotal()>0">Camarote R$ <span x-text="fmt(base||0)"></span> + adicionais R$ <span x-text="fmt(adicionalTotal())"></span></div>
-      <select name="imprimir" class="input py-2 text-sm">
-        <option value="navegador">Imprimir comprovante (navegador)</option>
-        <option value="nao">Não imprimir</option>
-      </select>
-      <button class="btn btn-primary w-full" :disabled="!cam || base===null || !origem || !destino" x-text="(base===null&&cam&&origem&&destino)?'Sem preço p/ esse trecho':'Salvar camarote'"></button>
-    </div>
-  </form>
-  @endif
+    </section>
+
+    <section class="sec shrink-0">
+      <div class="p-2.5 space-y-2">
+        <div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-slate-600">
+          <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="navegador" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>
+          <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
+        </div>
+        <button class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="!cam || base===null || !origem || !destino">
+          💾 <span x-text="(base===null&&cam&&origem&&destino)?'Sem preço p/ esse trecho':'Salvar camarote'"></span>
+        </button>
+      </div>
+    </section>
+  </div>
 </div>
+@endif
+</form>
 
 <script>
 function vendaCamarote(){
@@ -170,11 +232,14 @@ function vendaCamarote(){
     base:null,
     ocupantes:[{nome:'',documento:'',nascimento:'',adicional:0,checkin:{{ $checkinAuto ? 'true':'false' }}}],
     comprador:{nome:'',telefone:'',documento:''},
+    observacao:'',
     forma:'avista',
-    meios:{dinheiro:'Dinheiro',pix:'PIX',debito:'Débito',credito:'Crédito'},
-    pag:{dinheiro:0,pix:0,debito:0,credito:0},
+    meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+    pag:{dinheiro:0,pix:0,debito:0,credito:0}, desconto:0,
+    imprimir:'navegador',
     fmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
     trocaCam(){ this.cam=this.camarotes.find(c=>c.id===this.camId)||null; this.recalc(); },
+    onTrecho(){ this.recalc(); this.resolveData(); },
     recalc(){
       if(this.cam && this.origem && this.destino){
         const k=(this.origem+'|'+this.destino).toLowerCase();
@@ -185,9 +250,11 @@ function vendaCamarote(){
     papel(i){ if(i===0) return 'Titular'; if(this.cam && i < this.cam.capacidade) return 'Incluído'; return 'Adicional'; },
     addOcup(){ const ad=this.cam?Number(this.cam.adicional||0):0; this.ocupantes.push({nome:'',documento:'',nascimento:'',adicional:ad,checkin:{{ $checkinAuto ? 'true':'false' }}}); },
     adicionalTotal(){ let s=0; this.ocupantes.forEach((o,i)=>{ if(this.papel(i)==='Adicional') s+=Number(o.adicional||0); }); return s; },
-    total(){ return (this.base||0) + this.adicionalTotal(); },
+    total(){ return Math.max((this.base||0)+this.adicionalTotal()-(Number(this.desconto)||0),0); },
+    pagoSemDinheiro(){ return (Number(this.pag.pix)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0); },
+    pago(){ if(this.forma!=='avista') return 0; return (Number(this.pag.dinheiro)||0)+this.pagoSemDinheiro(); },
+    devido(){ return Math.max(this.total()-this.pago(),0); },
     compradorDoTitular(){ const t=this.ocupantes[0]; if(t){ this.comprador.nome=t.nome; this.comprador.documento=t.documento||''; } },
-    onTrecho(){ this.recalc(); this.resolveData(); },
     proximaData(dia){ const d=new Date(); d.setHours(0,0,0,0); for(let i=0;i<70;i++){ if(d.getDay()===dia){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; } d.setDate(d.getDate()+1);} return ''; },
     rotuloData(iso){ if(!iso) return ''; const [y,m,dd]=iso.split('-').map(Number); const d=new Date(y,m-1,dd); const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; return dias[d.getDay()]+' '+String(dd).padStart(2,'0')+'/'+String(m).padStart(2,'0')+(this.viagemHora?' '+this.viagemHora:''); },
     resolveData(forcar){
