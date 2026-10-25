@@ -212,6 +212,31 @@ class WhatsApp
         }
     }
 
+    /** Envia um documento (ex.: PDF) pelo WhatsApp. Evolution: /message/sendMedia. */
+    public function enviarDocumento(WhatsappConexao $c, string $telefone, string $base64, string $fileName, string $caption = ''): array
+    {
+        $fone = $this->normalizar($telefone);
+        if ($fone === '') return ['ok' => false, 'erro' => 'telefone'];
+        try {
+            if ($c->tipo === 'oficial') {
+                return ['ok' => false, 'erro' => 'envio de documento pela API oficial não implementado'];
+            }
+            $base = rtrim((string) $c->base_url, '/');
+            if (! $base || ! $c->instancia) return ['ok' => false, 'erro' => 'sem base/instancia'];
+            $r = $this->evoHttp($c)->post("{$base}/message/sendMedia/{$c->instancia}", [
+                'number' => $fone,
+                'mediatype' => 'document',
+                'mimetype' => 'application/pdf',
+                'media' => $base64,
+                'fileName' => $fileName,
+                'caption' => $caption,
+            ]);
+            return $r->successful() ? ['ok' => true] : ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 150)];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
     /** Baixa a mídia (base64) de uma mensagem do Evolution (ex.: foto do documento). */
     public function evoBaixarMidia(WhatsappConexao $c, array $key): array
     {

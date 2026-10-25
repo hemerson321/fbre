@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\EmpresaController;
 use App\Http\Controllers\Admin\PagamentoController;
 use App\Http\Controllers\Admin\LlmController;
 use App\Http\Controllers\Admin\AgenteController;
+use App\Http\Controllers\Admin\AgenteDemoController;
 use App\Http\Controllers\Admin\WhatsappController;
 use App\Http\Controllers\Admin\CadastroController;
 use App\Http\Controllers\Admin\UsuarioController;
@@ -209,6 +210,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/agentes/{agente?}', [AgenteController::class, 'salvar'])->name('agentes.salvar');
         Route::delete('/agentes/{agente}', [AgenteController::class, 'excluir'])->name('agentes.excluir');
         Route::post('/agentes/{agente}/testar', [AgenteController::class, 'testar'])->name('agentes.testar');
+        // Demo / chat de teste do agente (sem WhatsApp real, sem cobranca real)
+        Route::get('/agentes/{agente}/demo', [AgenteDemoController::class, 'chat'])->name('agentes.demo');
+        Route::get('/agentes/{agente}/demo/mensagens', [AgenteDemoController::class, 'mensagens'])->name('agentes.demo.mensagens');
+        Route::post('/agentes/{agente}/demo/enviar', [AgenteDemoController::class, 'enviar'])->name('agentes.demo.enviar');
+        Route::post('/agentes/{agente}/demo/foto', [AgenteDemoController::class, 'foto'])->name('agentes.demo.foto');
+        Route::post('/agentes/{agente}/demo/pagar', [AgenteDemoController::class, 'pagar'])->name('agentes.demo.pagar');
+        Route::post('/agentes/{agente}/demo/reiniciar', [AgenteDemoController::class, 'reiniciar'])->name('agentes.demo.reiniciar');
     });
 
     // ---------------- Super-admin (GERATEC) ----------------

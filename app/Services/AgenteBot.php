@@ -23,21 +23,23 @@ class AgenteBot
         protected MercadoPago $mp,
     ) {}
 
-    public function processar(Conversa $conversa): void
+    public function processar(Conversa $conversa, ?Agente $agente = null, bool $demo = false): void
     {
         try {
-            $agente = Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
-            if (! $agente || $agente->regra('desligado')) return;
-            if (! $this->deveResponder($agente, $conversa)) return;
+            $agente = $agente ?: Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
+            if (! $agente) return;
+            if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
 
             $prov = $agente->llm;
             if (! $prov) { Log::info('Agente sem provedor de IA.'); return; }
 
-            // debounce: cliente costuma mandar em partes ("1" / "so eu"). Espera e, se chegou msg nova,
-            // deixa o próximo processamento responder com a conversa completa (evita resposta dupla).
-            $ultimoId = (int) $conversa->mensagens()->max('id');
-            sleep(3);
-            if ((int) $conversa->mensagens()->max('id') !== $ultimoId) return;
+            if (! $demo) {
+                // debounce: cliente costuma mandar em partes ("1" / "so eu"). Espera e, se chegou msg nova,
+                // deixa o próximo processamento responder com a conversa completa (evita resposta dupla).
+                $ultimoId = (int) $conversa->mensagens()->max('id');
+                sleep(3);
+                if ((int) $conversa->mensagens()->max('id') !== $ultimoId) return;
+            }
 
             $conversa->forceFill(['status' => 'ia', 'ia_ativa' => true, 'atendida' => true])->save();
 
@@ -61,7 +63,7 @@ class AgenteBot
 
             $texto = $this->tratarVenda($conversa, $texto);
             $texto = $this->tratarPax($conversa, $texto);
-            $res = $this->tratarPix($agente, $conversa, $texto);
+            $res = $this->tratarPix($agente, $conversa, $texto, $demo);
             $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia');
             if (! empty($res['pix'])) {
                 $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
@@ -73,11 +75,12 @@ class AgenteBot
     }
 
     /** Cliente mandou foto do documento: lê por OCR, guarda os dados e o agente confirma. */
-    public function processarFoto(Conversa $conversa, string $base64, string $mime = 'image/jpeg'): void
+    public function processarFoto(Conversa $conversa, string $base64, string $mime = 'image/jpeg', ?Agente $agente = null, bool $demo = false): void
     {
         try {
-            $agente = Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
-            if (! $agente || $agente->regra('desligado') || ! $this->deveResponder($agente, $conversa)) return;
+            $agente = $agente ?: Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
+            if (! $agente) return;
+            if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
             $prov = $agente->llm;
             if (! $prov) return;
 
@@ -310,7 +313,7 @@ class AgenteBot
     }
 
     /** Detecta [[PIX:valor;descricao]], gera a cobrança no Mercado Pago. Retorna texto limpo + o código PIX à parte. */
-    protected function tratarPix(Agente $a, Conversa $c, string $texto): array
+    protected function tratarPix(Agente $a, Conversa $c, string $texto, bool $demo = false): array
     {
         if (! preg_match('/\[\[PIX:\s*([\d.,]+)\s*;\s*([^\]]+)\]\]/i', $texto, $m)) {
             return ['texto' => $texto, 'pix' => null];
@@ -321,6 +324,30 @@ class AgenteBot
         elseif (str_contains($raw, ',')) { $raw = str_replace(',', '.', $raw); }
         $valor = (float) preg_replace('/[^\d.]/', '', $raw);
         $descricao = trim($m[2]);
+
+        // MODO DEMO: nao chama o Mercado Pago. Gera uma cobranca "demo" com copia-e-cola ficticio,
+        // que o botao "Simular pagamento" marca como pago para testar o fluxo completo.
+        if ($demo) {
+            if ($valor <= 0) return ['texto' => trim(str_replace($marcador, '', $texto)), 'pix' => null];
+            $copia = 'DEMO-PIX-'.\Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(10)).'-'.str_replace('.', '', number_format($valor, 2, '.', ''));
+            Cobranca::create([
+                'empresa_id' => $c->empresa_id,
+                'pagamento_api_id' => optional($a->pagamentoApi)->id,
+                'modulo' => $c->modulo,
+                'referencia_tipo' => \App\Models\Conversa::class,
+                'referencia_id' => $c->id,
+                'provider' => 'demo',
+                'provider_payment_id' => null,
+                'valor' => $valor,
+                'status' => 'pendente',
+                'qr_copia_cola' => $copia,
+                'cliente_nome' => $c->cliente_nome,
+                'cliente_telefone' => $c->cliente_telefone,
+            ]);
+            $c->forceFill(['funil' => 'aguardando_pagamento'])->save();
+            $aviso = "Pronto! É só pagar os R$ ".number_format($valor, 2, ',', '.')." no PIX copia e cola que vou te mandar agora. Assim que cair, confirmo aqui. 😉";
+            return ['texto' => trim(str_replace($marcador, $aviso, $texto)), 'pix' => $copia];
+        }
 
         $api = $a->pagamentoApi;
         if (! $api || $valor <= 0) {

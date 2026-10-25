@@ -110,7 +110,8 @@ class ConfirmaPagamento
             $venda = $ctx['venda'] ?? null;
             if (! $venda || empty($venda['origem']) || empty($venda['destino'])) return;
 
-            $agente = \App\Models\Agente::where('modulo', $conv->modulo)->where('ativo', true)->first();
+            $agente = (! empty($ctx['agente_id']) ? \App\Models\Agente::find($ctx['agente_id']) : null)
+                ?: \App\Models\Agente::where('modulo', $conv->modulo)->where('ativo', true)->first();
             $checkinAuto = $agente ? (bool) ($agente->regras['checkin_auto'] ?? false) : false;
             $op = $agente ? $this->operadorDoAgente($agente)
                 : \App\Models\User::withoutGlobalScopes()->where('empresa_id', $conv->empresa_id)->orderByDesc('admin')->first();
@@ -160,6 +161,19 @@ class ConfirmaPagamento
                 $nomes = collect($passageiros)->pluck('nome')->implode(', ');
                 $msg = "🎫 Passagem emitida!\nNº *{$num}*\n{$venda['origem']} → {$venda['destino']}".($quando ? "\nData: {$quando}" : '')."\nPassageiro(s): {$nomes}\n\nGuarde esse número — no embarque é só apresentar.";
                 $this->at->registrarSaida($conv, $msg, 'sistema');
+            } catch (\Throwable $e) {}
+
+            // envia o PDF do comprovante (com QR) pelo WhatsApp
+            try {
+                if ($conv->conexao) {
+                    $pdf = app(\App\Services\PdfComprovante::class)->gerar($p);
+                    if ($pdf) {
+                        app(\App\Services\WhatsApp::class)->enviarDocumento(
+                            $conv->conexao, $conv->cliente_telefone, base64_encode($pdf),
+                            'passagem-'.$p->numeroFormatado().'.pdf', 'Seu comprovante em PDF 📄'
+                        );
+                    }
+                }
             } catch (\Throwable $e) {}
         } catch (\Throwable $e) {
             Log::warning('criarPassagem (agente) erro: '.$e->getMessage());

@@ -9,9 +9,12 @@
 
   @foreach($agentes as $a)
   <div class="card p-4 space-y-2" x-data="{ab:false}">
-    <div class="flex items-center justify-between cursor-pointer" @click="ab=!ab">
-      <div class="font-bold">🤖 {{ $a->nome }} <span class="text-xs font-normal text-slate-400">· {{ \App\Support\Modulos::rotulo($a->modulo) }} · {{ $a->llm?->nome ?? 'sem IA' }} @if(!$a->ativo)· inativo @endif</span></div>
-      <span class="text-slate-400" x-text="ab?'▲':'▼'"></span>
+    <div class="flex items-center justify-between">
+      <div class="font-bold cursor-pointer" @click="ab=!ab">🤖 {{ $a->nome }} <span class="text-xs font-normal text-slate-400">· {{ \App\Support\Modulos::rotulo($a->modulo) }} · {{ $a->llm?->nome ?? 'sem IA' }} @if(!$a->ativo)· inativo @endif</span></div>
+      <div class="flex items-center gap-2">
+        <a href="{{ route('admin.agentes.demo', $a) }}" class="btn btn-sm btn-ghost">🧪 Demo</a>
+        <span class="text-slate-400 cursor-pointer" @click="ab=!ab" x-text="ab?'▲':'▼'"></span>
+      </div>
     </div>
     <div x-show="ab" x-cloak class="pt-2 border-t">
       @include('admin._agente_form', ['a'=>$a])
