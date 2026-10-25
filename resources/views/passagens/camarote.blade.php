@@ -71,12 +71,12 @@
         </template>
         <div class="grid grid-cols-2 gap-2">
           <div><label class="lbl">Origem</label>
-            <select class="field" x-model="origem" @change="onTrecho()" required>
+            <select class="field" name="origem" x-model="origem" @change="onTrecho()" required>
               <option value="">—</option>
               @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
             </select></div>
           <div><label class="lbl">Destino</label>
-            <select class="field" x-model="destino" @change="onTrecho()" required>
+            <select class="field" name="destino" x-model="destino" @change="onTrecho()" required>
               <option value="">—</option>
               @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
             </select></div>
