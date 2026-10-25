@@ -122,6 +122,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/{passagem}/comprovante', [\App\Http\Controllers\PassagemController::class, 'comprovante'])->name('passagens.comprovante')->middleware('perm:passagem.ver');
     Route::get('/passagens/{passagem}', [\App\Http\Controllers\PassagemController::class, 'show'])->name('passagens.show')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/pagar', [\App\Http\Controllers\PassagemController::class, 'pagar'])->name('passagens.pagar')->middleware('perm:passagem.baixa');
+    Route::get('/imprimir/pix-passagem/{passagem}', [\App\Http\Controllers\CobrancaController::class, 'pixPassagem'])->name('imprimir.pix.passagem')->middleware('perm:passagem.baixa');
     Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:passagem.baixa');
     Route::post('/passagens/{passagem}/cancelar', [\App\Http\Controllers\PassagemController::class, 'cancelar'])->name('passagens.cancelar')->middleware('perm:admin');
 

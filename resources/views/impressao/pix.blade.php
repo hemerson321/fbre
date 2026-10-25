@@ -1,4 +1,4 @@
-@extends('impressao._base', ['titulo' => 'PIX '.$e->numeroFormatado()])
+@extends('impressao._base', ['titulo' => 'PIX '.$numero])
 @section('corpo')
 <div class="c">
   @if($empresa->logo)<img class="logo" src="{{ asset($empresa->logo) }}"><br>@endif
@@ -6,7 +6,7 @@
 </div>
 <hr>
 <div class="c b xl">PAGUE COM PIX</div>
-<div class="c sm">Encomenda Nº {{ $e->numeroFormatado() }}</div>
+<div class="c sm">{{ $rotulo }} Nº {{ $numero }}</div>
 <hr>
 <div class="c b" style="font-size:16px">R$ {{ number_format($c->valor,2,',','.') }}</div>
 <div class="c sm">Aponte a câmera do celular no QR abaixo</div>
@@ -25,7 +25,7 @@
 @endif
 
 <hr>
-<div class="c sm">Pague pelo app do seu banco. A entrega é liberada após a confirmação.</div>
+<div class="c sm">Pague pelo app do seu banco. A confirmação é automática.</div>
 <div class="c sm">{{ now()->format('d/m/Y H:i') }}</div>
 
 @if(!$c->qr_base64 && $c->qr_copia_cola)

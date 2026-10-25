@@ -65,6 +65,11 @@
   </form>
   @endif
 
+  @php $empP = \App\Support\Tenant::empresa(); @endphp
+  @if(!$p->cancelada && $empP && $empP->usaPix('passagem') && $p->devido > 0)
+  <button onclick="FBRE.abrirImpressao('{{ route('imprimir.pix.passagem',$p) }}')" class="btn btn-accent w-full">💠 Gerar PIX dinâmico (imprimir QR)</button>
+  @endif
+
   <div class="flex gap-2">
     <button onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost flex-1">🖨 Comprovante</button>
     <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost flex-1">📄 PDF / Enviar</button>
