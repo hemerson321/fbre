@@ -82,7 +82,33 @@
             </select></div>
         </div>
         <div><label class="lbl">Data da viagem</label>
-          <input type="date" class="field" name="data_viagem" x-model="dataViagem" @change="viagemLabel=rotuloData(dataViagem)"></div>
+          <input type="hidden" name="data_viagem" :value="dataViagem">
+          <div class="relative">
+            <button type="button" @click="abrirCal()" class="field text-left w-full" :class="viagemDia===null?'text-slate-400':''">
+              📅 <span x-text="viagemLabel || (viagemDia===null ? 'escolha origem/destino' : 'escolher')"></span>
+            </button>
+            <div x-show="calAberto" x-cloak @click.outside="calAberto=false" class="absolute top-full left-0 mt-1 z-40 bg-white rounded-xl border shadow-xl p-2 w-64 text-slate-700">
+              <div class="flex items-center justify-between mb-1">
+                <button type="button" @click="mudarMes(-1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">‹</button>
+                <div class="text-sm font-bold capitalize" x-text="nomeMes"></div>
+                <button type="button" @click="mudarMes(1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">›</button>
+              </div>
+              <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1">
+                <template x-for="(d,i) in ['D','S','T','Q','Q','S','S']" :key="i"><div x-text="d"></div></template>
+              </div>
+              <div class="grid grid-cols-7 gap-0.5">
+                <template x-for="c in calDias" :key="c.iso">
+                  <button type="button" :disabled="!c.valido" @click="c.valido && escolherDia(c.iso)"
+                    class="h-8 rounded text-sm transition"
+                    :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed'))"
+                    :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : '')"
+                    x-text="c.dia"></button>
+                </template>
+              </div>
+              <div class="text-[10px] text-slate-400 mt-1 text-center">Só os dias de viagem da rota ficam disponíveis.</div>
+            </div>
+          </div>
+        </div>
         <template x-if="cam && origem && destino">
           <div>
             <template x-if="base!==null">
@@ -220,6 +246,7 @@ function vendaCamarote(){
     camId:'', cam:null,
     origem: @json($ultimaOrigem ?? ''), destino:'',
     dataViagem:'', rotaId:'', viagemId:'', viagemDia:null, viagemHora:'', viagemLabel:'',
+    diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'], calAberto:false, calMes:null,
     base:null,
     ocupantes:[{nome:'',documento:'',nascimento:'',adicional:0,checkin:{{ $checkinAuto ? 'true':'false' }}}],
     comprador:{nome:'',telefone:'',documento:''},
@@ -229,7 +256,7 @@ function vendaCamarote(){
     pag:{dinheiro:0,pix:0,debito:0,credito:0}, desconto:0,
     imprimir:'navegador',
     fmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
-    trocaCam(){ this.cam=this.camarotes.find(c=>c.id===this.camId)||null; this.recalc(); },
+    trocaCam(){ this.cam=this.camarotes.find(c=>c.id===this.camId)||null; this.ajustarOcupantes(); this.recalc(); },
     onTrecho(){ this.recalc(); this.resolveData(); },
     recalc(){
       if(this.cam && this.origem && this.destino){
@@ -239,7 +266,9 @@ function vendaCamarote(){
       } else { this.base=null; }
     },
     papel(i){ if(i===0) return 'Titular'; if(this.cam && i < this.cam.capacidade) return 'Incluído'; return 'Adicional'; },
-    addOcup(){ const ad=this.cam?Number(this.cam.adicional||0):0; this.ocupantes.push({nome:'',documento:'',nascimento:'',adicional:ad,checkin:{{ $checkinAuto ? 'true':'false' }}}); },
+    novoOcupante(){ const ad=this.cam?Number(this.cam.adicional||0):0; return {nome:'',documento:'',nascimento:'',adicional:ad,checkin:{{ $checkinAuto ? 'true':'false' }}}; },
+    addOcup(){ this.ocupantes.push(this.novoOcupante()); },
+    ajustarOcupantes(){ if(!this.cam) return; const cap=Math.max(Number(this.cam.capacidade)||1,1); while(this.ocupantes.length<cap) this.ocupantes.push(this.novoOcupante()); }, 
     adicionalTotal(){ let s=0; this.ocupantes.forEach((o,i)=>{ if(this.papel(i)==='Adicional') s+=Number(o.adicional||0); }); return s; },
     total(){ return Math.max((this.base||0)+this.adicionalTotal()-(Number(this.desconto)||0),0); },
     pagoSemDinheiro(){ return (Number(this.pag.pix)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0); },
@@ -264,6 +293,22 @@ function vendaCamarote(){
       if(forcar || !this.dataViagem){ this.dataViagem=this.proximaData(this.viagemDia); }
       this.viagemLabel=this.rotuloData(this.dataViagem);
     },
+    isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
+    get hojeISO(){ return this.isoLocal(new Date()); },
+    abrirCal(){ if(this.viagemDia===null) return; const base=this.dataViagem||this.hojeISO; const [y,m]=base.split('-').map(Number); this.calMes=new Date(y,m-1,1); this.calAberto=true; },
+    mudarMes(n){ const d=new Date(this.calMes); d.setMonth(d.getMonth()+n); this.calMes=d; },
+    get nomeMes(){ return this.calMes ? this.calMes.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) : ''; },
+    get calDias(){
+      if(!this.calMes) return [];
+      const ano=this.calMes.getFullYear(), mes=this.calMes.getMonth();
+      const ini=new Date(ano,mes,1); ini.setDate(1-ini.getDay());
+      const out=[];
+      for(let i=0;i<42;i++){ const d=new Date(ini); d.setDate(ini.getDate()+i); const iso=this.isoLocal(d); const outroMes=d.getMonth()!==mes;
+        const valido=!outroMes && d.getDay()===this.viagemDia && iso>=this.hojeISO;
+        out.push({iso,dia:d.getDate(),valido,outroMes,sel:iso===this.dataViagem}); }
+      return out;
+    },
+    escolherDia(iso){ this.dataViagem=iso; this.viagemLabel=this.rotuloData(iso); this.calAberto=false; },
     prep(){ if(!this.comprador.nome && this.ocupantes[0]) this.comprador.nome=this.ocupantes[0].nome; },
   };
 }
