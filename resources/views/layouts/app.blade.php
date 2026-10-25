@@ -120,6 +120,7 @@ document.addEventListener('alpine:init', () => {
   // Camarote / Suítes (módulo próprio, permissão separada)
   $g = [];
   if ($u->permite('camarote','cadastra')) $g[] = ['r'=>route('passagens.camarote.create'), 'l'=>'Vender suíte/camarote', 'i'=>'🛏️'];
+  if ($u->temModulo('camarote')) $g[] = ['r'=>route('passagens.camarote.lista'), 'l'=>'Camarotes / embarque', 'i'=>'🧾'];
   if ($u->temModulo('camarote')) $g[] = ['r'=>route('passagens.camarotes'), 'l'=>'Ocupação / reservas', 'i'=>'🗺️'];
   if ($g) $grupos['Camarotes'] = $g;
   // Frete

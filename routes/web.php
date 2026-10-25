@@ -96,6 +96,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteCreate'])->name('passagens.camarote.create')->middleware('perm:camarote');
     Route::post('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteStore'])->name('passagens.camarote.store')->middleware('perm:camarote');
     Route::get('/passagens/camarotes', [\App\Http\Controllers\PassagemController::class, 'camarotesMapa'])->name('passagens.camarotes')->middleware('perm:camarote');
+    Route::get('/passagens/camarote-lista', [\App\Http\Controllers\PassagemController::class, 'camaroteLista'])->name('passagens.camarote.lista')->middleware('perm:camarote');
     Route::get('/passagens/lista', [\App\Http\Controllers\PassagemController::class, 'manifesto'])->name('passagens.manifesto')->middleware('perm:passagem.ver');
     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos')->middleware('perm:passagem.ver');
     Route::get('/passagens/minhas-vendas', [\App\Http\Controllers\PassagemController::class, 'minhasVendas'])->name('passagens.minhas-vendas')->middleware('perm:passagem.ver');
