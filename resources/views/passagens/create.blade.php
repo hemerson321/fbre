@@ -626,7 +626,7 @@
           if(d && d.pago){
             clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false;
             this.pag.pix=Number(this.pixValor)||0;
-            this.$nextTick(()=>this.salvar({target:this.$el,preventDefault(){}}));
+            this.$nextTick(()=>{ try{ if(this.$el && this.$el.requestSubmit){ this.$el.requestSubmit(); } else { this.salvar({target:this.$el,preventDefault(){}}); } }catch(e){ this.salvar({target:this.$el,preventDefault(){}}); } }); setTimeout(()=>{ if(this.salvando){ this.salvando=false; alert('Pagamento recebido! Se não avançou sozinho, confira os dados e clique em Salvar.'); } }, 15000);
           }
         }).catch(()=>{});
       },

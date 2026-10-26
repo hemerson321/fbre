@@ -29,3 +29,7 @@ Thumbs.db
 /SISTEMA ANTIGO/
 .fuse_hidden*
 _patches_push/
+print-agent/build/
+print-agent/dist/
+*.exe
+*.spec
