@@ -12,7 +12,7 @@ class Cobranca extends Model
 
     protected $table = 'cobrancas';
     protected $guarded = [];
-    protected $casts = ['valor' => 'decimal:2', 'pago_em' => 'datetime'];
+    protected $casts = ['valor' => 'decimal:2', 'pago_em' => 'datetime', 'payload' => 'array'];
 
     public function api(): BelongsTo
     {

@@ -166,7 +166,11 @@
       <div class="ml-auto flex items-center gap-2">
         <span class="text-[11px] font-bold uppercase opacity-80">Volumes</span>
         <button type="button" x-show="volumesManual" x-cloak @click="volumesManual=false; recalcVolumes()" class="text-[10px] font-bold uppercase bg-white/20 rounded px-1.5 py-0.5 hover:bg-white/30" title="Voltar ao cálculo automático">auto</button>
-        <input name="volumes" type="number" min="1" x-model.number="volumes" @input="volumesManual=true" class="w-16 rounded-lg text-center font-extrabold text-slate-900 py-1 text-base" style="background:var(--cor2)" inputmode="numeric">
+        <div class="flex items-center rounded-xl overflow-hidden shadow" style="background:var(--cor2)">
+          <button type="button" @click="volumesManual=true; volumes=Math.max(1,(Number(volumes)||1)-1)" class="w-9 h-9 flex items-center justify-center text-slate-900 text-xl font-black leading-none active:scale-90 hover:bg-black/10" aria-label="Menos um volume">−</button>
+          <input name="volumes" type="number" min="1" x-model.number="volumes" @input="volumesManual=true" class="w-12 h-9 text-center bg-transparent border-0 focus:ring-0 text-slate-900 font-extrabold text-base p-0" inputmode="numeric">
+          <button type="button" @click="volumesManual=true; volumes=(Number(volumes)||0)+1" class="w-9 h-9 flex items-center justify-center text-slate-900 text-xl font-black leading-none active:scale-90 hover:bg-black/10" aria-label="Mais um volume">+</button>
+        </div>
       </div>
     </div>
     <div class="sec-b">
@@ -417,12 +421,15 @@ function novaEncomenda(){
     fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
     gerarPixDinamico(){
       if(this.pixPagando) return;
+      if(!this.$el.reportValidity()){ return; }
       if(!this.origemSel || !this.destinoSel){ alert('Preencha a origem e o destino antes de gerar o PIX.'); return; }
+      if(!this.itens.length){ alert('Adicione pelo menos um item.'); return; }
       const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
       const valor=Math.max((Number(this.total)||0)-outros,0);
       if(valor<=0){ alert('Sem valor a cobrar. Adicione itens.'); return; }
+      const pedido=this.montarDados(this.$el);
       this.pixCobId=null; this.pixCopia=''; this.pixQr=''; this.pixValor=valor; this.pixModal=true; this.pixPagando=true;
-      fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'encomenda',valor:valor,descricao:'Encomenda'})})
+      fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'encomenda',valor:valor,descricao:'Encomenda',imprimir:this.imprimir,payload:pedido})})
         .then(r=>r.json()).then(d=>{
           if(!d.ok){ this.pixModal=false; this.pixPagando=false; alert(d.erro||'Falha ao gerar PIX'); return; }
           this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.imprimirPix(d.id);
@@ -434,28 +441,45 @@ function novaEncomenda(){
       this.pixChecando=true;
       fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
         if(d && d.pago){
-          clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false;
-          this.pag.pix=Number(this.pixValor)||0;
-          this.$nextTick(()=>{ try{ if(this.$el && this.$el.requestSubmit){ this.$el.requestSubmit(); } else { this.salvar({target:this.$el,preventDefault(){}}); } }catch(e){ this.salvar({target:this.$el,preventDefault(){}}); } }); setTimeout(()=>{ if(this.salvando){ this.salvando=false; alert('Pagamento recebido! Se não avançou sozinho, confira os dados e clique em Salvar.'); } }, 15000);
+          clearInterval(this.pixPoll); this.pixPagando=false;
+          this.finalizarPix(d);
         }
       }).catch(()=>{}).finally(()=>{ this.pixChecando=false; });
+    },
+    // pago: o servidor já criou a encomenda. Só imprimimos (se for o caso) e redirecionamos.
+    finalizarPix(d){
+      if(d.erro || !d.url){
+        this.pixModal=false;
+        alert('Pagamento recebido! '+(d.erro ? ('Não consegui cadastrar automaticamente: '+d.erro+'. ') : '')+'Confira os dados e clique em Salvar.');
+        return;
+      }
+      this.salvando=true; // trava os botões durante o redirecionamento
+      if(this.imprimir==='pix'){ window.location.href='/imprimir/pix/'+d.id; return; }
+      if(this.imprimir==='direto'){
+        try{ fetch('/imprimir/direto/'+d.id+'/comprovante',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf}}); fetch('/imprimir/direto/'+d.id+'/etiqueta',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf}}); }catch(e){}
+      }
+      window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
     },
     cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
     copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
     imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+    montarDados(form){
+      const fd = new FormData(form);
+      return {
+        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, lancamento_em: this.lancamentoEm || null, pre_id: fd.get('pre_id') || null, setor: fd.get('setor'),
+        remetente_nome: fd.get('remetente_nome'), remetente_telefone: fd.get('remetente_telefone'), remetente_documento: fd.get('remetente_documento'),
+        destinatario_nome: fd.get('destinatario_nome'), destinatario_telefone: fd.get('destinatario_telefone'), destinatario_documento: fd.get('destinatario_documento'),
+        volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0,
+        itens: this.itens.map(i => ({descricao:i.descricao, quantidade:Number(i.quantidade)||1, valor_unitario:Number(i.valor)||0, observacao:i.obs||null})),
+        pagamentos: this.forma==='faturado' ? [] : this.meios.filter(m => Number(this.pag[m.k])>0).map(m => ({meio:m.k, valor:Number(this.pag[m.k])})),
+      };
+    },
     async salvar(ev){
       const form = ev.target;
       if (!form.reportValidity()) return;
       this.salvando = true;
-      const fd = new FormData(form);
-      const dados = {
-        origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, lancamento_em: this.lancamentoEm || null, pre_id: fd.get('pre_id') || null, setor: fd.get('setor'),
-        remetente_nome: fd.get('remetente_nome'), remetente_telefone: fd.get('remetente_telefone'), remetente_documento: fd.get('remetente_documento'),
-        destinatario_nome: fd.get('destinatario_nome'), destinatario_telefone: fd.get('destinatario_telefone'), destinatario_documento: fd.get('destinatario_documento'),
-        volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0, pix_cobranca_id: this.pixCobId || null,
-        itens: this.itens.map(i => ({descricao:i.descricao, quantidade:Number(i.quantidade)||1, valor_unitario:Number(i.valor)||0, observacao:i.obs||null})),
-        pagamentos: this.forma==='faturado' ? [] : this.meios.filter(m => Number(this.pag[m.k])>0).map(m => ({meio:m.k, valor:Number(this.pag[m.k])})),
-      };
+      const dados = this.montarDados(form);
+      dados.pix_cobranca_id = this.pixCobId || null;
       try {
         const r = await FBREOffline.salvarEncomenda(dados);
         if (r.servidor && r.servidor.ok) {

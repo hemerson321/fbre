@@ -25,6 +25,8 @@ class CobrancaController extends Controller
             'descricao' => 'nullable|string|max:120',
             'cliente_nome' => 'nullable|string|max:120',
             'cliente_telefone' => 'nullable|string|max:30',
+            'payload' => 'nullable|array',      // pedido a criar quando o PIX confirmar
+            'imprimir' => 'nullable|string|max:20',
         ]);
         if (! auth()->user()->podePixDinamico()) {
             return response()->json(['ok' => false, 'erro' => 'Você não tem permissão para gerar PIX dinâmico.'], 403);
@@ -44,9 +46,12 @@ class CobrancaController extends Controller
         $cob = Cobranca::create([
             'empresa_id' => $empresa->id,
             'pagamento_api_id' => $api->id,
+            'user_id' => auth()->id(),
             'modulo' => $data['modulo'],
             'referencia_tipo' => null,
             'referencia_id' => null,
+            'payload' => $data['payload'] ?? null,
+            'imprimir' => $data['imprimir'] ?? null,
             'provider' => 'mercadopago',
             'provider_payment_id' => $r['payment_id'] ?? null,
             'valor' => (float) $data['valor'],
@@ -96,19 +101,41 @@ class CobrancaController extends Controller
         return view('impressao.pix', ['numero' => (string) $cobranca->id, 'c' => $cobranca, 'rotulo' => ucfirst((string) $cobranca->modulo), 'empresa' => Tenant::empresa()]);
     }
 
-    /** Status de uma cobrança (consulta o MP se ainda pendente). Usado pela tela que aguarda o pagamento. */
-    public function status(Cobranca $cobranca, MercadoPago $mp)
+    /**
+     * Status de uma cobrança (consulta o MP se ainda pendente). Usado pela tela que aguarda o pagamento.
+     * Ao confirmar, o SERVIDOR já cria o pedido (encomenda/passagem) e devolve a URL pra tela redirecionar.
+     */
+    public function status(Cobranca $cobranca, MercadoPago $mp, \App\Services\ConfirmaPagamento $confirma)
     {
         abort_unless($cobranca->empresa_id === Tenant::id(), 404);
+
+        // ainda pendente: consulta o MP (curto). Se pagou, aplica (cria o pedido).
         if ($cobranca->status !== 'pago' && $cobranca->provider_payment_id && $cobranca->api) {
             try {
                 $st = $mp->consultar($cobranca->api, (string) $cobranca->provider_payment_id, 8);
                 if (($st['ok'] ?? false) && ($st['pago'] ?? false)) {
-                    $cobranca->forceFill(['status' => 'pago', 'pago_em' => now()])->save();
+                    $confirma->aplicar($cobranca);
                 }
             } catch (\Throwable $e) {}
+        } elseif ($cobranca->status === 'pago' && ! $cobranca->referencia_id && $cobranca->payload) {
+            // pago pelo webhook antes da tela ver, mas o pedido ainda não foi criado → cria agora
+            try { $confirma->criarPedidoDoPayload($cobranca); } catch (\Throwable $e) {}
         }
-        return response()->json(['pago' => $cobranca->status === 'pago', 'valor' => (float) $cobranca->valor]);
+
+        $cobranca->refresh();
+        $resp = ['pago' => $cobranca->status === 'pago', 'valor' => (float) $cobranca->valor];
+
+        if ($cobranca->status === 'pago') {
+            $resp['imprimir'] = $cobranca->imprimir;
+            $resp['erro'] = $cobranca->erro;
+            if ($cobranca->referencia_id) {
+                $resp['id'] = (int) $cobranca->referencia_id;
+                $resp['url'] = $cobranca->referencia_tipo === Passagem::class
+                    ? route('passagens.show', $cobranca->referencia_id)
+                    : route('encomendas.show', $cobranca->referencia_id);
+            }
+        }
+        return response()->json($resp);
     }
 
     public function pixEncomenda(Encomenda $encomenda, MercadoPago $mp)

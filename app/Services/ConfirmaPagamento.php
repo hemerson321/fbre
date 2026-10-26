@@ -52,9 +52,15 @@ class ConfirmaPagamento
     /** Marca paga + baixa + aviso. Retorna true se confirmou agora (não estava paga). */
     public function aplicar(Cobranca $cob): bool
     {
-        if ($cob->status === 'pago') return false;
-        $cob->forceFill(['status' => 'pago', 'pago_em' => now()])->save();
+        if ($cob->status === 'pago' && ! ($cob->payload && ! $cob->referencia_id)) return false;
+        $cob->forceFill(['status' => 'pago', 'pago_em' => $cob->pago_em ?: now()])->save();
         Tenant::set($cob->empresa_id);
+
+        // Pedido de balcão montado na própria cobrança (encomenda/passagem): o SERVIDOR cria agora.
+        if (! $cob->referencia_id && $cob->payload && in_array($cob->modulo, ['encomenda', 'passagem'], true)) {
+            $this->criarPedidoDoPayload($cob);
+            return true;
+        }
 
         $valorFmt = number_format((float) $cob->valor, 2, ',', '.');
 
@@ -80,6 +86,48 @@ class ConfirmaPagamento
 
         return true;
     }
+
+    /**
+     * Cria o pedido (encomenda/passagem) guardado na cobrança, exatamente como se o operador
+     * tivesse clicado em "Salvar" — só que disparado pela confirmação do PIX. Idempotente.
+     */
+    public function criarPedidoDoPayload(Cobranca $cob): void
+    {
+        if ($cob->referencia_id || ! $cob->payload) return;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($cob) {
+            $c = Cobranca::withoutGlobalScopes()->whereKey($cob->id)->lockForUpdate()->first();
+            if (! $c || $c->referencia_id || ! $c->payload) return; // outra via (webhook/poll) já criou
+
+            Tenant::set($c->empresa_id);
+            $op = $c->user_id ? \App\Models\User::withoutGlobalScopes()->find($c->user_id) : null;
+            if (! $op) $op = \App\Models\User::withoutGlobalScopes()->where('empresa_id', $c->empresa_id)->orderByDesc('admin')->first();
+            if (! $op) { $c->forceFill(['erro' => 'Operador não encontrado'])->save(); return; }
+
+            // garante o pagamento PIX no pedido (valor da cobrança), sem duplicar
+            $data = $c->payload;
+            $pags = collect($data['pagamentos'] ?? [])->reject(fn ($p) => ($p['meio'] ?? '') === 'pix')->values()->all();
+            $pags[] = ['meio' => 'pix', 'valor' => (float) $c->valor];
+            $data['pagamentos'] = $pags;
+
+            try {
+                if ($c->modulo === 'passagem') {
+                    $rec = $this->pas->criar($data, (int) $op->id, 'pix-pas-'.$c->id);
+                    $tipo = Passagem::class;
+                } else {
+                    $rec = $this->enc->criar($data, (int) $op->id, 'pix-enc-'.$c->id);
+                    $tipo = Encomenda::class;
+                }
+            } catch (\Throwable $e) {
+                report($e);
+                $c->forceFill(['erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 250)])->save();
+                return;
+            }
+
+            $c->forceFill(['referencia_tipo' => $tipo, 'referencia_id' => $rec->id, 'erro' => null])->save();
+        });
+    }
+
     /** Cria a passagem SE já pagou e já tem venda + dados do passageiro. Retorna true se já existe/criou. */
     public function tentarCriarPassagem(Conversa $conv): bool
     {

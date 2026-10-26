@@ -609,11 +609,13 @@
       gerarPixDinamico(){
         if(this.pixPagando) return;
         if(!this.origemSel || !this.destinoSel){ alert('Escolha a origem e o destino antes de gerar o PIX.'); return; }
+        if(!this.validarPassageiros()) return;
         const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
         const valor=Math.max((Number(this.total)||0)-outros,0);
         if(valor<=0){ alert('Sem valor a cobrar.'); return; }
+        const pedido=this.montarDados();
         this.pixCobId=null; this.pixCopia=''; this.pixQr=''; this.pixValor=valor; this.pixModal=true; this.pixPagando=true;
-        fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'passagem',valor:valor,descricao:'Passagem'})})
+        fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'passagem',valor:valor,descricao:'Passagem',imprimir:this.imprimir,payload:pedido})})
           .then(r=>r.json()).then(d=>{
             if(!d.ok){ this.pixModal=false; this.pixPagando=false; alert(d.erro||'Falha ao gerar PIX'); return; }
             this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.imprimirPix(d.id);
@@ -625,30 +627,48 @@
         this.pixChecando=true;
         fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
           if(d && d.pago){
-            clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false;
-            this.pag.pix=Number(this.pixValor)||0;
-            this.$nextTick(()=>{ try{ if(this.$el && this.$el.requestSubmit){ this.$el.requestSubmit(); } else { this.salvar({target:this.$el,preventDefault(){}}); } }catch(e){ this.salvar({target:this.$el,preventDefault(){}}); } }); setTimeout(()=>{ if(this.salvando){ this.salvando=false; alert('Pagamento recebido! Se não avançou sozinho, confira os dados e clique em Salvar.'); } }, 15000);
+            clearInterval(this.pixPoll); this.pixPagando=false;
+            this.finalizarPix(d);
           }
-        }).catch(()=>{});
+        }).catch(()=>{}).finally(()=>{ this.pixChecando=false; });
+      },
+      // pago: o servidor já criou a passagem. Só imprimimos (se for o caso) e redirecionamos.
+      finalizarPix(d){
+        if(d.erro || !d.url){
+          this.pixModal=false;
+          alert('Pagamento recebido! '+(d.erro ? ('Não consegui cadastrar automaticamente: '+d.erro+'. ') : '')+'Confira os dados e clique em Salvar.');
+          return;
+        }
+        this.salvando=true;
+        if(this.imprimir==='pix'){ window.location.href='/imprimir/pix-passagem/'+d.id; return; }
+        window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
       },
       cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
       copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
     imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
-      async salvar(ev){
-        if(this.salvando) return;
-        if(!this.passageiros.length){ alert('Adicione ao menos um passageiro.'); return; }
-        if(this.passageiros.some(p=>!p.nome.trim())){ alert('Informe o nome de todos os passageiros.'); return; }
-        if(this.usaPoltrona){ const ass=this.passageiros.map(p=>p.poltrona).filter(Boolean); if(new Set(ass).size!==ass.length){ alert('Há poltronas repetidas.'); return; } }
-        this.salvando=true;
-        try{ if(this.origemSel) localStorage.setItem('fbre_origem',this.origemSel); if(this.embarcacaoSel) localStorage.setItem('fbre_transporte',this.embarcacaoSel); }catch(e){}
-        const dados={
+      validarPassageiros(){
+        if(!this.passageiros.length){ alert('Adicione ao menos um passageiro.'); return false; }
+        if(this.passageiros.some(p=>!p.nome.trim())){ alert('Informe o nome de todos os passageiros.'); return false; }
+        if(this.usaPoltrona){ const ass=this.passageiros.map(p=>p.poltrona).filter(Boolean); if(new Set(ass).size!==ass.length){ alert('Há poltronas repetidas.'); return false; } }
+        return true;
+      },
+      montarDados(){
+        return {
           origem:this.origemSel, destino:this.destinoSel,
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
-          forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null, pix_cobranca_id:this.pixCobId||null,
+          forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
+      },
+      async salvar(ev){
+        if(this.salvando) return;
+        if(!this.validarPassageiros()) return;
+        this.salvando=true;
+        try{ if(this.origemSel) localStorage.setItem('fbre_origem',this.origemSel); if(this.embarcacaoSel) localStorage.setItem('fbre_transporte',this.embarcacaoSel); }catch(e){}
+        const dados=this.montarDados();
+        dados.pix_cobranca_id=this.pixCobId||null;
         try{
           const r=await FBREOffline.salvarModulo('passagem', dados);
           if(r.servidor && r.servidor.ok){ if(this.imprimir==='pix'){ window.location.href='/imprimir/pix-passagem/'+r.servidor.id; return; } window.location.href=r.servidor.url+(this.imprimir==='navegador'?'?print=1':''); return; }
