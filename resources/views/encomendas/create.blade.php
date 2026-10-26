@@ -302,6 +302,7 @@
         <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
         <span x-text="pixQr ? 'Aguardando pagamento…' : 'Gerando PIX…'"></span>
       </div>
+      <button type="button" x-show="pixCobId" @click="imprimirPix(pixCobId)" class="btn btn-ghost btn-sm w-full mb-2">🖨 Imprimir QR</button>
       <button type="button" x-show="pixQr" @click="copiarPix()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
       <button type="button" @click="cancelarPix()" class="btn btn-ghost btn-sm w-full text-slate-500">Cancelar</button>
     </div>
