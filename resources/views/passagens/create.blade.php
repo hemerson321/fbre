@@ -632,7 +632,7 @@
       },
       cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
       copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
-    imprimirPix(id){ try{ let f=document.getElementById('pixPrintFrame'); if(!f){ f=document.createElement('iframe'); f.id='pixPrintFrame'; f.style.cssText='position:fixed;width:0;height:0;border:0;left:-9999px'; document.body.appendChild(f); } f.src='/cobranca/'+id+'/imprimir'; }catch(e){} },
+    imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
       async salvar(ev){
         if(this.salvando) return;
         if(!this.passageiros.length){ alert('Adicione ao menos um passageiro.'); return; }

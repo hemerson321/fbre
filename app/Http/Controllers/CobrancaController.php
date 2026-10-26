@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cobranca;
+use App\Models\Estacao;
+use App\Models\FilaImpressao;
 use App\Models\Encomenda;
 use App\Models\Passagem;
 use App\Services\MercadoPago;
@@ -59,6 +61,32 @@ class CobrancaController extends Controller
             'ok' => true, 'id' => $cob->id, 'valor' => (float) $cob->valor,
             'qr_base64' => $cob->qr_base64, 'copia_cola' => $cob->qr_copia_cola,
         ]);
+    }
+
+    /** Enfileira o QR do PIX pro agente de impressão (igual ao comprovante), na estação ativa. */
+    public function imprimirDireto(Cobranca $cobranca)
+    {
+        abort_unless($cobranca->empresa_id === Tenant::id(), 404);
+        $empresa = Tenant::empresa();
+        $estacao = Estacao::where('ativo', true)->orderByDesc('visto_em')->first();
+        if (! $estacao) {
+            return response()->json(['ok' => false, 'erro' => 'Nenhuma estação de impressão ativa.']);
+        }
+        $job = FilaImpressao::create([
+            'estacao_id' => $estacao->id,
+            'encomenda_id' => null,
+            'tipo' => 'pix',
+            'dados' => [
+                'empresa' => ['nome' => $empresa->nomeExibicao(), 'cnpj' => $empresa->cnpj],
+                'pix' => [
+                    'rotulo' => ucfirst((string) $cobranca->modulo),
+                    'valor' => (float) $cobranca->valor,
+                    'copia_cola' => $cobranca->qr_copia_cola,
+                    'qr_base64' => $cobranca->qr_base64,
+                ],
+            ],
+        ]);
+        return response()->json(['ok' => true, 'job' => $job->id]);
     }
 
     /** Impressão enxuta do QR de uma cobrança (avulsa ou de pedido). */
