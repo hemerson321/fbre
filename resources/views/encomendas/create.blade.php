@@ -416,10 +416,7 @@ function novaEncomenda(){
     fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
     gerarPixDinamico(){
       if(this.pixPagando) return;
-      const f=this.$el;
-      const origem=(f.querySelector('[name=origem]')||{}).value||'';
-      const destino=(f.querySelector('[name=destino]')||{}).value||'';
-      if(!origem || !destino){ alert('Preencha a origem e o destino antes de gerar o PIX.'); return; }
+      if(!this.origemSel || !this.destinoSel){ alert('Preencha a origem e o destino antes de gerar o PIX.'); return; }
       const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
       const valor=Math.max((Number(this.total)||0)-outros,0);
       if(valor<=0){ alert('Sem valor a cobrar. Adicione itens.'); return; }
