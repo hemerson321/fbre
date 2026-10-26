@@ -210,9 +210,7 @@
               <label class="lbl" x-text="m.l"></label>
               <div class="flex gap-1 items-stretch">
                 <input class="field text-right font-semibold flex-1" x-money="pag[m.k]" x-show="m.k!=='pix' || pixManual">
-                <template x-if="m.k==='pix' && pixDinamico">
-                  <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-2 shrink-0 font-bold disabled:opacity-50" style="border-color:var(--cor1);color:var(--cor1)">💠</button>
-                </template>
+                <button type="button" x-show="m.k==='pix' && pixDinamico" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-3 shrink-0 font-bold text-lg disabled:opacity-50 hover:text-white transition" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠</button>
               </div>
             </div>
           </template>
