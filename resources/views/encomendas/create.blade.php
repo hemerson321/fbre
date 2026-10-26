@@ -424,7 +424,7 @@ function novaEncomenda(){
       if(this.pixPagando) return;
       if(!this.origemSel || !this.destinoSel){ alert('Preencha a origem e o destino antes de gerar o PIX.'); return; }
       if(!this.itens.length){ alert('Adicione pelo menos um item.'); return; }
-      const pedido=this.montarDados(this.$el);
+      const pedido=this.montarDados(this.$root);
       if(!pedido.remetente_nome || !pedido.remetente_nome.trim()){ alert('Informe o remetente antes de gerar o PIX.'); return; }
       if(!pedido.destinatario_nome || !pedido.destinatario_nome.trim()){ alert('Informe o destinatário antes de gerar o PIX.'); return; }
       const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
@@ -466,6 +466,7 @@ function novaEncomenda(){
     copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
     imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
     montarDados(form){
+      if(!form || form.tagName!=='FORM'){ form = (this.$root && this.$root.tagName==='FORM') ? this.$root : document.querySelector('form[x-data]'); }
       const fd = new FormData(form);
       return {
         origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, lancamento_em: this.lancamentoEm || null, pre_id: fd.get('pre_id') || null, setor: fd.get('setor'),
