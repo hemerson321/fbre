@@ -270,6 +270,8 @@ document.addEventListener('alpine:init', () => {
     </div>
   @endif
   @yield('conteudo')
+  {{-- versão do sistema (atualiza a cada deploy — serve pra conferir se a atualização entrou) --}}
+  <div class="no-print text-center text-[10px] text-slate-400 py-4 mb-20 lg:mb-2 select-all">FBRE · {{ \App\Support\Versao::ATUAL }}</div>
 </main>
 
 {{-- ===== BARRA INFERIOR (mobile / POS) ===== --}}
