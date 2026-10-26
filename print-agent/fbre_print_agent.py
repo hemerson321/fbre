@@ -142,6 +142,19 @@ class EscPos:
     def cortar(self):
         self.buf += self.GS + b"V\x41\x03"
 
+    def qr(self, data, size=8):
+        """QR nativo ESC/POS (GS ( k) — nitido na termica."""
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        self.buf += self.ESC + b"a\x01"                                 # centraliza
+        self.buf += self.GS + b"(k\x04\x00\x31\x41\x32\x00"            # modelo 2
+        self.buf += self.GS + b"(k\x03\x00\x31\x43" + bytes([size])    # tamanho do modulo
+        self.buf += self.GS + b"(k\x03\x00\x31\x45\x31"               # correcao de erro M
+        n = len(data) + 3
+        self.buf += self.GS + b"(k" + bytes([n & 0xFF, (n >> 8) & 0xFF]) + b"\x31\x50\x30" + data  # armazena
+        self.buf += self.GS + b"(k\x03\x00\x31\x51\x30"               # imprime
+        self.buf += self.ESC + b"a\x00"                                 # volta p/ esquerda
+
     def bytes(self):
         return bytes(self.buf)
 
@@ -211,6 +224,27 @@ def montar_etiqueta(d, col):
         p.feed(3); p.cortar()
         out += p.bytes()
     return bytes(out)
+
+
+def montar_pix(d, col):
+    emp = d.get("empresa", {})
+    px = d.get("pix", {})
+    p = EscPos(col)
+    if emp.get("nome"): p.txt(emp["nome"].upper(), "c", True, 2)
+    p.linha()
+    p.txt("PIX", "c", True, 2)
+    p.txt(brl(px.get("valor", 0)), "c", True, 3)
+    p.feed(1)
+    cc = px.get("copia_cola")
+    if cc:
+        p.qr(cc, 8)
+    else:
+        p.txt("(QR indisponivel)", "c")
+    p.feed(1)
+    p.txt("Aponte a camera do celular no QR", "c")
+    p.txt("Pague pelo app do seu banco.", "c")
+    p.feed(4); p.cortar()
+    return p.bytes()
 
 
 # ---------------------------------------------------------------- saída
@@ -303,9 +337,12 @@ def loop(parar: threading.Event):
                         if (cfg["impressora_etiqueta"].get("nome_windows", "") or "").upper() == "NAO_IMPRIMIR":
                             api.done(job["id"]); log(f"Etiqueta #{dados['encomenda']['numero']} ignorada (etiqueta desativada)"); continue
                         raw = montar_etiqueta(dados, col); enviar(cfg["impressora_etiqueta"], raw)
+                    elif job["tipo"] == "pix":
+                        raw = montar_pix(dados, col); enviar(cfg["impressora_comprovante"], raw)
                     else:
                         raise RuntimeError("tipo não suportado: " + job["tipo"])
-                    api.done(job["id"]); log(f"Impresso {job['tipo']} #{dados['encomenda']['numero']}")
+                    num = (dados.get("encomenda") or {}).get("numero", "") or (dados.get("pix") and brl(dados["pix"].get("valor",0))) or ""
+                    api.done(job["id"]); log(f"Impresso {job['tipo']} #{num}")
                 except Exception as ex:
                     log(f"Erro no job {job['id']}: {ex}")
                     try: api.error(job["id"], str(ex))
