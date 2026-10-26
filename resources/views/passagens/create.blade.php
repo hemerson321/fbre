@@ -233,6 +233,9 @@
       <div class="p-2.5 space-y-2">
         <div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-slate-600">
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="navegador" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>
+          @if(\App\Support\Tenant::empresa()->usaPix('passagem'))
+          <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="pix" x-model="imprimir" class="accent-[var(--cor1)]"> 💠 PIX (QR)</label>
+          @endif
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
         <button x-show="total>0 || forma!=='avista'" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || !passageiros.length">
@@ -590,7 +593,7 @@
         };
         try{
           const r=await FBREOffline.salvarModulo('passagem', dados);
-          if(r.servidor && r.servidor.ok){ window.location.href=r.servidor.url+(this.imprimir==='navegador'?'?print=1':''); return; }
+          if(r.servidor && r.servidor.ok){ if(this.imprimir==='pix'){ window.location.href='/imprimir/pix-passagem/'+r.servidor.id; return; } window.location.href=r.servidor.url+(this.imprimir==='navegador'?'?print=1':''); return; }
           if(this.imprimir!=='nao') await FBREOffline.imprimirModuloLocal(r.local);
           alert('Sem conexão: passagem '+r.local.dados.numero_completo+' guardada neste aparelho. Sobe sozinha quando a internet voltar.');
           window.location.href='{{ route('passagens.create') }}';

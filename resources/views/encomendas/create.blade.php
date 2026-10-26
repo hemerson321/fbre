@@ -266,6 +266,9 @@
           @if(\App\Support\Tenant::empresa()->temRecurso('print_agent'))
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="direto" x-model="imprimir" class="accent-[var(--cor1)]"> Direta</label>
           @endif
+          @if(\App\Support\Tenant::empresa()->usaPix('encomenda'))
+          <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="pix" x-model="imprimir" class="accent-[var(--cor1)]"> 💠 PIX (QR)</label>
+          @endif
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
         <button x-show="total>0" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40 disabled:shadow-none" style="background:var(--cor2)" :disabled="salvando || !itens.length">
@@ -397,6 +400,7 @@ function novaEncomenda(){
       try {
         const r = await FBREOffline.salvarEncomenda(dados);
         if (r.servidor && r.servidor.ok) {
+          if (this.imprimir==='pix') { window.location.href = '/imprimir/pix/' + r.servidor.id; return; }
           // online: segue o fluxo normal (tela da encomenda + impressão)
           const url = r.servidor.url + (this.imprimir==='navegador' ? '?print=1' : '');
           if (this.imprimir==='direto') { fetch('/imprimir/direto/'+r.servidor.id+'/comprovante',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf}}); fetch('/imprimir/direto/'+r.servidor.id+'/etiqueta',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf}}); }
