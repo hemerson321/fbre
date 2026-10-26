@@ -345,7 +345,7 @@
       salvando:false, forma:'avista', imprimir:'navegador',
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
-      pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false,
+      pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4)])->values()),
       podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
@@ -453,7 +453,7 @@
         await this.ligarCamera(); },
       async ligarCamera(){ this.pararCamera();
         try{ this.camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:this.camFacing}, audio:false});
-          this.$nextTick(()=>{ const v=document.getElementById('cam-video'); if(v){ v.srcObject=this.camStream; v.play().catch(()=>{}); } });
+          this.$nextTick(()=>{ const v=document.getElementById('cam-video'); if(v){ v.srcObject=this.camStream; v.play().catch(()=>{}).finally(()=>{ this.pixChecando=false; }); } });
         }catch(e){ this.camStatus='Não consegui abrir a câmera. Use "Selecionar arquivo". ('+e.message+')'; } },
       trocarCamera(){ this.camFacing=this.camFacing==='environment'?'user':'environment'; try{ localStorage.setItem('fbre_cam_facing',this.camFacing);}catch(e){} this.ligarCamera(); },
       pararCamera(){ if(this.camStream){ this.camStream.getTracks().forEach(t=>t.stop()); this.camStream=null; } },
@@ -617,11 +617,12 @@
           .then(r=>r.json()).then(d=>{
             if(!d.ok){ this.pixModal=false; this.pixPagando=false; alert(d.erro||'Falha ao gerar PIX'); return; }
             this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.imprimirPix(d.id);
-            this.pixPoll=setInterval(()=>this.checarPix(),3500);
+            this.pixPoll=setInterval(()=>this.checarPix(),4000);
           }).catch(()=>{ this.pixModal=false; this.pixPagando=false; alert('Falha de conexão ao gerar PIX'); });
       },
       checarPix(){
-        if(!this.pixCobId) return;
+        if(!this.pixCobId || this.pixChecando) return;
+        this.pixChecando=true;
         fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
           if(d && d.pago){
             clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false;

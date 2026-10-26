@@ -319,7 +319,7 @@ function novaEncomenda(){
     salvando:false, volumes:1, volumesManual:false, forma:'avista', imprimir:'navegador',
     pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
     pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('encomenda')) ? 'true':'false' }},
-    pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false,
+    pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
     rotaId:'', linhaNome:'', paradasInfo: [],
     cidades: @js($cidades), linhas: @js($linhas), podeRetroativo: @js($podeRetroativo),
     origemSel: @js(old('origem', $pre['origem'] ?? '')), destinoSel: @js(old('destino', $pre['destino'] ?? '')),
@@ -426,18 +426,19 @@ function novaEncomenda(){
         .then(r=>r.json()).then(d=>{
           if(!d.ok){ this.pixModal=false; this.pixPagando=false; alert(d.erro||'Falha ao gerar PIX'); return; }
           this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.imprimirPix(d.id);
-          this.pixPoll=setInterval(()=>this.checarPix(),3500);
+          this.pixPoll=setInterval(()=>this.checarPix(),4000);
         }).catch(()=>{ this.pixModal=false; this.pixPagando=false; alert('Falha de conexão ao gerar PIX'); });
     },
     checarPix(){
-      if(!this.pixCobId) return;
+      if(!this.pixCobId || this.pixChecando) return;
+      this.pixChecando=true;
       fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
         if(d && d.pago){
           clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false;
           this.pag.pix=Number(this.pixValor)||0;
           this.$nextTick(()=>{ try{ if(this.$el && this.$el.requestSubmit){ this.$el.requestSubmit(); } else { this.salvar({target:this.$el,preventDefault(){}}); } }catch(e){ this.salvar({target:this.$el,preventDefault(){}}); } }); setTimeout(()=>{ if(this.salvando){ this.salvando=false; alert('Pagamento recebido! Se não avançou sozinho, confira os dados e clique em Salvar.'); } }, 15000);
         }
-      }).catch(()=>{});
+      }).catch(()=>{}).finally(()=>{ this.pixChecando=false; });
     },
     cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
     copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },

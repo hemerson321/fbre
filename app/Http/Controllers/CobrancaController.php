@@ -102,7 +102,7 @@ class CobrancaController extends Controller
         abort_unless($cobranca->empresa_id === Tenant::id(), 404);
         if ($cobranca->status !== 'pago' && $cobranca->provider_payment_id && $cobranca->api) {
             try {
-                $st = $mp->consultar($cobranca->api, (string) $cobranca->provider_payment_id);
+                $st = $mp->consultar($cobranca->api, (string) $cobranca->provider_payment_id, 8);
                 if (($st['ok'] ?? false) && ($st['pago'] ?? false)) {
                     $cobranca->forceFill(['status' => 'pago', 'pago_em' => now()])->save();
                 }

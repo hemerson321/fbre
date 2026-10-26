@@ -78,10 +78,10 @@ class MercadoPago
     }
 
     /** Consulta o status de um pagamento. Mapeia para pendente|pago|expirado|cancelado. */
-    public function consultar(PagamentoApi $api, string $paymentId): array
+    public function consultar(PagamentoApi $api, string $paymentId, int $timeout = 20): array
     {
         try {
-            $r = Http::timeout(20)->withToken((string) $api->access_token)->get($this->base.'/v1/payments/'.$paymentId);
+            $r = Http::timeout($timeout)->withToken((string) $api->access_token)->get($this->base.'/v1/payments/'.$paymentId);
             if (! $r->successful()) {
                 return ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.$r->body()];
             }
