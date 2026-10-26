@@ -82,6 +82,7 @@ class SyncController extends Controller
             'pagamentos' => 'nullable|array',
             'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito',
             'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
+            'pix_cobranca_id' => 'nullable|integer',
         ]);
 
         // retroativo só para quem tem permissão
@@ -104,6 +105,13 @@ class SyncController extends Controller
         } catch (\Throwable $e) {
             report($e);
             return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
+        }
+
+        // liga a cobrança PIX dinâmica (gerada antes, já paga) a esta encomenda
+        if (! empty($data['pix_cobranca_id'])) {
+            \App\Models\Cobranca::where('id', $data['pix_cobranca_id'])->where('empresa_id', \App\Support\Tenant::id())
+                ->whereNull('referencia_id')
+                ->update(['referencia_tipo' => \App\Models\Encomenda::class, 'referencia_id' => $enc->id, 'modulo' => 'encomenda']);
         }
 
         // pré-cadastro atendido → finalizado
@@ -153,12 +161,18 @@ class SyncController extends Controller
             'pagamentos' => 'nullable|array',
             'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito',
             'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
+            'pix_cobranca_id' => 'nullable|integer',
         ]);
         try {
             $p = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
         } catch (\Throwable $e) {
             report($e);
             return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
+        }
+        if (! empty($data['pix_cobranca_id'])) {
+            \App\Models\Cobranca::where('id', $data['pix_cobranca_id'])->where('empresa_id', \App\Support\Tenant::id())
+                ->whereNull('referencia_id')
+                ->update(['referencia_tipo' => \App\Models\Passagem::class, 'referencia_id' => $p->id, 'modulo' => 'passagem']);
         }
         session(['ultima_origem_pass' => $data['origem'] ?? null]);
         return ['ok' => true, 'id' => $p->id, 'numero_formatado' => $p->numeroFormatado(), 'url' => route('passagens.show', $p)];

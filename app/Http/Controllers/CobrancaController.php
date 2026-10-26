@@ -7,12 +7,75 @@ use App\Models\Encomenda;
 use App\Models\Passagem;
 use App\Services\MercadoPago;
 use App\Support\Tenant;
+use Illuminate\Http\Request;
 
 /**
  * Gera PIX dinâmico (Mercado Pago) e imprime o QR pro cliente pagar.
  */
 class CobrancaController extends Controller
 {
+    /** Gera um PIX dinâmico avulso (sem pedido ainda) — o pedido só é criado após o pagamento confirmar. */
+    public function gerarAvulso(Request $request, MercadoPago $mp)
+    {
+        $data = $request->validate([
+            'modulo' => 'required|in:encomenda,passagem',
+            'valor' => 'required|numeric|min:0.01',
+            'descricao' => 'nullable|string|max:120',
+            'cliente_nome' => 'nullable|string|max:120',
+            'cliente_telefone' => 'nullable|string|max:30',
+        ]);
+        if (! auth()->user()->podePixDinamico()) {
+            return response()->json(['ok' => false, 'erro' => 'Você não tem permissão para gerar PIX dinâmico.'], 403);
+        }
+        $empresa = Tenant::empresa();
+        if (! $empresa->usaPix($data['modulo'])) {
+            return response()->json(['ok' => false, 'erro' => 'PIX não está habilitado neste módulo.']);
+        }
+        $api = $empresa->pagamentoApi($data['modulo']);
+        $r = $mp->cobrarPix($api, (float) $data['valor'], $data['descricao'] ?: ucfirst($data['modulo']), [
+            'nome' => $data['cliente_nome'] ?? null,
+            'telefone' => $data['cliente_telefone'] ?? null,
+        ]);
+        if (! $r['ok']) {
+            return response()->json(['ok' => false, 'erro' => 'Não consegui gerar o PIX: '.($r['erro'] ?? 'erro')]);
+        }
+        $cob = Cobranca::create([
+            'empresa_id' => $empresa->id,
+            'pagamento_api_id' => $api->id,
+            'modulo' => $data['modulo'],
+            'referencia_tipo' => null,
+            'referencia_id' => null,
+            'provider' => 'mercadopago',
+            'provider_payment_id' => $r['payment_id'] ?? null,
+            'valor' => (float) $data['valor'],
+            'status' => 'pendente',
+            'qr_copia_cola' => $r['copia_cola'] ?? null,
+            'qr_base64' => $r['qr_base64'] ?? null,
+            'ticket_url' => $r['ticket_url'] ?? null,
+            'cliente_nome' => $data['cliente_nome'] ?? null,
+            'cliente_telefone' => $data['cliente_telefone'] ?? null,
+        ]);
+        return response()->json([
+            'ok' => true, 'id' => $cob->id, 'valor' => (float) $cob->valor,
+            'qr_base64' => $cob->qr_base64, 'copia_cola' => $cob->qr_copia_cola,
+        ]);
+    }
+
+    /** Status de uma cobrança (consulta o MP se ainda pendente). Usado pela tela que aguarda o pagamento. */
+    public function status(Cobranca $cobranca, MercadoPago $mp)
+    {
+        abort_unless($cobranca->empresa_id === Tenant::id(), 404);
+        if ($cobranca->status !== 'pago' && $cobranca->provider_payment_id && $cobranca->api) {
+            try {
+                $st = $mp->consultar($cobranca->api, (string) $cobranca->provider_payment_id);
+                if (($st['ok'] ?? false) && ($st['pago'] ?? false)) {
+                    $cobranca->forceFill(['status' => 'pago', 'pago_em' => now()])->save();
+                }
+            } catch (\Throwable $e) {}
+        }
+        return response()->json(['pago' => $cobranca->status === 'pago', 'valor' => (float) $cobranca->valor]);
+    }
+
     public function pixEncomenda(Encomenda $encomenda, MercadoPago $mp)
     {
         abort_unless($encomenda->empresa_id === Tenant::id(), 404);

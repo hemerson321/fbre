@@ -232,8 +232,15 @@
 
         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
-            <div><label class="lbl" x-text="m.l"></label>
-              <input class="field text-right font-semibold" x-money="pag[m.k]"></div>
+            <div x-show="m.k!=='pix' || pixManual || pixDinamico">
+              <label class="lbl" x-text="m.l"></label>
+              <div class="flex gap-1 items-stretch">
+                <input class="field text-right font-semibold flex-1" x-money="pag[m.k]" x-show="m.k!=='pix' || pixManual">
+                <template x-if="m.k==='pix' && pixDinamico">
+                  <button type="button" @click="gerarPixDinamico()" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-2 shrink-0 font-bold" style="border-color:var(--cor1);color:var(--cor1)">💠</button>
+                </template>
+              </div>
+            </div>
           </template>
           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
@@ -266,9 +273,6 @@
           @if(\App\Support\Tenant::empresa()->temRecurso('print_agent'))
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="direto" x-model="imprimir" class="accent-[var(--cor1)]"> Direta</label>
           @endif
-          @if(\App\Support\Tenant::empresa()->usaPix('encomenda'))
-          <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="pix" x-model="imprimir" class="accent-[var(--cor1)]"> 💠 PIX (QR)</label>
-          @endif
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="imprimir" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
         <button x-show="total>0" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40 disabled:shadow-none" style="background:var(--cor2)" :disabled="salvando || !itens.length">
@@ -280,6 +284,23 @@
     </section>
   </div>
 </div>
+  {{-- modal PIX dinâmico: aguarda o pagamento; só salva depois de confirmar --}}
+  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="cancelarPix()">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center">
+      <div class="font-bold text-lg">💠 PIX dinâmico</div>
+      <div class="text-xs text-slate-500 mb-3">Mostre o QR pro cliente pagar. A tela confirma sozinha e só então cadastra.</div>
+      <template x-if="pixQr">
+        <img :src="pixQr.startsWith('data:')?pixQr:('data:image/png;base64,'+pixQr)" class="mx-auto rounded" style="width:220px;height:220px">
+      </template>
+      <div class="font-extrabold text-xl my-2">R$ <span x-text="fmtPix(pixValor)"></span></div>
+      <div class="flex items-center justify-center gap-2 text-amber-600 text-sm font-semibold mb-3">
+        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+        Aguardando pagamento…
+      </div>
+      <button type="button" @click="copiarPix()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
+      <button type="button" @click="cancelarPix()" class="btn btn-ghost btn-sm w-full text-slate-500">Cancelar</button>
+    </div>
+  </div>
 </form>
 @endsection
 
@@ -290,6 +311,9 @@ window.FBRE_OP = @js(['prefixo' => auth()->user()->prefixo ?: 'OP'.auth()->id(),
 function novaEncomenda(){
   return {
     salvando:false, volumes:1, volumesManual:false, forma:'avista', imprimir:'navegador',
+    pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
+    pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('encomenda')) ? 'true':'false' }},
+    pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false,
     rotaId:'', linhaNome:'', paradasInfo: [],
     cidades: @js($cidades), linhas: @js($linhas), podeRetroativo: @js($podeRetroativo),
     origemSel: @js(old('origem', $pre['origem'] ?? '')), destinoSel: @js(old('destino', $pre['destino'] ?? '')),
@@ -384,6 +408,31 @@ function novaEncomenda(){
     get devido(){ return Math.max(this.total-this.pago,0); },
 
     // Salva no aparelho primeiro, depois envia. Sem internet: imprime comprovante provisório e continua.
+    fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+    gerarPixDinamico(){
+      if(this.pixPagando) return;
+      const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
+      const valor=Math.max((Number(this.total)||0)-outros,0);
+      if(valor<=0){ alert('Sem valor a cobrar. Adicione itens.'); return; }
+      fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'encomenda',valor:valor,descricao:'Encomenda'})})
+        .then(r=>r.json()).then(d=>{
+          if(!d.ok){ alert(d.erro||'Falha ao gerar PIX'); return; }
+          this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.pixModal=true; this.pixPagando=true;
+          this.pixPoll=setInterval(()=>this.checarPix(),3500);
+        }).catch(()=>alert('Falha de conexão ao gerar PIX'));
+    },
+    checarPix(){
+      if(!this.pixCobId) return;
+      fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
+        if(d && d.pago){
+          clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false;
+          this.pag.pix=Number(this.pixValor)||0;
+          this.$nextTick(()=>this.salvar({target:this.$el,preventDefault(){}}));
+        }
+      }).catch(()=>{});
+    },
+    cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
+    copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
     async salvar(ev){
       const form = ev.target;
       if (!form.reportValidity()) return;
@@ -393,7 +442,7 @@ function novaEncomenda(){
         origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, lancamento_em: this.lancamentoEm || null, pre_id: fd.get('pre_id') || null, setor: fd.get('setor'),
         remetente_nome: fd.get('remetente_nome'), remetente_telefone: fd.get('remetente_telefone'), remetente_documento: fd.get('remetente_documento'),
         destinatario_nome: fd.get('destinatario_nome'), destinatario_telefone: fd.get('destinatario_telefone'), destinatario_documento: fd.get('destinatario_documento'),
-        volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0,
+        volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0, pix_cobranca_id: this.pixCobId || null,
         itens: this.itens.map(i => ({descricao:i.descricao, quantidade:Number(i.quantidade)||1, valor_unitario:Number(i.valor)||0, observacao:i.obs||null})),
         pagamentos: this.forma==='faturado' ? [] : this.meios.filter(m => Number(this.pag[m.k])>0).map(m => ({meio:m.k, valor:Number(this.pag[m.k])})),
       };

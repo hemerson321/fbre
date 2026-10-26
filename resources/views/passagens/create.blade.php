@@ -206,8 +206,15 @@
         @endif
         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
-            <div><label class="lbl" x-text="m.l"></label>
-              <input class="field text-right font-semibold" x-money="pag[m.k]"></div>
+            <div x-show="m.k!=='pix' || pixManual || pixDinamico">
+              <label class="lbl" x-text="m.l"></label>
+              <div class="flex gap-1 items-stretch">
+                <input class="field text-right font-semibold flex-1" x-money="pag[m.k]" x-show="m.k!=='pix' || pixManual">
+                <template x-if="m.k==='pix' && pixDinamico">
+                  <button type="button" @click="gerarPixDinamico()" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-2 shrink-0 font-bold" style="border-color:var(--cor1);color:var(--cor1)">💠</button>
+                </template>
+              </div>
+            </div>
           </template>
           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
@@ -233,9 +240,6 @@
       <div class="p-2.5 space-y-2">
         <div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-slate-600">
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="navegador" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>
-          @if(\App\Support\Tenant::empresa()->usaPix('passagem'))
-          <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="pix" x-model="imprimir" class="accent-[var(--cor1)]"> 💠 PIX (QR)</label>
-          @endif
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
         <button x-show="total>0 || forma!=='avista'" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || !passageiros.length">
@@ -306,6 +310,22 @@
       <button type="button" @click="fecharCaptura()" class="w-full rounded-xl border-2 font-bold py-2.5" style="border-color:var(--cor1);color:var(--cor1)">Fechar</button>
     </div>
   </div>
+  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="cancelarPix()">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center">
+      <div class="font-bold text-lg">💠 PIX dinâmico</div>
+      <div class="text-xs text-slate-500 mb-3">Mostre o QR pro cliente pagar. A tela confirma sozinha e só então cadastra.</div>
+      <template x-if="pixQr">
+        <img :src="pixQr.startsWith('data:')?pixQr:('data:image/png;base64,'+pixQr)" class="mx-auto rounded" style="width:220px;height:220px">
+      </template>
+      <div class="font-extrabold text-xl my-2">R$ <span x-text="fmtPix(pixValor)"></span></div>
+      <div class="flex items-center justify-center gap-2 text-amber-600 text-sm font-semibold mb-3">
+        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+        Aguardando pagamento…
+      </div>
+      <button type="button" @click="copiarPix()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
+      <button type="button" @click="cancelarPix()" class="btn btn-ghost btn-sm w-full text-slate-500">Cancelar</button>
+    </div>
+  </div>
 </form>
 @endsection
 
@@ -317,6 +337,9 @@
   function novaPassagem(){
     return {
       salvando:false, forma:'avista', imprimir:'navegador',
+      pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
+      pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
+      pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false,
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4)])->values()),
       podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
@@ -576,6 +599,31 @@
       get pagoSemDinheiro(){ return (Number(this.pag.pix)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0); },
       get devido(){ return Math.max(this.total-this.pago,0); },
 
+      fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+      gerarPixDinamico(){
+        if(this.pixPagando) return;
+        const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
+        const valor=Math.max((Number(this.total)||0)-outros,0);
+        if(valor<=0){ alert('Sem valor a cobrar.'); return; }
+        fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'passagem',valor:valor,descricao:'Passagem'})})
+          .then(r=>r.json()).then(d=>{
+            if(!d.ok){ alert(d.erro||'Falha ao gerar PIX'); return; }
+            this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.pixModal=true; this.pixPagando=true;
+            this.pixPoll=setInterval(()=>this.checarPix(),3500);
+          }).catch(()=>alert('Falha de conexão ao gerar PIX'));
+      },
+      checarPix(){
+        if(!this.pixCobId) return;
+        fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
+          if(d && d.pago){
+            clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false;
+            this.pag.pix=Number(this.pixValor)||0;
+            this.$nextTick(()=>this.salvar({target:this.$el,preventDefault(){}}));
+          }
+        }).catch(()=>{});
+      },
+      cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
+      copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
       async salvar(ev){
         if(this.salvando) return;
         if(!this.passageiros.length){ alert('Adicione ao menos um passageiro.'); return; }
@@ -587,7 +635,7 @@
           origem:this.origemSel, destino:this.destinoSel,
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
-          forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
+          forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null, pix_cobranca_id:this.pixCobId||null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
