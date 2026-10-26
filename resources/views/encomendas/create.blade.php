@@ -239,14 +239,16 @@
 
         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
-            <div x-show="m.k!=='pix' || pixManual || pixDinamico">
+            <div x-show="m.k!=='pix' || pixManual">
               <label class="lbl" x-text="m.l"></label>
-              <div class="flex gap-1 items-stretch">
-                <input class="field text-right font-semibold flex-1" x-money="pag[m.k]" x-show="m.k!=='pix' || pixManual">
-                <button type="button" x-show="m.k==='pix' && pixDinamico" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-3 shrink-0 font-bold text-lg disabled:opacity-50 hover:text-white transition" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠</button>
-              </div>
+              <input class="field text-right font-semibold w-full" x-money="pag[m.k]">
             </div>
           </template>
+          {{-- PIX Automático: gera o QR e aguarda o pagamento --}}
+          <div x-show="pixDinamico">
+            <label class="lbl">PIX Automático</label>
+            <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
+          </div>
           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
         </div>
@@ -335,7 +337,7 @@ function novaEncomenda(){
     viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     itens: @js($pre['itens'] ?? []), desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
-    meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+    meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
     init(){
       this.recalcVolumes();
       try { const v = localStorage.getItem('fbre_imprimir'); if (v) this.imprimir = v; } catch(e){}

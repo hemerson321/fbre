@@ -21,6 +21,7 @@ class CaixaController extends Controller
         $userId = $verTodos ? $request->input('user_id') : auth()->id();
         $viagemId = $request->input('viagem_id');
         $modulo = $request->input('modulo');
+        $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
         $viagens = \App\Support\Tenant::empresa()->temRecurso('viagens')
             ? Viagem::orderByDesc('data_partida')->limit(60)->get() : collect();
         // quando filtra por viagem, ignora o período (viagem é o recorte)
@@ -32,13 +33,15 @@ class CaixaController extends Controller
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($modulo, fn ($q) => $q->where('modulo', $modulo))
+            ->when($canal, fn ($q) => $this->filtrarCanal($q, $canal))
             ->where('tipo_mov', '!=', 'saida');
 
-        $porMeio = (clone $base)->selectRaw('meio, SUM(valor) valor, COUNT(*) qtd')->groupBy('meio')->get()->keyBy('meio');
-        $porOperador = (clone $base)->selectRaw('user_id, meio, SUM(valor) valor')->groupBy('user_id', 'meio')->get()
+        $canalSql = Pagamento::canalSql();
+        $porMeio = (clone $base)->selectRaw("$canalSql as canal, SUM(valor) valor, COUNT(*) qtd")->groupBy('canal')->get()->keyBy('canal');
+        $porOperador = (clone $base)->selectRaw("user_id, $canalSql as canal, SUM(valor) valor")->groupBy('user_id', 'canal')->get()
             ->groupBy('user_id')->map(fn ($rows) => [
                 'total' => $rows->sum('valor'),
-                'meios' => $rows->pluck('valor', 'meio'),
+                'meios' => $rows->pluck('valor', 'canal'),
             ]);
         $porModulo = (clone $base)->selectRaw('modulo, SUM(valor) valor, COUNT(*) qtd')->groupBy('modulo')->get()->keyBy('modulo');
 
@@ -68,8 +71,19 @@ class CaixaController extends Controller
 
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso'))
-            ->with(['meios' => Pagamento::MEIOS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas]);
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal'))
+            ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas]);
+    }
+
+    /** Aplica o filtro por canal (PIX dividido em manual/automático). */
+    protected function filtrarCanal($q, string $canal)
+    {
+        return match ($canal) {
+            'pix_manual' => $q->where('meio', 'pix')->where(fn ($w) => $w->where('pix_auto', false)->orWhereNull('pix_auto')),
+            'pix_auto' => $q->where('meio', 'pix')->where('pix_auto', true),
+            'dinheiro', 'debito', 'credito' => $q->where('meio', $canal),
+            default => $q,
+        };
     }
 
     /** Registra uma entrada ou saída avulsa no caixa. */

@@ -102,6 +102,7 @@ class EncomendaService
                 $enc->pagamentos()->create([
                     'empresa_id' => $empresa->id,
                     'meio' => $p['meio'],
+                    'pix_auto' => ($p['meio'] === 'pix' && ! empty($p['auto'])),
                     'valor' => $p['valor'],
                     'user_id' => $userId,
                     'momento' => 'cadastro',
@@ -137,7 +138,7 @@ class EncomendaService
             foreach (['dinheiro', 'pix', 'debito', 'credito', 'desconto'] as $meio) {
                 $v = (float) ($data[$meio] ?? 0);
                 if ($v > 0) {
-                    $enc->pagamentos()->create(['empresa_id' => $enc->empresa_id, 'meio' => $meio, 'valor' => $v, 'user_id' => $userId, 'momento' => 'baixa']);
+                    $enc->pagamentos()->create(['empresa_id' => $enc->empresa_id, 'meio' => $meio, 'pix_auto' => ($meio === 'pix' && ! empty($data['pix_auto'])), 'valor' => $v, 'user_id' => $userId, 'momento' => 'baixa']);
                     $soma += $v;
                 }
             }

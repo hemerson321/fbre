@@ -106,6 +106,7 @@ class PassagemService
                     'origem_id' => $p->id,
                     'encomenda_id' => null,
                     'meio' => $pag['meio'],
+                    'pix_auto' => ($pag['meio'] === 'pix' && ! empty($pag['auto'])),
                     'valor' => $pag['valor'],
                     'user_id' => $userId,
                     'momento' => 'cadastro',
@@ -138,7 +139,7 @@ class PassagemService
                 if ($v > 0) {
                     \App\Models\Pagamento::create([
                         'empresa_id' => $p->empresa_id, 'modulo' => 'passagem', 'origem_id' => $p->id,
-                        'encomenda_id' => null, 'meio' => $meio, 'valor' => $v, 'user_id' => $userId,
+                        'encomenda_id' => null, 'meio' => $meio, 'pix_auto' => ($meio === 'pix' && ! empty($data['pix_auto'])), 'valor' => $v, 'user_id' => $userId,
                         'momento' => 'baixa', 'tipo_mov' => 'entrada',
                     ]);
                     $soma += $v;

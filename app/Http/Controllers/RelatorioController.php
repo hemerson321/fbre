@@ -25,9 +25,9 @@ class RelatorioController extends Controller
         $entregas = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')
             ->whereBetween('created_at', [$inicio, $fim])->with('encomenda')->orderByDesc('id')->get();
 
-        $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('meio')->map->sum('valor');
+        $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('canal')->map->sum('valor');
 
         return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos'))
-            ->with(['meios' => Pagamento::MEIOS]);
+            ->with(['meios' => Pagamento::CANAIS]);
     }
 }

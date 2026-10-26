@@ -78,10 +78,10 @@ class ConfirmaPagamento
             }
         } elseif ($cob->referencia_tipo === Encomenda::class && $cob->referencia_id) {
             $e = Encomenda::withoutGlobalScopes()->find($cob->referencia_id);
-            if ($e) $this->enc->baixa($e, ['pix' => (float) $cob->valor], (int) $e->user_id, 'mp-'.$cob->id);
+            if ($e) $this->enc->baixa($e, ['pix' => (float) $cob->valor, 'pix_auto' => true], (int) $e->user_id, 'mp-'.$cob->id);
         } elseif ($cob->referencia_tipo === Passagem::class && $cob->referencia_id) {
             $p = Passagem::withoutGlobalScopes()->find($cob->referencia_id);
-            if ($p) $this->pas->baixa($p, ['pix' => (float) $cob->valor], (int) $p->user_id);
+            if ($p) $this->pas->baixa($p, ['pix' => (float) $cob->valor, 'pix_auto' => true], (int) $p->user_id);
         }
 
         return true;
@@ -107,7 +107,7 @@ class ConfirmaPagamento
             // garante o pagamento PIX no pedido (valor da cobrança), sem duplicar
             $data = $c->payload;
             $pags = collect($data['pagamentos'] ?? [])->reject(fn ($p) => ($p['meio'] ?? '') === 'pix')->values()->all();
-            $pags[] = ['meio' => 'pix', 'valor' => (float) $c->valor];
+            $pags[] = ['meio' => 'pix', 'valor' => (float) $c->valor, 'auto' => true];
             $data['pagamentos'] = $pags;
 
             try {
@@ -194,7 +194,7 @@ class ConfirmaPagamento
             // registra o pagamento PIX SEM embarcar (o cliente embarca depois, no check-in)
             \App\Models\Pagamento::create([
                 'empresa_id' => $p->empresa_id, 'modulo' => 'passagem', 'origem_id' => $p->id, 'encomenda_id' => null,
-                'meio' => 'pix', 'valor' => (float) $cob->valor, 'user_id' => (int) $op->id, 'momento' => 'baixa', 'tipo_mov' => 'entrada',
+                'meio' => 'pix', 'pix_auto' => true, 'valor' => (float) $cob->valor, 'user_id' => (int) $op->id, 'momento' => 'baixa', 'tipo_mov' => 'entrada',
             ]);
             $p->recalcular();
 

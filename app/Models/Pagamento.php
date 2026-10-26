@@ -11,7 +11,7 @@ class Pagamento extends Model
     use PertenceEmpresa;
 
     protected $guarded = [];
-    protected $casts = ['estornado' => 'boolean', 'valor' => 'decimal:2'];
+    protected $casts = ['estornado' => 'boolean', 'valor' => 'decimal:2', 'pix_auto' => 'boolean'];
 
     public const MEIOS = [
         'dinheiro' => 'Dinheiro',
@@ -20,6 +20,28 @@ class Pagamento extends Model
         'credito'  => 'Crédito',
         'desconto' => 'Desconto',
     ];
+
+    /** Canais de recebimento (PIX dividido em Manual x Automático) — usado em caixa/relatórios/filtro. */
+    public const CANAIS = [
+        'dinheiro'   => 'Dinheiro',
+        'pix_manual' => 'PIX Manual',
+        'pix_auto'   => 'PIX Automático',
+        'debito'     => 'Débito',
+        'credito'    => 'Crédito',
+    ];
+
+    /** Expressão SQL que resolve o canal (divide o PIX por pix_auto). */
+    public static function canalSql(): string
+    {
+        return "CASE WHEN meio='pix' AND COALESCE(pix_auto,0)=1 THEN 'pix_auto' WHEN meio='pix' THEN 'pix_manual' ELSE meio END";
+    }
+
+    /** Canal deste pagamento (dinheiro, pix_manual, pix_auto, debito, credito). */
+    public function getCanalAttribute(): string
+    {
+        if ($this->meio === 'pix') return $this->pix_auto ? 'pix_auto' : 'pix_manual';
+        return (string) $this->meio;
+    }
 
     public function encomenda(): BelongsTo { return $this->belongsTo(Encomenda::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
