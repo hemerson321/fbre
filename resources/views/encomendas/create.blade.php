@@ -3,8 +3,8 @@
 @push('head')
 <style type="text/tailwindcss">
   /* ---- cartão de seção com cabeçalho colorido ---- */
-  .sec { @apply rounded-2xl overflow-hidden flex flex-col; background:#fff; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px -12px rgba(15,23,42,.18); }
-  .sec-h { @apply flex items-center gap-2.5 px-3.5 py-2 text-white; background: linear-gradient(90deg, var(--cor1), color-mix(in srgb, var(--cor1) 70%, var(--cor2))); }
+  .sec { @apply rounded-2xl flex flex-col; background:#fff; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px -12px rgba(15,23,42,.18); }
+  .sec-h { @apply flex items-center gap-2.5 px-3.5 py-2 text-white rounded-t-2xl; background: linear-gradient(90deg, var(--cor1), color-mix(in srgb, var(--cor1) 70%, var(--cor2))); }
   .sec-h .n { @apply inline-flex w-6 h-6 rounded-full items-center justify-center text-[12px] font-extrabold text-slate-900; background: var(--cor2); }
   .sec-h .t { @apply text-[13px] font-bold uppercase tracking-wide; }
   .sec-b { @apply p-3 flex-1 flex flex-col gap-2.5; }
@@ -237,7 +237,7 @@
               <div class="flex gap-1 items-stretch">
                 <input class="field text-right font-semibold flex-1" x-money="pag[m.k]" x-show="m.k!=='pix' || pixManual">
                 <template x-if="m.k==='pix' && pixDinamico">
-                  <button type="button" @click="gerarPixDinamico()" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-2 shrink-0 font-bold" style="border-color:var(--cor1);color:var(--cor1)">💠</button>
+                  <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-2 shrink-0 font-bold disabled:opacity-50" style="border-color:var(--cor1);color:var(--cor1)">💠</button>
                 </template>
               </div>
             </div>
@@ -292,12 +292,17 @@
       <template x-if="pixQr">
         <img :src="pixQr.startsWith('data:')?pixQr:('data:image/png;base64,'+pixQr)" class="mx-auto rounded" style="width:220px;height:220px">
       </template>
+      <template x-if="!pixQr">
+        <div class="mx-auto flex items-center justify-center text-slate-300" style="width:220px;height:220px">
+          <svg class="animate-spin w-10 h-10" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+        </div>
+      </template>
       <div class="font-extrabold text-xl my-2">R$ <span x-text="fmtPix(pixValor)"></span></div>
       <div class="flex items-center justify-center gap-2 text-amber-600 text-sm font-semibold mb-3">
         <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-        Aguardando pagamento…
+        <span x-text="pixQr ? 'Aguardando pagamento…' : 'Gerando PIX…'"></span>
       </div>
-      <button type="button" @click="copiarPix()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
+      <button type="button" x-show="pixQr" @click="copiarPix()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
       <button type="button" @click="cancelarPix()" class="btn btn-ghost btn-sm w-full text-slate-500">Cancelar</button>
     </div>
   </div>
@@ -411,15 +416,20 @@ function novaEncomenda(){
     fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
     gerarPixDinamico(){
       if(this.pixPagando) return;
+      const f=this.$el;
+      const origem=(f.querySelector('[name=origem]')||{}).value||'';
+      const destino=(f.querySelector('[name=destino]')||{}).value||'';
+      if(!origem || !destino){ alert('Preencha a origem e o destino antes de gerar o PIX.'); return; }
       const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
       const valor=Math.max((Number(this.total)||0)-outros,0);
       if(valor<=0){ alert('Sem valor a cobrar. Adicione itens.'); return; }
+      this.pixCobId=null; this.pixCopia=''; this.pixQr=''; this.pixValor=valor; this.pixModal=true; this.pixPagando=true;
       fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'encomenda',valor:valor,descricao:'Encomenda'})})
         .then(r=>r.json()).then(d=>{
-          if(!d.ok){ alert(d.erro||'Falha ao gerar PIX'); return; }
-          this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.pixModal=true; this.pixPagando=true; this.imprimirPix(d.id);
+          if(!d.ok){ this.pixModal=false; this.pixPagando=false; alert(d.erro||'Falha ao gerar PIX'); return; }
+          this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.imprimirPix(d.id);
           this.pixPoll=setInterval(()=>this.checarPix(),3500);
-        }).catch(()=>alert('Falha de conexão ao gerar PIX'));
+        }).catch(()=>{ this.pixModal=false; this.pixPagando=false; alert('Falha de conexão ao gerar PIX'); });
     },
     checarPix(){
       if(!this.pixCobId) return;
