@@ -61,6 +61,13 @@ class CobrancaController extends Controller
         ]);
     }
 
+    /** Impressão enxuta do QR de uma cobrança (avulsa ou de pedido). */
+    public function imprimir(Cobranca $cobranca)
+    {
+        abort_unless($cobranca->empresa_id === Tenant::id(), 404);
+        return view('impressao.pix', ['numero' => (string) $cobranca->id, 'c' => $cobranca, 'rotulo' => ucfirst((string) $cobranca->modulo), 'empresa' => Tenant::empresa()]);
+    }
+
     /** Status de uma cobrança (consulta o MP se ainda pendente). Usado pela tela que aguarda o pagamento. */
     public function status(Cobranca $cobranca, MercadoPago $mp)
     {

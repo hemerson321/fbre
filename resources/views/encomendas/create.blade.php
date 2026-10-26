@@ -417,7 +417,7 @@ function novaEncomenda(){
       fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'encomenda',valor:valor,descricao:'Encomenda'})})
         .then(r=>r.json()).then(d=>{
           if(!d.ok){ alert(d.erro||'Falha ao gerar PIX'); return; }
-          this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.pixModal=true; this.pixPagando=true;
+          this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.pixModal=true; this.pixPagando=true; this.imprimirPix(d.id);
           this.pixPoll=setInterval(()=>this.checarPix(),3500);
         }).catch(()=>alert('Falha de conexão ao gerar PIX'));
     },
@@ -433,6 +433,7 @@ function novaEncomenda(){
     },
     cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
     copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
+    imprimirPix(id){ try{ let f=document.getElementById('pixPrintFrame'); if(!f){ f=document.createElement('iframe'); f.id='pixPrintFrame'; f.style.cssText='position:fixed;width:0;height:0;border:0;left:-9999px'; document.body.appendChild(f); } f.src='/cobranca/'+id+'/imprimir'; }catch(e){} },
     async salvar(ev){
       const form = ev.target;
       if (!form.reportValidity()) return;

@@ -126,6 +126,7 @@ Route::middleware('auth')->group(function () {
     // PIX dinâmico avulso: gera e aguarda pagamento (pedido criado só depois de confirmar)
     Route::post('/cobranca/pix/gerar', [CobrancaController::class, 'gerarAvulso'])->name('cobranca.pix.gerar');
     Route::get('/cobranca/{cobranca}/status', [CobrancaController::class, 'status'])->name('cobranca.pix.status');
+    Route::get('/cobranca/{cobranca}/imprimir', [CobrancaController::class, 'imprimir'])->name('cobranca.pix.imprimir');
     Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:passagem.baixa');
     Route::post('/passagens/{passagem}/cancelar', [\App\Http\Controllers\PassagemController::class, 'cancelar'])->name('passagens.cancelar')->middleware('perm:admin');
 
