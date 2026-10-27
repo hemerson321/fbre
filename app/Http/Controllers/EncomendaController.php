@@ -132,7 +132,7 @@ class EncomendaController extends Controller
             'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
         ])->values();
 
-        $catalogo = Produto::where('ativo', true)->orderByDesc('usos')->orderBy('nome')
+        $catalogo = Produto::where('ativo', true)->where('modulo', 'encomenda')->orderByDesc('usos')->orderBy('nome')
             ->get(['id', 'nome', 'valor_padrao'])
             ->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'valor' => (float) $p->valor_padrao])->values();
 

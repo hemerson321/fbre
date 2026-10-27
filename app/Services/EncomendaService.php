@@ -164,7 +164,7 @@ class EncomendaService
         $nome = trim((string) $nome);
         if ($nome === '') return;
         $p = Produto::firstOrCreate(
-            ['empresa_id' => $empresa->id, 'nome' => $nome],
+            ['empresa_id' => $empresa->id, 'nome' => $nome, 'modulo' => 'encomenda'],
             ['valor_padrao' => (float) $valor, 'ativo' => true]
         );
         $p->increment('usos');

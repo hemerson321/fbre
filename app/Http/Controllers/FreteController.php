@@ -149,7 +149,7 @@ class FreteController extends Controller
             'id' => $r->id, 'nome' => $r->nome,
             'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
         ])->values();
-        $catalogo = \App\Models\Produto::where('ativo', true)->orderByDesc('usos')->orderBy('nome')
+        $catalogo = \App\Models\Produto::where('ativo', true)->where('modulo', 'frete')->orderByDesc('usos')->orderBy('nome')
             ->get(['id', 'nome', 'valor_padrao'])
             ->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'valor' => (float) $p->valor_padrao])->values();
 

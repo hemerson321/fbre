@@ -138,7 +138,7 @@ class FreteService
     {
         $nome = trim((string) $nome);
         if ($nome === '') return;
-        $p = Produto::firstOrCreate(['empresa_id' => $empresa->id, 'nome' => $nome], ['valor_padrao' => (float) $valor, 'ativo' => true]);
+        $p = Produto::firstOrCreate(['empresa_id' => $empresa->id, 'nome' => $nome, 'modulo' => 'frete'], ['valor_padrao' => (float) $valor, 'ativo' => true]);
         $p->increment('usos');
     }
 }

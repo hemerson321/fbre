@@ -41,7 +41,8 @@ class CadastroController extends Controller
         return view('admin.cadastros', [
             'embarcacoes' => Embarcacao::orderBy('nome')->get(),
             'setores' => Setor::orderBy('nome')->get(),
-            'produtos' => Produto::orderBy('nome')->get(),
+            'produtos' => Produto::where('modulo', 'encomenda')->orderBy('nome')->get(),
+            'produtosFrete' => Produto::where('modulo', 'frete')->orderBy('nome')->get(),
             'estacoes' => Estacao::orderBy('nome')->get(),
             'categorias' => AvulsoCategoria::orderBy('ordem')->orderBy('nome')->get(),
             'tiposPassageiro' => TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(),
@@ -75,9 +76,14 @@ class CadastroController extends Controller
         $data = $request->validate([
             'nome' => 'required|string|max:120',
             'valor_padrao' => 'nullable|numeric|min:0',
+            'modulo' => 'nullable|in:encomenda,frete',
         ]);
         $m = $this->tipos[$tipo];
-        $m::create($tipo === 'produtos' ? $data : ['nome' => $data['nome']]);
+        if ($tipo === 'produtos') {
+            Produto::create(['nome' => $data['nome'], 'valor_padrao' => $data['valor_padrao'] ?? 0, 'modulo' => $data['modulo'] ?? 'encomenda', 'ativo' => true]);
+        } else {
+            $m::create(['nome' => $data['nome']]);
+        }
         return back()->with('ok', 'Cadastrado.');
     }
 

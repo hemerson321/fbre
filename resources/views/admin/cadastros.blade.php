@@ -56,6 +56,25 @@
   </div>
 @endforeach
 
+{{-- catálogo do FRETE (separado do de encomenda) --}}
+<div class="card p-4 space-y-2">
+  <h2 class="font-bold text-sm text-slate-500 uppercase">Produtos do frete (catálogo)</h2>
+  <p class="text-[11px] text-slate-400 -mt-1">Ex.: caixa de frango, fardo de Coca-Cola… (separado da encomenda)</p>
+  <form method="post" action="{{ route('admin.cadastros.store','produtos') }}" class="flex gap-2">@csrf
+    <input type="hidden" name="modulo" value="frete">
+    <input name="nome" class="input !min-h-[42px]" placeholder="Nome" required>
+    <input name="valor_padrao" type="number" step="0.01" min="0" class="input !min-h-[42px] !w-28 text-right" placeholder="Valor">
+    <button class="btn btn-accent btn-sm">+</button></form>
+  <div class="divide-y text-sm">
+    @forelse($produtosFrete as $r)
+      <div class="flex items-center justify-between py-1.5 {{ isset($r->ativo) && !$r->ativo ? 'opacity-40 line-through' : '' }}">
+        <span>{{ $r->nome }} <span class="text-slate-400">R$ {{ number_format($r->valor_padrao,2,',','.') }}</span></span>
+        <form method="post" action="{{ route('admin.cadastros.destroy',['produtos',$r->id]) }}" onsubmit="return confirm('Remover?')">@csrf @method('DELETE')<button class="text-red-500 text-xs">remover</button></form>
+      </div>
+    @empty <div class="py-3 text-slate-400">Nenhum. Adicione os produtos que viajam por frete.</div> @endforelse
+  </div>
+</div>
+
 <div class="card p-4 space-y-2 md:col-span-2" x-data="tiposEditor(@js($tiposPassageiro->map(fn($t)=>[
      'id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor',
      'percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,
