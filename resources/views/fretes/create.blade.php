@@ -106,7 +106,11 @@
       <div class="sec-b">
         <div class="flex gap-1.5">@foreach(\App\Models\Frete::FORMAS as $k=>$l)<label class="forma" :class="forma==='{{ $k }}' && 'on'"><input type="radio" value="{{ $k }}" x-model="forma" class="sr-only"> {{ $l }}</label>@endforeach</div>
         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
-          <template x-for="m in meios" :key="m.k"><div><label class="lbl" x-text="m.l"></label><input class="field text-right font-semibold" x-money="pag[m.k]"></div></template>
+          <template x-for="m in meios" :key="m.k"><div x-show="m.k!=='pix' || pixManual"><label class="lbl" x-text="m.l"></label><input class="field text-right font-semibold w-full" x-money="pag[m.k]"></div></template>
+          <div x-show="pixDinamico">
+            <label class="lbl">PIX Automático</label>
+            <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
+          </div>
           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
         </div>
@@ -130,6 +134,24 @@
     </div></section>
   </div>
 </div>
+
+  {{-- modal PIX dinâmico: aguarda o pagamento; só cadastra depois de confirmar --}}
+  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="cancelarPix()">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center">
+      <div class="font-bold text-lg">💠 PIX dinâmico</div>
+      <div class="text-xs text-slate-500 mb-3">Mostre o QR pro cliente pagar. A tela confirma sozinha e só então cadastra.</div>
+      <template x-if="pixQr"><img :src="pixQr.startsWith('data:')?pixQr:('data:image/png;base64,'+pixQr)" class="mx-auto rounded" style="width:220px;height:220px"></template>
+      <template x-if="!pixQr"><div class="mx-auto flex items-center justify-center text-slate-300" style="width:220px;height:220px"><svg class="animate-spin w-10 h-10" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg></div></template>
+      <div class="font-extrabold text-xl my-2">R$ <span x-text="fmtPix(pixValor)"></span></div>
+      <div class="flex items-center justify-center gap-2 text-amber-600 text-sm font-semibold mb-3">
+        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+        <span x-text="pixQr ? 'Aguardando pagamento…' : 'Gerando PIX…'"></span>
+      </div>
+      <button type="button" x-show="pixCobId" @click="imprimirPix(pixCobId)" class="btn btn-ghost btn-sm w-full mb-2">🖨 Imprimir QR</button>
+      <button type="button" x-show="pixQr" @click="copiarPix()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
+      <button type="button" @click="cancelarPix()" class="btn btn-ghost btn-sm w-full text-slate-500">Cancelar</button>
+    </div>
+  </div>
 </form>
 @endsection
 
@@ -143,7 +165,9 @@
       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'', embarcacaoSel:@js((string) old('embarcacao_id', $embarcacaoPrincipal)),
       descricao:'', peso:null, volumes:1, precoKilo:@js((float)($precoKiloPadrao ?? 0)), valor:0, valorManual:false,
       observacao:'', desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
-      meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+      meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+      pixManual:@js(auth()->user()->podePixManual()), pixDinamico:@js(auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('frete')),
+      pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
       rem:{nome:'',telefone:'',documento:''}, dest:{nome:'',telefone:'',documento:''},
       rotaId:'', linhaNome:'', paradasInfo:[], viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
       diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'], lancamentoEm:@js(now()->toDateString()), podeRetroativo:@js($podeRetroativo), numeroPreview:'—',
@@ -172,17 +196,52 @@
       get pago(){ return this.forma==='faturado'?0:Object.values(this.pag).reduce((s,v)=>s+(Number(v)||0),0); },
       get pagoSemDinheiro(){ return (Number(this.pag.pix)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0); },
       get devido(){ return Math.max(this.total-this.pago,0); },
-      async salvar(ev){
-        if(this.salvando) return;
-        if(!this.rem.nome.trim()||!this.dest.nome.trim()){ alert('Informe remetente e destinatário.'); return; }
-        if(!this.descricao.trim()){ alert('Descreva a carga.'); return; }
-        this.salvando=true;
-        const dados={ origem:this.origemSel, destino:this.destinoSel, embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
+      fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+      montarDados(){
+        return { origem:this.origemSel, destino:this.destinoSel, embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
           remetente_nome:this.rem.nome, remetente_telefone:this.rem.telefone||null, remetente_documento:this.rem.documento||null,
           destinatario_nome:this.dest.nome, destinatario_telefone:this.dest.telefone||null, destinatario_documento:this.dest.documento||null,
           descricao:this.descricao, peso:Number(this.peso)||null, volumes:Number(this.volumes)||1, preco_kilo:Number(this.precoKilo)||0, subtotal:Number(this.valor)||0,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k,valor:Number(this.pag[m.k])})) };
+      },
+      gerarPixDinamico(){
+        if(this.pixPagando) return;
+        if(!this.rem.nome.trim()||!this.dest.nome.trim()){ alert('Informe remetente e destinatário antes de gerar o PIX.'); return; }
+        if(!this.descricao.trim()){ alert('Descreva a carga antes de gerar o PIX.'); return; }
+        const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
+        const valor=Math.max((Number(this.total)||0)-outros,0);
+        if(valor<=0){ alert('Sem valor a cobrar.'); return; }
+        const pedido=this.montarDados();
+        this.pixCobId=null; this.pixCopia=''; this.pixQr=''; this.pixValor=valor; this.pixModal=true; this.pixPagando=true;
+        fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'frete',valor:valor,descricao:'Frete',imprimir:this.imprimir,payload:pedido})})
+          .then(r=>r.json()).then(d=>{
+            if(!d.ok){ this.pixModal=false; this.pixPagando=false; alert(d.erro||'Falha ao gerar PIX'); return; }
+            this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.imprimirPix(d.id);
+            this.pixPoll=setInterval(()=>this.checarPix(),4000);
+          }).catch(()=>{ this.pixModal=false; this.pixPagando=false; alert('Falha de conexão ao gerar PIX'); });
+      },
+      checarPix(){
+        if(!this.pixCobId || this.pixChecando) return;
+        this.pixChecando=true;
+        fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
+          if(d && d.pago){ clearInterval(this.pixPoll); this.pixPagando=false; this.finalizarPix(d); }
+        }).catch(()=>{}).finally(()=>{ this.pixChecando=false; });
+      },
+      finalizarPix(d){
+        if(d.erro || !d.url){ this.pixModal=false; alert('Pagamento recebido! '+(d.erro?('Não consegui cadastrar automaticamente: '+d.erro+'. '):'')+'Confira os dados e clique em Salvar.'); return; }
+        this.salvando=true;
+        window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
+      },
+      cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
+      copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
+      imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+      async salvar(ev){
+        if(this.salvando) return;
+        if(!this.rem.nome.trim()||!this.dest.nome.trim()){ alert('Informe remetente e destinatário.'); return; }
+        if(!this.descricao.trim()){ alert('Descreva a carga.'); return; }
+        this.salvando=true;
+        const dados=this.montarDados();
         try{ const r=await FBREOffline.salvarModulo('frete', dados);
           if(r.servidor && r.servidor.ok){ window.location.href=r.servidor.url+(this.imprimir==='navegador'?'?print=1':''); return; }
           if(this.imprimir!=='nao') await FBREOffline.imprimirModuloLocal(r.local);

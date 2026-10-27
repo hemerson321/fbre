@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Cobranca;
 use App\Models\Conversa;
 use App\Models\Encomenda;
+use App\Models\Frete;
 use App\Models\Passagem;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Log;
@@ -21,6 +22,7 @@ class ConfirmaPagamento
         protected Atendimento $at,
         protected EncomendaService $enc,
         protected PassagemService $pas,
+        protected FreteService $fre,
     ) {}
 
     /** Varre cobranças pendentes recentes e aplica as que já foram pagas. Retorna quantas confirmou. */
@@ -57,7 +59,7 @@ class ConfirmaPagamento
         Tenant::set($cob->empresa_id);
 
         // Pedido de balcão montado na própria cobrança (encomenda/passagem): o SERVIDOR cria agora.
-        if (! $cob->referencia_id && $cob->payload && in_array($cob->modulo, ['encomenda', 'passagem'], true)) {
+        if (! $cob->referencia_id && $cob->payload && in_array($cob->modulo, ['encomenda', 'passagem', 'frete'], true)) {
             $this->criarPedidoDoPayload($cob);
             return true;
         }
@@ -114,6 +116,9 @@ class ConfirmaPagamento
                 if ($c->modulo === 'passagem') {
                     $rec = $this->pas->criar($data, (int) $op->id, 'pix-pas-'.$c->id);
                     $tipo = Passagem::class;
+                } elseif ($c->modulo === 'frete') {
+                    $rec = $this->fre->criar($data, (int) $op->id, 'pix-fre-'.$c->id);
+                    $tipo = Frete::class;
                 } else {
                     $rec = $this->enc->criar($data, (int) $op->id, 'pix-enc-'.$c->id);
                     $tipo = Encomenda::class;

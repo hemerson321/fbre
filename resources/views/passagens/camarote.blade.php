@@ -255,7 +255,7 @@ function vendaCamarote(){
     comprador:{nome:'',telefone:'',documento:''},
     observacao:'',
     forma:'avista',
-    meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+    meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
     pag:{dinheiro:0,pix:0,debito:0,credito:0}, desconto:0,
     imprimir:'navegador',
     fmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },

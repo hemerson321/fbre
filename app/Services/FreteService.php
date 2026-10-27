@@ -55,7 +55,7 @@ class FreteService
                 if ((float) $p['valor'] <= 0) continue;
                 \App\Models\Pagamento::create([
                     'empresa_id' => $empresa->id, 'modulo' => 'frete', 'origem_id' => $f->id, 'encomenda_id' => null,
-                    'meio' => $p['meio'], 'valor' => $p['valor'], 'user_id' => $userId, 'momento' => 'cadastro', 'tipo_mov' => 'entrada',
+                    'meio' => $p['meio'], 'pix_auto' => ($p['meio'] === 'pix' && ! empty($p['auto'])), 'valor' => $p['valor'], 'user_id' => $userId, 'momento' => 'cadastro', 'tipo_mov' => 'entrada',
                 ]);
             }
 
@@ -81,7 +81,7 @@ class FreteService
                 if ($v > 0) {
                     \App\Models\Pagamento::create([
                         'empresa_id' => $f->empresa_id, 'modulo' => 'frete', 'origem_id' => $f->id, 'encomenda_id' => null,
-                        'meio' => $meio, 'valor' => $v, 'user_id' => $userId, 'momento' => 'baixa', 'tipo_mov' => 'entrada',
+                        'meio' => $meio, 'pix_auto' => ($meio === 'pix' && ! empty($data['pix_auto'])), 'valor' => $v, 'user_id' => $userId, 'momento' => 'baixa', 'tipo_mov' => 'entrada',
                     ]);
                     $soma += $v;
                 }

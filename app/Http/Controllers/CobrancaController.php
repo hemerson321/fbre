@@ -20,7 +20,7 @@ class CobrancaController extends Controller
     public function gerarAvulso(Request $request, MercadoPago $mp)
     {
         $data = $request->validate([
-            'modulo' => 'required|in:encomenda,passagem',
+            'modulo' => 'required|in:encomenda,passagem,frete',
             'valor' => 'required|numeric|min:0.01',
             'descricao' => 'nullable|string|max:120',
             'cliente_nome' => 'nullable|string|max:120',
@@ -130,9 +130,11 @@ class CobrancaController extends Controller
             $resp['erro'] = $cobranca->erro;
             if ($cobranca->referencia_id) {
                 $resp['id'] = (int) $cobranca->referencia_id;
-                $resp['url'] = $cobranca->referencia_tipo === Passagem::class
-                    ? route('passagens.show', $cobranca->referencia_id)
-                    : route('encomendas.show', $cobranca->referencia_id);
+                $resp['url'] = match ($cobranca->referencia_tipo) {
+                    Passagem::class => route('passagens.show', $cobranca->referencia_id),
+                    \App\Models\Frete::class => route('fretes.show', $cobranca->referencia_id),
+                    default => route('encomendas.show', $cobranca->referencia_id),
+                };
             }
         }
         return response()->json($resp);
