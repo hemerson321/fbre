@@ -120,7 +120,7 @@
           </div>
           <div class="grid grid-cols-2 gap-2">
             <input class="field" inputmode="tel" placeholder="WhatsApp" x-model="compradorTel">
-            <input class="field" inputmode="numeric" placeholder="CPF" x-model="compradorDoc">
+            <input class="field" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(compradorDoc)}" inputmode="numeric" placeholder="CPF" x-model="compradorDoc" title="Se digitar um CPF, precisa ser válido.">
           </div>
         </div>
       </div>
@@ -143,7 +143,16 @@
             {{-- linha 1: numero + nome + foto + remover --}}
             <div class="flex items-center gap-2">
               <span class="w-6 h-6 rounded-full text-white text-[11px] font-bold flex items-center justify-center shrink-0" style="background:var(--cor1)" x-text="i+1"></span>
-              <input :id="'pax-nome-'+i" class="field !min-h-0 py-1 flex-1" placeholder="Nome do passageiro" x-model="p.nome" required>
+              <div class="relative flex-1">
+                <input :id="'pax-nome-'+i" class="field !min-h-0 py-1 w-full" placeholder="Nome do passageiro" x-model="p.nome" autocomplete="off" @input.debounce.300ms="buscarPax(i)" @focus="paxAberto=i" @click.outside="paxAberto===i && (paxAberto=-1)" required>
+                <div x-show="paxAberto===i && paxLista.length" x-cloak class="absolute z-30 mt-1 w-full bg-white rounded-xl border shadow-xl max-h-48 overflow-auto">
+                  <template x-for="pp in paxLista" :key="pp.nome+pp.telefone">
+                    <button type="button" @click="escolherPax(i,pp)" class="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b last:border-0">
+                      <span class="font-semibold" x-text="pp.nome"></span> <span class="text-slate-500 text-xs" x-text="pp.documento||pp.telefone"></span>
+                    </button>
+                  </template>
+                </div>
+              </div>
               <img :src="'/'+(p.foto||p.foto_rg)" x-show="p.foto||p.foto_rg" x-cloak class="h-9 w-9 object-cover rounded-lg border shrink-0 cursor-pointer" @click="window.open('/'+(p.foto_rg||p.foto),'_blank')" title="Foto (clique p/ ver o documento)">
               <button type="button" class="w-8 h-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none shrink-0" @click="rmPax(i)" x-show="passageiros.length>1" title="Remover">×</button>
             </div>
@@ -159,7 +168,8 @@
             {{-- linha 3: documento + poltrona --}}
             <div class="flex items-end gap-2 mt-1.5">
               <div class="flex-1"><label class="lbl">Documento (RG/CPF)</label>
-                <input class="field !min-h-0 py-1 text-sm w-full" placeholder="opcional" x-model="p.documento"></div>
+                <input class="field !min-h-0 py-1 text-sm w-full" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(p.documento)}" placeholder="opcional" x-model="p.documento" title="RG ou CPF. Se digitar um CPF, precisa ser válido.">
+                <div x-show="!FBRE.docOk(p.documento)" x-cloak class="text-[10px] text-red-500 mt-0.5">CPF inválido</div></div>
               <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)">
                 <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑'"></span>
               </button>
@@ -360,6 +370,7 @@
       meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
       passageiros:[],
       precoInfo:false,
+      paxLista:[], paxAberto:-1,
       // viagem
       rotaId:'', linhaNome:'', paradasInfo:[], viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
       diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
@@ -657,9 +668,15 @@
       validarPassageiros(){
         if(!this.passageiros.length){ alert('Adicione ao menos um passageiro.'); return false; }
         if(this.passageiros.some(p=>!p.nome.trim())){ alert('Informe o nome de todos os passageiros.'); return false; }
+        const pxErr=this.passageiros.find(p=>!FBRE.docOk(p.documento));
+        if(pxErr){ alert('CPF inválido no passageiro "'+((pxErr.nome||'').trim()||'sem nome')+'". Confira os números ou deixe em branco.'); return false; }
+        if(!FBRE.docOk(this.compradorDoc)){ alert('CPF do comprador inválido. Confira os números ou deixe em branco.'); return false; }
         if(this.usaPoltrona){ const ass=this.passageiros.map(p=>p.poltrona).filter(Boolean); if(new Set(ass).size!==ass.length){ alert('Há poltronas repetidas.'); return false; } }
         return true;
       },
+      // ---- autocomplete de passageiro (busca em pessoas já cadastradas) ----
+      async buscarPax(i){ const q=(this.passageiros[i]?.nome||'').trim(); if(q.length<2){ this.paxLista=[]; this.paxAberto=-1; return; } try{ const r=await fetch(`{{ route('pessoas.buscar') }}?q=${encodeURIComponent(q)}`); this.paxLista=await r.json(); this.paxAberto=i; }catch(e){} },
+      escolherPax(i,p){ const px=this.passageiros[i]; if(!px) return; px.nome=p.nome; if(p.documento) px.documento=p.documento; if(p.telefone) px.telefone=p.telefone; this.paxAberto=-1; this.paxLista=[]; },
       montarDados(){
         return {
           origem:this.origemSel, destino:this.destinoSel,

@@ -53,7 +53,7 @@
     <h2 class="font-bold text-sm text-slate-500 uppercase pt-2">Destinatário</h2>
     <div><b>{{ $e->destinatario_nome }}</b><div class="text-sm text-slate-500">{{ $e->destinatario_telefone }} {{ $e->destinatario_documento }}</div></div>
     @if($e->observacao)<div class="text-sm bg-amber-50 border border-amber-200 rounded-lg p-2">{{ $e->observacao }}</div>@endif
-    @if($e->entregue)<div class="text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-2">Entregue em {{ $e->entregue_em->format('d/m/Y H:i') }} por {{ $e->entreguePor?->name }}@if($e->entregue_para) para <b>{{ $e->entregue_para }}</b>@endif@if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
+    @if($e->entregue)<div class="text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-2">Entregue@if($e->entregue_em) em {{ $e->entregue_em->format('d/m/Y H:i') }}@endif por {{ $e->entreguePor?->name }}@if($e->entregue_para) para <b>{{ $e->entregue_para }}</b>@endif@if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
   </div>
 
   <div class="card p-4 space-y-3">
@@ -71,18 +71,18 @@
       <div class="flex justify-between text-lg font-extrabold"><span>Total</span><span>R$ {{ number_format($e->total,2,',','.') }}</span></div>
       <div class="flex justify-between"><span>Pago</span><span>R$ {{ number_format($e->pago,2,',','.') }}</span></div>
       <div class="flex justify-between font-bold {{ $e->devido>0?'text-amber-300':'text-emerald-300' }}"><span>Devido</span><span>R$ {{ number_format($e->devido,2,',','.') }}</span></div>
-      <div class="text-xs opacity-70 pt-1">Forma: {{ \App\Models\Encomenda::FORMAS[$e->forma] }}</div>
+      <div class="text-xs opacity-70 pt-1">Forma: {{ \App\Models\Encomenda::FORMAS[$e->forma] ?? $e->forma }}</div>
     </div>
     <h2 class="font-bold text-sm text-slate-500 uppercase pt-1">Pagamentos</h2>
     @forelse($e->pagamentos as $p)
-      <div class="flex justify-between text-sm"><span>{{ $meios[$p->meio] }} <span class="text-slate-400">· {{ $p->created_at->format('d/m H:i') }} · {{ $p->user?->name }}</span></span><b>R$ {{ number_format($p->valor,2,',','.') }}</b></div>
+      <div class="flex justify-between text-sm"><span>{{ $meios[$p->meio] ?? $p->meio }} <span class="text-slate-400">· {{ $p->created_at?->format('d/m H:i') }} · {{ $p->user?->name }}</span></span><b>R$ {{ number_format($p->valor,2,',','.') }}</b></div>
     @empty <div class="text-sm text-slate-400">Nenhum pagamento.</div> @endforelse
   </div>
 </div>
 
 {{-- MODAL PAGAR --}}
 <div x-show="modal==='pagar'" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" @click.self="modal=null">
-  <form method="post" action="{{ route('encomendas.pagar',$e) }}" @submit="baixaOffline($event, true)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3" x-data="{ d:0,p:0,de:0,c:0,ds:0, devido:{{ (float)$e->devido }} }">
+  <form method="post" action="{{ route('encomendas.pagar',$e) }}" @submit="if(!FBRE.docOk($event.target.entregue_documento?.value)){ $event.preventDefault(); alert('CPF de quem retirou é inválido. Confira os números ou deixe em branco.'); return; } baixaOffline($event, true)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3" x-data="{ d:0,p:0,de:0,c:0,ds:0, devido:{{ (float)$e->devido }} }">
     @csrf
     <h3 class="text-lg font-bold">Registrar pagamento</h3>
     <div class="text-sm">Falta pagar: <b class="text-red-600">R$ {{ number_format($e->devido,2,',','.') }}</b></div>
@@ -111,7 +111,7 @@
 
 {{-- MODAL ENTREGAR --}}
 <div x-show="modal==='entregar'" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" @click.self="modal=null">
-  <form method="post" action="{{ route('encomendas.entregar',$e) }}" @submit="baixaOffline($event, false)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3">
+  <form method="post" action="{{ route('encomendas.entregar',$e) }}" @submit="if(!FBRE.docOk($event.target.entregue_documento?.value)){ $event.preventDefault(); alert('CPF de quem retirou é inválido. Confira os números ou deixe em branco.'); return; } baixaOffline($event, false)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3">
     @csrf
     <h3 class="text-lg font-bold">Baixa na entrega</h3>
     @if($e->devido>0 && $e->forma==='faturado')<div class="text-sm bg-amber-50 border border-amber-200 rounded-lg p-2">Faturado: será entregue agora e cobrado na fatura (<b>R$ {{ number_format($e->devido,2,',','.') }}</b> em aberto).</div>@endif

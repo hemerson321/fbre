@@ -296,6 +296,19 @@ document.addEventListener('alpine:init', () => {
     fmtMoney: v => (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
     parseMoney: s => { const d=String(s||'').replace(/\D/g,''); return d ? parseInt(d,10)/100 : 0; },
     abrirImpressao: url => { const w = window.open(url, 'fbre_print', 'width=420,height=640'); if (w) w.focus(); },
+    // true se for um CPF válido (11 dígitos + dígitos verificadores). Documento vazio ou que não tenha 11 dígitos (ex.: RG) não é CPF.
+    soDigitos: s => String(s||'').replace(/\D/g,''),
+    pareceCpf: s => FBRE.soDigitos(s).length === 11,
+    cpfValido: s => {
+      const c = FBRE.soDigitos(s);
+      if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+      let soma = 0; for (let i = 0; i < 9; i++) soma += parseInt(c[i],10) * (10 - i);
+      let d1 = (soma * 10) % 11; if (d1 === 10) d1 = 0; if (d1 !== parseInt(c[9],10)) return false;
+      soma = 0; for (let i = 0; i < 10; i++) soma += parseInt(c[i],10) * (11 - i);
+      let d2 = (soma * 10) % 11; if (d2 === 10) d2 = 0; return d2 === parseInt(c[10],10);
+    },
+    // regra do sistema: documento opcional; se o usuário digitou algo com cara de CPF (11 dígitos), tem que ser válido.
+    docOk: s => { const t = String(s||'').trim(); if (!t) return true; return FBRE.pareceCpf(t) ? FBRE.cpfValido(t) : true; },
   };
 </script>
 @stack('scripts')

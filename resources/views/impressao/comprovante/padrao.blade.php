@@ -39,16 +39,16 @@
   <tr class="lg"><td class="b">TOTAL</td><td class="r b">R$ {{ number_format($e->total,2,',','.') }}</td></tr>
   <tr><td>Pago</td><td class="r">R$ {{ number_format($e->pago,2,',','.') }}</td></tr>
   <tr><td class="b">DEVIDO</td><td class="r b">R$ {{ number_format($e->devido,2,',','.') }}</td></tr>
-  <tr><td>Forma</td><td class="r">{{ \App\Models\Encomenda::FORMAS[$e->forma] }}</td></tr>
+  <tr><td>Forma</td><td class="r">{{ \App\Models\Encomenda::FORMAS[$e->forma] ?? $e->forma }}</td></tr>
 </table>
 @if($e->pagamentos->count())
 <div class="sm">
-  @foreach($e->pagamentos as $p)<div>{{ \App\Models\Pagamento::MEIOS[$p->meio] }}: R$ {{ number_format($p->valor,2,',','.') }} ({{ $p->created_at->format('d/m H:i') }})</div>@endforeach
+  @foreach($e->pagamentos as $p)<div>{{ \App\Models\Pagamento::MEIOS[$p->meio] ?? $p->meio }}: R$ {{ number_format((float)$p->valor,2,',','.') }} ({{ $p->created_at?->format('d/m H:i') }})</div>@endforeach
 </div>
 @endif
 <hr>
 <div class="c b">{{ strtoupper($e->statusTexto()) }}</div>
-@if($e->entregue)<div class="c sm">Entregue em {{ $e->entregue_em->format('d/m/Y H:i') }}@if($e->entregue_para) para {{ $e->entregue_para }}@endif@if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
+@if($e->entregue)<div class="c sm">Entregue@if($e->entregue_em) em {{ $e->entregue_em->format('d/m/Y H:i') }}@endif@if($e->entregue_para) para {{ $e->entregue_para }}@endif@if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
 @if($e->observacao)<hr><div class="sm">Obs: {{ $e->observacao }}</div>@endif
 @if($empresa->pix)<hr><div class="c sm">PIX: {{ $empresa->pix }}</div>@endif
 @if($empresa->rodape_comprovante)<hr><div class="c sm">{!! nl2br(e($empresa->rodape_comprovante)) !!}</div>@endif

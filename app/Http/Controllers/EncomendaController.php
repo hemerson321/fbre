@@ -234,7 +234,20 @@ class EncomendaController extends Controller
     public function show(Encomenda $encomenda)
     {
         $encomenda->load(['itens', 'pagamentos.user', 'embarcacao', 'operador', 'entreguePor', 'eventos.user']);
-        return view('encomendas.show', ['e' => $encomenda, 'meios' => Pagamento::MEIOS]);
+        try {
+            // renderiza dentro do try pra capturar erro de Blade (o servidor trata warning como exceção)
+            return response(view('encomendas.show', ['e' => $encomenda, 'meios' => Pagamento::MEIOS])->render());
+        } catch (\Throwable $ex) {
+            $u = auth()->user();
+            if ($u && ($u->isAdmin() || $u->isSuper())) {
+                return response('<pre style="padding:16px;font:13px/1.5 monospace;white-space:pre-wrap;color:#b91c1c">'
+                    .'ERRO AO ABRIR A ENCOMENDA #'.e($encomenda->numeroFormatado())."\n\n"
+                    .e($ex->getMessage())."\n\n"
+                    .e($ex->getFile()).':'.$ex->getLine()."\n\n"
+                    .e($ex->getTraceAsString()).'</pre>', 500);
+            }
+            return response('<div style="padding:24px;font:15px sans-serif">Não foi possível abrir esta encomenda agora. Avise o administrador.</div>', 500);
+        }
     }
 
     // ------------------------------------------------------------------
