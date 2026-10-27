@@ -128,6 +128,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/cobranca/{cobranca}/status', [CobrancaController::class, 'status'])->name('cobranca.pix.status');
     Route::get('/cobranca/{cobranca}/imprimir', [CobrancaController::class, 'imprimir'])->name('cobranca.pix.imprimir');
     Route::post('/cobranca/{cobranca}/imprimir-direto', [CobrancaController::class, 'imprimirDireto'])->name('cobranca.pix.direto');
+    Route::post('/cobranca/{cobranca}/cancelar', [CobrancaController::class, 'cancelar'])->name('cobranca.pix.cancelar');
     Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:passagem.baixa');
     Route::post('/passagens/{passagem}/cancelar', [\App\Http\Controllers\PassagemController::class, 'cancelar'])->name('passagens.cancelar')->middleware('perm:admin');
 

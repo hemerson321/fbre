@@ -136,7 +136,7 @@
 </div>
 
   {{-- modal PIX dinâmico: aguarda o pagamento; só cadastra depois de confirmar --}}
-  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="cancelarPix()">
+  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center">
       <div class="font-bold text-lg">💠 PIX dinâmico</div>
       <div class="text-xs text-slate-500 mb-3">Mostre o QR pro cliente pagar. A tela confirma sozinha e só então cadastra.</div>
@@ -233,7 +233,16 @@
         this.salvando=true;
         window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
       },
-      cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
+      cancelarPix(){
+        if(!confirm('Cancelar esta cobrança? Se o cliente já pagou, a venda será registrada normalmente.')) return;
+        if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false;
+        const id=this.pixCobId;
+        if(!id){ this.pixModal=false; return; }
+        fetch('/cobranca/'+id+'/cancelar',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
+          if(d && d.pago){ this.finalizarPix(d); return; }
+          this.pixModal=false; this.pixCobId=null;
+        }).catch(()=>{ this.pixModal=false; this.pixCobId=null; });
+      },
       copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
       imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
       async salvar(ev){

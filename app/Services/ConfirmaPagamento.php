@@ -54,6 +54,7 @@ class ConfirmaPagamento
     /** Marca paga + baixa + aviso. Retorna true se confirmou agora (não estava paga). */
     public function aplicar(Cobranca $cob): bool
     {
+        if ($cob->status === 'cancelado') return false; // operador cancelou a cobrança
         if ($cob->status === 'pago' && ! ($cob->payload && ! $cob->referencia_id)) return false;
         $cob->forceFill(['status' => 'pago', 'pago_em' => $cob->pago_em ?: now()])->save();
         Tenant::set($cob->empresa_id);
@@ -99,7 +100,7 @@ class ConfirmaPagamento
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($cob) {
             $c = Cobranca::withoutGlobalScopes()->whereKey($cob->id)->lockForUpdate()->first();
-            if (! $c || $c->referencia_id || ! $c->payload) return; // outra via (webhook/poll) já criou
+            if (! $c || $c->referencia_id || ! $c->payload || $c->status === 'cancelado') return; // já criou ou foi cancelada
 
             Tenant::set($c->empresa_id);
             $op = $c->user_id ? \App\Models\User::withoutGlobalScopes()->find($c->user_id) : null;

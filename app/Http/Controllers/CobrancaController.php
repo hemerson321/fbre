@@ -140,6 +140,45 @@ class CobrancaController extends Controller
         return response()->json($resp);
     }
 
+    /**
+     * O operador fechou/cancelou a telinha do PIX. Se o cliente JÁ pagou, honra o
+     * pagamento (cria o pedido e devolve a URL). Se não pagou, cancela a cobrança
+     * para que nem o webhook nem o verificador criem o pedido depois.
+     */
+    public function cancelar(Cobranca $cobranca, MercadoPago $mp, \App\Services\ConfirmaPagamento $confirma)
+    {
+        abort_unless($cobranca->empresa_id === Tenant::id(), 404);
+
+        // confere no MP uma última vez (pode ter pago entre o clique e agora)
+        if ($cobranca->status !== 'pago' && $cobranca->provider_payment_id && $cobranca->api) {
+            try {
+                $st = $mp->consultar($cobranca->api, (string) $cobranca->provider_payment_id, 8);
+                if (($st['ok'] ?? false) && ($st['pago'] ?? false)) $confirma->aplicar($cobranca);
+            } catch (\Throwable $e) {}
+        } elseif ($cobranca->status === 'pago' && ! $cobranca->referencia_id && $cobranca->payload) {
+            try { $confirma->criarPedidoDoPayload($cobranca); } catch (\Throwable $e) {}
+        }
+
+        $cobranca->refresh();
+        if ($cobranca->status === 'pago') {
+            // pagou: NÃO cancela — registra a venda e manda a tela redirecionar
+            $resp = ['pago' => true, 'cancelado' => false, 'imprimir' => $cobranca->imprimir, 'erro' => $cobranca->erro];
+            if ($cobranca->referencia_id) {
+                $resp['id'] = (int) $cobranca->referencia_id;
+                $resp['url'] = match ($cobranca->referencia_tipo) {
+                    Passagem::class => route('passagens.show', $cobranca->referencia_id),
+                    \App\Models\Frete::class => route('fretes.show', $cobranca->referencia_id),
+                    default => route('encomendas.show', $cobranca->referencia_id),
+                };
+            }
+            return response()->json($resp);
+        }
+
+        // não pago: cancela a cobrança (impede criação futura pelo webhook/verificador)
+        if ($cobranca->status === 'pendente') $cobranca->forceFill(['status' => 'cancelado'])->save();
+        return response()->json(['pago' => false, 'cancelado' => true]);
+    }
+
     public function pixEncomenda(Encomenda $encomenda, MercadoPago $mp)
     {
         abort_unless($encomenda->empresa_id === Tenant::id(), 404);
