@@ -13,7 +13,25 @@
     <div class="flex justify-between"><span class="text-slate-500">Destinatário</span><b>{{ $f->destinatario_nome }}</b></div>
     <div class="flex justify-between"><span class="text-slate-500">Volumes / Peso</span><b>{{ $f->volumes }} vol · {{ $f->peso ? number_format($f->peso,0,',','.').' kg' : '—' }}</b></div>
     <div class="flex justify-between"><span class="text-slate-500">Operador</span><b>{{ $f->operador?->name }}</b></div>
+    <div class="flex justify-between"><span class="text-slate-500">Quem paga</span><b>{{ $f->quem_paga==='remetente' ? 'Remetente' : 'Destinatário' }} · {{ $f->pagadorNome() }}</b></div>
+    @if($f->nome_responsavel)<div class="flex justify-between"><span class="text-slate-500">Responsável</span><b>{{ $f->nome_responsavel }}</b></div>@endif
+    @if($f->nf_numero || $f->nf_chave)<div class="flex justify-between"><span class="text-slate-500">Nota fiscal</span><b>{{ $f->nf_numero ? 'Nº '.$f->nf_numero : '' }}@if($f->nf_chave)<span class="block text-[10px] font-normal text-slate-400 break-all">{{ $f->nf_chave }}</span>@endif</b></div>@endif
   </div>
+
+  @if($f->veiculos->count())
+  <div class="card p-4">
+    <div class="font-semibold mb-2">🚗 Veículos ({{ $f->veiculos->count() }})</div>
+    <div class="space-y-2">
+      @foreach($f->veiculos as $v)
+        <div class="text-sm bg-slate-50 rounded-lg p-2">
+          <b>{{ $v->placa ?: 'Sem placa' }}</b> · {{ $v->modelo ?: '—' }}{{ $v->cor ? ' · '.$v->cor : '' }}
+          @if($v->documento)<div class="text-xs text-slate-500">Doc: {{ $v->documento }}</div>@endif
+          @if($v->obs)<div class="text-xs text-slate-400">{{ $v->obs }}</div>@endif
+        </div>
+      @endforeach
+    </div>
+  </div>
+  @endif
   <div class="card p-4"><div class="font-semibold mb-1">Carga</div><div class="text-sm text-slate-600">{{ $f->descricao }}</div>
     <div class="border-t mt-2 pt-2 space-y-1 text-sm">
       <div class="flex justify-between text-lg font-bold" style="color:{{ $cor }}"><span>Total</span><span>R$ {{ number_format($f->total,2,',','.') }}</span></div>

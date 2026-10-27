@@ -20,11 +20,24 @@ class Frete extends Model
         'data_viagem' => 'date', 'entregue_em' => 'datetime', 'criada_no_aparelho_em' => 'datetime',
         'peso' => 'decimal:2', 'preco_kilo' => 'decimal:2', 'subtotal' => 'decimal:2',
         'desconto' => 'decimal:2', 'total' => 'decimal:2', 'pago' => 'decimal:2', 'devido' => 'decimal:2',
+        'nf_dados' => 'array',
     ];
 
     public const FORMAS = ['avista' => 'À vista', 'areceber' => 'A receber', 'faturado' => 'Faturado'];
     public const MODULO = 'frete';
 
+    /** Quem é o responsável pelo pagamento (padrão: destinatário — geralmente a loja que recebe). */
+    public function pagadorNome(): string
+    {
+        return ($this->quem_paga === 'remetente' ? $this->remetente_nome : $this->destinatario_nome) ?: '—';
+    }
+
+    public function pagadorTelefone(): ?string
+    {
+        return $this->quem_paga === 'remetente' ? $this->remetente_telefone : $this->destinatario_telefone;
+    }
+
+    public function veiculos(): HasMany { return $this->hasMany(FreteVeiculo::class); }
     public function pagamentos(): HasMany { return $this->hasMany(Pagamento::class, 'origem_id')->where('modulo', self::MODULO)->where('estornado', false); }
     public function embarcacao(): BelongsTo { return $this->belongsTo(Embarcacao::class); }
     public function viagem(): BelongsTo { return $this->belongsTo(Viagem::class); }

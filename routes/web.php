@@ -136,6 +136,7 @@ Route::middleware('auth')->group(function () {
     // ---------- FRETE ----------
     Route::get('/fretes', [\App\Http\Controllers\FreteController::class, 'index'])->name('fretes.index')->middleware('perm:frete.ver');
     Route::get('/fretes/novo', [\App\Http\Controllers\FreteController::class, 'create'])->name('fretes.create')->middleware('perm:frete');
+    Route::get('/frete/consultar-nf', [\App\Http\Controllers\FreteController::class, 'consultarNf'])->name('fretes.consultar-nf')->middleware('perm:frete');
     Route::post('/fretes', [\App\Http\Controllers\FreteController::class, 'store'])->name('fretes.store')->middleware('perm:frete');
     Route::get('/fretes/{frete}', [\App\Http\Controllers\FreteController::class, 'show'])->name('fretes.show')->middleware('perm:frete.ver');
     Route::post('/fretes/{frete}/pagar', [\App\Http\Controllers\FreteController::class, 'pagar'])->name('fretes.pagar')->middleware('perm:frete.baixa');

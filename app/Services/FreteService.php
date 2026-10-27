@@ -48,8 +48,21 @@ class FreteService
                 'preco_kilo' => $data['preco_kilo'] ?? 0, 'subtotal' => $subtotal,
                 'forma' => $data['forma'] ?? 'avista', 'setor' => $data['setor'] ?? null, 'observacao' => $data['observacao'] ?? null,
                 'desconto' => $data['desconto'] ?? 0, 'user_id' => $userId, 'origem_offline' => $offline,
+                'quem_paga' => ($data['quem_paga'] ?? null) === 'remetente' ? 'remetente' : 'destinatario',
+                'nome_responsavel' => $data['nome_responsavel'] ?? null,
+                'nf_chave' => $data['nf_chave'] ?? null, 'nf_numero' => $data['nf_numero'] ?? null,
+                'nf_dados' => $data['nf_dados'] ?? null,
                 'criada_no_aparelho_em' => ! empty($data['criada_em']) ? \Carbon\Carbon::parse($data['criada_em'])->setTimezone(config('app.timezone')) : null,
             ]);
+
+            foreach (($data['veiculos'] ?? []) as $v) {
+                if (empty($v['placa']) && empty($v['modelo']) && empty($v['documento'])) continue;
+                $f->veiculos()->create([
+                    'empresa_id' => $empresa->id,
+                    'placa' => $v['placa'] ?? null, 'modelo' => $v['modelo'] ?? null, 'cor' => $v['cor'] ?? null,
+                    'documento' => $v['documento'] ?? null, 'obs' => $v['obs'] ?? null,
+                ]);
+            }
 
             foreach ($data['pagamentos'] ?? [] as $p) {
                 if ((float) $p['valor'] <= 0) continue;

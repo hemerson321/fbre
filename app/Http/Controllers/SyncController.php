@@ -190,6 +190,10 @@ class SyncController extends Controller
             'destinatario_nome' => 'required|string|max:120', 'destinatario_telefone' => 'nullable|string|max:30', 'destinatario_documento' => 'nullable|string|max:20',
             'descricao' => 'required|string|max:200', 'peso' => 'nullable|numeric|min:0', 'volumes' => 'required|integer|min:1|max:9999', 'preco_kilo' => 'nullable|numeric|min:0',
             'subtotal' => 'required|numeric|min:0', 'forma' => 'required|in:avista,areceber,faturado', 'setor' => 'nullable|string|max:60', 'observacao' => 'nullable|string|max:1000', 'desconto' => 'nullable|numeric|min:0',
+            'quem_paga' => 'nullable|in:destinatario,remetente', 'nome_responsavel' => 'nullable|string|max:120',
+            'nf_chave' => 'nullable|string|max:60', 'nf_numero' => 'nullable|string|max:30', 'nf_dados' => 'nullable|array',
+            'veiculos' => 'nullable|array', 'veiculos.*.placa' => 'nullable|string|max:12', 'veiculos.*.modelo' => 'nullable|string|max:60',
+            'veiculos.*.cor' => 'nullable|string|max:30', 'veiculos.*.documento' => 'nullable|string|max:40', 'veiculos.*.obs' => 'nullable|string|max:200',
             'pagamentos' => 'nullable|array', 'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito', 'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
         ]);
         try {

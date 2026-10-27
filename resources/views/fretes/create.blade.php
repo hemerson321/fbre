@@ -96,6 +96,47 @@
       </div>
       <p class="text-[11px] text-slate-400" x-show="peso>0 && precoKilo>0 && !valorManual" x-cloak>Calculado: <span x-text="peso"></span> kg × <span x-text="FBRE.moeda(precoKilo)"></span> = <b x-text="FBRE.moeda(peso*precoKilo)"></b></p>
       <input class="field" placeholder="Observação (opcional)" x-model="observacao">
+
+      {{-- quem paga + responsável --}}
+      <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 mt-1">
+        <div><label class="lbl">Quem paga o frete</label>
+          <select class="field" x-model="quemPaga"><option value="destinatario">Destinatário (recebe)</option><option value="remetente">Remetente (envia)</option></select>
+        </div>
+        <div><label class="lbl">Responsável (opcional)</label><input class="field" x-model="nomeResponsavel" placeholder="Nome de quem responde"></div>
+      </div>
+
+      {{-- nota fiscal (opcional) --}}
+      <div class="rounded-xl border border-slate-200 p-2 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase text-slate-500">Nota fiscal (opcional)</span>
+          <button type="button" class="text-[11px] font-semibold" style="color:var(--cor1)" @click="consultarNf()" x-show="(nfChave||'').replace(/\D/g,'').length===44" :disabled="nfBuscando" x-text="nfBuscando ? 'Consultando…' : '🔎 Buscar dados'"></button>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <input class="field col-span-2" x-model="nfChave" placeholder="Chave da NF-e (44 dígitos)" inputmode="numeric">
+          <input class="field" x-model="nfNumero" placeholder="Nº NF">
+        </div>
+        <p class="text-[11px] text-emerald-600" x-show="nfOk" x-cloak>✓ Dados da NF carregados.</p>
+        <p class="text-[11px] text-red-500" x-show="nfErro" x-cloak x-text="nfErro"></p>
+      </div>
+
+      {{-- veículos (0+, ex.: carro embarcado) --}}
+      <div class="rounded-xl border border-slate-200 p-2 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase text-slate-500">Veículos (opcional)</span>
+          <button type="button" class="text-[11px] font-semibold" style="color:var(--cor1)" @click="addVeiculo()">+ veículo</button>
+        </div>
+        <template x-for="(v,i) in veiculos" :key="i">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 items-start bg-slate-50 rounded-lg p-2">
+            <input class="field !min-h-0 py-1 text-sm uppercase" x-model="v.placa" placeholder="Placa" style="text-transform:uppercase">
+            <input class="field !min-h-0 py-1 text-sm" x-model="v.modelo" placeholder="Modelo">
+            <input class="field !min-h-0 py-1 text-sm" x-model="v.cor" placeholder="Cor">
+            <input class="field !min-h-0 py-1 text-sm" x-model="v.documento" placeholder="Doc (RENAVAM/chassi)">
+            <input class="field !min-h-0 py-1 text-sm col-span-2 sm:col-span-3" x-model="v.obs" placeholder="Obs (opcional)">
+            <button type="button" class="text-red-500 text-sm font-bold" @click="veiculos.splice(i,1)">✕ remover</button>
+          </div>
+        </template>
+        <p class="text-[11px] text-slate-400" x-show="!veiculos.length">Nenhum veículo. Use “+ veículo” se for transporte de carro.</p>
+      </div>
     </div>
   </section>
 
@@ -165,6 +206,7 @@
       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'', embarcacaoSel:@js((string) old('embarcacao_id', $embarcacaoPrincipal)),
       descricao:'', peso:null, volumes:1, precoKilo:@js((float)($precoKiloPadrao ?? 0)), valor:0, valorManual:false,
       observacao:'', desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
+      quemPaga:'destinatario', nomeResponsavel:'', nfChave:'', nfNumero:'', nfDados:null, nfBuscando:false, nfOk:false, nfErro:'', veiculos:[],
       meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
       pixManual:@js(auth()->user()->podePixManual()), pixDinamico:@js(auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('frete')),
       pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
@@ -203,7 +245,24 @@
           destinatario_nome:this.dest.nome, destinatario_telefone:this.dest.telefone||null, destinatario_documento:this.dest.documento||null,
           descricao:this.descricao, peso:Number(this.peso)||null, volumes:Number(this.volumes)||1, preco_kilo:Number(this.precoKilo)||0, subtotal:Number(this.valor)||0,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
+          quem_paga:this.quemPaga, nome_responsavel:this.nomeResponsavel||null,
+          nf_chave:(this.nfChave||'').replace(/\D/g,'')||null, nf_numero:this.nfNumero||null, nf_dados:this.nfDados,
+          veiculos:this.veiculos.filter(v=>v.placa||v.modelo||v.documento).map(v=>({placa:(v.placa||'').toUpperCase()||null,modelo:v.modelo||null,cor:v.cor||null,documento:v.documento||null,obs:v.obs||null})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k,valor:Number(this.pag[m.k])})) };
+      },
+      addVeiculo(){ this.veiculos.push({placa:'',modelo:'',cor:'',documento:'',obs:''}); },
+      consultarNf(){
+        const chave=(this.nfChave||'').replace(/\D/g,''); if(chave.length!==44){ this.nfErro='Chave precisa ter 44 dígitos.'; return; }
+        this.nfBuscando=true; this.nfErro=''; this.nfOk=false;
+        fetch('/frete/consultar-nf?chave='+chave,{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
+          if(!d.ok){ this.nfErro=d.erro||'Não consegui consultar a NF.'; return; }
+          const nf=d.nf||{};
+          if(nf.numero) this.nfNumero=nf.numero;
+          if(nf.remetente && !this.rem.nome && window._fretePessoas){ this.rem.nome=nf.remetente.nome||''; this.rem.documento=nf.remetente.documento||''; }
+          if(nf.destinatario && !this.dest.nome && window._fretePessoas){ this.dest.nome=nf.destinatario.nome||''; this.dest.documento=nf.destinatario.documento||''; }
+          if(nf.descricao && !this.descricao) this.descricao=nf.descricao;
+          this.nfDados=nf; this.nfOk=true;
+        }).catch(()=>{ this.nfErro='Falha de conexão ao consultar a NF.'; }).finally(()=>{ this.nfBuscando=false; });
       },
       gerarPixDinamico(){
         if(this.pixPagando) return;

@@ -45,6 +45,46 @@ class FreteController extends Controller
         return $f;
     }
 
+    /**
+     * Consulta uma NF-e pela chave (44 díg.) e devolve remetente/destinatário/itens
+     * para preencher o frete. Usa a API da meudanfe quando o token estiver configurado.
+     */
+    public function consultarNf(Request $request)
+    {
+        $chave = preg_replace('/\D/', '', (string) $request->query('chave', ''));
+        if (strlen($chave) !== 44) {
+            return response()->json(['ok' => false, 'erro' => 'Chave da NF-e inválida (precisa de 44 dígitos).']);
+        }
+
+        $token = config('services.meudanfe.token') ?: (Tenant::empresa()?->config('meudanfe_token'));
+        if (! $token) {
+            return response()->json(['ok' => false, 'erro' => 'Consulta de NF ainda não configurada (token meudanfe). Preencha a chave/número manualmente por enquanto.']);
+        }
+
+        // Integração meudanfe — finalizada quando o formato do endpoint/token for confirmado.
+        try {
+            $resp = \Illuminate\Support\Facades\Http::timeout(15)
+                ->withToken($token)
+                ->acceptJson()
+                ->get('https://ws.meudanfe.com/api/v1/get/nfe/data/'.$chave);
+            if (! $resp->ok()) {
+                return response()->json(['ok' => false, 'erro' => 'NF não encontrada ou serviço indisponível ('.$resp->status().').']);
+            }
+            $j = $resp->json();
+            $nf = [
+                'numero'       => data_get($j, 'nNF') ?? data_get($j, 'numero'),
+                'remetente'    => ['nome' => data_get($j, 'emit.xNome'), 'documento' => data_get($j, 'emit.CNPJ') ?? data_get($j, 'emit.CPF')],
+                'destinatario' => ['nome' => data_get($j, 'dest.xNome'), 'documento' => data_get($j, 'dest.CNPJ') ?? data_get($j, 'dest.CPF')],
+                'descricao'    => collect(data_get($j, 'det', []))->map(fn ($d) => data_get($d, 'prod.xProd'))->filter()->take(5)->implode(', '),
+                'bruto'        => $j,
+            ];
+            return response()->json(['ok' => true, 'nf' => $nf]);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json(['ok' => false, 'erro' => 'Falha ao consultar a NF.']);
+        }
+    }
+
     public function create()
     {
         $u = auth()->user();
