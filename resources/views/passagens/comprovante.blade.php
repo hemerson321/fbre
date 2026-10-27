@@ -30,7 +30,7 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.q
       @if($p->embarcacao)<tr><td class="b">BARCO</td><td class="r">{{ $p->embarcacao->nome }}</td></tr>@endif
     </table><hr>
     <div class="c"><div class="qrp" data-url="{{ route('checkin',$p) }}"></div><div class="sm b">CHECK-IN</div><div class="sm">Apresente no embarque</div></div>
-    <div class="c sm">Camarote total R$ {{ number_format($p->total,2,',','.') }} · {{ $p->devido>0.009 ? 'DEVE R$ '.number_format($p->devido,2,',','.') : 'PAGO' }}</div>
+    <div class="c sm">Camarote total R$ {{ number_format((float) $p->total,2,',','.') }} · {{ $p->devido>0.009 ? 'DEVE R$ '.number_format((float) $p->devido,2,',','.') : 'PAGO' }}</div>
     <br>
   </div>
   @endforeach
@@ -50,16 +50,16 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.q
     <div class="b">PASSAGEIROS</div>
     <table>
       @foreach($p->passageiros as $pax)
-      <tr><td>{{ $pax->nome }}<div class="sm">{{ $pax->papel ? ucfirst($pax->papel) : $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div>@if($pax->valor_integral > $pax->valor_total + 0.009)<div class="sm">Preço normal {{ number_format($pax->valor_integral,2,',','.') }} · Pago {{ number_format($pax->valor_total,2,',','.') }}</div>@endif<div class="sm">Transp. {{ number_format($pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. {{ number_format($pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div></td><td class="r b">{{ number_format($pax->valor_total,2,',','.') }}</td></tr>
+      <tr><td>{{ $pax->nome }}<div class="sm">{{ $pax->papel ? ucfirst($pax->papel) : $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div>@if($pax->valor_integral > $pax->valor_total + 0.009)<div class="sm">Preço normal {{ number_format((float) $pax->valor_integral,2,',','.') }} · Pago {{ number_format((float) $pax->valor_total,2,',','.') }}</div>@endif<div class="sm">Transp. {{ number_format((float) $pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. {{ number_format((float) $pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div></td><td class="r b">{{ number_format((float) $pax->valor_total,2,',','.') }}</td></tr>
       @endforeach
     </table><hr>
     <table>
-      <tr><td>Tarifa de Transporte</td><td class="r">R$ {{ number_format($p->subtotal,2,',','.') }}</td></tr>
-      <tr><td>Alimentação + Adicional</td><td class="r">R$ {{ number_format($p->alimentacao_total + $p->taxa_total,2,',','.') }}</td></tr>
-      @if($p->desconto>0)<tr><td>Desconto</td><td class="r">-{{ number_format($p->desconto,2,',','.') }}</td></tr>@endif
-      <tr class="lg"><td class="b">TOTAL</td><td class="r b">R$ {{ number_format($p->total,2,',','.') }}</td></tr>
-      <tr><td>Pago</td><td class="r">R$ {{ number_format($p->pago,2,',','.') }}</td></tr>
-      <tr><td class="b">DEVIDO</td><td class="r b">R$ {{ number_format($p->devido,2,',','.') }}</td></tr>
+      <tr><td>Tarifa de Transporte</td><td class="r">R$ {{ number_format((float) $p->subtotal,2,',','.') }}</td></tr>
+      <tr><td>Alimentação + Adicional</td><td class="r">R$ {{ number_format((float) $p->alimentacao_total + $p->taxa_total,2,',','.') }}</td></tr>
+      @if($p->desconto>0)<tr><td>Desconto</td><td class="r">-{{ number_format((float) $p->desconto,2,',','.') }}</td></tr>@endif
+      <tr class="lg"><td class="b">TOTAL</td><td class="r b">R$ {{ number_format((float) $p->total,2,',','.') }}</td></tr>
+      <tr><td>Pago</td><td class="r">R$ {{ number_format((float) $p->pago,2,',','.') }}</td></tr>
+      <tr><td class="b">DEVIDO</td><td class="r b">R$ {{ number_format((float) $p->devido,2,',','.') }}</td></tr>
     </table>
     @if($e?->rodape_comprovante)<hr><div class="c sm">{{ $e->rodape_comprovante }}</div>@endif
     <hr><div class="c"><div class="qrp" data-url="{{ route('checkin',$p) }}"></div><div class="sm b">CHECK-IN</div><div class="sm">Apresente no embarque</div></div><br>
