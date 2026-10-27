@@ -489,8 +489,10 @@ class PassagemController extends Controller
         $u = auth()->user();
         [$inicio, $fim, $periodo] = \App\Http\Controllers\CaixaController::periodo($request);
 
+        $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
         $vendas = Passagem::where('user_id', $u->id)->where('cancelada', false)
             ->whereBetween('created_at', [$inicio, $fim])
+            ->when($canal, fn ($q) => $q->whereHas('pagamentos', fn ($w) => $w->canal($canal)))
             ->with(['passageiros:id,passagem_id', 'embarcacao:id,nome'])
             ->orderByDesc('id')->get();
 
@@ -520,7 +522,7 @@ class PassagemController extends Controller
             ];
         }
 
-        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo'));
+        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal'));
     }
 
     /** Tela de check-in (hub): escaneia o QR do bilhete ou busca pelo numero. */

@@ -43,6 +43,17 @@ class Pagamento extends Model
         return (string) $this->meio;
     }
 
+    /** Filtra por canal (forma de pagamento), dividindo o PIX em manual/automático. */
+    public function scopeCanal($q, ?string $canal)
+    {
+        return match ($canal) {
+            'pix_manual' => $q->where('meio', 'pix')->where(fn ($w) => $w->where('pix_auto', false)->orWhereNull('pix_auto')),
+            'pix_auto'   => $q->where('meio', 'pix')->where('pix_auto', true),
+            'dinheiro', 'debito', 'credito' => $q->where('meio', $canal),
+            default      => $q,
+        };
+    }
+
     public function encomenda(): BelongsTo { return $this->belongsTo(Encomenda::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
 

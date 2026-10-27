@@ -19,7 +19,10 @@ class RelatorioController extends Controller
         $cadastros = Encomenda::when(! $todos, fn ($q) => $q->where('user_id', $uid))
             ->whereBetween('created_at', [$inicio, $fim])->with('embarcacao')->orderByDesc('id')->get();
 
+        $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
+
         $recebimentos = Pagamento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('estornado', false)
+            ->when($canal, fn ($q) => $q->canal($canal))
             ->whereBetween('created_at', [$inicio, $fim])->with('encomenda')->orderByDesc('id')->get();
 
         $entregas = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')
@@ -28,7 +31,7 @@ class RelatorioController extends Controller
         $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('canal')->map->sum('valor');
         $modo = $request->input('modo') === 'resumido' ? 'resumido' : 'analitico';
 
-        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos', 'modo'))
+        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal'))
             ->with(['meios' => Pagamento::CANAIS]);
     }
 }

@@ -11,7 +11,12 @@
     <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>
   </div></div>
 
-<x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim" />
+<x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
+  <input type="hidden" name="modo" value="{{ $modo }}">
+  <div><label class="label">Forma</label>
+    <select name="canal" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as formas</option>
+      @foreach(\App\Models\Pagamento::CANAIS as $ck=>$cv)<option value="{{ $ck }}" @selected(($canal ?? '')===$ck)>{{ $cv }}</option>@endforeach</select></div>
+</x-periodo>
 
 <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
   <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Cadastrei</div><div class="text-xl font-extrabold">{{ $cadastros->count() }}</div><div class="text-xs text-slate-400">R$ {{ number_format($cadastros->sum('total'),2,',','.') }}</div></div>
