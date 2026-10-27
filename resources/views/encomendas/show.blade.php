@@ -53,7 +53,7 @@
     <h2 class="font-bold text-sm text-slate-500 uppercase pt-2">Destinatário</h2>
     <div><b>{{ $e->destinatario_nome }}</b><div class="text-sm text-slate-500">{{ $e->destinatario_telefone }} {{ $e->destinatario_documento }}</div></div>
     @if($e->observacao)<div class="text-sm bg-amber-50 border border-amber-200 rounded-lg p-2">{{ $e->observacao }}</div>@endif
-    @if($e->entregue)<div class="text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-2">Entregue em {{ $e->entregue_em->format('d/m/Y H:i') }} por {{ $e->entreguePor?->name }}@if($e->entregue_para) para <b>{{ $e->entregue_para }}</b>@endif</div>@endif
+    @if($e->entregue)<div class="text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-2">Entregue em {{ $e->entregue_em->format('d/m/Y H:i') }} por {{ $e->entreguePor?->name }}@if($e->entregue_para) para <b>{{ $e->entregue_para }}</b>@endif@if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
   </div>
 
   <div class="card p-4 space-y-3">
@@ -96,7 +96,10 @@
     </div>
     <div class="text-sm flex justify-between"><span>Restará:</span><b x-text="FBRE.moeda(Math.max(devido-d-p-de-c-ds,0))"></b></div>
     @if(!$e->entregue)
-      <input name="entregue_para" class="input" placeholder="Quem retirou (opcional)">
+      <div class="grid grid-cols-2 gap-2">
+        <input name="entregue_para" class="input" placeholder="Quem retirou (opcional)">
+        <input name="entregue_documento" class="input" placeholder="CPF de quem retirou" inputmode="numeric">
+      </div>
       <p class="text-xs text-emerald-600">Ao quitar o valor, a entrega é dada automaticamente. ✓</p>
     @endif
     <div class="flex gap-2 pt-1">
@@ -113,6 +116,7 @@
     <h3 class="text-lg font-bold">Baixa na entrega</h3>
     @if($e->devido>0 && $e->forma==='faturado')<div class="text-sm bg-amber-50 border border-amber-200 rounded-lg p-2">Faturado: será entregue agora e cobrado na fatura (<b>R$ {{ number_format($e->devido,2,',','.') }}</b> em aberto).</div>@endif
     <div><label class="label">Quem retirou</label><input name="entregue_para" class="input" placeholder="Nome de quem recebeu" autofocus></div>
+    <div><label class="label">CPF de quem retirou</label><input name="entregue_documento" class="input" placeholder="CPF" inputmode="numeric"></div>
     <div class="flex gap-2 pt-1">
       <button type="button" class="btn btn-ghost flex-1" @click="modal=null">Cancelar</button>
       <button class="btn btn-primary flex-1">Confirmar entrega</button>
@@ -144,7 +148,7 @@ async function baixaOffline(ev, pagamento){
   if (navigator.onLine) return; // online: formulário normal
   ev.preventDefault();
   const fd = new FormData(ev.target); const d = { encomenda_id: {{ $e->id }} };
-  ['dinheiro','pix','debito','credito','desconto','entregue_para'].forEach(k => { if (fd.get(k)) d[k] = fd.get(k); });
+  ['dinheiro','pix','debito','credito','desconto','entregue_para','entregue_documento'].forEach(k => { if (fd.get(k)) d[k] = fd.get(k); });
   if (!pagamento || fd.get('entregar')) { d.entregar = true; d.entregue_em = new Date().toISOString(); }
   await FBREOffline.salvarBaixa(d);
   alert('Sem conexão: baixa guardada neste aparelho e será enviada quando a internet voltar.');

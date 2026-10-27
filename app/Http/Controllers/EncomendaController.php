@@ -252,6 +252,7 @@ class EncomendaController extends Controller
             'desconto' => 'nullable|numeric|min:0',
             'entregar' => 'nullable|boolean',
             'entregue_para' => 'nullable|string|max:120',
+            'entregue_documento' => 'nullable|string|max:20',
             'uuid' => 'nullable|uuid',
         ]);
 
@@ -273,7 +274,7 @@ class EncomendaController extends Controller
     {
         abort_if($encomenda->cancelada, 422, 'Encomenda cancelada.');
         abort_if($encomenda->devido > 0.009 && $encomenda->forma !== 'faturado', 422, 'Registre o pagamento antes de dar baixa na entrega.');
-        $data = $request->validate(['entregue_para' => 'nullable|string|max:120', 'uuid' => 'nullable|uuid']);
+        $data = $request->validate(['entregue_para' => 'nullable|string|max:120', 'entregue_documento' => 'nullable|string|max:20', 'uuid' => 'nullable|uuid']);
 
         app(\App\Services\EncomendaService::class)->baixa($encomenda, $data + ['entregar' => true], auth()->id(), $request->input('uuid'));
 

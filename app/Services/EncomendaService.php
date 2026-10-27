@@ -150,7 +150,7 @@ class EncomendaService
             $podeEntregar = $enc->devido <= 0.009 || $enc->forma === 'faturado';
             $quitouAgora = $soma > 0 && $enc->devido <= 0.009;
             if ((! empty($data['entregar']) || $quitouAgora) && ! $enc->entregue && $podeEntregar) {
-                $enc->forceFill(['entregue' => true, 'entregue_em' => ! empty($data['entregue_em']) ? \Carbon\Carbon::parse($data['entregue_em'])->setTimezone(config('app.timezone')) : now(), 'entregue_por' => $userId, 'entregue_para' => $data['entregue_para'] ?? null])->save();
+                $enc->forceFill(['entregue' => true, 'entregue_em' => ! empty($data['entregue_em']) ? \Carbon\Carbon::parse($data['entregue_em'])->setTimezone(config('app.timezone')) : now(), 'entregue_por' => $userId, 'entregue_para' => $data['entregue_para'] ?? null, 'entregue_documento' => $data['entregue_documento'] ?? null])->save();
                 Evento::create(['uuid' => $uuid, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'entrega', 'dados' => ['para' => $data['entregue_para'] ?? null]]);
             } elseif ($uuid) {
                 Evento::where('uuid', $uuid)->exists() || Evento::create(['uuid' => $uuid, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'sync', 'dados' => []]);

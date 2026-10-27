@@ -218,7 +218,7 @@ class SyncController extends Controller
             'encomenda_id' => 'nullable|integer',
             'dinheiro' => 'nullable|numeric|min:0', 'pix' => 'nullable|numeric|min:0',
             'debito' => 'nullable|numeric|min:0', 'credito' => 'nullable|numeric|min:0', 'desconto' => 'nullable|numeric|min:0',
-            'entregar' => 'nullable|boolean', 'entregue_para' => 'nullable|string|max:120', 'entregue_em' => 'nullable|date',
+            'entregar' => 'nullable|boolean', 'entregue_para' => 'nullable|string|max:120', 'entregue_documento' => 'nullable|string|max:20', 'entregue_em' => 'nullable|date',
         ]);
 
         $enc = $data['encomenda_uuid'] ? Encomenda::where('uuid', $data['encomenda_uuid'])->first() : Encomenda::find($data['encomenda_id'] ?? 0);
