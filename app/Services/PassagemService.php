@@ -56,7 +56,7 @@ class PassagemService
                 'data_viagem' => $data['data_viagem'] ?? null,
                 'origem' => $data['origem'],
                 'destino' => $data['destino'],
-                'tipo' => $data['tipo'] ?? 'comum',
+                'tipo' => in_array($data['tipo'] ?? null, ['poltrona', 'rede', 'camarote'], true) ? $data['tipo'] : 'rede',
                 'camarote_id' => ($data['camarote_id'] ?? null) ?: null,
                 'comprador_nome' => $data['comprador_nome'] ?? null,
                 'comprador_telefone' => $data['comprador_telefone'] ?? null,

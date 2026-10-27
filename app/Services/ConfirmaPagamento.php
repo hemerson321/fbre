@@ -48,6 +48,19 @@ class ConfirmaPagamento
                     }
                 }
             });
+
+        // recuperação: cobranças PAGAS cujo pedido ainda não foi criado (falha transitória) — tenta de novo
+        Cobranca::withoutGlobalScopes()
+            ->where('status', 'pago')->whereNull('referencia_id')->whereNotNull('payload')
+            ->where('created_at', '>=', now()->subHours($horas))
+            ->chunkById(100, function ($lote) use (&$n) {
+                foreach ($lote as $cob) {
+                    Tenant::set($cob->empresa_id);
+                    try { $this->criarPedidoDoPayload($cob); if ($cob->fresh()->referencia_id) $n++; }
+                    catch (\Throwable $e) { Log::warning('recuperar cobranca paga '.$cob->id.': '.$e->getMessage()); }
+                }
+            });
+
         return $n;
     }
 
