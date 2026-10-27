@@ -169,11 +169,10 @@
               <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
               <div class="flex items-center gap-3">
                 <button type="button" class="text-[12px] font-semibold flex items-center gap-1" style="color:var(--cor1)" @click="abrirCam(i)">📷 Foto</button>
-                <button type="button" class="text-[11px] text-slate-500 underline" @click="p._mais=!p._mais" x-text="p._mais?'menos dados':'mais dados'"></button>
               </div>
             </div>
-            {{-- linha 5: dados extras --}}
-            <div x-show="p._mais" x-cloak class="grid grid-cols-2 gap-2 mt-1.5">
+            {{-- linha 5: dados extras (sempre visíveis) --}}
+            <div class="grid grid-cols-2 gap-2 mt-1.5">
               <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm w-full" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
               <div><label class="lbl">Nascimento</label><input type="date" class="field !min-h-0 py-1 text-sm w-full" x-model="p.nascimento" @change="aplicarIdade(p)"></div>
               <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" inputmode="tel" placeholder="(00) 00000-0000"></div>
