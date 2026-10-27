@@ -26,8 +26,9 @@ class RelatorioController extends Controller
             ->whereBetween('created_at', [$inicio, $fim])->with('encomenda')->orderByDesc('id')->get();
 
         $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('canal')->map->sum('valor');
+        $modo = $request->input('modo') === 'resumido' ? 'resumido' : 'analitico';
 
-        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos'))
+        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos', 'modo'))
             ->with(['meios' => Pagamento::CANAIS]);
     }
 }

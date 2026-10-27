@@ -2,8 +2,14 @@
 @section('titulo','Meu relatório')
 @section('conteudo')
 <div class="space-y-4">
-<div class="flex items-center justify-between"><h1 class="text-xl font-bold">Meu relatório <span class="text-slate-400 font-normal text-base">· {{ auth()->user()->name }}</span></h1>
-  <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Imprimir</button></div>
+<div class="flex items-center justify-between flex-wrap gap-2"><h1 class="text-xl font-bold">Meu relatório <span class="text-slate-400 font-normal text-base">· {{ auth()->user()->name }}</span></h1>
+  <div class="flex items-center gap-2 no-print">
+    <div class="inline-flex rounded-xl border overflow-hidden text-sm">
+      <a href="{{ request()->fullUrlWithQuery(['modo'=>'resumido']) }}" class="px-3 py-1.5 font-semibold {{ $modo==='resumido' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Resumido</a>
+      <a href="{{ request()->fullUrlWithQuery(['modo'=>'analitico']) }}" class="px-3 py-1.5 font-semibold {{ $modo==='analitico' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Analítico</a>
+    </div>
+    <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>
+  </div></div>
 
 <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim" />
 
@@ -15,6 +21,9 @@
   @endforeach
 </div>
 
+@if($modo==='resumido')
+  <div class="card p-4 text-sm text-slate-500">Resumo do período — {{ $cadastros->count() }} cadastro(s) · recebido R$ {{ number_format($porMeio->sum(),2,',','.') }} · {{ $entregas->count() }} entrega(s). Para ver item a item, use o modo <b>Analítico</b>.</div>
+@else
 <div class="grid lg:grid-cols-2 gap-4">
   <div class="card overflow-hidden">
     <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Encomendas que cadastrei ({{ $cadastros->count() }})</div>
@@ -43,5 +52,6 @@
     </div>
   </div>
 </div>
+@endif
 </div>
 @endsection

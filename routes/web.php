@@ -176,6 +176,7 @@ Route::middleware('auth')->group(function () {
 
     // ---------------- Admin da empresa ----------------
     Route::prefix('admin')->middleware('perm:admin')->name('admin.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
         Route::get('/empresa', [EmpresaController::class, 'editar'])->name('empresa');
         Route::post('/empresa', [EmpresaController::class, 'salvar']);
         Route::resource('usuarios', UsuarioController::class)->except(['show']);
