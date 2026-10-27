@@ -551,8 +551,17 @@ class PassagemController extends Controller
     public function comprovante(Passagem $passagem)
     {
         abort_unless($passagem->empresa_id === Tenant::id(), 404);
-        $passagem->load(['passageiros', 'embarcacao', 'operador']);
-        return view('passagens.comprovante', ['p' => $passagem, 'empresa' => Tenant::empresa(), 'modo' => request('modo')]);
+        $passagem->load(['passageiros', 'embarcacao', 'operador', 'camarote']);
+        try {
+            $html = view('passagens.comprovante', ['p' => $passagem, 'empresa' => Tenant::empresa(), 'modo' => request('modo')])->render();
+            return response($html);
+        } catch (\Throwable $e) {
+            report($e);
+            $msg = auth()->user()?->admin
+                ? 'Erro no comprovante: '.class_basename($e).': '.$e->getMessage().' @ '.basename($e->getFile()).':'.$e->getLine()
+                : 'Não foi possível gerar o comprovante. Tente novamente ou chame o suporte.';
+            return response($msg, 500);
+        }
     }
 
     /** Tela de check-in (vinda do QR do comprovante) — valida embarque, só operador logado. */
