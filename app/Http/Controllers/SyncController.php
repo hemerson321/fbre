@@ -194,6 +194,8 @@ class SyncController extends Controller
             'nf_chave' => 'nullable|string|max:60', 'nf_numero' => 'nullable|string|max:30', 'nf_dados' => 'nullable|array',
             'veiculos' => 'nullable|array', 'veiculos.*.placa' => 'nullable|string|max:12', 'veiculos.*.modelo' => 'nullable|string|max:60',
             'veiculos.*.cor' => 'nullable|string|max:30', 'veiculos.*.documento' => 'nullable|string|max:40', 'veiculos.*.obs' => 'nullable|string|max:200',
+            'itens' => 'nullable|array', 'itens.*.descricao' => 'required_with:itens|string|max:120', 'itens.*.quantidade' => 'nullable|numeric|min:0.01',
+            'itens.*.valor_unitario' => 'nullable|numeric|min:0', 'itens.*.observacao' => 'nullable|string|max:200',
             'pagamentos' => 'nullable|array', 'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito', 'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
         ]);
         try {

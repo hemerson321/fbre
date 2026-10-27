@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Frete;
 use App\Models\Pessoa;
+use App\Models\Produto;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 
@@ -35,8 +36,12 @@ class FreteService
             $numeroCompleto = $pref . '-' . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
         }
 
-        return DB::transaction(function () use ($data, $userId, $uuid, $offline, $empresa, $viagemId, $rotaId, $numeroCompleto, $seq) {
-            $subtotal = round((float) ($data['subtotal'] ?? 0), 2);
+        // subtotal vem dos itens (igual encomenda); sem itens, usa o valor informado (por peso)
+        $itens = array_values(array_filter($data['itens'] ?? [], fn ($i) => trim((string) ($i['descricao'] ?? '')) !== ''));
+        $subtotalItens = round(collect($itens)->sum(fn ($i) => (float) ($i['quantidade'] ?? 1) * (float) ($i['valor_unitario'] ?? 0)), 2);
+
+        return DB::transaction(function () use ($data, $userId, $uuid, $offline, $empresa, $viagemId, $rotaId, $numeroCompleto, $seq, $itens, $subtotalItens) {
+            $subtotal = $itens ? $subtotalItens : round((float) ($data['subtotal'] ?? 0), 2);
             $f = Frete::create([
                 'uuid' => $uuid, 'numero' => $seq, 'numero_completo' => $numeroCompleto,
                 'embarcacao_id' => ($data['embarcacao_id'] ?? null) ?: null, 'viagem_id' => $viagemId, 'rota_id' => $rotaId,
@@ -62,6 +67,17 @@ class FreteService
                     'placa' => $v['placa'] ?? null, 'modelo' => $v['modelo'] ?? null, 'cor' => $v['cor'] ?? null,
                     'documento' => $v['documento'] ?? null, 'obs' => $v['obs'] ?? null,
                 ]);
+            }
+
+            foreach ($itens as $it) {
+                $q = (float) ($it['quantidade'] ?? 1);
+                $vu = (float) ($it['valor_unitario'] ?? 0);
+                $f->itens()->create([
+                    'empresa_id' => $empresa->id,
+                    'descricao' => $it['descricao'], 'quantidade' => $q, 'valor_unitario' => $vu,
+                    'valor_total' => round($q * $vu, 2), 'observacao' => $it['observacao'] ?? null,
+                ]);
+                $this->catalogar($empresa, $it['descricao'], $vu);
             }
 
             foreach ($data['pagamentos'] ?? [] as $p) {
@@ -115,5 +131,14 @@ class FreteService
         $p = Pessoa::where('nome', $nome)->when($tel, fn ($q) => $q->where('telefone', $tel))->first();
         if ($p) $p->update(['telefone' => $tel ?: $p->telefone, 'documento' => $doc ?: $p->documento]);
         else Pessoa::create(['nome' => $nome, 'telefone' => $tel, 'documento' => $doc]);
+    }
+
+    /** Alimenta o catálogo de produtos (mais usados) a partir dos itens do frete. */
+    protected function catalogar($empresa, ?string $nome, $valor): void
+    {
+        $nome = trim((string) $nome);
+        if ($nome === '') return;
+        $p = Produto::firstOrCreate(['empresa_id' => $empresa->id, 'nome' => $nome], ['valor_padrao' => (float) $valor, 'ativo' => true]);
+        $p->increment('usos');
     }
 }

@@ -87,15 +87,50 @@
   <section class="sec lg:col-span-6">
     <div class="sec-h"><span class="n">3</span><span class="t">Carga</span></div>
     <div class="sec-b">
-      <div><label class="lbl">Descrição da carga</label><textarea class="field" rows="2" x-model="descricao" placeholder="Ex.: 2 geladeiras, 1 moto..." required></textarea></div>
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <div><label class="lbl">Peso (kg)</label><input type="number" step="0.01" min="0" class="field text-right" x-model.number="peso" @input="calcValor()" placeholder="0"></div>
+      <div class="grid grid-cols-3 gap-2">
+        <div><label class="lbl">Peso (kg)</label><input type="number" step="0.01" min="0" class="field text-right" x-model.number="peso" placeholder="0"></div>
         <div><label class="lbl">Volumes</label><input type="number" min="1" class="field text-center" x-model.number="volumes"></div>
-        <div><label class="lbl">Preço / kg</label><input type="text" inputmode="numeric" class="field text-right" :value="FBRE.fmtMoney(precoKilo)" @input="precoKilo=FBRE.parseMoney($event.target.value); calcValor(); $event.target.value=FBRE.fmtMoney(precoKilo)" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(precoKilo)"></div>
-        <div><label class="lbl">Valor do frete</label><input type="text" inputmode="numeric" class="field text-right font-bold" style="color:var(--cor1)" :value="FBRE.fmtMoney(valor)" @input="valor=FBRE.parseMoney($event.target.value); valorManual=true; $event.target.value=FBRE.fmtMoney(valor)" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(valor)"></div>
+        <div><label class="lbl">Preço / kg</label><input type="text" inputmode="numeric" class="field text-right" :value="FBRE.fmtMoney(precoKilo)" @input="precoKilo=FBRE.parseMoney($event.target.value); $event.target.value=FBRE.fmtMoney(precoKilo)" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(precoKilo)"></div>
       </div>
-      <p class="text-[11px] text-slate-400" x-show="peso>0 && precoKilo>0 && !valorManual" x-cloak>Calculado: <span x-text="peso"></span> kg × <span x-text="FBRE.moeda(precoKilo)"></span> = <b x-text="FBRE.moeda(peso*precoKilo)"></b></p>
-      <input class="field" placeholder="Observação (opcional)" x-model="observacao">
+
+      {{-- produtos / itens (igual encomenda) --}}
+      <div>
+        <div class="flex items-center justify-between gap-2 mb-1">
+          <div class="lbl !mb-0">Produtos / itens do frete</div>
+          <div class="relative w-48 sm:w-56">
+            <input x-model="buscaProduto" @focus="buscaAberta=true" @click.outside="buscaAberta=false" class="field !min-h-0 py-1.5 !pl-8 text-sm" placeholder="Buscar produto...">
+            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔎</span>
+            <div x-show="buscaAberta && produtosFiltrados.length" x-cloak class="absolute z-30 mt-1 w-full bg-white rounded-xl border shadow-xl max-h-60 overflow-auto">
+              <template x-for="p in produtosFiltrados" :key="p.id">
+                <button type="button" @click="addItem(p.nome,p.valor); buscaProduto=''; buscaAberta=false" class="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b last:border-0 flex justify-between gap-2"><span x-text="p.nome"></span><span class="text-slate-400 whitespace-nowrap" x-text="FBRE.moeda(p.valor)"></span></button>
+              </template>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <template x-for="p in pills" :key="p.id">
+            <button type="button" class="rounded-lg border px-2 py-1 text-xs font-semibold hover:bg-slate-50" @click="addItem(p.nome,p.valor)"><span x-text="p.nome"></span> <span class="text-slate-400" x-text="FBRE.moeda(p.valor)"></span></button>
+          </template>
+          <button type="button" class="rounded-lg border-2 border-dashed px-2 py-1 text-xs font-bold" style="border-color:var(--cor1);color:var(--cor1)" @click="addItem('',0)">＋ outro item</button>
+          <button type="button" x-show="peso>0 && precoKilo>0" class="rounded-lg px-2 py-1 text-xs font-bold text-white" style="background:var(--cor1)" @click="addItem('Frete '+peso+' kg', Math.round(peso*precoKilo*100)/100)">＋ frete por peso</button>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 bg-slate-50">
+        <div class="p-2 space-y-1.5">
+          <template x-for="(it,i) in itens" :key="it.id">
+            <div class="grid grid-cols-12 gap-1.5 items-center">
+              <input x-model="it.descricao" class="field !min-h-0 py-1 text-sm col-span-12 lg:col-span-5" placeholder="Descrição" required>
+              <input x-model.number="it.quantidade" type="number" step="any" min="0.01" class="field !min-h-0 py-1 text-sm text-center col-span-3 lg:col-span-2" inputmode="decimal" @focus="$event.target.select()">
+              <input type="text" inputmode="numeric" class="field !min-h-0 py-1 text-sm text-right col-span-4 lg:col-span-2" :value="FBRE.fmtMoney(it.valor)" @input="it.valor=FBRE.parseMoney($event.target.value); $event.target.value=FBRE.fmtMoney(it.valor)" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(it.valor)">
+              <div class="col-span-4 lg:col-span-2 text-right text-sm font-extrabold whitespace-nowrap" style="color:var(--cor1)" x-text="FBRE.moeda((Number(it.quantidade)||0)*(Number(it.valor)||0))"></div>
+              <button type="button" @click="itens.splice(i,1)" class="col-span-1 w-7 h-7 mx-auto rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none" title="Remover">×</button>
+            </div>
+          </template>
+          <div x-show="!itens.length" class="text-center py-6 text-slate-400 text-sm"><div class="text-2xl mb-1">📦</div>Nenhum item. Toque num produto acima ou use a NF.</div>
+        </div>
+      </div>
+      <input class="field" placeholder="Descrição/observação geral da carga (opcional)" x-model="descricao">
 
       {{-- quem paga + responsável --}}
       <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 mt-1">
@@ -169,7 +204,7 @@
         <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="navegador" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>
         <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
       </div>
-      <button x-show="total>0 || forma!=='avista'" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || !descricao.trim()">
+      <button x-show="total>0 || forma!=='avista'" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || !itens.length">
         <span x-show="!salvando">💾 Salvar frete</span><span x-show="salvando">Salvando…</span>
       </button>
     </div></section>
@@ -205,6 +240,7 @@
       cidades:@js($cidades), linhas:@js($linhas),
       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'', embarcacaoSel:@js((string) old('embarcacao_id', $embarcacaoPrincipal)),
       descricao:'', peso:null, volumes:1, precoKilo:@js((float)($precoKiloPadrao ?? 0)), valor:0, valorManual:false,
+      catalogo:@js($catalogo ?? []), buscaProduto:'', buscaAberta:false, itens:[],
       observacao:'', desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
       quemPaga:'destinatario', nomeResponsavel:'', nfChave:'', nfNumero:'', nfDados:null, nfBuscando:false, nfOk:false, nfErro:'', veiculos:[],
       meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
@@ -234,7 +270,11 @@
       get calDias(){ if(!this.calMes)return[]; const ano=this.calMes.getFullYear(),mes=this.calMes.getMonth(); const ini=new Date(ano,mes,1); ini.setDate(1-ini.getDay()); const out=[]; for(let i=0;i<42;i++){const d=new Date(ini);d.setDate(ini.getDate()+i);const iso=this.isoLocal(d);const outroMes=d.getMonth()!==mes;const valido=!outroMes&&d.getDay()===this.viagemDia&&(this.podeRetroativo||iso>=this.hojeISO);out.push({iso,dia:d.getDate(),valido,outroMes,sel:iso===this.viagemData});} return out; },
       escolherDia(iso){ this.viagemData=iso; this.viagemLabel=this.rotulo(iso); this.calAberto=false; },
       resolverLinha(){ this.rotaId='';this.linhaNome='';this.paradasInfo=[]; if(!this.origemSel){this.viagemDia=null;this.viagemData='';this.viagemLabel='';return;} const idx=(L,c)=>L.paradas.findIndex(p=>p.n===c); const linha=this.linhas.find(L=>{const io=idx(L,this.origemSel),id=idx(L,this.destinoSel);return io>=0&&this.destinoSel&&id>=0&&io<id;})||this.linhas.find(L=>idx(L,this.origemSel)>=0&&(!this.destinoSel||idx(L,this.destinoSel)>=0))||this.linhas.find(L=>idx(L,this.origemSel)>=0); if(!linha){this.viagemDia=null;this.viagemData='';this.viagemLabel='';return;} this.rotaId=String(linha.id);this.linhaNome=linha.nome;this.paradasInfo=linha.paradas; this.recalcularDatas(); },
-      get total(){ return Math.max((Number(this.valor)||0)-(Number(this.desconto)||0),0); },
+      get subtotal(){ return this.itens.reduce((s,i)=>s+(Number(i.quantidade)||0)*(Number(i.valor)||0),0); },
+      get pills(){ return this.catalogo.slice(0,8); },
+      get produtosFiltrados(){ const q=(this.buscaProduto||'').trim().toLowerCase(); const l=q?this.catalogo.filter(p=>p.nome.toLowerCase().includes(q)):this.catalogo; return l.slice(0,20); },
+      addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:Number(v)||0}); },
+      get total(){ return Math.max(this.subtotal-(Number(this.desconto)||0),0); },
       get pago(){ return this.forma==='faturado'?0:Object.values(this.pag).reduce((s,v)=>s+(Number(v)||0),0); },
       get pagoSemDinheiro(){ return (Number(this.pag.pix)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0); },
       get devido(){ return Math.max(this.total-this.pago,0); },
@@ -243,7 +283,8 @@
         return { origem:this.origemSel, destino:this.destinoSel, embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
           remetente_nome:this.rem.nome, remetente_telefone:this.rem.telefone||null, remetente_documento:this.rem.documento||null,
           destinatario_nome:this.dest.nome, destinatario_telefone:this.dest.telefone||null, destinatario_documento:this.dest.documento||null,
-          descricao:this.descricao, peso:Number(this.peso)||null, volumes:Number(this.volumes)||1, preco_kilo:Number(this.precoKilo)||0, subtotal:Number(this.valor)||0,
+          descricao:this.descricao||this.itens.map(i=>i.descricao).filter(Boolean).slice(0,3).join(', ')||'Carga', peso:Number(this.peso)||null, volumes:Number(this.volumes)||1, preco_kilo:Number(this.precoKilo)||0, subtotal:this.subtotal,
+          itens:this.itens.filter(i=>(i.descricao||'').trim()).map(i=>({descricao:i.descricao,quantidade:Number(i.quantidade)||1,valor_unitario:Number(i.valor)||0,observacao:i.obs||null})),
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
           quem_paga:this.quemPaga, nome_responsavel:this.nomeResponsavel||null,
           nf_chave:(this.nfChave||'').replace(/\D/g,'')||null, nf_numero:this.nfNumero||null, nf_dados:this.nfDados,
@@ -258,16 +299,19 @@
           if(!d.ok){ this.nfErro=d.erro||'Não consegui consultar a NF.'; return; }
           const nf=d.nf||{};
           if(nf.numero) this.nfNumero=nf.numero;
-          if(nf.remetente && !this.rem.nome && window._fretePessoas){ this.rem.nome=nf.remetente.nome||''; this.rem.documento=nf.remetente.documento||''; }
-          if(nf.destinatario && !this.dest.nome && window._fretePessoas){ this.dest.nome=nf.destinatario.nome||''; this.dest.documento=nf.destinatario.documento||''; }
-          if(nf.descricao && !this.descricao) this.descricao=nf.descricao;
+          if(nf.remetente && !this.rem.nome){ this.rem.nome=nf.remetente.nome||''; this.rem.documento=nf.remetente.documento||''; }
+          if(nf.destinatario && !this.dest.nome){ this.dest.nome=nf.destinatario.nome||''; this.dest.documento=nf.destinatario.documento||''; }
+          // produtos da NF viram itens (valor do FRETE é definido pelo operador — começa em 0)
+          if(Array.isArray(nf.itens) && nf.itens.length){
+            nf.itens.forEach(it=>{ this.itens.push({id:Date.now()+Math.random(), descricao:it.descricao||'', quantidade:Number(it.quantidade)||1, valor:0}); });
+          }
           this.nfDados=nf; this.nfOk=true;
         }).catch(()=>{ this.nfErro='Falha de conexão ao consultar a NF.'; }).finally(()=>{ this.nfBuscando=false; });
       },
       gerarPixDinamico(){
         if(this.pixPagando) return;
         if(!this.rem.nome.trim()||!this.dest.nome.trim()){ alert('Informe remetente e destinatário antes de gerar o PIX.'); return; }
-        if(!this.descricao.trim()){ alert('Descreva a carga antes de gerar o PIX.'); return; }
+        if(!this.itens.filter(i=>(i.descricao||'').trim()).length){ alert('Adicione ao menos um item.'); return; }
         const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
         const valor=Math.max((Number(this.total)||0)-outros,0);
         if(valor<=0){ alert('Sem valor a cobrar.'); return; }
@@ -307,7 +351,7 @@
       async salvar(ev){
         if(this.salvando) return;
         if(!this.rem.nome.trim()||!this.dest.nome.trim()){ alert('Informe remetente e destinatário.'); return; }
-        if(!this.descricao.trim()){ alert('Descreva a carga.'); return; }
+        if(!this.itens.filter(i=>(i.descricao||'').trim()).length){ alert('Adicione ao menos um item.'); return; }
         this.salvando=true;
         const dados=this.montarDados();
         try{ const r=await FBREOffline.salvarModulo('frete', dados);

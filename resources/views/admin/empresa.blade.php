@@ -82,6 +82,13 @@
   </div>
 </div>
 
+<div class="border-t pt-3 mt-1">
+  <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">Nota fiscal (frete)</h2>
+  <label class="label">Api-Key meudanfe</label>
+  <input name="meudanfe_token" class="input" value="{{ $empresa->config('meudanfe_token') }}" placeholder="Cole aqui a Api-Key da meudanfe" autocomplete="off">
+  <p class="text-xs text-slate-400 mt-1">Com a chave preenchida, o frete busca automaticamente remetente, destinatário e produtos pela chave da NF-e. Cada consulta custa R$ 0,03 na meudanfe. O servidor precisa ter <b>api.meudanfe.com.br</b> liberado.</p>
+</div>
+
 <div class="border-t pt-3 mt-1" x-data="{rv:{{ $empresa->config('usa_revendedores') ? 'true':'false' }}}">
   <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">Revendedores (passagem)</h2>
   <label class="flex items-start gap-2 py-1 cursor-pointer">

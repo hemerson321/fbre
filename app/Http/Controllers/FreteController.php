@@ -58,31 +58,84 @@ class FreteController extends Controller
 
         $token = config('services.meudanfe.token') ?: (Tenant::empresa()?->config('meudanfe_token'));
         if (! $token) {
-            return response()->json(['ok' => false, 'erro' => 'Consulta de NF ainda não configurada (token meudanfe). Preencha a chave/número manualmente por enquanto.']);
+            return response()->json(['ok' => false, 'erro' => 'Consulta de NF não configurada. Cole a Api-Key da meudanfe em Administração → Minha empresa.']);
         }
 
-        // Integração meudanfe — finalizada quando o formato do endpoint/token for confirmado.
         try {
-            $resp = \Illuminate\Support\Facades\Http::timeout(15)
-                ->withToken($token)
-                ->acceptJson()
-                ->get('https://ws.meudanfe.com/api/v1/get/nfe/data/'.$chave);
-            if (! $resp->ok()) {
-                return response()->json(['ok' => false, 'erro' => 'NF não encontrada ou serviço indisponível ('.$resp->status().').']);
+            $base = 'https://api.meudanfe.com.br/v2';
+            $http = \Illuminate\Support\Facades\Http::timeout(30)->withHeaders(['Api-Key' => $token])->acceptJson();
+
+            // 1) busca e adiciona a NF na Área do Cliente (cobra R$0,03; se já existe, é grátis)
+            $http->put($base.'/fd/add/'.$chave);
+            // 2) baixa o XML (grátis depois de adicionada)
+            $xmlResp = $http->get($base.'/fd/get/xml/'.$chave);
+            if (! $xmlResp->ok()) {
+                return response()->json(['ok' => false, 'erro' => 'NF não encontrada ou indisponível na SEFAZ ('.$xmlResp->status().').']);
             }
-            $j = $resp->json();
-            $nf = [
-                'numero'       => data_get($j, 'nNF') ?? data_get($j, 'numero'),
-                'remetente'    => ['nome' => data_get($j, 'emit.xNome'), 'documento' => data_get($j, 'emit.CNPJ') ?? data_get($j, 'emit.CPF')],
-                'destinatario' => ['nome' => data_get($j, 'dest.xNome'), 'documento' => data_get($j, 'dest.CNPJ') ?? data_get($j, 'dest.CPF')],
-                'descricao'    => collect(data_get($j, 'det', []))->map(fn ($d) => data_get($d, 'prod.xProd'))->filter()->take(5)->implode(', '),
-                'bruto'        => $j,
-            ];
+
+            $xml = $this->extrairXml($xmlResp->body());
+            if (! $xml) {
+                return response()->json(['ok' => false, 'erro' => 'A NF foi consultada, mas não consegui ler o XML. Preencha manualmente.']);
+            }
+
+            $nf = $this->parseNfe($xml);
+            $nf['chave'] = $chave;
             return response()->json(['ok' => true, 'nf' => $nf]);
         } catch (\Throwable $e) {
             report($e);
-            return response()->json(['ok' => false, 'erro' => 'Falha ao consultar a NF.']);
+            return response()->json(['ok' => false, 'erro' => 'Falha ao consultar a NF (verifique a Api-Key e a liberação de rede do servidor).']);
         }
+    }
+
+    /** Tenta extrair o XML da NF-e da resposta (XML puro, base64 ou JSON com o XML dentro). */
+    private function extrairXml(string $body): ?string
+    {
+        $body = trim($body);
+        if (str_contains($body, '<nfeProc') || str_contains($body, '<NFe')) return $body;
+        // JSON embrulhando o XML (campos comuns)
+        $j = json_decode($body, true);
+        if (is_array($j)) {
+            foreach (['xml', 'XML', 'data', 'content', 'conteudo', 'danfe', 'base64'] as $k) {
+                $v = data_get($j, $k);
+                if (is_string($v) && $v !== '') {
+                    if (str_contains($v, '<nfeProc') || str_contains($v, '<NFe')) return $v;
+                    $dec = base64_decode($v, true);
+                    if ($dec && (str_contains($dec, '<nfeProc') || str_contains($dec, '<NFe'))) return $dec;
+                }
+            }
+        }
+        // o próprio corpo em base64
+        $dec = base64_decode($body, true);
+        if ($dec && (str_contains($dec, '<nfeProc') || str_contains($dec, '<NFe'))) return $dec;
+        return null;
+    }
+
+    /** Lê emitente (remetente), destinatário, número e itens de um XML de NF-e. */
+    private function parseNfe(string $xml): array
+    {
+        $flat = preg_replace('/xmlns(:\w+)?="[^"]*"/', '', $xml); // tira namespaces pra acessar direto
+        $sx = @simplexml_load_string($flat);
+        $inf = $sx->NFe->infNFe ?? ($sx->infNFe ?? $sx);
+
+        $doc = fn ($no) => (string) ($no->CNPJ ?? $no->CPF ?? '');
+        $itens = [];
+        foreach ($inf->det ?? [] as $det) {
+            $p = $det->prod ?? null;
+            if (! $p) continue;
+            $itens[] = [
+                'descricao'      => trim((string) $p->xProd),
+                'quantidade'     => (float) ($p->qCom ?? 1) ?: 1,
+                'valor_unitario' => round((float) ($p->vUnCom ?? 0), 2),
+            ];
+        }
+
+        return [
+            'numero'       => (string) ($inf->ide->nNF ?? ''),
+            'remetente'    => ['nome' => (string) ($inf->emit->xNome ?? ''), 'documento' => $doc($inf->emit ?? new \stdClass)],
+            'destinatario' => ['nome' => (string) ($inf->dest->xNome ?? ''), 'documento' => $doc($inf->dest ?? new \stdClass)],
+            'itens'        => $itens,
+            'descricao'    => collect($itens)->pluck('descricao')->filter()->take(6)->implode(', '),
+        ];
     }
 
     public function create()
@@ -96,10 +149,15 @@ class FreteController extends Controller
             'id' => $r->id, 'nome' => $r->nome,
             'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
         ])->values();
+        $catalogo = \App\Models\Produto::where('ativo', true)->orderByDesc('usos')->orderBy('nome')
+            ->get(['id', 'nome', 'valor_padrao'])
+            ->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'valor' => (float) $p->valor_padrao])->values();
+
         return view('fretes.create', [
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'cidades' => $localidades->values(),
             'linhas' => $linhas,
+            'catalogo' => $catalogo,
             'ultimaOrigem' => session('ultima_origem_frete') ?: (Tenant::empresa()->cidade ?: $localidades->first()),
             'embarcacaoPrincipal' => session('ultima_embarcacao_frete') ?: $u->embarcacao_principal_id,
             'precoKiloPadrao' => (float) (Tenant::empresa()->config['preco_kilo'] ?? 0),

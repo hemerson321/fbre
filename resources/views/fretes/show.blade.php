@@ -33,6 +33,13 @@
   </div>
   @endif
   <div class="card p-4"><div class="font-semibold mb-1">Carga</div><div class="text-sm text-slate-600">{{ $f->descricao }}</div>
+    @if($f->itens->count())
+    <div class="border-t mt-2 pt-2 space-y-1">
+      @foreach($f->itens as $it)
+        <div class="flex justify-between text-sm"><span>{{ $it->descricao }} <span class="text-slate-400">× {{ rtrim(rtrim(number_format((float)$it->quantidade,2,',','.'),'0'),',') }}</span></span><b>R$ {{ number_format((float)$it->valor_total,2,',','.') }}</b></div>
+      @endforeach
+    </div>
+    @endif
     <div class="border-t mt-2 pt-2 space-y-1 text-sm">
       <div class="flex justify-between text-lg font-bold" style="color:{{ $cor }}"><span>Total</span><span>R$ {{ number_format($f->total,2,',','.') }}</span></div>
       <div class="flex justify-between"><span>Pago</span><span>R$ {{ number_format($f->pago,2,',','.') }}</span></div>

@@ -38,6 +38,7 @@ class Frete extends Model
     }
 
     public function veiculos(): HasMany { return $this->hasMany(FreteVeiculo::class); }
+    public function itens(): HasMany { return $this->hasMany(FreteItem::class); }
     public function pagamentos(): HasMany { return $this->hasMany(Pagamento::class, 'origem_id')->where('modulo', self::MODULO)->where('estornado', false); }
     public function embarcacao(): BelongsTo { return $this->belongsTo(Embarcacao::class); }
     public function viagem(): BelongsTo { return $this->belongsTo(Viagem::class); }
