@@ -490,19 +490,25 @@ class PassagemController extends Controller
         [$inicio, $fim, $periodo] = \App\Http\Controllers\CaixaController::periodo($request);
 
         $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
-        $vendas = Passagem::where('user_id', $u->id)->where('cancelada', false)
+        $limite = 300;
+        $base = Passagem::where('user_id', $u->id)->where('cancelada', false)
             ->whereBetween('created_at', [$inicio, $fim])
-            ->when($canal, fn ($q) => $q->whereHas('pagamentos', fn ($w) => $w->canal($canal)))
-            ->with(['passageiros:id,passagem_id', 'embarcacao:id,nome'])
-            ->orderByDesc('id')->get();
+            ->when($canal, fn ($q) => $q->whereHas('pagamentos', fn ($w) => $w->canal($canal)));
 
+        // totais somados no banco (não trava com período longo)
         $totais = [
-            'qtd'         => $vendas->count(),
-            'passageiros' => (int) $vendas->sum(fn ($p) => $p->passageiros->count()),
-            'total'       => (float) $vendas->sum(fn ($p) => (float) $p->total),
-            'recebido'    => (float) $vendas->sum(fn ($p) => (float) $p->total - (float) $p->devido),
-            'devido'      => (float) $vendas->sum(fn ($p) => (float) $p->devido),
+            'qtd'         => (clone $base)->count(),
+            'passageiros' => (int) \App\Models\PassagemPassageiro::whereHas('passagem', function ($q) use ($u, $inicio, $fim, $canal) {
+                $q->where('user_id', $u->id)->where('cancelada', false)->whereBetween('created_at', [$inicio, $fim])
+                    ->when($canal, fn ($w) => $w->whereHas('pagamentos', fn ($x) => $x->canal($canal)));
+            })->count(),
+            'total'       => (float) (clone $base)->sum('total'),
+            'devido'      => (float) (clone $base)->sum('devido'),
         ];
+        $totais['recebido'] = $totais['total'] - $totais['devido'];
+
+        $vendas = (clone $base)->with(['passageiros:id,passagem_id', 'embarcacao:id,nome'])
+            ->orderByDesc('id')->limit($limite)->get();
 
         // o que falta acertar (revendedor -> empresa | vendedor -> revendedor)
         $acerto = null;
@@ -522,7 +528,41 @@ class PassagemController extends Controller
             ];
         }
 
-        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal'));
+        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal', 'limite'));
+    }
+
+    /** Exporta as vendas de passagem do período (e forma) em CSV — sem travar a tela. */
+    public function minhasVendasExportar(Request $request)
+    {
+        $u = auth()->user();
+        [$inicio, $fim] = \App\Http\Controllers\CaixaController::periodo($request);
+        $canal = $request->input('canal');
+
+        $q = Passagem::where('user_id', $u->id)->where('cancelada', false)
+            ->whereBetween('created_at', [$inicio, $fim])
+            ->when($canal, fn ($w) => $w->whereHas('pagamentos', fn ($x) => $x->canal($canal)))
+            ->withCount('passageiros')->with('embarcacao:id,nome')->orderByDesc('id');
+
+        $nome = 'minhas-vendas-'.$inicio->format('Ymd').'-'.$fim->format('Ymd').'.csv';
+
+        return response()->streamDownload(function () use ($q) {
+            $out = fopen('php://output', 'w');
+            fprintf($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Data', 'Hora', 'Número', 'Origem', 'Destino', 'Passageiros', 'Barco', 'Status', 'Total', 'Pago', 'Devido'], ';');
+            $q->chunk(1000, function ($lote) use ($out) {
+                foreach ($lote as $p) {
+                    fputcsv($out, [
+                        $p->created_at->format('d/m/Y'), $p->created_at->format('H:i'),
+                        $p->numeroFormatado(), $p->origem, $p->destino,
+                        $p->passageiros_count, $p->embarcacao?->nome, $p->statusTexto(),
+                        number_format((float) $p->total, 2, ',', '.'),
+                        number_format((float) $p->pago, 2, ',', '.'),
+                        number_format((float) $p->devido, 2, ',', '.'),
+                    ], ';');
+                }
+            });
+            fclose($out);
+        }, $nome, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /** Tela de check-in (hub): escaneia o QR do bilhete ou busca pelo numero. */

@@ -100,6 +100,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/lista', [\App\Http\Controllers\PassagemController::class, 'manifesto'])->name('passagens.manifesto')->middleware('perm:passagem.ver');
     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos')->middleware('perm:passagem.ver');
     Route::get('/passagens/minhas-vendas', [\App\Http\Controllers\PassagemController::class, 'minhasVendas'])->name('passagens.minhas-vendas')->middleware('perm:passagem.ver');
+    Route::get('/passagens/minhas-vendas/exportar', [\App\Http\Controllers\PassagemController::class, 'minhasVendasExportar'])->name('passagens.minhas-vendas.exportar')->middleware('perm:passagem.ver');
     Route::get('/passagens/checkin', [\App\Http\Controllers\PassagemController::class, 'scanner'])->name('passagens.scanner')->middleware('perm:passagem.baixa');
     Route::get('/passagens/checkin/buscar', [\App\Http\Controllers\PassagemController::class, 'buscarCheckin'])->name('passagens.scanner.buscar')->middleware('perm:passagem.baixa');
     // Canal de atendimento (WhatsApp) — caixa de conversas
@@ -170,6 +171,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/caixa', [CaixaController::class, 'index'])->name('caixa.index')->middleware('perm:caixa');
     Route::post('/caixa/avulso', [CaixaController::class, 'avulso'])->name('caixa.avulso')->middleware('perm:avulso');
     Route::get('/meu-relatorio', [RelatorioController::class, 'meu'])->name('relatorio.meu')->middleware('perm:relatorio');
+    Route::get('/meu-relatorio/exportar', [RelatorioController::class, 'exportar'])->name('relatorio.meu.exportar')->middleware('perm:relatorio');
 
     // ---------------- Viagens (módulo rotas) ----------------
     Route::get('/viagens', [ViagemController::class, 'index'])->name('viagens.index')->middleware('perm:filtro');
