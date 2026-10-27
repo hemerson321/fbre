@@ -332,55 +332,20 @@ class PassagemController extends Controller
             'imprimir' => 'nullable|in:navegador,direto,nao',
         ]);
 
-        $cam = Camarote::where('id', $data['camarote_id'])->firstOrFail();
-        abort_unless($cam->empresa_id === Tenant::id(), 404);
-        abort_if($data['origem'] === $data['destino'], 422, 'Origem e destino não podem ser iguais.');
         if (auth()->user()->revendedorDono() !== null) $data['forma'] = 'avista';
 
-        $base = $cam->precoPara($data['origem'], $data['destino']);
-        abort_if($base === null, 422, 'Não há preço cadastrado para esse trecho neste camarote.');
-        $cap = max((int) $cam->capacidade, 1);
-
-        // não vender o mesmo camarote em trecho que se sobrepõe na mesma viagem
-        $conf = $this->camaroteConflito($cam->id, $data['rota_id'] ?? null, $data['data_viagem'] ?? null, $data['viagem_id'] ?? null, $data['origem'], $data['destino']);
-        if ($conf) {
-            $num = $conf->numero_completo ?: $conf->numero;
-            abort(422, "Esse camarote ({$cam->nome}) já está ocupado/reservado nessa viagem no trecho {$conf->origem} → {$conf->destino} (Nº {$num}".($conf->comprador_nome ? ', '.$conf->comprador_nome : '').").");
+        try {
+            $payload = app(\App\Services\CamaroteVenda::class)->montarPayload($data);
+        } catch (\RuntimeException $e) {
+            abort(422, $e->getMessage());
         }
-
-        $passageiros = [];
-        foreach (array_values($data['ocupantes']) as $i => $oc) {
-            if ($i === 0) { $papel = 'titular'; $valor = (float) $base; $obs = 'Camarote '.$cam->nome; }
-            elseif ($i < $cap) { $papel = 'incluido'; $valor = 0.0; $obs = 'Incluído no camarote'; }
-            else { $papel = 'adicional'; $valor = round((float) ($oc['adicional'] ?? $cam->valor_adicional), 2); $obs = 'Adicional'; }
-            $passageiros[] = [
-                'nome' => $oc['nome'], 'tipo' => 'Camarote', 'papel' => $papel, 'percentual' => 100,
-                'documento' => $oc['documento'] ?? null, 'nascimento' => $oc['nascimento'] ?? null,
-                'telefone' => $oc['telefone'] ?? null, 'checkin' => (bool) ($oc['checkin'] ?? true),
-                'valor_passagem' => $valor, 'valor_taxa' => 0, 'valor_alimentacao' => 0, 'valor_integral' => $valor,
-                'observacao' => $obs,
-            ];
-        }
-
-        $payload = [
-            'tipo' => 'camarote', 'camarote_id' => $cam->id,
-            'origem' => $data['origem'], 'destino' => $data['destino'],
-            'rota_id' => $data['rota_id'] ?? null, 'viagem_id' => $data['viagem_id'] ?? null,
-            'data_viagem' => $data['data_viagem'] ?? null,
-            'comprador_nome' => $data['comprador_nome'] ?? null,
-            'comprador_telefone' => $data['comprador_telefone'] ?? null,
-            'comprador_documento' => $data['comprador_documento'] ?? null,
-            'forma' => $data['forma'], 'observacao' => $data['observacao'] ?? null,
-            'desconto' => $data['desconto'] ?? 0,
-            'passageiros' => $passageiros,
-            'pagamentos' => $data['pagamentos'] ?? [],
-        ];
 
         $p = app(\App\Services\PassagemService::class)->criar($payload, auth()->id(), $request->input('uuid'));
-        session(['ultima_origem_pass' => $data['origem'], 'ultima_suite_cam' => $cam->id]);
+        session(['ultima_origem_pass' => $data['origem'], 'ultima_suite_cam' => $data['camarote_id']]);
         $imprimir = $request->input('imprimir', 'navegador');
+        $nomeCam = $p->camarote?->nome ?: 'Camarote';
         return redirect()->route('passagens.show', ['passagem' => $p, 'print' => $imprimir === 'navegador' ? 1 : 0])
-            ->with('ok', "Camarote {$cam->nome} · passagem {$p->numeroFormatado()} salva.");
+            ->with('ok', "{$nomeCam} · passagem {$p->numeroFormatado()} salva.");
     }
 
     protected function validar(Request $request): array

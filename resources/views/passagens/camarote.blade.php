@@ -194,8 +194,12 @@
 
         <div x-show="forma==='avista'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
-            <div><label class="lbl" x-text="m.l"></label><input class="field text-right font-semibold" x-money="pag[m.k]"></div>
+            <div x-show="m.k!=='pix' || pixManual"><label class="lbl" x-text="m.l"></label><input class="field text-right font-semibold w-full" x-money="pag[m.k]"></div>
           </template>
+          <div x-show="pixDinamico">
+            <label class="lbl">PIX Automático</label>
+            <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
+          </div>
           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition" style="border-color:var(--cor1);color:var(--cor1)" @click="pag.dinheiro=+Math.max(total()-pagoSemDinheiro(),0).toFixed(2)">Tudo em dinheiro</button></div>
         </div>
@@ -239,6 +243,24 @@
   </div>
 </div>
 @endif
+
+  {{-- modal PIX dinâmico: aguarda o pagamento; só cadastra depois de confirmar --}}
+  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="cancelarPix()">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center">
+      <div class="font-bold text-lg">💠 PIX dinâmico</div>
+      <div class="text-xs text-slate-500 mb-3">Mostre o QR pro cliente pagar. A tela confirma sozinha e só então cadastra.</div>
+      <template x-if="pixQr"><img :src="pixQr.startsWith('data:')?pixQr:('data:image/png;base64,'+pixQr)" class="mx-auto rounded" style="width:220px;height:220px"></template>
+      <template x-if="!pixQr"><div class="mx-auto flex items-center justify-center text-slate-300" style="width:220px;height:220px"><svg class="animate-spin w-10 h-10" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg></div></template>
+      <div class="font-extrabold text-xl my-2">R$ <span x-text="fmt(pixValor)"></span></div>
+      <div class="flex items-center justify-center gap-2 text-amber-600 text-sm font-semibold mb-3">
+        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+        <span x-text="pixQr ? 'Aguardando pagamento…' : 'Gerando PIX…'"></span>
+      </div>
+      <button type="button" x-show="pixCobId" @click="imprimirPix(pixCobId)" class="btn btn-ghost btn-sm w-full mb-2">🖨 Imprimir QR</button>
+      <button type="button" x-show="pixQr" @click="copiarPix()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
+      <button type="button" @click="cancelarPix()" class="btn btn-ghost btn-sm w-full text-slate-500">Cancelar</button>
+    </div>
+  </div>
 </form>
 
 <script>
@@ -258,7 +280,53 @@ function vendaCamarote(){
     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
     pag:{dinheiro:0,pix:0,debito:0,credito:0}, desconto:0,
     imprimir:'navegador',
+    pixManual:@js(auth()->user()->podePixManual()), pixDinamico:@js(auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')),
+    pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
     fmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+    montarDadosCamarote(){
+      return {
+        camarote_id:this.camId, origem:this.origem, destino:this.destino,
+        rota_id:this.rotaId||null, viagem_id:this.viagemId||null, data_viagem:this.dataViagem||null,
+        comprador_nome:this.comprador.nome||(this.ocupantes[0]?this.ocupantes[0].nome:null),
+        comprador_telefone:this.comprador.telefone||null, comprador_documento:this.comprador.documento||null,
+        forma:this.forma, observacao:this.observacao||null, desconto:Number(this.desconto)||0,
+        ocupantes:this.ocupantes.map(o=>({nome:o.nome, documento:o.documento||null, nascimento:o.nascimento||null, telefone:o.telefone||null, adicional:Number(o.adicional)||0, checkin:o.checkin?1:0})),
+        pagamentos:[],
+      };
+    },
+    gerarPixDinamico(){
+      if(this.pixPagando) return;
+      if(!this.camId){ alert('Escolha o camarote.'); return; }
+      if(!this.origem || !this.destino){ alert('Escolha origem e destino.'); return; }
+      if(this.base===null){ alert('Não há preço cadastrado para esse trecho.'); return; }
+      if(!this.ocupantes.length || !(this.ocupantes[0].nome||'').trim()){ alert('Informe ao menos o titular.'); return; }
+      const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
+      const valor=Math.max((Number(this.total())||0)-outros,0);
+      if(valor<=0){ alert('Sem valor a cobrar.'); return; }
+      const pedido=this.montarDadosCamarote();
+      this.pixCobId=null; this.pixCopia=''; this.pixQr=''; this.pixValor=valor; this.pixModal=true; this.pixPagando=true;
+      const csrf=(window.FBRE&&FBRE.csrf)||document.querySelector('input[name=_token]')?.value;
+      fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'passagem',valor:valor,descricao:'Camarote',imprimir:this.imprimir,payload:pedido})})
+        .then(r=>r.json()).then(d=>{
+          if(!d.ok){ this.pixModal=false; this.pixPagando=false; alert(d.erro||'Falha ao gerar PIX'); return; }
+          this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.imprimirPix(d.id);
+          this.pixPoll=setInterval(()=>this.checarPix(),4000);
+        }).catch(()=>{ this.pixModal=false; this.pixPagando=false; alert('Falha de conexão ao gerar PIX'); });
+    },
+    checarPix(){
+      if(!this.pixCobId || this.pixChecando) return;
+      this.pixChecando=true;
+      fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
+        if(d && d.pago){ clearInterval(this.pixPoll); this.pixPagando=false; this.finalizarPix(d); }
+      }).catch(()=>{}).finally(()=>{ this.pixChecando=false; });
+    },
+    finalizarPix(d){
+      if(d.erro || !d.url){ this.pixModal=false; alert('Pagamento recebido! '+(d.erro?('Não consegui cadastrar automaticamente: '+d.erro+'. '):'')+'Confira os dados e clique em Salvar.'); return; }
+      window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
+    },
+    cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
+    copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
+    imprimirPix(id){ const csrf=(window.FBRE&&FBRE.csrf)||document.querySelector('input[name=_token]')?.value; fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
     trocaCam(){ this.cam=this.camarotes.find(c=>c.id===this.camId)||null; this.ajustarOcupantes(); this.recalc(); },
     onTrecho(){ this.recalc(); this.resolveData(); },
     recalc(){

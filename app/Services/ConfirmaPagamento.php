@@ -106,13 +106,18 @@ class ConfirmaPagamento
             if (! $op) $op = \App\Models\User::withoutGlobalScopes()->where('empresa_id', $c->empresa_id)->orderByDesc('admin')->first();
             if (! $op) { $c->forceFill(['erro' => 'Operador não encontrado'])->save(); return; }
 
-            // garante o pagamento PIX no pedido (valor da cobrança), sem duplicar
             $data = $c->payload;
-            $pags = collect($data['pagamentos'] ?? [])->reject(fn ($p) => ($p['meio'] ?? '') === 'pix')->values()->all();
-            $pags[] = ['meio' => 'pix', 'valor' => (float) $c->valor, 'auto' => true];
-            $data['pagamentos'] = $pags;
-
             try {
+                // camarote: resolve preço/ocupantes/anti-sobreposição agora (no pagamento)
+                if ($c->modulo === 'passagem' && ! empty($data['camarote_id']) && ! empty($data['ocupantes'])) {
+                    $data = app(\App\Services\CamaroteVenda::class)->montarPayload($data);
+                }
+
+                // garante o pagamento PIX no pedido (valor da cobrança), sem duplicar
+                $pags = collect($data['pagamentos'] ?? [])->reject(fn ($p) => ($p['meio'] ?? '') === 'pix')->values()->all();
+                $pags[] = ['meio' => 'pix', 'valor' => (float) $c->valor, 'auto' => true];
+                $data['pagamentos'] = $pags;
+
                 if ($c->modulo === 'passagem') {
                     $rec = $this->pas->criar($data, (int) $op->id, 'pix-pas-'.$c->id);
                     $tipo = Passagem::class;
