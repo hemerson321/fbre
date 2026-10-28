@@ -1,0 +1,409 @@
+From 4866b8456404751de43f0004016db6e801c28070 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 26 Oct 2026 18:56:43 -0400
+Subject: [PATCH] =?UTF-8?q?feat(pix):=20separa=20PIX=20Manual=20(digitado)?=
+ =?UTF-8?q?=20de=20PIX=20Autom=C3=A1tico=20(QR)=20no=20form,=20caixa,=20re?=
+ =?UTF-8?q?lat=C3=B3rios=20e=20filtro?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- pagamentos.pix_auto (migration) marca o PIX recebido via QR/Mercado Pago
+- serviços (criar/baixa) gravam pix_auto; fluxos de QR (balcão dinâmico, baixa por cobrança, agente) marcam auto=true
+- form encomenda/passagem: 'PIX Manual' (caixa de digitar) + 'PIX Automático' (botão Gerar QR) separados
+- Pagamento::CANAIS + canalSql(): caixa e relatório 'meu' mostram PIX Manual x Automático; novo filtro 'Forma' no caixa
+- v2026.10.26.9
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Http/Controllers/CaixaController.php      | 24 ++++++++++++----
+ app/Http/Controllers/RelatorioController.php  |  4 +--
+ app/Models/Pagamento.php                      | 24 +++++++++++++++-
+ app/Services/ConfirmaPagamento.php            |  8 +++---
+ app/Services/EncomendaService.php             |  3 +-
+ app/Services/PassagemService.php              |  3 +-
+ app/Support/Versao.php                        |  2 +-
+ .../0001_01_47_000000_pagamento_pix_auto.php  | 28 +++++++++++++++++++
+ resources/views/caixa/index.blade.php         | 13 +++++----
+ resources/views/caixa/meu.blade.php           |  4 +--
+ resources/views/encomendas/create.blade.php   | 14 ++++++----
+ resources/views/passagens/create.blade.php    | 14 ++++++----
+ 12 files changed, 107 insertions(+), 34 deletions(-)
+ create mode 100644 database/migrations/0001_01_47_000000_pagamento_pix_auto.php
+
+diff --git a/app/Http/Controllers/CaixaController.php b/app/Http/Controllers/CaixaController.php
+index d92bc63..73cb77e 100644
+--- a/app/Http/Controllers/CaixaController.php
++++ b/app/Http/Controllers/CaixaController.php
+@@ -21,6 +21,7 @@ public function index(Request $request)
+         $userId = $verTodos ? $request->input('user_id') : auth()->id();
+         $viagemId = $request->input('viagem_id');
+         $modulo = $request->input('modulo');
++        $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
+         $viagens = \App\Support\Tenant::empresa()->temRecurso('viagens')
+             ? Viagem::orderByDesc('data_partida')->limit(60)->get() : collect();
+         // quando filtra por viagem, ignora o período (viagem é o recorte)
+@@ -32,13 +33,15 @@ public function index(Request $request)
+             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
+             ->when($userId, fn ($q) => $q->where('user_id', $userId))
+             ->when($modulo, fn ($q) => $q->where('modulo', $modulo))
++            ->when($canal, fn ($q) => $this->filtrarCanal($q, $canal))
+             ->where('tipo_mov', '!=', 'saida');
+ 
+-        $porMeio = (clone $base)->selectRaw('meio, SUM(valor) valor, COUNT(*) qtd')->groupBy('meio')->get()->keyBy('meio');
+-        $porOperador = (clone $base)->selectRaw('user_id, meio, SUM(valor) valor')->groupBy('user_id', 'meio')->get()
++        $canalSql = Pagamento::canalSql();
++        $porMeio = (clone $base)->selectRaw("$canalSql as canal, SUM(valor) valor, COUNT(*) qtd")->groupBy('canal')->get()->keyBy('canal');
++        $porOperador = (clone $base)->selectRaw("user_id, $canalSql as canal, SUM(valor) valor")->groupBy('user_id', 'canal')->get()
+             ->groupBy('user_id')->map(fn ($rows) => [
+                 'total' => $rows->sum('valor'),
+-                'meios' => $rows->pluck('valor', 'meio'),
++                'meios' => $rows->pluck('valor', 'canal'),
+             ]);
+         $porModulo = (clone $base)->selectRaw('modulo, SUM(valor) valor, COUNT(*) qtd')->groupBy('modulo')->get()->keyBy('modulo');
+ 
+@@ -68,8 +71,19 @@ public function index(Request $request)
+ 
+         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
+ 
+-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso'))
+-            ->with(['meios' => Pagamento::MEIOS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas]);
++        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal'))
++            ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas]);
++    }
++
++    /** Aplica o filtro por canal (PIX dividido em manual/automático). */
++    protected function filtrarCanal($q, string $canal)
++    {
++        return match ($canal) {
++            'pix_manual' => $q->where('meio', 'pix')->where(fn ($w) => $w->where('pix_auto', false)->orWhereNull('pix_auto')),
++            'pix_auto' => $q->where('meio', 'pix')->where('pix_auto', true),
++            'dinheiro', 'debito', 'credito' => $q->where('meio', $canal),
++            default => $q,
++        };
+     }
+ 
+     /** Registra uma entrada ou saída avulsa no caixa. */
+diff --git a/app/Http/Controllers/RelatorioController.php b/app/Http/Controllers/RelatorioController.php
+index a603422..09b6f5e 100644
+--- a/app/Http/Controllers/RelatorioController.php
++++ b/app/Http/Controllers/RelatorioController.php
+@@ -25,9 +25,9 @@ public function meu(Request $request)
+         $entregas = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')
+             ->whereBetween('created_at', [$inicio, $fim])->with('encomenda')->orderByDesc('id')->get();
+ 
+-        $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('meio')->map->sum('valor');
++        $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('canal')->map->sum('valor');
+ 
+         return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos'))
+-            ->with(['meios' => Pagamento::MEIOS]);
++            ->with(['meios' => Pagamento::CANAIS]);
+     }
+ }
+diff --git a/app/Models/Pagamento.php b/app/Models/Pagamento.php
+index a1c897b..256f132 100644
+--- a/app/Models/Pagamento.php
++++ b/app/Models/Pagamento.php
+@@ -11,7 +11,7 @@ class Pagamento extends Model
+     use PertenceEmpresa;
+ 
+     protected $guarded = [];
+-    protected $casts = ['estornado' => 'boolean', 'valor' => 'decimal:2'];
++    protected $casts = ['estornado' => 'boolean', 'valor' => 'decimal:2', 'pix_auto' => 'boolean'];
+ 
+     public const MEIOS = [
+         'dinheiro' => 'Dinheiro',
+@@ -21,6 +21,28 @@ class Pagamento extends Model
+         'desconto' => 'Desconto',
+     ];
+ 
++    /** Canais de recebimento (PIX dividido em Manual x Automático) — usado em caixa/relatórios/filtro. */
++    public const CANAIS = [
++        'dinheiro'   => 'Dinheiro',
++        'pix_manual' => 'PIX Manual',
++        'pix_auto'   => 'PIX Automático',
++        'debito'     => 'Débito',
++        'credito'    => 'Crédito',
++    ];
++
++    /** Expressão SQL que resolve o canal (divide o PIX por pix_auto). */
++    public static function canalSql(): string
++    {
++        return "CASE WHEN meio='pix' AND COALESCE(pix_auto,0)=1 THEN 'pix_auto' WHEN meio='pix' THEN 'pix_manual' ELSE meio END";
++    }
++
++    /** Canal deste pagamento (dinheiro, pix_manual, pix_auto, debito, credito). */
++    public function getCanalAttribute(): string
++    {
++        if ($this->meio === 'pix') return $this->pix_auto ? 'pix_auto' : 'pix_manual';
++        return (string) $this->meio;
++    }
++
+     public function encomenda(): BelongsTo { return $this->belongsTo(Encomenda::class); }
+     public function user(): BelongsTo { return $this->belongsTo(User::class); }
+ 
+diff --git a/app/Services/ConfirmaPagamento.php b/app/Services/ConfirmaPagamento.php
+index e895151..16d8b11 100644
+--- a/app/Services/ConfirmaPagamento.php
++++ b/app/Services/ConfirmaPagamento.php
+@@ -78,10 +78,10 @@ public function aplicar(Cobranca $cob): bool
+             }
+         } elseif ($cob->referencia_tipo === Encomenda::class && $cob->referencia_id) {
+             $e = Encomenda::withoutGlobalScopes()->find($cob->referencia_id);
+-            if ($e) $this->enc->baixa($e, ['pix' => (float) $cob->valor], (int) $e->user_id, 'mp-'.$cob->id);
++            if ($e) $this->enc->baixa($e, ['pix' => (float) $cob->valor, 'pix_auto' => true], (int) $e->user_id, 'mp-'.$cob->id);
+         } elseif ($cob->referencia_tipo === Passagem::class && $cob->referencia_id) {
+             $p = Passagem::withoutGlobalScopes()->find($cob->referencia_id);
+-            if ($p) $this->pas->baixa($p, ['pix' => (float) $cob->valor], (int) $p->user_id);
++            if ($p) $this->pas->baixa($p, ['pix' => (float) $cob->valor, 'pix_auto' => true], (int) $p->user_id);
+         }
+ 
+         return true;
+@@ -107,7 +107,7 @@ public function criarPedidoDoPayload(Cobranca $cob): void
+             // garante o pagamento PIX no pedido (valor da cobrança), sem duplicar
+             $data = $c->payload;
+             $pags = collect($data['pagamentos'] ?? [])->reject(fn ($p) => ($p['meio'] ?? '') === 'pix')->values()->all();
+-            $pags[] = ['meio' => 'pix', 'valor' => (float) $c->valor];
++            $pags[] = ['meio' => 'pix', 'valor' => (float) $c->valor, 'auto' => true];
+             $data['pagamentos'] = $pags;
+ 
+             try {
+@@ -194,7 +194,7 @@ protected function criarPassagem(Conversa $conv, Cobranca $cob): void
+             // registra o pagamento PIX SEM embarcar (o cliente embarca depois, no check-in)
+             \App\Models\Pagamento::create([
+                 'empresa_id' => $p->empresa_id, 'modulo' => 'passagem', 'origem_id' => $p->id, 'encomenda_id' => null,
+-                'meio' => 'pix', 'valor' => (float) $cob->valor, 'user_id' => (int) $op->id, 'momento' => 'baixa', 'tipo_mov' => 'entrada',
++                'meio' => 'pix', 'pix_auto' => true, 'valor' => (float) $cob->valor, 'user_id' => (int) $op->id, 'momento' => 'baixa', 'tipo_mov' => 'entrada',
+             ]);
+             $p->recalcular();
+ 
+diff --git a/app/Services/EncomendaService.php b/app/Services/EncomendaService.php
+index 7a8a377..74c0f31 100644
+--- a/app/Services/EncomendaService.php
++++ b/app/Services/EncomendaService.php
+@@ -102,6 +102,7 @@ public function criar(array $data, int $userId, ?string $uuid = null, bool $offl
+                 $enc->pagamentos()->create([
+                     'empresa_id' => $empresa->id,
+                     'meio' => $p['meio'],
++                    'pix_auto' => ($p['meio'] === 'pix' && ! empty($p['auto'])),
+                     'valor' => $p['valor'],
+                     'user_id' => $userId,
+                     'momento' => 'cadastro',
+@@ -137,7 +138,7 @@ public function baixa(Encomenda $enc, array $data, int $userId, ?string $uuid =
+             foreach (['dinheiro', 'pix', 'debito', 'credito', 'desconto'] as $meio) {
+                 $v = (float) ($data[$meio] ?? 0);
+                 if ($v > 0) {
+-                    $enc->pagamentos()->create(['empresa_id' => $enc->empresa_id, 'meio' => $meio, 'valor' => $v, 'user_id' => $userId, 'momento' => 'baixa']);
++                    $enc->pagamentos()->create(['empresa_id' => $enc->empresa_id, 'meio' => $meio, 'pix_auto' => ($meio === 'pix' && ! empty($data['pix_auto'])), 'valor' => $v, 'user_id' => $userId, 'momento' => 'baixa']);
+                     $soma += $v;
+                 }
+             }
+diff --git a/app/Services/PassagemService.php b/app/Services/PassagemService.php
+index 9457b48..ac46c63 100644
+--- a/app/Services/PassagemService.php
++++ b/app/Services/PassagemService.php
+@@ -106,6 +106,7 @@ public function criar(array $data, int $userId, ?string $uuid = null, bool $offl
+                     'origem_id' => $p->id,
+                     'encomenda_id' => null,
+                     'meio' => $pag['meio'],
++                    'pix_auto' => ($pag['meio'] === 'pix' && ! empty($pag['auto'])),
+                     'valor' => $pag['valor'],
+                     'user_id' => $userId,
+                     'momento' => 'cadastro',
+@@ -138,7 +139,7 @@ public function baixa(Passagem $p, array $data, int $userId): void
+                 if ($v > 0) {
+                     \App\Models\Pagamento::create([
+                         'empresa_id' => $p->empresa_id, 'modulo' => 'passagem', 'origem_id' => $p->id,
+-                        'encomenda_id' => null, 'meio' => $meio, 'valor' => $v, 'user_id' => $userId,
++                        'encomenda_id' => null, 'meio' => $meio, 'pix_auto' => ($meio === 'pix' && ! empty($data['pix_auto'])), 'valor' => $v, 'user_id' => $userId,
+                         'momento' => 'baixa', 'tipo_mov' => 'entrada',
+                     ]);
+                     $soma += $v;
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index e2f6cb0..f66a237 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.8';
++    public const ATUAL = 'v2026.10.26.9';
+ }
+diff --git a/database/migrations/0001_01_47_000000_pagamento_pix_auto.php b/database/migrations/0001_01_47_000000_pagamento_pix_auto.php
+new file mode 100644
+index 0000000..2d9a248
+--- /dev/null
++++ b/database/migrations/0001_01_47_000000_pagamento_pix_auto.php
+@@ -0,0 +1,28 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++/**
++ * Distingue PIX Manual (valor digitado no caixa) de PIX Automático (QR gerado,
++ * confirmado pelo Mercado Pago). Usado no form, no caixa, nos relatórios e no filtro.
++ */
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('pagamentos', function (Blueprint $t) {
++            if (! Schema::hasColumn('pagamentos', 'pix_auto')) {
++                $t->boolean('pix_auto')->default(false)->after('meio'); // true = PIX dinâmico (QR)
++            }
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('pagamentos', function (Blueprint $t) {
++            if (Schema::hasColumn('pagamentos', 'pix_auto')) $t->dropColumn('pix_auto');
++        });
++    }
++};
+diff --git a/resources/views/caixa/index.blade.php b/resources/views/caixa/index.blade.php
+index d525b5a..98da567 100644
+--- a/resources/views/caixa/index.blade.php
++++ b/resources/views/caixa/index.blade.php
+@@ -45,6 +45,9 @@
+   <div><label class="label">Módulo</label>
+     <select name="modulo" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos os módulos</option>
+       @foreach(\App\Support\Modulos::LISTA as $mk=>$mv)<option value="{{ $mk }}" @selected(($modulo ?? '')===$mk)>{{ $mv[1] }} {{ $mv[0] }}</option>@endforeach</select></div>
++  <div><label class="label">Forma</label>
++    <select name="canal" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as formas</option>
++      @foreach(\App\Models\Pagamento::CANAIS as $ck=>$cv)<option value="{{ $ck }}" @selected(($canal ?? '')===$ck)>{{ $cv }}</option>@endforeach</select></div>
+   @if($viagens->count())
+   <div><label class="label">Viagem</label>
+     <select name="viagem_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">— período —</option>
+@@ -55,7 +58,7 @@
+ 
+ <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+   <div class="card p-3 text-white" style="background:var(--cor1)"><div class="text-[11px] uppercase opacity-70">Caixa (líquido)</div><div class="text-2xl font-extrabold">R$ {{ number_format($total,2,',','.') }}</div><div class="text-[10px] opacity-70">entradas {{ number_format($entradas,2,',','.') }} · saídas {{ number_format($saidas,2,',','.') }}</div></div>
+-  @foreach(['dinheiro','pix','debito','credito'] as $m)
++  @foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)
+     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m]->valor ?? 0,2,',','.') }}</div><div class="text-xs text-slate-400">{{ $porMeio[$m]->qtd ?? 0 }} lançamentos</div></div>
+   @endforeach
+   <div class="card p-3 text-xs space-y-1">
+@@ -68,11 +71,11 @@
+ 
+ <div class="card overflow-hidden">
+   <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Por operador</div>
+-  <table class="w-full text-sm"><thead class="bg-slate-50 text-[11px] uppercase text-slate-500"><tr><th class="p-3 text-left">Operador</th>@foreach(['dinheiro','pix','debito','credito'] as $m)<th class="p-3 text-right">{{ $meios[$m] }}</th>@endforeach<th class="p-3 text-right">Total</th></tr></thead>
++  <table class="w-full text-sm"><thead class="bg-slate-50 text-[11px] uppercase text-slate-500"><tr><th class="p-3 text-left">Operador</th>@foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)<th class="p-3 text-right">{{ $meios[$m] }}</th>@endforeach<th class="p-3 text-right">Total</th></tr></thead>
+   <tbody class="divide-y">
+   @forelse($porOperador as $uid=>$d)
+-    <tr><td class="p-3 font-semibold">{{ $usuarios[$uid]->name ?? '—' }}</td>@foreach(['dinheiro','pix','debito','credito'] as $m)<td class="p-3 text-right">{{ number_format($d['meios'][$m] ?? 0,2,',','.') }}</td>@endforeach<td class="p-3 text-right font-bold">{{ number_format($d['total'],2,',','.') }}</td></tr>
+-  @empty <tr><td colspan="6" class="p-6 text-center text-slate-400">Sem movimento no período.</td></tr> @endforelse
++    <tr><td class="p-3 font-semibold">{{ $usuarios[$uid]->name ?? '—' }}</td>@foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)<td class="p-3 text-right">{{ number_format($d['meios'][$m] ?? 0,2,',','.') }}</td>@endforeach<td class="p-3 text-right font-bold">{{ number_format($d['total'],2,',','.') }}</td></tr>
++  @empty <tr><td colspan="7" class="p-6 text-center text-slate-400">Sem movimento no período.</td></tr> @endforelse
+   </tbody></table>
+ </div>
+ 
+@@ -91,7 +94,7 @@
+     <a href="{{ $rf['url'] ?? '#' }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 text-sm">
+       <div class="w-14 text-xs text-slate-400">{{ $m->created_at->format('d/m') }}<br>{{ $m->created_at->format('H:i') }}</div>
+       <div class="flex-1 min-w-0"><span class="chip" style="background:{{ \App\Support\Modulos::hex($m->modulo ?: 'encomenda') }}20;color:{{ \App\Support\Modulos::hex($m->modulo ?: 'encomenda') }}">{{ \App\Support\Modulos::icone($m->modulo ?: 'encomenda') }}</span> <b>#{{ $rf['numero'] }}</b> {{ $rf['nome'] }}<div class="text-xs text-slate-400">{{ $m->user?->name }} · {{ $m->momento==='cadastro'?'no cadastro':'na baixa' }}</div></div>
+-      <span class="chip bg-slate-100 text-slate-600">{{ $meios[$m->meio] }}</span>
++      <span class="chip bg-slate-100 text-slate-600">{{ $meios[$m->canal] ?? \App\Models\Pagamento::MEIOS[$m->meio] ?? $m->meio }}</span>
+       <div class="font-bold whitespace-nowrap">R$ {{ number_format($m->valor,2,',','.') }}</div>
+     </a>
+   @endforeach
+diff --git a/resources/views/caixa/meu.blade.php b/resources/views/caixa/meu.blade.php
+index 8ba2bad..4b128dc 100644
+--- a/resources/views/caixa/meu.blade.php
++++ b/resources/views/caixa/meu.blade.php
+@@ -10,7 +10,7 @@
+ <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+   <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Cadastrei</div><div class="text-xl font-extrabold">{{ $cadastros->count() }}</div><div class="text-xs text-slate-400">R$ {{ number_format($cadastros->sum('total'),2,',','.') }}</div></div>
+   <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Recebi</div><div class="text-xl font-extrabold text-emerald-600">R$ {{ number_format($porMeio->sum(),2,',','.') }}</div></div>
+-  @foreach(['dinheiro','pix','debito','credito'] as $m)
++  @foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)
+     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m] ?? 0,2,',','.') }}</div></div>
+   @endforeach
+ </div>
+@@ -29,7 +29,7 @@
+       <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Recebimentos ({{ $recebimentos->count() }})</div>
+       <div class="divide-y text-sm">
+         @forelse($recebimentos as $p)
+-          <div class="flex justify-between p-3"><div><b>#{{ $p->encomenda?->numeroFormatado() }}</b> <span class="chip bg-slate-100 text-slate-600">{{ $meios[$p->meio] }}</span><div class="text-xs text-slate-400">{{ $p->created_at->format('d/m H:i') }}</div></div><b>R$ {{ number_format($p->valor,2,',','.') }}</b></div>
++          <div class="flex justify-between p-3"><div><b>#{{ $p->encomenda?->numeroFormatado() }}</b> <span class="chip bg-slate-100 text-slate-600">{{ $meios[$p->canal] ?? \App\Models\Pagamento::MEIOS[$p->meio] ?? $p->meio }}</span><div class="text-xs text-slate-400">{{ $p->created_at->format('d/m H:i') }}</div></div><b>R$ {{ number_format($p->valor,2,',','.') }}</b></div>
+         @empty <div class="p-6 text-center text-slate-400">Nenhum recebimento.</div> @endforelse
+       </div>
+     </div>
+diff --git a/resources/views/encomendas/create.blade.php b/resources/views/encomendas/create.blade.php
+index 62064f6..c0c4b6d 100644
+--- a/resources/views/encomendas/create.blade.php
++++ b/resources/views/encomendas/create.blade.php
+@@ -239,14 +239,16 @@ class="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b last:border
+ 
+         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
+           <template x-for="m in meios" :key="m.k">
+-            <div x-show="m.k!=='pix' || pixManual || pixDinamico">
++            <div x-show="m.k!=='pix' || pixManual">
+               <label class="lbl" x-text="m.l"></label>
+-              <div class="flex gap-1 items-stretch">
+-                <input class="field text-right font-semibold flex-1" x-money="pag[m.k]" x-show="m.k!=='pix' || pixManual">
+-                <button type="button" x-show="m.k==='pix' && pixDinamico" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-3 shrink-0 font-bold text-lg disabled:opacity-50 hover:text-white transition" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠</button>
+-              </div>
++              <input class="field text-right font-semibold w-full" x-money="pag[m.k]">
+             </div>
+           </template>
++          {{-- PIX Automático: gera o QR e aguarda o pagamento --}}
++          <div x-show="pixDinamico">
++            <label class="lbl">PIX Automático</label>
++            <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
++          </div>
+           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
+         </div>
+@@ -335,7 +337,7 @@ function novaEncomenda(){
+     viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
+     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+     itens: @js($pre['itens'] ?? []), desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
+-    meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
++    meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+     init(){
+       this.recalcVolumes();
+       try { const v = localStorage.getItem('fbre_imprimir'); if (v) this.imprimir = v; } catch(e){}
+diff --git a/resources/views/passagens/create.blade.php b/resources/views/passagens/create.blade.php
+index 6ed1674..69769b8 100644
+--- a/resources/views/passagens/create.blade.php
++++ b/resources/views/passagens/create.blade.php
+@@ -206,14 +206,16 @@ class="h-8 rounded text-sm transition"
+         @endif
+         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
+           <template x-for="m in meios" :key="m.k">
+-            <div x-show="m.k!=='pix' || pixManual || pixDinamico">
++            <div x-show="m.k!=='pix' || pixManual">
+               <label class="lbl" x-text="m.l"></label>
+-              <div class="flex gap-1 items-stretch">
+-                <input class="field text-right font-semibold flex-1" x-money="pag[m.k]" x-show="m.k!=='pix' || pixManual">
+-                <button type="button" x-show="m.k==='pix' && pixDinamico" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-3 shrink-0 font-bold text-lg disabled:opacity-50 hover:text-white transition" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠</button>
+-              </div>
++              <input class="field text-right font-semibold w-full" x-money="pag[m.k]">
+             </div>
+           </template>
++          {{-- PIX Automático: gera o QR e aguarda o pagamento --}}
++          <div x-show="pixDinamico">
++            <label class="lbl">PIX Automático</label>
++            <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
++          </div>
+           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
+         </div>
+@@ -356,7 +358,7 @@ function novaPassagem(){
+       compradorNome:'', compradorTel:'', compradorDoc:'', observacao:'',
+       lancamentoEm:@js(now()->toDateString()),
+       desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
+-      meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
++      meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+       passageiros:[],
+       precoInfo:false,
+       // viagem
+-- 
+2.43.0
+

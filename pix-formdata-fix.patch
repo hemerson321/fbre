@@ -1,0 +1,56 @@
+From 5c8167edef70299b9fd7eaaabacdcb527f649350 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 26 Oct 2026 16:35:41 -0400
+Subject: [PATCH] =?UTF-8?q?fix(pix=20encomenda):=20bot=C3=A3o=20abre=20o?=
+ =?UTF-8?q?=20popup=20de=20verdade=20=E2=80=94=20no=20@click=20o=20this.$e?=
+ =?UTF-8?q?l=20=C3=A9=20o=20BOT=C3=83O,=20n=C3=A3o=20o=20form,=20ent=C3=A3?=
+ =?UTF-8?q?o=20new=20FormData($el)=20quebrava=20e=20a=20gera=C3=A7=C3=A3o?=
+ =?UTF-8?q?=20do=20PIX=20morria=20sem=20erro=20vis=C3=ADvel.=20Usa=20this.?=
+ =?UTF-8?q?$root=20(o=20form)=20+=20guarda=20em=20montarDados.=20v2026.10.?=
+ =?UTF-8?q?26.8?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Support/Versao.php                      | 2 +-
+ resources/views/encomendas/create.blade.php | 3 ++-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index 297d6fd..e2f6cb0 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.7';
++    public const ATUAL = 'v2026.10.26.8';
+ }
+diff --git a/resources/views/encomendas/create.blade.php b/resources/views/encomendas/create.blade.php
+index 16094d6..62064f6 100644
+--- a/resources/views/encomendas/create.blade.php
++++ b/resources/views/encomendas/create.blade.php
+@@ -424,7 +424,7 @@ function novaEncomenda(){
+       if(this.pixPagando) return;
+       if(!this.origemSel || !this.destinoSel){ alert('Preencha a origem e o destino antes de gerar o PIX.'); return; }
+       if(!this.itens.length){ alert('Adicione pelo menos um item.'); return; }
+-      const pedido=this.montarDados(this.$el);
++      const pedido=this.montarDados(this.$root);
+       if(!pedido.remetente_nome || !pedido.remetente_nome.trim()){ alert('Informe o remetente antes de gerar o PIX.'); return; }
+       if(!pedido.destinatario_nome || !pedido.destinatario_nome.trim()){ alert('Informe o destinatário antes de gerar o PIX.'); return; }
+       const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
+@@ -466,6 +466,7 @@ function novaEncomenda(){
+     copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
+     imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+     montarDados(form){
++      if(!form || form.tagName!=='FORM'){ form = (this.$root && this.$root.tagName==='FORM') ? this.$root : document.querySelector('form[x-data]'); }
+       const fd = new FormData(form);
+       return {
+         origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, lancamento_em: this.lancamentoEm || null, pre_id: fd.get('pre_id') || null, setor: fd.get('setor'),
+-- 
+2.43.0
+

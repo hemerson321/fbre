@@ -1,0 +1,351 @@
+From 8ec3fa02153fc0148e2c0b41f7c0e9bd1bff0b37 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 07:19:24 -0400
+Subject: [PATCH] =?UTF-8?q?feat(pix=20camarote):=20PIX=20din=C3=A2mico=20(?=
+ =?UTF-8?q?QR)=20no=20camarote,=20cria=20no=20servidor=20ao=20pagar?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- CamaroteVenda service: preço do trecho, anti-sobreposição e distribuição dos ocupantes (titular/incluído/adicional) extraídos pra reuso
+- camaroteStore refatorado pra usar o serviço
+- ConfirmaPagamento: payload de camarote (camarote_id+ocupantes) é resolvido no pagamento (checa conflito de novo) e vira passagem tipo=camarote, PIX marcado como automático
+- camarote create: botão 'PIX Automático' + caixa 'PIX Manual' + modal aguardando pagamento + impressão do QR pelo agente
+- v2026.10.26.12
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Http/Controllers/PassagemController.php  |  49 ++------
+ app/Services/CamaroteVenda.php               | 113 +++++++++++++++++++
+ app/Services/ConfirmaPagamento.php           |  15 ++-
+ app/Support/Versao.php                       |   2 +-
+ resources/views/passagens/camarote.blade.php |  70 +++++++++++-
+ 5 files changed, 200 insertions(+), 49 deletions(-)
+ create mode 100644 app/Services/CamaroteVenda.php
+
+diff --git a/app/Http/Controllers/PassagemController.php b/app/Http/Controllers/PassagemController.php
+index c80fcfd..ae1c27e 100644
+--- a/app/Http/Controllers/PassagemController.php
++++ b/app/Http/Controllers/PassagemController.php
+@@ -332,55 +332,20 @@ public function camaroteStore(Request $request)
+             'imprimir' => 'nullable|in:navegador,direto,nao',
+         ]);
+ 
+-        $cam = Camarote::where('id', $data['camarote_id'])->firstOrFail();
+-        abort_unless($cam->empresa_id === Tenant::id(), 404);
+-        abort_if($data['origem'] === $data['destino'], 422, 'Origem e destino não podem ser iguais.');
+         if (auth()->user()->revendedorDono() !== null) $data['forma'] = 'avista';
+ 
+-        $base = $cam->precoPara($data['origem'], $data['destino']);
+-        abort_if($base === null, 422, 'Não há preço cadastrado para esse trecho neste camarote.');
+-        $cap = max((int) $cam->capacidade, 1);
+-
+-        // não vender o mesmo camarote em trecho que se sobrepõe na mesma viagem
+-        $conf = $this->camaroteConflito($cam->id, $data['rota_id'] ?? null, $data['data_viagem'] ?? null, $data['viagem_id'] ?? null, $data['origem'], $data['destino']);
+-        if ($conf) {
+-            $num = $conf->numero_completo ?: $conf->numero;
+-            abort(422, "Esse camarote ({$cam->nome}) já está ocupado/reservado nessa viagem no trecho {$conf->origem} → {$conf->destino} (Nº {$num}".($conf->comprador_nome ? ', '.$conf->comprador_nome : '').").");
+-        }
+-
+-        $passageiros = [];
+-        foreach (array_values($data['ocupantes']) as $i => $oc) {
+-            if ($i === 0) { $papel = 'titular'; $valor = (float) $base; $obs = 'Camarote '.$cam->nome; }
+-            elseif ($i < $cap) { $papel = 'incluido'; $valor = 0.0; $obs = 'Incluído no camarote'; }
+-            else { $papel = 'adicional'; $valor = round((float) ($oc['adicional'] ?? $cam->valor_adicional), 2); $obs = 'Adicional'; }
+-            $passageiros[] = [
+-                'nome' => $oc['nome'], 'tipo' => 'Camarote', 'papel' => $papel, 'percentual' => 100,
+-                'documento' => $oc['documento'] ?? null, 'nascimento' => $oc['nascimento'] ?? null,
+-                'telefone' => $oc['telefone'] ?? null, 'checkin' => (bool) ($oc['checkin'] ?? true),
+-                'valor_passagem' => $valor, 'valor_taxa' => 0, 'valor_alimentacao' => 0, 'valor_integral' => $valor,
+-                'observacao' => $obs,
+-            ];
++        try {
++            $payload = app(\App\Services\CamaroteVenda::class)->montarPayload($data);
++        } catch (\RuntimeException $e) {
++            abort(422, $e->getMessage());
+         }
+ 
+-        $payload = [
+-            'tipo' => 'camarote', 'camarote_id' => $cam->id,
+-            'origem' => $data['origem'], 'destino' => $data['destino'],
+-            'rota_id' => $data['rota_id'] ?? null, 'viagem_id' => $data['viagem_id'] ?? null,
+-            'data_viagem' => $data['data_viagem'] ?? null,
+-            'comprador_nome' => $data['comprador_nome'] ?? null,
+-            'comprador_telefone' => $data['comprador_telefone'] ?? null,
+-            'comprador_documento' => $data['comprador_documento'] ?? null,
+-            'forma' => $data['forma'], 'observacao' => $data['observacao'] ?? null,
+-            'desconto' => $data['desconto'] ?? 0,
+-            'passageiros' => $passageiros,
+-            'pagamentos' => $data['pagamentos'] ?? [],
+-        ];
+-
+         $p = app(\App\Services\PassagemService::class)->criar($payload, auth()->id(), $request->input('uuid'));
+-        session(['ultima_origem_pass' => $data['origem'], 'ultima_suite_cam' => $cam->id]);
++        session(['ultima_origem_pass' => $data['origem'], 'ultima_suite_cam' => $data['camarote_id']]);
+         $imprimir = $request->input('imprimir', 'navegador');
++        $nomeCam = $p->camarote?->nome ?: 'Camarote';
+         return redirect()->route('passagens.show', ['passagem' => $p, 'print' => $imprimir === 'navegador' ? 1 : 0])
+-            ->with('ok', "Camarote {$cam->nome} · passagem {$p->numeroFormatado()} salva.");
++            ->with('ok', "{$nomeCam} · passagem {$p->numeroFormatado()} salva.");
+     }
+ 
+     protected function validar(Request $request): array
+diff --git a/app/Services/CamaroteVenda.php b/app/Services/CamaroteVenda.php
+new file mode 100644
+index 0000000..5c9e833
+--- /dev/null
++++ b/app/Services/CamaroteVenda.php
+@@ -0,0 +1,113 @@
++<?php
++
++namespace App\Services;
++
++use App\Models\Camarote;
++use App\Models\Passagem;
++use App\Models\Rota;
++use App\Support\Tenant;
++
++/**
++ * Regras da venda de camarote (preço por trecho, anti-sobreposição na viagem e
++ * distribuição dos ocupantes em titular/incluído/adicional). Reutilizado pelo
++ * balcão (POST) e pelo PIX dinâmico (cria no servidor após o pagamento).
++ */
++class CamaroteVenda
++{
++    /**
++     * Monta o payload de Passagem (tipo=camarote) a partir dos dados crus da venda.
++     * Lança \RuntimeException quando não há preço ou quando há conflito de ocupação.
++     */
++    public function montarPayload(array $data): array
++    {
++        $cam = Camarote::where('id', $data['camarote_id'] ?? 0)->first();
++        if (! $cam || $cam->empresa_id !== Tenant::id()) {
++            throw new \RuntimeException('Camarote não encontrado.');
++        }
++        $origem = (string) ($data['origem'] ?? '');
++        $destino = (string) ($data['destino'] ?? '');
++        if ($origem === '' || $destino === '' || $origem === $destino) {
++            throw new \RuntimeException('Origem e destino inválidos.');
++        }
++
++        $base = $cam->precoPara($origem, $destino);
++        if ($base === null) {
++            throw new \RuntimeException('Não há preço cadastrado para esse trecho neste camarote.');
++        }
++        $cap = max((int) $cam->capacidade, 1);
++
++        // não vender o mesmo camarote em trecho que se sobrepõe na mesma viagem
++        $conf = $this->conflito($cam->id, $data['rota_id'] ?? null, $data['data_viagem'] ?? null, $data['viagem_id'] ?? null, $origem, $destino);
++        if ($conf) {
++            $num = $conf->numero_completo ?: $conf->numero;
++            throw new \RuntimeException("Camarote {$cam->nome} já ocupado/reservado nessa viagem no trecho {$conf->origem} → {$conf->destino} (Nº {$num}".($conf->comprador_nome ? ', '.$conf->comprador_nome : '').').');
++        }
++
++        $ocupantes = array_values($data['ocupantes'] ?? []);
++        if (! $ocupantes) throw new \RuntimeException('Informe ao menos um ocupante.');
++
++        $passageiros = [];
++        foreach ($ocupantes as $i => $oc) {
++            if ($i === 0) { $papel = 'titular'; $valor = (float) $base; $obs = 'Camarote '.$cam->nome; }
++            elseif ($i < $cap) { $papel = 'incluido'; $valor = 0.0; $obs = 'Incluído no camarote'; }
++            else { $papel = 'adicional'; $valor = round((float) ($oc['adicional'] ?? $cam->valor_adicional), 2); $obs = 'Adicional'; }
++            $passageiros[] = [
++                'nome' => $oc['nome'] ?? 'Ocupante', 'tipo' => 'Camarote', 'papel' => $papel, 'percentual' => 100,
++                'documento' => $oc['documento'] ?? null, 'nascimento' => $oc['nascimento'] ?? null,
++                'telefone' => $oc['telefone'] ?? null, 'checkin' => (bool) ($oc['checkin'] ?? true),
++                'valor_passagem' => $valor, 'valor_taxa' => 0, 'valor_alimentacao' => 0, 'valor_integral' => $valor,
++                'observacao' => $obs,
++            ];
++        }
++
++        return [
++            'tipo' => 'camarote', 'camarote_id' => $cam->id,
++            'origem' => $origem, 'destino' => $destino,
++            'rota_id' => $data['rota_id'] ?? null, 'viagem_id' => $data['viagem_id'] ?? null,
++            'data_viagem' => $data['data_viagem'] ?? null,
++            'comprador_nome' => $data['comprador_nome'] ?? null,
++            'comprador_telefone' => $data['comprador_telefone'] ?? null,
++            'comprador_documento' => $data['comprador_documento'] ?? null,
++            'forma' => $data['forma'] ?? 'avista', 'observacao' => $data['observacao'] ?? null,
++            'desconto' => $data['desconto'] ?? 0,
++            'passageiros' => $passageiros,
++            'pagamentos' => $data['pagamentos'] ?? [],
++        ];
++    }
++
++    /** Retorna a passagem em conflito (trecho sobreposto) no mesmo camarote/viagem, ou null. */
++    public function conflito(int $camaroteId, $rotaId, $dataViagem, $viagemId, string $origem, string $destino): ?Passagem
++    {
++        if (! $viagemId && ! $dataViagem) return null;
++
++        $rota = $rotaId ? Rota::find($rotaId) : null;
++        if (! $rota) {
++            $rota = Rota::with('paradas')->get()->first(function ($r) use ($origem, $destino) {
++                $locs = array_map('mb_strtolower', $r->localidades());
++                return in_array(mb_strtolower($origem), $locs, true) && in_array(mb_strtolower($destino), $locs, true);
++            });
++        }
++        $ordem = $rota ? array_map('mb_strtolower', $rota->localidades()) : [];
++        $idx = fn ($c) => array_search(mb_strtolower((string) $c), $ordem, true);
++        $reqS = $idx($origem); $reqD = $idx($destino);
++        $temTrecho = $ordem && $reqS !== false && $reqD !== false;
++        $reqMin = $temTrecho ? min($reqS, $reqD) : null;
++        $reqMax = $temTrecho ? max($reqS, $reqD) : null;
++
++        $q = Passagem::where('tipo', 'camarote')->where('camarote_id', $camaroteId)->where('cancelada', false)
++            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
++            ->when(! $viagemId && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem));
++
++        foreach ($q->get(['id', 'numero', 'numero_completo', 'origem', 'destino', 'comprador_nome']) as $pg) {
++            if ($temTrecho) {
++                $c = $idx($pg->origem); $d = $idx($pg->destino);
++                if ($c !== false && $d !== false) {
++                    [$cMin, $cMax] = [min($c, $d), max($c, $d)];
++                    if (! ($reqMin < $cMax && $cMin < $reqMax)) continue; // não cruza -> livre
++                }
++            }
++            return $pg; // conflito
++        }
++        return null;
++    }
++}
+diff --git a/app/Services/ConfirmaPagamento.php b/app/Services/ConfirmaPagamento.php
+index 4a0b81d..914e244 100644
+--- a/app/Services/ConfirmaPagamento.php
++++ b/app/Services/ConfirmaPagamento.php
+@@ -106,13 +106,18 @@ public function criarPedidoDoPayload(Cobranca $cob): void
+             if (! $op) $op = \App\Models\User::withoutGlobalScopes()->where('empresa_id', $c->empresa_id)->orderByDesc('admin')->first();
+             if (! $op) { $c->forceFill(['erro' => 'Operador não encontrado'])->save(); return; }
+ 
+-            // garante o pagamento PIX no pedido (valor da cobrança), sem duplicar
+             $data = $c->payload;
+-            $pags = collect($data['pagamentos'] ?? [])->reject(fn ($p) => ($p['meio'] ?? '') === 'pix')->values()->all();
+-            $pags[] = ['meio' => 'pix', 'valor' => (float) $c->valor, 'auto' => true];
+-            $data['pagamentos'] = $pags;
+-
+             try {
++                // camarote: resolve preço/ocupantes/anti-sobreposição agora (no pagamento)
++                if ($c->modulo === 'passagem' && ! empty($data['camarote_id']) && ! empty($data['ocupantes'])) {
++                    $data = app(\App\Services\CamaroteVenda::class)->montarPayload($data);
++                }
++
++                // garante o pagamento PIX no pedido (valor da cobrança), sem duplicar
++                $pags = collect($data['pagamentos'] ?? [])->reject(fn ($p) => ($p['meio'] ?? '') === 'pix')->values()->all();
++                $pags[] = ['meio' => 'pix', 'valor' => (float) $c->valor, 'auto' => true];
++                $data['pagamentos'] = $pags;
++
+                 if ($c->modulo === 'passagem') {
+                     $rec = $this->pas->criar($data, (int) $op->id, 'pix-pas-'.$c->id);
+                     $tipo = Passagem::class;
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index 457f24d..dc3f336 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.11';
++    public const ATUAL = 'v2026.10.26.12';
+ }
+diff --git a/resources/views/passagens/camarote.blade.php b/resources/views/passagens/camarote.blade.php
+index a07d126..b5c6c63 100644
+--- a/resources/views/passagens/camarote.blade.php
++++ b/resources/views/passagens/camarote.blade.php
+@@ -194,8 +194,12 @@ class="h-8 rounded text-sm transition"
+ 
+         <div x-show="forma==='avista'" class="grid grid-cols-2 gap-2">
+           <template x-for="m in meios" :key="m.k">
+-            <div><label class="lbl" x-text="m.l"></label><input class="field text-right font-semibold" x-money="pag[m.k]"></div>
++            <div x-show="m.k!=='pix' || pixManual"><label class="lbl" x-text="m.l"></label><input class="field text-right font-semibold w-full" x-money="pag[m.k]"></div>
+           </template>
++          <div x-show="pixDinamico">
++            <label class="lbl">PIX Automático</label>
++            <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
++          </div>
+           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition" style="border-color:var(--cor1);color:var(--cor1)" @click="pag.dinheiro=+Math.max(total()-pagoSemDinheiro(),0).toFixed(2)">Tudo em dinheiro</button></div>
+         </div>
+@@ -239,6 +243,24 @@ class="h-8 rounded text-sm transition"
+   </div>
+ </div>
+ @endif
++
++  {{-- modal PIX dinâmico: aguarda o pagamento; só cadastra depois de confirmar --}}
++  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="cancelarPix()">
++    <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center">
++      <div class="font-bold text-lg">💠 PIX dinâmico</div>
++      <div class="text-xs text-slate-500 mb-3">Mostre o QR pro cliente pagar. A tela confirma sozinha e só então cadastra.</div>
++      <template x-if="pixQr"><img :src="pixQr.startsWith('data:')?pixQr:('data:image/png;base64,'+pixQr)" class="mx-auto rounded" style="width:220px;height:220px"></template>
++      <template x-if="!pixQr"><div class="mx-auto flex items-center justify-center text-slate-300" style="width:220px;height:220px"><svg class="animate-spin w-10 h-10" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg></div></template>
++      <div class="font-extrabold text-xl my-2">R$ <span x-text="fmt(pixValor)"></span></div>
++      <div class="flex items-center justify-center gap-2 text-amber-600 text-sm font-semibold mb-3">
++        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
++        <span x-text="pixQr ? 'Aguardando pagamento…' : 'Gerando PIX…'"></span>
++      </div>
++      <button type="button" x-show="pixCobId" @click="imprimirPix(pixCobId)" class="btn btn-ghost btn-sm w-full mb-2">🖨 Imprimir QR</button>
++      <button type="button" x-show="pixQr" @click="copiarPix()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
++      <button type="button" @click="cancelarPix()" class="btn btn-ghost btn-sm w-full text-slate-500">Cancelar</button>
++    </div>
++  </div>
+ </form>
+ 
+ <script>
+@@ -258,7 +280,53 @@ function vendaCamarote(){
+     meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+     pag:{dinheiro:0,pix:0,debito:0,credito:0}, desconto:0,
+     imprimir:'navegador',
++    pixManual:@js(auth()->user()->podePixManual()), pixDinamico:@js(auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')),
++    pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
+     fmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
++    montarDadosCamarote(){
++      return {
++        camarote_id:this.camId, origem:this.origem, destino:this.destino,
++        rota_id:this.rotaId||null, viagem_id:this.viagemId||null, data_viagem:this.dataViagem||null,
++        comprador_nome:this.comprador.nome||(this.ocupantes[0]?this.ocupantes[0].nome:null),
++        comprador_telefone:this.comprador.telefone||null, comprador_documento:this.comprador.documento||null,
++        forma:this.forma, observacao:this.observacao||null, desconto:Number(this.desconto)||0,
++        ocupantes:this.ocupantes.map(o=>({nome:o.nome, documento:o.documento||null, nascimento:o.nascimento||null, telefone:o.telefone||null, adicional:Number(o.adicional)||0, checkin:o.checkin?1:0})),
++        pagamentos:[],
++      };
++    },
++    gerarPixDinamico(){
++      if(this.pixPagando) return;
++      if(!this.camId){ alert('Escolha o camarote.'); return; }
++      if(!this.origem || !this.destino){ alert('Escolha origem e destino.'); return; }
++      if(this.base===null){ alert('Não há preço cadastrado para esse trecho.'); return; }
++      if(!this.ocupantes.length || !(this.ocupantes[0].nome||'').trim()){ alert('Informe ao menos o titular.'); return; }
++      const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
++      const valor=Math.max((Number(this.total())||0)-outros,0);
++      if(valor<=0){ alert('Sem valor a cobrar.'); return; }
++      const pedido=this.montarDadosCamarote();
++      this.pixCobId=null; this.pixCopia=''; this.pixQr=''; this.pixValor=valor; this.pixModal=true; this.pixPagando=true;
++      const csrf=(window.FBRE&&FBRE.csrf)||document.querySelector('input[name=_token]')?.value;
++      fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'passagem',valor:valor,descricao:'Camarote',imprimir:this.imprimir,payload:pedido})})
++        .then(r=>r.json()).then(d=>{
++          if(!d.ok){ this.pixModal=false; this.pixPagando=false; alert(d.erro||'Falha ao gerar PIX'); return; }
++          this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.imprimirPix(d.id);
++          this.pixPoll=setInterval(()=>this.checarPix(),4000);
++        }).catch(()=>{ this.pixModal=false; this.pixPagando=false; alert('Falha de conexão ao gerar PIX'); });
++    },
++    checarPix(){
++      if(!this.pixCobId || this.pixChecando) return;
++      this.pixChecando=true;
++      fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
++        if(d && d.pago){ clearInterval(this.pixPoll); this.pixPagando=false; this.finalizarPix(d); }
++      }).catch(()=>{}).finally(()=>{ this.pixChecando=false; });
++    },
++    finalizarPix(d){
++      if(d.erro || !d.url){ this.pixModal=false; alert('Pagamento recebido! '+(d.erro?('Não consegui cadastrar automaticamente: '+d.erro+'. '):'')+'Confira os dados e clique em Salvar.'); return; }
++      window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
++    },
++    cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
++    copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
++    imprimirPix(id){ const csrf=(window.FBRE&&FBRE.csrf)||document.querySelector('input[name=_token]')?.value; fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+     trocaCam(){ this.cam=this.camarotes.find(c=>c.id===this.camId)||null; this.ajustarOcupantes(); this.recalc(); },
+     onTrecho(){ this.recalc(); this.resolveData(); },
+     recalc(){
+-- 
+2.43.0
+

@@ -1,0 +1,86 @@
+From 09feb8f2dbc846b0846d0aea5792e19e0fdeafcd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 00:45:47 -0400
+Subject: [PATCH] =?UTF-8?q?ui(pix):=20r=C3=B3tulo=20'PIX=20QR'=20no=20luga?=
+ =?UTF-8?q?r=20de=20'PIX=20Autom=C3=A1tico'=20(form,=20caixa,=20relat?=
+ =?UTF-8?q?=C3=B3rios,=20filtro,=20dashboard)=20=E2=80=94=20v2026.10.26.12?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Models/Pagamento.php                    | 2 +-
+ app/Support/Versao.php                      | 2 +-
+ resources/views/encomendas/create.blade.php | 2 +-
+ resources/views/fretes/create.blade.php     | 2 +-
+ resources/views/passagens/create.blade.php  | 2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/app/Models/Pagamento.php b/app/Models/Pagamento.php
+index 256f132..a9b9e2c 100644
+--- a/app/Models/Pagamento.php
++++ b/app/Models/Pagamento.php
+@@ -25,7 +25,7 @@ class Pagamento extends Model
+     public const CANAIS = [
+         'dinheiro'   => 'Dinheiro',
+         'pix_manual' => 'PIX Manual',
+-        'pix_auto'   => 'PIX Automático',
++        'pix_auto'   => 'PIX QR',
+         'debito'     => 'Débito',
+         'credito'    => 'Crédito',
+     ];
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index 457f24d..dc3f336 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.11';
++    public const ATUAL = 'v2026.10.26.12';
+ }
+diff --git a/resources/views/encomendas/create.blade.php b/resources/views/encomendas/create.blade.php
+index c0c4b6d..7aa89db 100644
+--- a/resources/views/encomendas/create.blade.php
++++ b/resources/views/encomendas/create.blade.php
+@@ -246,7 +246,7 @@ class="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b last:border
+           </template>
+           {{-- PIX Automático: gera o QR e aguarda o pagamento --}}
+           <div x-show="pixDinamico">
+-            <label class="lbl">PIX Automático</label>
++            <label class="lbl">PIX QR</label>
+             <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
+           </div>
+           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+diff --git a/resources/views/fretes/create.blade.php b/resources/views/fretes/create.blade.php
+index 022c259..5e581db 100644
+--- a/resources/views/fretes/create.blade.php
++++ b/resources/views/fretes/create.blade.php
+@@ -108,7 +108,7 @@ class="mx-auto max-w-[1440px] space-y-2" @php $emp=\App\Support\Tenant::empresa(
+         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
+           <template x-for="m in meios" :key="m.k"><div x-show="m.k!=='pix' || pixManual"><label class="lbl" x-text="m.l"></label><input class="field text-right font-semibold w-full" x-money="pag[m.k]"></div></template>
+           <div x-show="pixDinamico">
+-            <label class="lbl">PIX Automático</label>
++            <label class="lbl">PIX QR</label>
+             <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
+           </div>
+           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+diff --git a/resources/views/passagens/create.blade.php b/resources/views/passagens/create.blade.php
+index 69769b8..702e084 100644
+--- a/resources/views/passagens/create.blade.php
++++ b/resources/views/passagens/create.blade.php
+@@ -213,7 +213,7 @@ class="h-8 rounded text-sm transition"
+           </template>
+           {{-- PIX Automático: gera o QR e aguarda o pagamento --}}
+           <div x-show="pixDinamico">
+-            <label class="lbl">PIX Automático</label>
++            <label class="lbl">PIX QR</label>
+             <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
+           </div>
+           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+-- 
+2.43.0
+

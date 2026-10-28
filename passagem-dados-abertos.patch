@@ -1,0 +1,50 @@
+From e303ab7f003d2482432da689b9cd2ca4ae04d6fd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 07:31:53 -0400
+Subject: [PATCH] =?UTF-8?q?ui(passagem):=20dados=20do=20passageiro=20(sexo?=
+ =?UTF-8?q?,=20nascimento,=20telefone,=20nacionalidade)=20sempre=20abertos?=
+ =?UTF-8?q?;=20removido=20o=20toggle=20'mais/menos=20dados'=20=E2=80=94=20?=
+ =?UTF-8?q?v2026.10.26.15?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Support/Versao.php                     | 2 +-
+ resources/views/passagens/create.blade.php | 5 ++---
+ 2 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index fa131c2..d4934d1 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.14';
++    public const ATUAL = 'v2026.10.26.15';
+ }
+diff --git a/resources/views/passagens/create.blade.php b/resources/views/passagens/create.blade.php
+index 260c3c5..61b981b 100644
+--- a/resources/views/passagens/create.blade.php
++++ b/resources/views/passagens/create.blade.php
+@@ -169,11 +169,10 @@ class="h-8 rounded text-sm transition"
+               <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
+               <div class="flex items-center gap-3">
+                 <button type="button" class="text-[12px] font-semibold flex items-center gap-1" style="color:var(--cor1)" @click="abrirCam(i)">📷 Foto</button>
+-                <button type="button" class="text-[11px] text-slate-500 underline" @click="p._mais=!p._mais" x-text="p._mais?'menos dados':'mais dados'"></button>
+               </div>
+             </div>
+-            {{-- linha 5: dados extras --}}
+-            <div x-show="p._mais" x-cloak class="grid grid-cols-2 gap-2 mt-1.5">
++            {{-- linha 5: dados extras (sempre visíveis) --}}
++            <div class="grid grid-cols-2 gap-2 mt-1.5">
+               <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm w-full" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+               <div><label class="lbl">Nascimento</label><input type="date" class="field !min-h-0 py-1 text-sm w-full" x-model="p.nascimento" @change="aplicarIdade(p)"></div>
+               <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" inputmode="tel" placeholder="(00) 00000-0000"></div>
+-- 
+2.43.0
+

@@ -1,0 +1,379 @@
+From 8d6a0fff43b230144542fd91b321534109b13056 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 15:20:43 -0400
+Subject: [PATCH] =?UTF-8?q?perf(relatorios):=20relat=C3=B3rios=20=C3=A0=20?=
+ =?UTF-8?q?prova=20de=20volume=20(n=C3=A3o=20travam=20em=20per=C3=ADodo=20?=
+ =?UTF-8?q?longo)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Meu relatório e Minhas vendas: totais somados NO BANCO; listas limitadas a 300 itens (aviso + Exportar); período > 31 dias abre Resumido por padrão
+- Exportar CSV (streaming por lotes) do período inteiro, honrando o filtro de forma — puxa 1 ano sem travar a tela
+- índice (empresa_id, created_at) no frete (encomenda/passagem/pagamento já tinham)
+- v2026.10.26.19
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Http/Controllers/PassagemController.php   | 60 ++++++++++++---
+ app/Http/Controllers/RelatorioController.php  | 77 ++++++++++++++++---
+ app/Support/Versao.php                        |  2 +-
+ .../0001_01_48_000000_frete_indice_data.php   | 28 +++++++
+ resources/views/caixa/meu.blade.php           | 22 ++++--
+ .../views/passagens/minhas-vendas.blade.php   | 14 +++-
+ routes/web.php                                |  2 +
+ 7 files changed, 171 insertions(+), 34 deletions(-)
+ create mode 100644 database/migrations/0001_01_48_000000_frete_indice_data.php
+
+diff --git a/app/Http/Controllers/PassagemController.php b/app/Http/Controllers/PassagemController.php
+index d289e01..f15f7db 100644
+--- a/app/Http/Controllers/PassagemController.php
++++ b/app/Http/Controllers/PassagemController.php
+@@ -490,19 +490,25 @@ public function minhasVendas(Request $request)
+         [$inicio, $fim, $periodo] = \App\Http\Controllers\CaixaController::periodo($request);
+ 
+         $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
+-        $vendas = Passagem::where('user_id', $u->id)->where('cancelada', false)
++        $limite = 300;
++        $base = Passagem::where('user_id', $u->id)->where('cancelada', false)
+             ->whereBetween('created_at', [$inicio, $fim])
+-            ->when($canal, fn ($q) => $q->whereHas('pagamentos', fn ($w) => $w->canal($canal)))
+-            ->with(['passageiros:id,passagem_id', 'embarcacao:id,nome'])
+-            ->orderByDesc('id')->get();
++            ->when($canal, fn ($q) => $q->whereHas('pagamentos', fn ($w) => $w->canal($canal)));
+ 
++        // totais somados no banco (não trava com período longo)
+         $totais = [
+-            'qtd'         => $vendas->count(),
+-            'passageiros' => (int) $vendas->sum(fn ($p) => $p->passageiros->count()),
+-            'total'       => (float) $vendas->sum(fn ($p) => (float) $p->total),
+-            'recebido'    => (float) $vendas->sum(fn ($p) => (float) $p->total - (float) $p->devido),
+-            'devido'      => (float) $vendas->sum(fn ($p) => (float) $p->devido),
++            'qtd'         => (clone $base)->count(),
++            'passageiros' => (int) \App\Models\PassagemPassageiro::whereHas('passagem', function ($q) use ($u, $inicio, $fim, $canal) {
++                $q->where('user_id', $u->id)->where('cancelada', false)->whereBetween('created_at', [$inicio, $fim])
++                    ->when($canal, fn ($w) => $w->whereHas('pagamentos', fn ($x) => $x->canal($canal)));
++            })->count(),
++            'total'       => (float) (clone $base)->sum('total'),
++            'devido'      => (float) (clone $base)->sum('devido'),
+         ];
++        $totais['recebido'] = $totais['total'] - $totais['devido'];
++
++        $vendas = (clone $base)->with(['passageiros:id,passagem_id', 'embarcacao:id,nome'])
++            ->orderByDesc('id')->limit($limite)->get();
+ 
+         // o que falta acertar (revendedor -> empresa | vendedor -> revendedor)
+         $acerto = null;
+@@ -522,7 +528,41 @@ public function minhasVendas(Request $request)
+             ];
+         }
+ 
+-        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal'));
++        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal', 'limite'));
++    }
++
++    /** Exporta as vendas de passagem do período (e forma) em CSV — sem travar a tela. */
++    public function minhasVendasExportar(Request $request)
++    {
++        $u = auth()->user();
++        [$inicio, $fim] = \App\Http\Controllers\CaixaController::periodo($request);
++        $canal = $request->input('canal');
++
++        $q = Passagem::where('user_id', $u->id)->where('cancelada', false)
++            ->whereBetween('created_at', [$inicio, $fim])
++            ->when($canal, fn ($w) => $w->whereHas('pagamentos', fn ($x) => $x->canal($canal)))
++            ->withCount('passageiros')->with('embarcacao:id,nome')->orderByDesc('id');
++
++        $nome = 'minhas-vendas-'.$inicio->format('Ymd').'-'.$fim->format('Ymd').'.csv';
++
++        return response()->streamDownload(function () use ($q) {
++            $out = fopen('php://output', 'w');
++            fprintf($out, "\xEF\xBB\xBF");
++            fputcsv($out, ['Data', 'Hora', 'Número', 'Origem', 'Destino', 'Passageiros', 'Barco', 'Status', 'Total', 'Pago', 'Devido'], ';');
++            $q->chunk(1000, function ($lote) use ($out) {
++                foreach ($lote as $p) {
++                    fputcsv($out, [
++                        $p->created_at->format('d/m/Y'), $p->created_at->format('H:i'),
++                        $p->numeroFormatado(), $p->origem, $p->destino,
++                        $p->passageiros_count, $p->embarcacao?->nome, $p->statusTexto(),
++                        number_format((float) $p->total, 2, ',', '.'),
++                        number_format((float) $p->pago, 2, ',', '.'),
++                        number_format((float) $p->devido, 2, ',', '.'),
++                    ], ';');
++                }
++            });
++            fclose($out);
++        }, $nome, ['Content-Type' => 'text/csv; charset=UTF-8']);
+     }
+ 
+     /** Tela de check-in (hub): escaneia o QR do bilhete ou busca pelo numero. */
+diff --git a/app/Http/Controllers/RelatorioController.php b/app/Http/Controllers/RelatorioController.php
+index 25146e2..e5c4f80 100644
+--- a/app/Http/Controllers/RelatorioController.php
++++ b/app/Http/Controllers/RelatorioController.php
+@@ -10,28 +10,81 @@
+ /** Relatório do próprio operador (só vê o que ele mesmo fez). */
+ class RelatorioController extends Controller
+ {
++    /** Quantas linhas por lista no modo analítico (acima disso, usar Exportar CSV). */
++    private const LIMITE = 300;
++
+     public function meu(Request $request)
+     {
+         [$inicio, $fim, $periodo] = CaixaController::periodo($request);
+         $uid = auth()->id();
+         $todos = auth()->user()->relatorioTodos();   // vê de todos ou só o próprio
+-
+-        $cadastros = Encomenda::when(! $todos, fn ($q) => $q->where('user_id', $uid))
+-            ->whereBetween('created_at', [$inicio, $fim])->with('embarcacao')->orderByDesc('id')->get();
+-
+         $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
+ 
+-        $recebimentos = Pagamento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('estornado', false)
+-            ->when($canal, fn ($q) => $q->canal($canal))
+-            ->whereBetween('created_at', [$inicio, $fim])->with('encomenda')->orderByDesc('id')->get();
++        // período longo (> 31 dias) abre resumido por padrão pra não travar
++        $longo = $inicio->diffInDays($fim) > 31;
++        $pedido = $request->input('modo');
++        $modo = $pedido === 'resumido' ? 'resumido' : ($pedido === 'analitico' ? 'analitico' : ($longo ? 'resumido' : 'analitico'));
+ 
+-        $entregas = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')
+-            ->whereBetween('created_at', [$inicio, $fim])->with('encomenda')->orderByDesc('id')->get();
++        $encQ = Encomenda::when(! $todos, fn ($q) => $q->where('user_id', $uid))->whereBetween('created_at', [$inicio, $fim]);
++        $pagQ = Pagamento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('estornado', false)
++            ->when($canal, fn ($q) => $q->canal($canal))->whereBetween('created_at', [$inicio, $fim]);
++        $evQ = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')->whereBetween('created_at', [$inicio, $fim]);
+ 
+-        $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('canal')->map->sum('valor');
+-        $modo = $request->input('modo') === 'resumido' ? 'resumido' : 'analitico';
++        // Totais somados NO BANCO (rápido mesmo com milhões de linhas)
++        $totais = [
++            'cadastros'       => (clone $encQ)->count(),
++            'cadastros_valor' => (float) (clone $encQ)->sum('total'),
++            'recebido_qtd'    => (clone $pagQ)->where('meio', '!=', 'desconto')->count(),
++            'entregas'        => (clone $evQ)->count(),
++        ];
++        $porMeio = (clone $pagQ)->where('meio', '!=', 'desconto')
++            ->selectRaw(Pagamento::canalSql().' as canal, SUM(valor) v')->groupBy('canal')->pluck('v', 'canal');
+ 
+-        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal'))
++        // Listas só no analítico, limitadas (o resto é via Exportar)
++        $limite = self::LIMITE;
++        $cadastros    = $modo === 'analitico' ? (clone $encQ)->with('embarcacao')->orderByDesc('id')->limit($limite)->get() : collect();
++        $recebimentos = $modo === 'analitico' ? (clone $pagQ)->with('encomenda')->orderByDesc('id')->limit($limite)->get() : collect();
++        $entregas     = $modo === 'analitico' ? (clone $evQ)->with('encomenda')->orderByDesc('id')->limit($limite)->get() : collect();
++
++        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite'))
+             ->with(['meios' => Pagamento::CANAIS]);
+     }
++
++    /** Exporta os recebimentos do período (e filtro de forma) em CSV — sem travar a tela. */
++    public function exportar(Request $request)
++    {
++        [$inicio, $fim] = CaixaController::periodo($request);
++        $uid = auth()->id();
++        $todos = auth()->user()->relatorioTodos();
++        $canal = $request->input('canal');
++
++        $q = Pagamento::when(! $todos, fn ($w) => $w->where('user_id', $uid))->where('estornado', false)
++            ->where('meio', '!=', 'desconto')->when($canal, fn ($w) => $w->canal($canal))
++            ->whereBetween('created_at', [$inicio, $fim])->with(['user', 'encomenda'])->orderByDesc('id');
++
++        $nome = 'recebimentos-'.$inicio->format('Ymd').'-'.$fim->format('Ymd').'.csv';
++        $canais = Pagamento::CANAIS;
++
++        return response()->streamDownload(function () use ($q, $canais) {
++            $out = fopen('php://output', 'w');
++            fprintf($out, "\xEF\xBB\xBF"); // BOM pro Excel abrir acentos certo
++            fputcsv($out, ['Data', 'Hora', 'Módulo', 'Número', 'Operador', 'Forma', 'Momento', 'Valor'], ';');
++            $q->chunk(1000, function ($lote) use ($out, $canais) {
++                foreach ($lote as $p) {
++                    $rf = $p->resumoFonte();
++                    fputcsv($out, [
++                        $p->created_at->format('d/m/Y'),
++                        $p->created_at->format('H:i'),
++                        \App\Support\Modulos::rotulo($p->modulo ?: 'encomenda'),
++                        $rf['numero'] ?? '',
++                        $p->user?->name,
++                        $canais[$p->canal] ?? ($p->meio),
++                        $p->momento === 'cadastro' ? 'no cadastro' : 'na baixa',
++                        number_format((float) $p->valor, 2, ',', '.'),
++                    ], ';');
++                }
++            });
++            fclose($out);
++        }, $nome, ['Content-Type' => 'text/csv; charset=UTF-8']);
++    }
+ }
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index 6f2335c..15a3817 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.18';
++    public const ATUAL = 'v2026.10.26.19';
+ }
+diff --git a/database/migrations/0001_01_48_000000_frete_indice_data.php b/database/migrations/0001_01_48_000000_frete_indice_data.php
+new file mode 100644
+index 0000000..3b5c6be
+--- /dev/null
++++ b/database/migrations/0001_01_48_000000_frete_indice_data.php
+@@ -0,0 +1,28 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\Schema;
++
++/**
++ * Índice (empresa_id, created_at) em fretes — filtros por período ficam rápidos
++ * em escala (encomendas/passagens/pagamentos já têm o equivalente).
++ */
++return new class extends Migration
++{
++    public function up(): void
++    {
++        if (! Schema::hasTable('fretes')) return;
++        try {
++            $existe = collect(DB::select('SHOW INDEX FROM fretes'))->contains(fn ($i) => $i->Key_name === 'fretes_empresa_id_created_at_index');
++            if (! $existe) {
++                Schema::table('fretes', fn ($t) => $t->index(['empresa_id', 'created_at']));
++            }
++        } catch (\Throwable $e) {}
++    }
++
++    public function down(): void
++    {
++        try { Schema::table('fretes', fn ($t) => $t->dropIndex('fretes_empresa_id_created_at_index')); } catch (\Throwable $e) {}
++    }
++};
+diff --git a/resources/views/caixa/meu.blade.php b/resources/views/caixa/meu.blade.php
+index b647f76..6b47aad 100644
+--- a/resources/views/caixa/meu.blade.php
++++ b/resources/views/caixa/meu.blade.php
+@@ -8,6 +8,7 @@
+       <a href="{{ request()->fullUrlWithQuery(['modo'=>'resumido']) }}" class="px-3 py-1.5 font-semibold {{ $modo==='resumido' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Resumido</a>
+       <a href="{{ request()->fullUrlWithQuery(['modo'=>'analitico']) }}" class="px-3 py-1.5 font-semibold {{ $modo==='analitico' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Analítico</a>
+     </div>
++    <a href="{{ route('relatorio.meu.exportar', request()->query()) }}" class="btn btn-ghost btn-sm">⬇️ Exportar CSV</a>
+     <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>
+   </div></div>
+ 
+@@ -19,7 +20,7 @@
+ </x-periodo>
+ 
+ <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+-  <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Cadastrei</div><div class="text-xl font-extrabold">{{ $cadastros->count() }}</div><div class="text-xs text-slate-400">R$ {{ number_format($cadastros->sum('total'),2,',','.') }}</div></div>
++  <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Cadastrei</div><div class="text-xl font-extrabold">{{ $totais['cadastros'] }}</div><div class="text-xs text-slate-400">R$ {{ number_format($totais['cadastros_valor'],2,',','.') }}</div></div>
+   <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Recebi</div><div class="text-xl font-extrabold text-emerald-600">R$ {{ number_format($porMeio->sum(),2,',','.') }}</div></div>
+   @foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)
+     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m] ?? 0,2,',','.') }}</div></div>
+@@ -27,28 +28,35 @@
+ </div>
+ 
+ @if($modo==='resumido')
+-  <div class="card p-4 text-sm text-slate-500">Resumo do período — {{ $cadastros->count() }} cadastro(s) · recebido R$ {{ number_format($porMeio->sum(),2,',','.') }} · {{ $entregas->count() }} entrega(s). Para ver item a item, use o modo <b>Analítico</b>.</div>
++  <div class="card p-4 text-sm text-slate-600">
++    Resumo do período — <b>{{ $totais['cadastros'] }}</b> cadastro(s) · recebido <b>R$ {{ number_format($porMeio->sum(),2,',','.') }}</b> · <b>{{ $totais['entregas'] }}</b> entrega(s).
++    <div class="text-slate-400 mt-1">Para ver item a item, use o modo <b>Analítico</b>. Para a lista completa do período, use <b>Exportar CSV</b>.</div>
++  </div>
+ @else
++@php $muito = max($totais['cadastros'], $totais['recebido_qtd'], $totais['entregas']) > $limite; @endphp
++@if($muito)
++  <div class="card p-3 text-xs text-amber-700 bg-amber-50 border border-amber-200">Período grande: mostrando os <b>{{ $limite }}</b> mais recentes de cada lista. Para tudo, use <b>⬇️ Exportar CSV</b>.</div>
++@endif
+ <div class="grid lg:grid-cols-2 gap-4">
+   <div class="card overflow-hidden">
+-    <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Encomendas que cadastrei ({{ $cadastros->count() }})</div>
++    <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Encomendas que cadastrei ({{ $totais['cadastros'] }})</div>
+     <div class="divide-y text-sm">
+       @forelse($cadastros as $e)
+-        <a href="{{ route('encomendas.show',$e) }}" class="flex justify-between p-3 hover:bg-slate-50 row-{{ $e->cor() }}"><div><b>#{{ $e->numeroFormatado() }}</b> {{ $e->destino }} · {{ $e->destinatario_nome }}<div class="text-xs text-slate-400">{{ $e->created_at->format('d/m H:i') }}</div></div><b>R$ {{ number_format($e->total,2,',','.') }}</b></a>
++        <a href="{{ route('encomendas.show',$e) }}" class="flex justify-between p-3 hover:bg-slate-50 row-{{ $e->cor() }}"><div><b>#{{ $e->numeroFormatado() }}</b> {{ $e->destino }} · {{ $e->destinatario_nome }}<div class="text-xs text-slate-400">{{ $e->created_at->format('d/m H:i') }}</div></div><b>R$ {{ number_format((float)$e->total,2,',','.') }}</b></a>
+       @empty <div class="p-6 text-center text-slate-400">Nenhum cadastro.</div> @endforelse
+     </div>
+   </div>
+   <div class="space-y-4">
+     <div class="card overflow-hidden">
+-      <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Recebimentos ({{ $recebimentos->count() }})</div>
++      <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Recebimentos ({{ $totais['recebido_qtd'] }})</div>
+       <div class="divide-y text-sm">
+         @forelse($recebimentos as $p)
+-          <div class="flex justify-between p-3"><div><b>#{{ $p->encomenda?->numeroFormatado() }}</b> <span class="chip bg-slate-100 text-slate-600">{{ $meios[$p->canal] ?? \App\Models\Pagamento::MEIOS[$p->meio] ?? $p->meio }}</span><div class="text-xs text-slate-400">{{ $p->created_at->format('d/m H:i') }}</div></div><b>R$ {{ number_format($p->valor,2,',','.') }}</b></div>
++          <div class="flex justify-between p-3"><div><b>#{{ $p->encomenda?->numeroFormatado() }}</b> <span class="chip bg-slate-100 text-slate-600">{{ $meios[$p->canal] ?? \App\Models\Pagamento::MEIOS[$p->meio] ?? $p->meio }}</span><div class="text-xs text-slate-400">{{ $p->created_at->format('d/m H:i') }}</div></div><b>R$ {{ number_format((float)$p->valor,2,',','.') }}</b></div>
+         @empty <div class="p-6 text-center text-slate-400">Nenhum recebimento.</div> @endforelse
+       </div>
+     </div>
+     <div class="card overflow-hidden">
+-      <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Entregas que dei baixa ({{ $entregas->count() }})</div>
++      <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Entregas que dei baixa ({{ $totais['entregas'] }})</div>
+       <div class="divide-y text-sm">
+         @forelse($entregas as $ev)
+           <div class="p-3"><b>#{{ $ev->encomenda?->numeroFormatado() }}</b> {{ $ev->encomenda?->destinatario_nome }} <span class="text-xs text-slate-400">{{ $ev->created_at->format('d/m H:i') }}{{ ($ev->dados['para'] ?? null) ? ' · retirou: '.$ev->dados['para'] : '' }}</span></div>
+diff --git a/resources/views/passagens/minhas-vendas.blade.php b/resources/views/passagens/minhas-vendas.blade.php
+index 38a9245..9b9a10d 100644
+--- a/resources/views/passagens/minhas-vendas.blade.php
++++ b/resources/views/passagens/minhas-vendas.blade.php
+@@ -4,7 +4,10 @@
+ <div class="space-y-4">
+   <div class="flex items-center justify-between">
+     <h1 class="text-xl font-bold">Minhas vendas <span class="text-slate-400 font-normal text-base">· {{ auth()->user()->name }}</span></h1>
+-    <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Imprimir</button>
++    <div class="flex items-center gap-2 no-print">
++      <a href="{{ route('passagens.minhas-vendas.exportar', request()->query()) }}" class="btn btn-ghost btn-sm">⬇️ Exportar CSV</a>
++      <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>
++    </div>
+   </div>
+ 
+   <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
+@@ -33,8 +36,11 @@
+   </div>
+   @endif
+ 
++  @if($totais['qtd'] > $limite)
++    <div class="card p-3 text-xs text-amber-700 bg-amber-50 border border-amber-200">Período grande: mostrando as <b>{{ $limite }}</b> vendas mais recentes de <b>{{ $totais['qtd'] }}</b>. Para a lista completa, use <b>⬇️ Exportar CSV</b>.</div>
++  @endif
+   <div class="card overflow-hidden">
+-    <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Vendas no período ({{ $vendas->count() }})</div>
++    <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Vendas no período ({{ $totais['qtd'] }})</div>
+     <div class="divide-y text-sm">
+       @forelse($vendas as $p)
+         <a href="{{ route('passagens.show',$p) }}" class="flex justify-between gap-3 p-3 hover:bg-slate-50">
+@@ -43,8 +49,8 @@
+             <div class="text-xs text-slate-400">{{ $p->created_at->format('d/m H:i') }} · {{ $p->passageiros->count() }} pax{{ $p->embarcacao ? ' · '.$p->embarcacao->nome : '' }}</div>
+           </div>
+           <div class="text-right whitespace-nowrap">
+-            <b>R$ {{ number_format($p->total,2,',','.') }}</b>
+-            @if($p->devido > 0.009)<div class="text-xs text-amber-600">deve R$ {{ number_format($p->devido,2,',','.') }}</div>@else<div class="text-xs text-emerald-600">pago</div>@endif
++            <b>R$ {{ number_format((float)$p->total,2,',','.') }}</b>
++            @if($p->devido > 0.009)<div class="text-xs text-amber-600">deve R$ {{ number_format((float)$p->devido,2,',','.') }}</div>@else<div class="text-xs text-emerald-600">pago</div>@endif
+           </div>
+         </a>
+       @empty <div class="p-6 text-center text-slate-400">Nenhuma venda no período.</div> @endforelse
+diff --git a/routes/web.php b/routes/web.php
+index 6a8efbf..9c5ad0f 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -100,6 +100,7 @@
+     Route::get('/passagens/lista', [\App\Http\Controllers\PassagemController::class, 'manifesto'])->name('passagens.manifesto')->middleware('perm:passagem.ver');
+     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos')->middleware('perm:passagem.ver');
+     Route::get('/passagens/minhas-vendas', [\App\Http\Controllers\PassagemController::class, 'minhasVendas'])->name('passagens.minhas-vendas')->middleware('perm:passagem.ver');
++    Route::get('/passagens/minhas-vendas/exportar', [\App\Http\Controllers\PassagemController::class, 'minhasVendasExportar'])->name('passagens.minhas-vendas.exportar')->middleware('perm:passagem.ver');
+     Route::get('/passagens/checkin', [\App\Http\Controllers\PassagemController::class, 'scanner'])->name('passagens.scanner')->middleware('perm:passagem.baixa');
+     Route::get('/passagens/checkin/buscar', [\App\Http\Controllers\PassagemController::class, 'buscarCheckin'])->name('passagens.scanner.buscar')->middleware('perm:passagem.baixa');
+     // Canal de atendimento (WhatsApp) — caixa de conversas
+@@ -170,6 +171,7 @@
+     Route::get('/caixa', [CaixaController::class, 'index'])->name('caixa.index')->middleware('perm:caixa');
+     Route::post('/caixa/avulso', [CaixaController::class, 'avulso'])->name('caixa.avulso')->middleware('perm:avulso');
+     Route::get('/meu-relatorio', [RelatorioController::class, 'meu'])->name('relatorio.meu')->middleware('perm:relatorio');
++    Route::get('/meu-relatorio/exportar', [RelatorioController::class, 'exportar'])->name('relatorio.meu.exportar')->middleware('perm:relatorio');
+ 
+     // ---------------- Viagens (módulo rotas) ----------------
+     Route::get('/viagens', [ViagemController::class, 'index'])->name('viagens.index')->middleware('perm:filtro');
+-- 
+2.43.0
+

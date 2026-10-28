@@ -1,0 +1,71 @@
+From b7ba874a3de2e34c182775bff7f27a409df18efc Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 07:30:05 -0400
+Subject: [PATCH] =?UTF-8?q?fix(passagem/pix):=20corrige=20'Data=20truncate?=
+ =?UTF-8?q?d=20for=20tipo'=20=E2=80=94=20default=20do=20tipo=20era=20'comu?=
+ =?UTF-8?q?m'=20(inv=C3=A1lido=20no=20ENUM=20poltrona/rede/camarote);=20ag?=
+ =?UTF-8?q?ora=20'rede'.=20Verificador=20recupera=20cobran=C3=A7as=20pagas?=
+ =?UTF-8?q?=20que=20falharam=20ao=20cadastrar.=20v2026.10.26.14?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Services/ConfirmaPagamento.php | 13 +++++++++++++
+ app/Services/PassagemService.php   |  2 +-
+ app/Support/Versao.php             |  2 +-
+ 3 files changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/app/Services/ConfirmaPagamento.php b/app/Services/ConfirmaPagamento.php
+index c09283d..9d03fb5 100644
+--- a/app/Services/ConfirmaPagamento.php
++++ b/app/Services/ConfirmaPagamento.php
+@@ -48,6 +48,19 @@ public function verificarPendentes(int $horas = 48): int
+                     }
+                 }
+             });
++
++        // recuperação: cobranças PAGAS cujo pedido ainda não foi criado (falha transitória) — tenta de novo
++        Cobranca::withoutGlobalScopes()
++            ->where('status', 'pago')->whereNull('referencia_id')->whereNotNull('payload')
++            ->where('created_at', '>=', now()->subHours($horas))
++            ->chunkById(100, function ($lote) use (&$n) {
++                foreach ($lote as $cob) {
++                    Tenant::set($cob->empresa_id);
++                    try { $this->criarPedidoDoPayload($cob); if ($cob->fresh()->referencia_id) $n++; }
++                    catch (\Throwable $e) { Log::warning('recuperar cobranca paga '.$cob->id.': '.$e->getMessage()); }
++                }
++            });
++
+         return $n;
+     }
+ 
+diff --git a/app/Services/PassagemService.php b/app/Services/PassagemService.php
+index ac46c63..ae9f133 100644
+--- a/app/Services/PassagemService.php
++++ b/app/Services/PassagemService.php
+@@ -56,7 +56,7 @@ public function criar(array $data, int $userId, ?string $uuid = null, bool $offl
+                 'data_viagem' => $data['data_viagem'] ?? null,
+                 'origem' => $data['origem'],
+                 'destino' => $data['destino'],
+-                'tipo' => $data['tipo'] ?? 'comum',
++                'tipo' => in_array($data['tipo'] ?? null, ['poltrona', 'rede', 'camarote'], true) ? $data['tipo'] : 'rede',
+                 'camarote_id' => ($data['camarote_id'] ?? null) ?: null,
+                 'comprador_nome' => $data['comprador_nome'] ?? null,
+                 'comprador_telefone' => $data['comprador_telefone'] ?? null,
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index 6320fca..fa131c2 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.13';
++    public const ATUAL = 'v2026.10.26.14';
+ }
+-- 
+2.43.0
+

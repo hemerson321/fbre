@@ -1,0 +1,69 @@
+From b549b4bfb20f06971d012d616ec9326fd28e7b04 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 09:31:51 -0400
+Subject: [PATCH] =?UTF-8?q?fix(comprovante):=20blinda=20number=5Fformat=20?=
+ =?UTF-8?q?contra=20valor=20nulo=20(cast=20float)=20=E2=80=94=20prov=C3=A1?=
+ =?UTF-8?q?vel=20causa=20do=20500=20no=20servidor=20que=20trata=20warning?=
+ =?UTF-8?q?=20como=20erro.=20v2026.10.26.18?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Support/Versao.php                          |  2 +-
+ resources/views/passagens/comprovante.blade.php | 16 ++++++++--------
+ 2 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index 704bbb4..6f2335c 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.17';
++    public const ATUAL = 'v2026.10.26.18';
+ }
+diff --git a/resources/views/passagens/comprovante.blade.php b/resources/views/passagens/comprovante.blade.php
+index 9380d3c..851a607 100644
+--- a/resources/views/passagens/comprovante.blade.php
++++ b/resources/views/passagens/comprovante.blade.php
+@@ -30,7 +30,7 @@
+       @if($p->embarcacao)<tr><td class="b">BARCO</td><td class="r">{{ $p->embarcacao->nome }}</td></tr>@endif
+     </table><hr>
+     <div class="c"><div class="qrp" data-url="{{ route('checkin',$p) }}"></div><div class="sm b">CHECK-IN</div><div class="sm">Apresente no embarque</div></div>
+-    <div class="c sm">Camarote total R$ {{ number_format($p->total,2,',','.') }} · {{ $p->devido>0.009 ? 'DEVE R$ '.number_format($p->devido,2,',','.') : 'PAGO' }}</div>
++    <div class="c sm">Camarote total R$ {{ number_format((float) $p->total,2,',','.') }} · {{ $p->devido>0.009 ? 'DEVE R$ '.number_format((float) $p->devido,2,',','.') : 'PAGO' }}</div>
+     <br>
+   </div>
+   @endforeach
+@@ -50,16 +50,16 @@
+     <div class="b">PASSAGEIROS</div>
+     <table>
+       @foreach($p->passageiros as $pax)
+-      <tr><td>{{ $pax->nome }}<div class="sm">{{ $pax->papel ? ucfirst($pax->papel) : $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div>@if($pax->valor_integral > $pax->valor_total + 0.009)<div class="sm">Preço normal {{ number_format($pax->valor_integral,2,',','.') }} · Pago {{ number_format($pax->valor_total,2,',','.') }}</div>@endif<div class="sm">Transp. {{ number_format($pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. {{ number_format($pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div></td><td class="r b">{{ number_format($pax->valor_total,2,',','.') }}</td></tr>
++      <tr><td>{{ $pax->nome }}<div class="sm">{{ $pax->papel ? ucfirst($pax->papel) : $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div>@if($pax->valor_integral > $pax->valor_total + 0.009)<div class="sm">Preço normal {{ number_format((float) $pax->valor_integral,2,',','.') }} · Pago {{ number_format((float) $pax->valor_total,2,',','.') }}</div>@endif<div class="sm">Transp. {{ number_format((float) $pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. {{ number_format((float) $pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div></td><td class="r b">{{ number_format((float) $pax->valor_total,2,',','.') }}</td></tr>
+       @endforeach
+     </table><hr>
+     <table>
+-      <tr><td>Tarifa de Transporte</td><td class="r">R$ {{ number_format($p->subtotal,2,',','.') }}</td></tr>
+-      <tr><td>Alimentação + Adicional</td><td class="r">R$ {{ number_format($p->alimentacao_total + $p->taxa_total,2,',','.') }}</td></tr>
+-      @if($p->desconto>0)<tr><td>Desconto</td><td class="r">-{{ number_format($p->desconto,2,',','.') }}</td></tr>@endif
+-      <tr class="lg"><td class="b">TOTAL</td><td class="r b">R$ {{ number_format($p->total,2,',','.') }}</td></tr>
+-      <tr><td>Pago</td><td class="r">R$ {{ number_format($p->pago,2,',','.') }}</td></tr>
+-      <tr><td class="b">DEVIDO</td><td class="r b">R$ {{ number_format($p->devido,2,',','.') }}</td></tr>
++      <tr><td>Tarifa de Transporte</td><td class="r">R$ {{ number_format((float) $p->subtotal,2,',','.') }}</td></tr>
++      <tr><td>Alimentação + Adicional</td><td class="r">R$ {{ number_format((float) $p->alimentacao_total + $p->taxa_total,2,',','.') }}</td></tr>
++      @if($p->desconto>0)<tr><td>Desconto</td><td class="r">-{{ number_format((float) $p->desconto,2,',','.') }}</td></tr>@endif
++      <tr class="lg"><td class="b">TOTAL</td><td class="r b">R$ {{ number_format((float) $p->total,2,',','.') }}</td></tr>
++      <tr><td>Pago</td><td class="r">R$ {{ number_format((float) $p->pago,2,',','.') }}</td></tr>
++      <tr><td class="b">DEVIDO</td><td class="r b">R$ {{ number_format((float) $p->devido,2,',','.') }}</td></tr>
+     </table>
+     @if($e?->rodape_comprovante)<hr><div class="c sm">{{ $e->rodape_comprovante }}</div>@endif
+     <hr><div class="c"><div class="qrp" data-url="{{ route('checkin',$p) }}"></div><div class="sm b">CHECK-IN</div><div class="sm">Apresente no embarque</div></div><br>
+-- 
+2.43.0
+

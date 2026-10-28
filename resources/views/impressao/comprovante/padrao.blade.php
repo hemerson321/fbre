@@ -48,7 +48,7 @@
 @endif
 <hr>
 <div class="c b">{{ strtoupper($e->statusTexto()) }}</div>
-@if($e->entregue)<div class="c sm">Entregue@if($e->entregue_em) em {{ $e->entregue_em->format('d/m/Y H:i') }}@endif@if($e->entregue_para) para {{ $e->entregue_para }}@endif@if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
+@if($e->entregue)<div class="c sm">Entregue{{ $e->entregue_em ? ' em '.$e->entregue_em->format('d/m/Y H:i') : '' }}@if($e->entregue_para) para {{ $e->entregue_para }}@endif @if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
 @if($e->observacao)<hr><div class="sm">Obs: {{ $e->observacao }}</div>@endif
 @if($empresa->pix)<hr><div class="c sm">PIX: {{ $empresa->pix }}</div>@endif
 @if($empresa->rodape_comprovante)<hr><div class="c sm">{!! nl2br(e($empresa->rodape_comprovante)) !!}</div>@endif

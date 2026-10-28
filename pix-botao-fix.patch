@@ -1,0 +1,90 @@
+From ca59c75415847a7994b29030d3d7d7c06b38753f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 26 Oct 2026 16:10:16 -0400
+Subject: [PATCH] =?UTF-8?q?fix(pix):=20bot=C3=A3o=20=F0=9F=92=A0=20voltou?=
+ =?UTF-8?q?=20a=20funcionar=20=E2=80=94=20tirado=20do=20<template=20x-if>?=
+ =?UTF-8?q?=20aninhado=20no=20x-for=20(o=20Alpine=20n=C3=A3o=20ligava=20o?=
+ =?UTF-8?q?=20@click);=20vira=20x-show=20direto=20no=20bot=C3=A3o.=20UI:?=
+ =?UTF-8?q?=20stepper=20de=20volumes=20sem=20setinhas=20nativas=20(.no-spi?=
+ =?UTF-8?q?n),=20mais=20limpo.=20v2026.10.26.7?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Support/Versao.php                      |  2 +-
+ resources/views/encomendas/create.blade.php | 15 ++++++++-------
+ resources/views/passagens/create.blade.php  |  4 +---
+ 3 files changed, 10 insertions(+), 11 deletions(-)
+
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index 82a3594..297d6fd 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.6';
++    public const ATUAL = 'v2026.10.26.7';
+ }
+diff --git a/resources/views/encomendas/create.blade.php b/resources/views/encomendas/create.blade.php
+index 7917bec..16094d6 100644
+--- a/resources/views/encomendas/create.blade.php
++++ b/resources/views/encomendas/create.blade.php
+@@ -2,6 +2,9 @@
+ @section('titulo','Nova encomenda')
+ @push('head')
+ <style type="text/tailwindcss">
++  /* esconde as setinhas nativas do input number (stepper de volumes) */
++  .no-spin::-webkit-outer-spin-button, .no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
++  .no-spin { -moz-appearance: textfield; appearance: textfield; }
+   /* ---- cartão de seção com cabeçalho colorido ---- */
+   .sec { @apply rounded-2xl flex flex-col; background:#fff; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px -12px rgba(15,23,42,.18); }
+   .sec-h { @apply flex items-center gap-2.5 px-3.5 py-2 text-white rounded-t-2xl; background: linear-gradient(90deg, var(--cor1), color-mix(in srgb, var(--cor1) 70%, var(--cor2))); }
+@@ -166,10 +169,10 @@ class="h-8 rounded text-sm transition"
+       <div class="ml-auto flex items-center gap-2">
+         <span class="text-[11px] font-bold uppercase opacity-80">Volumes</span>
+         <button type="button" x-show="volumesManual" x-cloak @click="volumesManual=false; recalcVolumes()" class="text-[10px] font-bold uppercase bg-white/20 rounded px-1.5 py-0.5 hover:bg-white/30" title="Voltar ao cálculo automático">auto</button>
+-        <div class="flex items-center rounded-xl overflow-hidden shadow" style="background:var(--cor2)">
+-          <button type="button" @click="volumesManual=true; volumes=Math.max(1,(Number(volumes)||1)-1)" class="w-9 h-9 flex items-center justify-center text-slate-900 text-xl font-black leading-none active:scale-90 hover:bg-black/10" aria-label="Menos um volume">−</button>
+-          <input name="volumes" type="number" min="1" x-model.number="volumes" @input="volumesManual=true" class="w-12 h-9 text-center bg-transparent border-0 focus:ring-0 text-slate-900 font-extrabold text-base p-0" inputmode="numeric">
+-          <button type="button" @click="volumesManual=true; volumes=(Number(volumes)||0)+1" class="w-9 h-9 flex items-center justify-center text-slate-900 text-xl font-black leading-none active:scale-90 hover:bg-black/10" aria-label="Mais um volume">+</button>
++        <div class="flex items-center rounded-xl overflow-hidden shadow select-none" style="background:var(--cor2)">
++          <button type="button" @click="volumesManual=true; volumes=Math.max(1,(Number(volumes)||1)-1)" class="w-9 h-9 flex items-center justify-center text-slate-900 text-2xl font-black leading-none active:scale-90 hover:bg-black/10" aria-label="Menos um volume">−</button>
++          <input name="volumes" type="number" min="1" x-model.number="volumes" @input="volumesManual=true" class="w-10 h-9 text-center bg-white/25 border-0 focus:ring-0 focus:outline-none text-slate-900 font-extrabold text-base p-0 no-spin" inputmode="numeric">
++          <button type="button" @click="volumesManual=true; volumes=(Number(volumes)||0)+1" class="w-9 h-9 flex items-center justify-center text-slate-900 text-2xl font-black leading-none active:scale-90 hover:bg-black/10" aria-label="Mais um volume">+</button>
+         </div>
+       </div>
+     </div>
+@@ -240,9 +243,7 @@ class="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b last:border
+               <label class="lbl" x-text="m.l"></label>
+               <div class="flex gap-1 items-stretch">
+                 <input class="field text-right font-semibold flex-1" x-money="pag[m.k]" x-show="m.k!=='pix' || pixManual">
+-                <template x-if="m.k==='pix' && pixDinamico">
+-                  <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-2 shrink-0 font-bold disabled:opacity-50" style="border-color:var(--cor1);color:var(--cor1)">💠</button>
+-                </template>
++                <button type="button" x-show="m.k==='pix' && pixDinamico" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-3 shrink-0 font-bold text-lg disabled:opacity-50 hover:text-white transition" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠</button>
+               </div>
+             </div>
+           </template>
+diff --git a/resources/views/passagens/create.blade.php b/resources/views/passagens/create.blade.php
+index c4482f6..6ed1674 100644
+--- a/resources/views/passagens/create.blade.php
++++ b/resources/views/passagens/create.blade.php
+@@ -210,9 +210,7 @@ class="h-8 rounded text-sm transition"
+               <label class="lbl" x-text="m.l"></label>
+               <div class="flex gap-1 items-stretch">
+                 <input class="field text-right font-semibold flex-1" x-money="pag[m.k]" x-show="m.k!=='pix' || pixManual">
+-                <template x-if="m.k==='pix' && pixDinamico">
+-                  <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-2 shrink-0 font-bold disabled:opacity-50" style="border-color:var(--cor1);color:var(--cor1)">💠</button>
+-                </template>
++                <button type="button" x-show="m.k==='pix' && pixDinamico" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar PIX dinâmico (QR) e aguardar pagamento" class="rounded-xl border-2 px-3 shrink-0 font-bold text-lg disabled:opacity-50 hover:text-white transition" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠</button>
+               </div>
+             </div>
+           </template>
+-- 
+2.43.0
+

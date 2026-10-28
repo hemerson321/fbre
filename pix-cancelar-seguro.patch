@@ -1,0 +1,249 @@
+From 8a30880cf60c0c87cac34395b87baa0acaffbea5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 07:23:21 -0400
+Subject: [PATCH] fix(pix): venda paga nunca se perde ao fechar/cancelar a
+ telinha
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- popup não fecha mais por clique fora (evita fechar sem querer); só pelo botão Cancelar (com confirmação)
+- Cancelar chama /cobranca/{id}/cancelar: se já pagou, registra a venda e redireciona; se não pagou, cancela a cobrança (webhook/verificador não criam depois)
+- aplicar()/criarPedidoDoPayload() ignoram cobrança cancelada
+- lembrete: com o navegador fechado, webhook + verificador (a cada min) ainda criam o pedido quando o PIX cai
+- v2026.10.26.13
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Http/Controllers/CobrancaController.php  | 39 ++++++++++++++++++++
+ app/Services/ConfirmaPagamento.php           |  3 +-
+ app/Support/Versao.php                       |  2 +-
+ resources/views/encomendas/create.blade.php  | 13 ++++++-
+ resources/views/fretes/create.blade.php      | 13 ++++++-
+ resources/views/passagens/camarote.blade.php | 13 ++++++-
+ resources/views/passagens/create.blade.php   | 13 ++++++-
+ routes/web.php                               |  1 +
+ 8 files changed, 87 insertions(+), 10 deletions(-)
+
+diff --git a/app/Http/Controllers/CobrancaController.php b/app/Http/Controllers/CobrancaController.php
+index 9e09b4b..d0f23c1 100644
+--- a/app/Http/Controllers/CobrancaController.php
++++ b/app/Http/Controllers/CobrancaController.php
+@@ -140,6 +140,45 @@ public function status(Cobranca $cobranca, MercadoPago $mp, \App\Services\Confir
+         return response()->json($resp);
+     }
+ 
++    /**
++     * O operador fechou/cancelou a telinha do PIX. Se o cliente JÁ pagou, honra o
++     * pagamento (cria o pedido e devolve a URL). Se não pagou, cancela a cobrança
++     * para que nem o webhook nem o verificador criem o pedido depois.
++     */
++    public function cancelar(Cobranca $cobranca, MercadoPago $mp, \App\Services\ConfirmaPagamento $confirma)
++    {
++        abort_unless($cobranca->empresa_id === Tenant::id(), 404);
++
++        // confere no MP uma última vez (pode ter pago entre o clique e agora)
++        if ($cobranca->status !== 'pago' && $cobranca->provider_payment_id && $cobranca->api) {
++            try {
++                $st = $mp->consultar($cobranca->api, (string) $cobranca->provider_payment_id, 8);
++                if (($st['ok'] ?? false) && ($st['pago'] ?? false)) $confirma->aplicar($cobranca);
++            } catch (\Throwable $e) {}
++        } elseif ($cobranca->status === 'pago' && ! $cobranca->referencia_id && $cobranca->payload) {
++            try { $confirma->criarPedidoDoPayload($cobranca); } catch (\Throwable $e) {}
++        }
++
++        $cobranca->refresh();
++        if ($cobranca->status === 'pago') {
++            // pagou: NÃO cancela — registra a venda e manda a tela redirecionar
++            $resp = ['pago' => true, 'cancelado' => false, 'imprimir' => $cobranca->imprimir, 'erro' => $cobranca->erro];
++            if ($cobranca->referencia_id) {
++                $resp['id'] = (int) $cobranca->referencia_id;
++                $resp['url'] = match ($cobranca->referencia_tipo) {
++                    Passagem::class => route('passagens.show', $cobranca->referencia_id),
++                    \App\Models\Frete::class => route('fretes.show', $cobranca->referencia_id),
++                    default => route('encomendas.show', $cobranca->referencia_id),
++                };
++            }
++            return response()->json($resp);
++        }
++
++        // não pago: cancela a cobrança (impede criação futura pelo webhook/verificador)
++        if ($cobranca->status === 'pendente') $cobranca->forceFill(['status' => 'cancelado'])->save();
++        return response()->json(['pago' => false, 'cancelado' => true]);
++    }
++
+     public function pixEncomenda(Encomenda $encomenda, MercadoPago $mp)
+     {
+         abort_unless($encomenda->empresa_id === Tenant::id(), 404);
+diff --git a/app/Services/ConfirmaPagamento.php b/app/Services/ConfirmaPagamento.php
+index 914e244..c09283d 100644
+--- a/app/Services/ConfirmaPagamento.php
++++ b/app/Services/ConfirmaPagamento.php
+@@ -54,6 +54,7 @@ public function verificarPendentes(int $horas = 48): int
+     /** Marca paga + baixa + aviso. Retorna true se confirmou agora (não estava paga). */
+     public function aplicar(Cobranca $cob): bool
+     {
++        if ($cob->status === 'cancelado') return false; // operador cancelou a cobrança
+         if ($cob->status === 'pago' && ! ($cob->payload && ! $cob->referencia_id)) return false;
+         $cob->forceFill(['status' => 'pago', 'pago_em' => $cob->pago_em ?: now()])->save();
+         Tenant::set($cob->empresa_id);
+@@ -99,7 +100,7 @@ public function criarPedidoDoPayload(Cobranca $cob): void
+ 
+         \Illuminate\Support\Facades\DB::transaction(function () use ($cob) {
+             $c = Cobranca::withoutGlobalScopes()->whereKey($cob->id)->lockForUpdate()->first();
+-            if (! $c || $c->referencia_id || ! $c->payload) return; // outra via (webhook/poll) já criou
++            if (! $c || $c->referencia_id || ! $c->payload || $c->status === 'cancelado') return; // já criou ou foi cancelada
+ 
+             Tenant::set($c->empresa_id);
+             $op = $c->user_id ? \App\Models\User::withoutGlobalScopes()->find($c->user_id) : null;
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index dc3f336..6320fca 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.12';
++    public const ATUAL = 'v2026.10.26.13';
+ }
+diff --git a/resources/views/encomendas/create.blade.php b/resources/views/encomendas/create.blade.php
+index c0c4b6d..4176703 100644
+--- a/resources/views/encomendas/create.blade.php
++++ b/resources/views/encomendas/create.blade.php
+@@ -292,7 +292,7 @@ class="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b last:border
+   </div>
+ </div>
+   {{-- modal PIX dinâmico: aguarda o pagamento; só salva depois de confirmar --}}
+-  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="cancelarPix()">
++  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+     <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center">
+       <div class="font-bold text-lg">💠 PIX dinâmico</div>
+       <div class="text-xs text-slate-500 mb-3">Mostre o QR pro cliente pagar. A tela confirma sozinha e só então cadastra.</div>
+@@ -464,7 +464,16 @@ function novaEncomenda(){
+       }
+       window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
+     },
+-    cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
++    cancelarPix(){
++      if(!confirm('Cancelar esta cobrança? Se o cliente já pagou, a venda será registrada normalmente.')) return;
++      if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false;
++      const id=this.pixCobId;
++      if(!id){ this.pixModal=false; return; }
++      fetch('/cobranca/'+id+'/cancelar',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
++        if(d && d.pago){ this.finalizarPix(d); return; }
++        this.pixModal=false; this.pixCobId=null;
++      }).catch(()=>{ this.pixModal=false; this.pixCobId=null; });
++    },
+     copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
+     imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+     montarDados(form){
+diff --git a/resources/views/fretes/create.blade.php b/resources/views/fretes/create.blade.php
+index 022c259..7d207bc 100644
+--- a/resources/views/fretes/create.blade.php
++++ b/resources/views/fretes/create.blade.php
+@@ -136,7 +136,7 @@ class="mx-auto max-w-[1440px] space-y-2" @php $emp=\App\Support\Tenant::empresa(
+ </div>
+ 
+   {{-- modal PIX dinâmico: aguarda o pagamento; só cadastra depois de confirmar --}}
+-  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="cancelarPix()">
++  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+     <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center">
+       <div class="font-bold text-lg">💠 PIX dinâmico</div>
+       <div class="text-xs text-slate-500 mb-3">Mostre o QR pro cliente pagar. A tela confirma sozinha e só então cadastra.</div>
+@@ -233,7 +233,16 @@ function novoFrete(){
+         this.salvando=true;
+         window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
+       },
+-      cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
++      cancelarPix(){
++        if(!confirm('Cancelar esta cobrança? Se o cliente já pagou, a venda será registrada normalmente.')) return;
++        if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false;
++        const id=this.pixCobId;
++        if(!id){ this.pixModal=false; return; }
++        fetch('/cobranca/'+id+'/cancelar',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
++          if(d && d.pago){ this.finalizarPix(d); return; }
++          this.pixModal=false; this.pixCobId=null;
++        }).catch(()=>{ this.pixModal=false; this.pixCobId=null; });
++      },
+       copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
+       imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+       async salvar(ev){
+diff --git a/resources/views/passagens/camarote.blade.php b/resources/views/passagens/camarote.blade.php
+index b5c6c63..8dd8882 100644
+--- a/resources/views/passagens/camarote.blade.php
++++ b/resources/views/passagens/camarote.blade.php
+@@ -245,7 +245,7 @@ class="h-8 rounded text-sm transition"
+ @endif
+ 
+   {{-- modal PIX dinâmico: aguarda o pagamento; só cadastra depois de confirmar --}}
+-  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="cancelarPix()">
++  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+     <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center">
+       <div class="font-bold text-lg">💠 PIX dinâmico</div>
+       <div class="text-xs text-slate-500 mb-3">Mostre o QR pro cliente pagar. A tela confirma sozinha e só então cadastra.</div>
+@@ -324,7 +324,16 @@ function vendaCamarote(){
+       if(d.erro || !d.url){ this.pixModal=false; alert('Pagamento recebido! '+(d.erro?('Não consegui cadastrar automaticamente: '+d.erro+'. '):'')+'Confira os dados e clique em Salvar.'); return; }
+       window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
+     },
+-    cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
++    cancelarPix(){
++      if(!confirm('Cancelar esta cobrança? Se o cliente já pagou, a venda será registrada normalmente.')) return;
++      if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false;
++      const id=this.pixCobId; const csrf=(window.FBRE&&FBRE.csrf)||document.querySelector('input[name=_token]')?.value;
++      if(!id){ this.pixModal=false; return; }
++      fetch('/cobranca/'+id+'/cancelar',{method:'POST',headers:{'X-CSRF-TOKEN':csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
++        if(d && d.pago){ this.finalizarPix(d); return; }
++        this.pixModal=false; this.pixCobId=null;
++      }).catch(()=>{ this.pixModal=false; this.pixCobId=null; });
++    },
+     copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
+     imprimirPix(id){ const csrf=(window.FBRE&&FBRE.csrf)||document.querySelector('input[name=_token]')?.value; fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+     trocaCam(){ this.cam=this.camarotes.find(c=>c.id===this.camId)||null; this.ajustarOcupantes(); this.recalc(); },
+diff --git a/resources/views/passagens/create.blade.php b/resources/views/passagens/create.blade.php
+index 69769b8..260c3c5 100644
+--- a/resources/views/passagens/create.blade.php
++++ b/resources/views/passagens/create.blade.php
+@@ -310,7 +310,7 @@ class="h-8 rounded text-sm transition"
+       <button type="button" @click="fecharCaptura()" class="w-full rounded-xl border-2 font-bold py-2.5" style="border-color:var(--cor1);color:var(--cor1)">Fechar</button>
+     </div>
+   </div>
+-  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click.self="cancelarPix()">
++  <div x-show="pixModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+     <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center">
+       <div class="font-bold text-lg">💠 PIX dinâmico</div>
+       <div class="text-xs text-slate-500 mb-3">Mostre o QR pro cliente pagar. A tela confirma sozinha e só então cadastra.</div>
+@@ -643,7 +643,16 @@ function novaPassagem(){
+         if(this.imprimir==='pix'){ window.location.href='/imprimir/pix-passagem/'+d.id; return; }
+         window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
+       },
+-      cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
++      cancelarPix(){
++        if(!confirm('Cancelar esta cobrança? Se o cliente já pagou, a venda será registrada normalmente.')) return;
++        if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false;
++        const id=this.pixCobId;
++        if(!id){ this.pixModal=false; return; }
++        fetch('/cobranca/'+id+'/cancelar',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
++          if(d && d.pago){ this.finalizarPix(d); return; }
++          this.pixModal=false; this.pixCobId=null;
++        }).catch(()=>{ this.pixModal=false; this.pixCobId=null; });
++      },
+       copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
+     imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+       validarPassageiros(){
+diff --git a/routes/web.php b/routes/web.php
+index 27036b0..6a8efbf 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -128,6 +128,7 @@
+     Route::get('/cobranca/{cobranca}/status', [CobrancaController::class, 'status'])->name('cobranca.pix.status');
+     Route::get('/cobranca/{cobranca}/imprimir', [CobrancaController::class, 'imprimir'])->name('cobranca.pix.imprimir');
+     Route::post('/cobranca/{cobranca}/imprimir-direto', [CobrancaController::class, 'imprimirDireto'])->name('cobranca.pix.direto');
++    Route::post('/cobranca/{cobranca}/cancelar', [CobrancaController::class, 'cancelar'])->name('cobranca.pix.cancelar');
+     Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:passagem.baixa');
+     Route::post('/passagens/{passagem}/cancelar', [\App\Http\Controllers\PassagemController::class, 'cancelar'])->name('passagens.cancelar')->middleware('perm:admin');
+ 
+-- 
+2.43.0
+

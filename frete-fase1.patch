@@ -1,0 +1,375 @@
+From 473858a12339d077a34815fd0b355b35477c8873 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 15:33:51 -0400
+Subject: [PATCH] =?UTF-8?q?feat(frete)=20fase=201:=20quem=20paga=20(padr?=
+ =?UTF-8?q?=C3=A3o=20destinat=C3=A1rio),=20respons=C3=A1vel,=20NF-e=20(cha?=
+ =?UTF-8?q?ve/n=C2=BA=20+=20consulta=20meudanfe=20quando=20houver=20token)?=
+ =?UTF-8?q?=20e=20ve=C3=ADculos=20(1+,=20placa/modelo/cor/doc/obs)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- migration: fretes.quem_paga/nome_responsavel/nf_chave/nf_numero/nf_dados + tabela frete_veiculos
+- FreteService/SyncController salvam os campos + veículos; Frete::pagadorNome/veiculos
+- form do frete: seletor Quem paga, responsável, bloco NF (botão Buscar dados) e veículos dinâmicos; show exibe tudo
+- endpoint /frete/consultar-nf (meudanfe) pronto, ativa com o token
+- v2026.10.26.20
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Http/Controllers/FreteController.php      | 40 +++++++++++++
+ app/Http/Controllers/SyncController.php       |  4 ++
+ app/Models/Frete.php                          | 13 ++++
+ app/Models/FreteVeiculo.php                   | 17 ++++++
+ app/Services/FreteService.php                 | 13 ++++
+ app/Support/Versao.php                        |  2 +-
+ ...001_01_49_000000_frete_cobranca_campos.php | 48 +++++++++++++++
+ resources/views/fretes/create.blade.php       | 59 +++++++++++++++++++
+ resources/views/fretes/show.blade.php         | 18 ++++++
+ routes/web.php                                |  1 +
+ 10 files changed, 214 insertions(+), 1 deletion(-)
+ create mode 100644 app/Models/FreteVeiculo.php
+ create mode 100644 database/migrations/0001_01_49_000000_frete_cobranca_campos.php
+
+diff --git a/app/Http/Controllers/FreteController.php b/app/Http/Controllers/FreteController.php
+index 4a66cc1..5a6b35c 100644
+--- a/app/Http/Controllers/FreteController.php
++++ b/app/Http/Controllers/FreteController.php
+@@ -45,6 +45,46 @@ protected function filtros(Request $request): array
+         return $f;
+     }
+ 
++    /**
++     * Consulta uma NF-e pela chave (44 díg.) e devolve remetente/destinatário/itens
++     * para preencher o frete. Usa a API da meudanfe quando o token estiver configurado.
++     */
++    public function consultarNf(Request $request)
++    {
++        $chave = preg_replace('/\D/', '', (string) $request->query('chave', ''));
++        if (strlen($chave) !== 44) {
++            return response()->json(['ok' => false, 'erro' => 'Chave da NF-e inválida (precisa de 44 dígitos).']);
++        }
++
++        $token = config('services.meudanfe.token') ?: (Tenant::empresa()?->config('meudanfe_token'));
++        if (! $token) {
++            return response()->json(['ok' => false, 'erro' => 'Consulta de NF ainda não configurada (token meudanfe). Preencha a chave/número manualmente por enquanto.']);
++        }
++
++        // Integração meudanfe — finalizada quando o formato do endpoint/token for confirmado.
++        try {
++            $resp = \Illuminate\Support\Facades\Http::timeout(15)
++                ->withToken($token)
++                ->acceptJson()
++                ->get('https://ws.meudanfe.com/api/v1/get/nfe/data/'.$chave);
++            if (! $resp->ok()) {
++                return response()->json(['ok' => false, 'erro' => 'NF não encontrada ou serviço indisponível ('.$resp->status().').']);
++            }
++            $j = $resp->json();
++            $nf = [
++                'numero'       => data_get($j, 'nNF') ?? data_get($j, 'numero'),
++                'remetente'    => ['nome' => data_get($j, 'emit.xNome'), 'documento' => data_get($j, 'emit.CNPJ') ?? data_get($j, 'emit.CPF')],
++                'destinatario' => ['nome' => data_get($j, 'dest.xNome'), 'documento' => data_get($j, 'dest.CNPJ') ?? data_get($j, 'dest.CPF')],
++                'descricao'    => collect(data_get($j, 'det', []))->map(fn ($d) => data_get($d, 'prod.xProd'))->filter()->take(5)->implode(', '),
++                'bruto'        => $j,
++            ];
++            return response()->json(['ok' => true, 'nf' => $nf]);
++        } catch (\Throwable $e) {
++            report($e);
++            return response()->json(['ok' => false, 'erro' => 'Falha ao consultar a NF.']);
++        }
++    }
++
+     public function create()
+     {
+         $u = auth()->user();
+diff --git a/app/Http/Controllers/SyncController.php b/app/Http/Controllers/SyncController.php
+index b6c408d..09bde7a 100644
+--- a/app/Http/Controllers/SyncController.php
++++ b/app/Http/Controllers/SyncController.php
+@@ -190,6 +190,10 @@ public function frete(Request $request, \App\Services\FreteService $svc)
+             'destinatario_nome' => 'required|string|max:120', 'destinatario_telefone' => 'nullable|string|max:30', 'destinatario_documento' => 'nullable|string|max:20',
+             'descricao' => 'required|string|max:200', 'peso' => 'nullable|numeric|min:0', 'volumes' => 'required|integer|min:1|max:9999', 'preco_kilo' => 'nullable|numeric|min:0',
+             'subtotal' => 'required|numeric|min:0', 'forma' => 'required|in:avista,areceber,faturado', 'setor' => 'nullable|string|max:60', 'observacao' => 'nullable|string|max:1000', 'desconto' => 'nullable|numeric|min:0',
++            'quem_paga' => 'nullable|in:destinatario,remetente', 'nome_responsavel' => 'nullable|string|max:120',
++            'nf_chave' => 'nullable|string|max:60', 'nf_numero' => 'nullable|string|max:30', 'nf_dados' => 'nullable|array',
++            'veiculos' => 'nullable|array', 'veiculos.*.placa' => 'nullable|string|max:12', 'veiculos.*.modelo' => 'nullable|string|max:60',
++            'veiculos.*.cor' => 'nullable|string|max:30', 'veiculos.*.documento' => 'nullable|string|max:40', 'veiculos.*.obs' => 'nullable|string|max:200',
+             'pagamentos' => 'nullable|array', 'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito', 'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
+         ]);
+         try {
+diff --git a/app/Models/Frete.php b/app/Models/Frete.php
+index a85f72d..1f81e1f 100644
+--- a/app/Models/Frete.php
++++ b/app/Models/Frete.php
+@@ -20,11 +20,24 @@ class Frete extends Model
+         'data_viagem' => 'date', 'entregue_em' => 'datetime', 'criada_no_aparelho_em' => 'datetime',
+         'peso' => 'decimal:2', 'preco_kilo' => 'decimal:2', 'subtotal' => 'decimal:2',
+         'desconto' => 'decimal:2', 'total' => 'decimal:2', 'pago' => 'decimal:2', 'devido' => 'decimal:2',
++        'nf_dados' => 'array',
+     ];
+ 
+     public const FORMAS = ['avista' => 'À vista', 'areceber' => 'A receber', 'faturado' => 'Faturado'];
+     public const MODULO = 'frete';
+ 
++    /** Quem é o responsável pelo pagamento (padrão: destinatário — geralmente a loja que recebe). */
++    public function pagadorNome(): string
++    {
++        return ($this->quem_paga === 'remetente' ? $this->remetente_nome : $this->destinatario_nome) ?: '—';
++    }
++
++    public function pagadorTelefone(): ?string
++    {
++        return $this->quem_paga === 'remetente' ? $this->remetente_telefone : $this->destinatario_telefone;
++    }
++
++    public function veiculos(): HasMany { return $this->hasMany(FreteVeiculo::class); }
+     public function pagamentos(): HasMany { return $this->hasMany(Pagamento::class, 'origem_id')->where('modulo', self::MODULO)->where('estornado', false); }
+     public function embarcacao(): BelongsTo { return $this->belongsTo(Embarcacao::class); }
+     public function viagem(): BelongsTo { return $this->belongsTo(Viagem::class); }
+diff --git a/app/Models/FreteVeiculo.php b/app/Models/FreteVeiculo.php
+new file mode 100644
+index 0000000..0b93cf0
+--- /dev/null
++++ b/app/Models/FreteVeiculo.php
+@@ -0,0 +1,17 @@
++<?php
++
++namespace App\Models;
++
++use App\Models\Concerns\PertenceEmpresa;
++use Illuminate\Database\Eloquent\Model;
++use Illuminate\Database\Eloquent\Relations\BelongsTo;
++
++class FreteVeiculo extends Model
++{
++    use PertenceEmpresa;
++
++    protected $table = 'frete_veiculos';
++    protected $guarded = [];
++
++    public function frete(): BelongsTo { return $this->belongsTo(Frete::class); }
++}
+diff --git a/app/Services/FreteService.php b/app/Services/FreteService.php
+index c973482..b09b72e 100644
+--- a/app/Services/FreteService.php
++++ b/app/Services/FreteService.php
+@@ -48,9 +48,22 @@ public function criar(array $data, int $userId, ?string $uuid = null, bool $offl
+                 'preco_kilo' => $data['preco_kilo'] ?? 0, 'subtotal' => $subtotal,
+                 'forma' => $data['forma'] ?? 'avista', 'setor' => $data['setor'] ?? null, 'observacao' => $data['observacao'] ?? null,
+                 'desconto' => $data['desconto'] ?? 0, 'user_id' => $userId, 'origem_offline' => $offline,
++                'quem_paga' => ($data['quem_paga'] ?? null) === 'remetente' ? 'remetente' : 'destinatario',
++                'nome_responsavel' => $data['nome_responsavel'] ?? null,
++                'nf_chave' => $data['nf_chave'] ?? null, 'nf_numero' => $data['nf_numero'] ?? null,
++                'nf_dados' => $data['nf_dados'] ?? null,
+                 'criada_no_aparelho_em' => ! empty($data['criada_em']) ? \Carbon\Carbon::parse($data['criada_em'])->setTimezone(config('app.timezone')) : null,
+             ]);
+ 
++            foreach (($data['veiculos'] ?? []) as $v) {
++                if (empty($v['placa']) && empty($v['modelo']) && empty($v['documento'])) continue;
++                $f->veiculos()->create([
++                    'empresa_id' => $empresa->id,
++                    'placa' => $v['placa'] ?? null, 'modelo' => $v['modelo'] ?? null, 'cor' => $v['cor'] ?? null,
++                    'documento' => $v['documento'] ?? null, 'obs' => $v['obs'] ?? null,
++                ]);
++            }
++
+             foreach ($data['pagamentos'] ?? [] as $p) {
+                 if ((float) $p['valor'] <= 0) continue;
+                 \App\Models\Pagamento::create([
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index 15a3817..999d5b3 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.19';
++    public const ATUAL = 'v2026.10.26.20';
+ }
+diff --git a/database/migrations/0001_01_49_000000_frete_cobranca_campos.php b/database/migrations/0001_01_49_000000_frete_cobranca_campos.php
+new file mode 100644
+index 0000000..9100413
+--- /dev/null
++++ b/database/migrations/0001_01_49_000000_frete_cobranca_campos.php
+@@ -0,0 +1,48 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++/**
++ * Frete com cobrança — campos extras (todos opcionais):
++ * quem paga (padrão destinatário), responsável, dados da NF-e e veículos (1+).
++ */
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('fretes', function (Blueprint $t) {
++            if (! Schema::hasColumn('fretes', 'quem_paga'))        $t->string('quem_paga', 12)->default('destinatario'); // destinatario|remetente
++            if (! Schema::hasColumn('fretes', 'nome_responsavel')) $t->string('nome_responsavel', 120)->nullable();
++            if (! Schema::hasColumn('fretes', 'nf_chave'))         $t->string('nf_chave', 60)->nullable();
++            if (! Schema::hasColumn('fretes', 'nf_numero'))        $t->string('nf_numero', 30)->nullable();
++            if (! Schema::hasColumn('fretes', 'nf_dados'))         $t->json('nf_dados')->nullable(); // retorno da consulta (meudanfe)
++        });
++
++        if (! Schema::hasTable('frete_veiculos')) {
++            Schema::create('frete_veiculos', function (Blueprint $t) {
++                $t->id();
++                $t->foreignId('empresa_id')->constrained()->cascadeOnDelete();
++                $t->foreignId('frete_id')->constrained('fretes')->cascadeOnDelete();
++                $t->string('placa', 12)->nullable();
++                $t->string('modelo', 60)->nullable();
++                $t->string('cor', 30)->nullable();
++                $t->string('documento', 40)->nullable(); // RENAVAM/chassi/doc
++                $t->string('obs', 200)->nullable();
++                $t->timestamps();
++                $t->index('frete_id');
++            });
++        }
++    }
++
++    public function down(): void
++    {
++        Schema::dropIfExists('frete_veiculos');
++        Schema::table('fretes', function (Blueprint $t) {
++            foreach (['quem_paga', 'nome_responsavel', 'nf_chave', 'nf_numero', 'nf_dados'] as $c) {
++                if (Schema::hasColumn('fretes', $c)) $t->dropColumn($c);
++            }
++        });
++    }
++};
+diff --git a/resources/views/fretes/create.blade.php b/resources/views/fretes/create.blade.php
+index 7d207bc..279f144 100644
+--- a/resources/views/fretes/create.blade.php
++++ b/resources/views/fretes/create.blade.php
+@@ -96,6 +96,47 @@ class="mx-auto max-w-[1440px] space-y-2" @php $emp=\App\Support\Tenant::empresa(
+       </div>
+       <p class="text-[11px] text-slate-400" x-show="peso>0 && precoKilo>0 && !valorManual" x-cloak>Calculado: <span x-text="peso"></span> kg × <span x-text="FBRE.moeda(precoKilo)"></span> = <b x-text="FBRE.moeda(peso*precoKilo)"></b></p>
+       <input class="field" placeholder="Observação (opcional)" x-model="observacao">
++
++      {{-- quem paga + responsável --}}
++      <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 mt-1">
++        <div><label class="lbl">Quem paga o frete</label>
++          <select class="field" x-model="quemPaga"><option value="destinatario">Destinatário (recebe)</option><option value="remetente">Remetente (envia)</option></select>
++        </div>
++        <div><label class="lbl">Responsável (opcional)</label><input class="field" x-model="nomeResponsavel" placeholder="Nome de quem responde"></div>
++      </div>
++
++      {{-- nota fiscal (opcional) --}}
++      <div class="rounded-xl border border-slate-200 p-2 space-y-2">
++        <div class="flex items-center justify-between">
++          <span class="text-[11px] font-bold uppercase text-slate-500">Nota fiscal (opcional)</span>
++          <button type="button" class="text-[11px] font-semibold" style="color:var(--cor1)" @click="consultarNf()" x-show="(nfChave||'').replace(/\D/g,'').length===44" :disabled="nfBuscando" x-text="nfBuscando ? 'Consultando…' : '🔎 Buscar dados'"></button>
++        </div>
++        <div class="grid grid-cols-3 gap-2">
++          <input class="field col-span-2" x-model="nfChave" placeholder="Chave da NF-e (44 dígitos)" inputmode="numeric">
++          <input class="field" x-model="nfNumero" placeholder="Nº NF">
++        </div>
++        <p class="text-[11px] text-emerald-600" x-show="nfOk" x-cloak>✓ Dados da NF carregados.</p>
++        <p class="text-[11px] text-red-500" x-show="nfErro" x-cloak x-text="nfErro"></p>
++      </div>
++
++      {{-- veículos (0+, ex.: carro embarcado) --}}
++      <div class="rounded-xl border border-slate-200 p-2 space-y-2">
++        <div class="flex items-center justify-between">
++          <span class="text-[11px] font-bold uppercase text-slate-500">Veículos (opcional)</span>
++          <button type="button" class="text-[11px] font-semibold" style="color:var(--cor1)" @click="addVeiculo()">+ veículo</button>
++        </div>
++        <template x-for="(v,i) in veiculos" :key="i">
++          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 items-start bg-slate-50 rounded-lg p-2">
++            <input class="field !min-h-0 py-1 text-sm uppercase" x-model="v.placa" placeholder="Placa" style="text-transform:uppercase">
++            <input class="field !min-h-0 py-1 text-sm" x-model="v.modelo" placeholder="Modelo">
++            <input class="field !min-h-0 py-1 text-sm" x-model="v.cor" placeholder="Cor">
++            <input class="field !min-h-0 py-1 text-sm" x-model="v.documento" placeholder="Doc (RENAVAM/chassi)">
++            <input class="field !min-h-0 py-1 text-sm col-span-2 sm:col-span-3" x-model="v.obs" placeholder="Obs (opcional)">
++            <button type="button" class="text-red-500 text-sm font-bold" @click="veiculos.splice(i,1)">✕ remover</button>
++          </div>
++        </template>
++        <p class="text-[11px] text-slate-400" x-show="!veiculos.length">Nenhum veículo. Use “+ veículo” se for transporte de carro.</p>
++      </div>
+     </div>
+   </section>
+ 
+@@ -165,6 +206,7 @@ function novoFrete(){
+       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'', embarcacaoSel:@js((string) old('embarcacao_id', $embarcacaoPrincipal)),
+       descricao:'', peso:null, volumes:1, precoKilo:@js((float)($precoKiloPadrao ?? 0)), valor:0, valorManual:false,
+       observacao:'', desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
++      quemPaga:'destinatario', nomeResponsavel:'', nfChave:'', nfNumero:'', nfDados:null, nfBuscando:false, nfOk:false, nfErro:'', veiculos:[],
+       meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+       pixManual:@js(auth()->user()->podePixManual()), pixDinamico:@js(auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('frete')),
+       pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
+@@ -203,8 +245,25 @@ function novoFrete(){
+           destinatario_nome:this.dest.nome, destinatario_telefone:this.dest.telefone||null, destinatario_documento:this.dest.documento||null,
+           descricao:this.descricao, peso:Number(this.peso)||null, volumes:Number(this.volumes)||1, preco_kilo:Number(this.precoKilo)||0, subtotal:Number(this.valor)||0,
+           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
++          quem_paga:this.quemPaga, nome_responsavel:this.nomeResponsavel||null,
++          nf_chave:(this.nfChave||'').replace(/\D/g,'')||null, nf_numero:this.nfNumero||null, nf_dados:this.nfDados,
++          veiculos:this.veiculos.filter(v=>v.placa||v.modelo||v.documento).map(v=>({placa:(v.placa||'').toUpperCase()||null,modelo:v.modelo||null,cor:v.cor||null,documento:v.documento||null,obs:v.obs||null})),
+           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k,valor:Number(this.pag[m.k])})) };
+       },
++      addVeiculo(){ this.veiculos.push({placa:'',modelo:'',cor:'',documento:'',obs:''}); },
++      consultarNf(){
++        const chave=(this.nfChave||'').replace(/\D/g,''); if(chave.length!==44){ this.nfErro='Chave precisa ter 44 dígitos.'; return; }
++        this.nfBuscando=true; this.nfErro=''; this.nfOk=false;
++        fetch('/frete/consultar-nf?chave='+chave,{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
++          if(!d.ok){ this.nfErro=d.erro||'Não consegui consultar a NF.'; return; }
++          const nf=d.nf||{};
++          if(nf.numero) this.nfNumero=nf.numero;
++          if(nf.remetente && !this.rem.nome && window._fretePessoas){ this.rem.nome=nf.remetente.nome||''; this.rem.documento=nf.remetente.documento||''; }
++          if(nf.destinatario && !this.dest.nome && window._fretePessoas){ this.dest.nome=nf.destinatario.nome||''; this.dest.documento=nf.destinatario.documento||''; }
++          if(nf.descricao && !this.descricao) this.descricao=nf.descricao;
++          this.nfDados=nf; this.nfOk=true;
++        }).catch(()=>{ this.nfErro='Falha de conexão ao consultar a NF.'; }).finally(()=>{ this.nfBuscando=false; });
++      },
+       gerarPixDinamico(){
+         if(this.pixPagando) return;
+         if(!this.rem.nome.trim()||!this.dest.nome.trim()){ alert('Informe remetente e destinatário antes de gerar o PIX.'); return; }
+diff --git a/resources/views/fretes/show.blade.php b/resources/views/fretes/show.blade.php
+index 7992634..d53976f 100644
+--- a/resources/views/fretes/show.blade.php
++++ b/resources/views/fretes/show.blade.php
+@@ -13,7 +13,25 @@
+     <div class="flex justify-between"><span class="text-slate-500">Destinatário</span><b>{{ $f->destinatario_nome }}</b></div>
+     <div class="flex justify-between"><span class="text-slate-500">Volumes / Peso</span><b>{{ $f->volumes }} vol · {{ $f->peso ? number_format($f->peso,0,',','.').' kg' : '—' }}</b></div>
+     <div class="flex justify-between"><span class="text-slate-500">Operador</span><b>{{ $f->operador?->name }}</b></div>
++    <div class="flex justify-between"><span class="text-slate-500">Quem paga</span><b>{{ $f->quem_paga==='remetente' ? 'Remetente' : 'Destinatário' }} · {{ $f->pagadorNome() }}</b></div>
++    @if($f->nome_responsavel)<div class="flex justify-between"><span class="text-slate-500">Responsável</span><b>{{ $f->nome_responsavel }}</b></div>@endif
++    @if($f->nf_numero || $f->nf_chave)<div class="flex justify-between"><span class="text-slate-500">Nota fiscal</span><b>{{ $f->nf_numero ? 'Nº '.$f->nf_numero : '' }}@if($f->nf_chave)<span class="block text-[10px] font-normal text-slate-400 break-all">{{ $f->nf_chave }}</span>@endif</b></div>@endif
+   </div>
++
++  @if($f->veiculos->count())
++  <div class="card p-4">
++    <div class="font-semibold mb-2">🚗 Veículos ({{ $f->veiculos->count() }})</div>
++    <div class="space-y-2">
++      @foreach($f->veiculos as $v)
++        <div class="text-sm bg-slate-50 rounded-lg p-2">
++          <b>{{ $v->placa ?: 'Sem placa' }}</b> · {{ $v->modelo ?: '—' }}{{ $v->cor ? ' · '.$v->cor : '' }}
++          @if($v->documento)<div class="text-xs text-slate-500">Doc: {{ $v->documento }}</div>@endif
++          @if($v->obs)<div class="text-xs text-slate-400">{{ $v->obs }}</div>@endif
++        </div>
++      @endforeach
++    </div>
++  </div>
++  @endif
+   <div class="card p-4"><div class="font-semibold mb-1">Carga</div><div class="text-sm text-slate-600">{{ $f->descricao }}</div>
+     <div class="border-t mt-2 pt-2 space-y-1 text-sm">
+       <div class="flex justify-between text-lg font-bold" style="color:{{ $cor }}"><span>Total</span><span>R$ {{ number_format($f->total,2,',','.') }}</span></div>
+diff --git a/routes/web.php b/routes/web.php
+index 9c5ad0f..fffeb91 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -136,6 +136,7 @@
+     // ---------- FRETE ----------
+     Route::get('/fretes', [\App\Http\Controllers\FreteController::class, 'index'])->name('fretes.index')->middleware('perm:frete.ver');
+     Route::get('/fretes/novo', [\App\Http\Controllers\FreteController::class, 'create'])->name('fretes.create')->middleware('perm:frete');
++    Route::get('/frete/consultar-nf', [\App\Http\Controllers\FreteController::class, 'consultarNf'])->name('fretes.consultar-nf')->middleware('perm:frete');
+     Route::post('/fretes', [\App\Http\Controllers\FreteController::class, 'store'])->name('fretes.store')->middleware('perm:frete');
+     Route::get('/fretes/{frete}', [\App\Http\Controllers\FreteController::class, 'show'])->name('fretes.show')->middleware('perm:frete.ver');
+     Route::post('/fretes/{frete}/pagar', [\App\Http\Controllers\FreteController::class, 'pagar'])->name('fretes.pagar')->middleware('perm:frete.baixa');
+-- 
+2.43.0
+

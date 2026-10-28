@@ -53,7 +53,7 @@
     <h2 class="font-bold text-sm text-slate-500 uppercase pt-2">Destinatário</h2>
     <div><b>{{ $e->destinatario_nome }}</b><div class="text-sm text-slate-500">{{ $e->destinatario_telefone }} {{ $e->destinatario_documento }}</div></div>
     @if($e->observacao)<div class="text-sm bg-amber-50 border border-amber-200 rounded-lg p-2">{{ $e->observacao }}</div>@endif
-    @if($e->entregue)<div class="text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-2">Entregue@if($e->entregue_em) em {{ $e->entregue_em->format('d/m/Y H:i') }}@endif por {{ $e->entreguePor?->name }}@if($e->entregue_para) para <b>{{ $e->entregue_para }}</b>@endif@if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
+    @if($e->entregue)<div class="text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-2">Entregue{{ $e->entregue_em ? ' em '.$e->entregue_em->format('d/m/Y H:i') : '' }} por {{ $e->entreguePor?->name }}@if($e->entregue_para) para <b>{{ $e->entregue_para }}</b>@endif @if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
   </div>
 
   <div class="card p-4 space-y-3">

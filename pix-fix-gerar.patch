@@ -1,0 +1,53 @@
+From c982c8c8b74b0ccf4f1e407b9006b3e2f01993ef Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 26 Oct 2026 16:01:39 -0400
+Subject: [PATCH] =?UTF-8?q?fix(pix):=20encomenda=20voltou=20a=20gerar=20PI?=
+ =?UTF-8?q?X=20(removido=20reportValidity=20que=20bloqueava=20em=20sil?=
+ =?UTF-8?q?=C3=AAncio);=20valida=C3=A7=C3=A3o=20clara=20de=20remetente/des?=
+ =?UTF-8?q?tinat=C3=A1rio=20=E2=80=94=20v2026.10.26.6?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Support/Versao.php                      | 2 +-
+ resources/views/encomendas/create.blade.php | 5 +++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index 264dbff..82a3594 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.5';
++    public const ATUAL = 'v2026.10.26.6';
+ }
+diff --git a/resources/views/encomendas/create.blade.php b/resources/views/encomendas/create.blade.php
+index 87d3284..7917bec 100644
+--- a/resources/views/encomendas/create.blade.php
++++ b/resources/views/encomendas/create.blade.php
+@@ -421,13 +421,14 @@ function novaEncomenda(){
+     fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+     gerarPixDinamico(){
+       if(this.pixPagando) return;
+-      if(!this.$el.reportValidity()){ return; }
+       if(!this.origemSel || !this.destinoSel){ alert('Preencha a origem e o destino antes de gerar o PIX.'); return; }
+       if(!this.itens.length){ alert('Adicione pelo menos um item.'); return; }
++      const pedido=this.montarDados(this.$el);
++      if(!pedido.remetente_nome || !pedido.remetente_nome.trim()){ alert('Informe o remetente antes de gerar o PIX.'); return; }
++      if(!pedido.destinatario_nome || !pedido.destinatario_nome.trim()){ alert('Informe o destinatário antes de gerar o PIX.'); return; }
+       const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
+       const valor=Math.max((Number(this.total)||0)-outros,0);
+       if(valor<=0){ alert('Sem valor a cobrar. Adicione itens.'); return; }
+-      const pedido=this.montarDados(this.$el);
+       this.pixCobId=null; this.pixCopia=''; this.pixQr=''; this.pixValor=valor; this.pixModal=true; this.pixPagando=true;
+       fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'encomenda',valor:valor,descricao:'Encomenda',imprimir:this.imprimir,payload:pedido})})
+         .then(r=>r.json()).then(d=>{
+-- 
+2.43.0
+

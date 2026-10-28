@@ -1,0 +1,172 @@
+From b9f667fb577e1fb4970ea0dc67bc0658a5322260 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 19:35:41 -0400
+Subject: [PATCH] feat(encomenda): CPF de quem retirou na baixa de entrega
+ (entregue_documento)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- migration encomendas.entregue_documento; campo CPF nos dois modais (receber+entregar), salvo no serviço e no sync; exibido no show e no comprovante
+- v2026.10.26.23
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Http/Controllers/EncomendaController.php  |  3 ++-
+ app/Http/Controllers/SyncController.php       |  2 +-
+ app/Services/EncomendaService.php             |  2 +-
+ app/Support/Versao.php                        |  2 +-
+ .../0001_01_52_000000_entregue_documento.php  | 25 +++++++++++++++++++
+ resources/views/encomendas/show.blade.php     | 10 +++++---
+ .../impressao/comprovante/padrao.blade.php    |  2 +-
+ 7 files changed, 38 insertions(+), 8 deletions(-)
+ create mode 100644 database/migrations/0001_01_52_000000_entregue_documento.php
+
+diff --git a/app/Http/Controllers/EncomendaController.php b/app/Http/Controllers/EncomendaController.php
+index b9c490e..865d344 100644
+--- a/app/Http/Controllers/EncomendaController.php
++++ b/app/Http/Controllers/EncomendaController.php
+@@ -252,6 +252,7 @@ public function pagar(Request $request, Encomenda $encomenda)
+             'desconto' => 'nullable|numeric|min:0',
+             'entregar' => 'nullable|boolean',
+             'entregue_para' => 'nullable|string|max:120',
++            'entregue_documento' => 'nullable|string|max:20',
+             'uuid' => 'nullable|uuid',
+         ]);
+ 
+@@ -273,7 +274,7 @@ public function entregar(Request $request, Encomenda $encomenda)
+     {
+         abort_if($encomenda->cancelada, 422, 'Encomenda cancelada.');
+         abort_if($encomenda->devido > 0.009 && $encomenda->forma !== 'faturado', 422, 'Registre o pagamento antes de dar baixa na entrega.');
+-        $data = $request->validate(['entregue_para' => 'nullable|string|max:120', 'uuid' => 'nullable|uuid']);
++        $data = $request->validate(['entregue_para' => 'nullable|string|max:120', 'entregue_documento' => 'nullable|string|max:20', 'uuid' => 'nullable|uuid']);
+ 
+         app(\App\Services\EncomendaService::class)->baixa($encomenda, $data + ['entregar' => true], auth()->id(), $request->input('uuid'));
+ 
+diff --git a/app/Http/Controllers/SyncController.php b/app/Http/Controllers/SyncController.php
+index 23ec600..2151477 100644
+--- a/app/Http/Controllers/SyncController.php
++++ b/app/Http/Controllers/SyncController.php
+@@ -218,7 +218,7 @@ public function baixa(Request $request, EncomendaService $svc)
+             'encomenda_id' => 'nullable|integer',
+             'dinheiro' => 'nullable|numeric|min:0', 'pix' => 'nullable|numeric|min:0',
+             'debito' => 'nullable|numeric|min:0', 'credito' => 'nullable|numeric|min:0', 'desconto' => 'nullable|numeric|min:0',
+-            'entregar' => 'nullable|boolean', 'entregue_para' => 'nullable|string|max:120', 'entregue_em' => 'nullable|date',
++            'entregar' => 'nullable|boolean', 'entregue_para' => 'nullable|string|max:120', 'entregue_documento' => 'nullable|string|max:20', 'entregue_em' => 'nullable|date',
+         ]);
+ 
+         $enc = $data['encomenda_uuid'] ? Encomenda::where('uuid', $data['encomenda_uuid'])->first() : Encomenda::find($data['encomenda_id'] ?? 0);
+diff --git a/app/Services/EncomendaService.php b/app/Services/EncomendaService.php
+index 27be3b9..c55d80a 100644
+--- a/app/Services/EncomendaService.php
++++ b/app/Services/EncomendaService.php
+@@ -150,7 +150,7 @@ public function baixa(Encomenda $enc, array $data, int $userId, ?string $uuid =
+             $podeEntregar = $enc->devido <= 0.009 || $enc->forma === 'faturado';
+             $quitouAgora = $soma > 0 && $enc->devido <= 0.009;
+             if ((! empty($data['entregar']) || $quitouAgora) && ! $enc->entregue && $podeEntregar) {
+-                $enc->forceFill(['entregue' => true, 'entregue_em' => ! empty($data['entregue_em']) ? \Carbon\Carbon::parse($data['entregue_em'])->setTimezone(config('app.timezone')) : now(), 'entregue_por' => $userId, 'entregue_para' => $data['entregue_para'] ?? null])->save();
++                $enc->forceFill(['entregue' => true, 'entregue_em' => ! empty($data['entregue_em']) ? \Carbon\Carbon::parse($data['entregue_em'])->setTimezone(config('app.timezone')) : now(), 'entregue_por' => $userId, 'entregue_para' => $data['entregue_para'] ?? null, 'entregue_documento' => $data['entregue_documento'] ?? null])->save();
+                 Evento::create(['uuid' => $uuid, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'entrega', 'dados' => ['para' => $data['entregue_para'] ?? null]]);
+             } elseif ($uuid) {
+                 Evento::where('uuid', $uuid)->exists() || Evento::create(['uuid' => $uuid, 'encomenda_id' => $enc->id, 'user_id' => $userId, 'tipo' => 'sync', 'dados' => []]);
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index cfb3652..ba59b7a 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.22';
++    public const ATUAL = 'v2026.10.26.23';
+ }
+diff --git a/database/migrations/0001_01_52_000000_entregue_documento.php b/database/migrations/0001_01_52_000000_entregue_documento.php
+new file mode 100644
+index 0000000..625d0c7
+--- /dev/null
++++ b/database/migrations/0001_01_52_000000_entregue_documento.php
+@@ -0,0 +1,25 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++/** CPF/documento de quem retirou a encomenda, registrado na baixa de entrega. */
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('encomendas', function (Blueprint $t) {
++            if (! Schema::hasColumn('encomendas', 'entregue_documento')) {
++                $t->string('entregue_documento', 20)->nullable()->after('entregue_para');
++            }
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('encomendas', function (Blueprint $t) {
++            if (Schema::hasColumn('encomendas', 'entregue_documento')) $t->dropColumn('entregue_documento');
++        });
++    }
++};
+diff --git a/resources/views/encomendas/show.blade.php b/resources/views/encomendas/show.blade.php
+index 7a2a1b1..c7f8330 100644
+--- a/resources/views/encomendas/show.blade.php
++++ b/resources/views/encomendas/show.blade.php
+@@ -53,7 +53,7 @@
+     <h2 class="font-bold text-sm text-slate-500 uppercase pt-2">Destinatário</h2>
+     <div><b>{{ $e->destinatario_nome }}</b><div class="text-sm text-slate-500">{{ $e->destinatario_telefone }} {{ $e->destinatario_documento }}</div></div>
+     @if($e->observacao)<div class="text-sm bg-amber-50 border border-amber-200 rounded-lg p-2">{{ $e->observacao }}</div>@endif
+-    @if($e->entregue)<div class="text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-2">Entregue em {{ $e->entregue_em->format('d/m/Y H:i') }} por {{ $e->entreguePor?->name }}@if($e->entregue_para) para <b>{{ $e->entregue_para }}</b>@endif</div>@endif
++    @if($e->entregue)<div class="text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-2">Entregue em {{ $e->entregue_em->format('d/m/Y H:i') }} por {{ $e->entreguePor?->name }}@if($e->entregue_para) para <b>{{ $e->entregue_para }}</b>@endif@if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
+   </div>
+ 
+   <div class="card p-4 space-y-3">
+@@ -96,7 +96,10 @@
+     </div>
+     <div class="text-sm flex justify-between"><span>Restará:</span><b x-text="FBRE.moeda(Math.max(devido-d-p-de-c-ds,0))"></b></div>
+     @if(!$e->entregue)
+-      <input name="entregue_para" class="input" placeholder="Quem retirou (opcional)">
++      <div class="grid grid-cols-2 gap-2">
++        <input name="entregue_para" class="input" placeholder="Quem retirou (opcional)">
++        <input name="entregue_documento" class="input" placeholder="CPF de quem retirou" inputmode="numeric">
++      </div>
+       <p class="text-xs text-emerald-600">Ao quitar o valor, a entrega é dada automaticamente. ✓</p>
+     @endif
+     <div class="flex gap-2 pt-1">
+@@ -113,6 +116,7 @@
+     <h3 class="text-lg font-bold">Baixa na entrega</h3>
+     @if($e->devido>0 && $e->forma==='faturado')<div class="text-sm bg-amber-50 border border-amber-200 rounded-lg p-2">Faturado: será entregue agora e cobrado na fatura (<b>R$ {{ number_format($e->devido,2,',','.') }}</b> em aberto).</div>@endif
+     <div><label class="label">Quem retirou</label><input name="entregue_para" class="input" placeholder="Nome de quem recebeu" autofocus></div>
++    <div><label class="label">CPF de quem retirou</label><input name="entregue_documento" class="input" placeholder="CPF" inputmode="numeric"></div>
+     <div class="flex gap-2 pt-1">
+       <button type="button" class="btn btn-ghost flex-1" @click="modal=null">Cancelar</button>
+       <button class="btn btn-primary flex-1">Confirmar entrega</button>
+@@ -144,7 +148,7 @@
+   if (navigator.onLine) return; // online: formulário normal
+   ev.preventDefault();
+   const fd = new FormData(ev.target); const d = { encomenda_id: {{ $e->id }} };
+-  ['dinheiro','pix','debito','credito','desconto','entregue_para'].forEach(k => { if (fd.get(k)) d[k] = fd.get(k); });
++  ['dinheiro','pix','debito','credito','desconto','entregue_para','entregue_documento'].forEach(k => { if (fd.get(k)) d[k] = fd.get(k); });
+   if (!pagamento || fd.get('entregar')) { d.entregar = true; d.entregue_em = new Date().toISOString(); }
+   await FBREOffline.salvarBaixa(d);
+   alert('Sem conexão: baixa guardada neste aparelho e será enviada quando a internet voltar.');
+diff --git a/resources/views/impressao/comprovante/padrao.blade.php b/resources/views/impressao/comprovante/padrao.blade.php
+index 6b246d6..10f2860 100644
+--- a/resources/views/impressao/comprovante/padrao.blade.php
++++ b/resources/views/impressao/comprovante/padrao.blade.php
+@@ -48,7 +48,7 @@
+ @endif
+ <hr>
+ <div class="c b">{{ strtoupper($e->statusTexto()) }}</div>
+-@if($e->entregue)<div class="c sm">Entregue em {{ $e->entregue_em->format('d/m/Y H:i') }}@if($e->entregue_para) para {{ $e->entregue_para }}@endif</div>@endif
++@if($e->entregue)<div class="c sm">Entregue em {{ $e->entregue_em->format('d/m/Y H:i') }}@if($e->entregue_para) para {{ $e->entregue_para }}@endif@if($e->entregue_documento) · CPF {{ $e->entregue_documento }}@endif</div>@endif
+ @if($e->observacao)<hr><div class="sm">Obs: {{ $e->observacao }}</div>@endif
+ @if($empresa->pix)<hr><div class="c sm">PIX: {{ $empresa->pix }}</div>@endif
+ @if($empresa->rodape_comprovante)<hr><div class="c sm">{!! nl2br(e($empresa->rodape_comprovante)) !!}</div>@endif
+-- 
+2.43.0
+

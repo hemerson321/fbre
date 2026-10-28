@@ -1,0 +1,189 @@
+From 7e73397fc2a6776b827c1df51f35c56c73ae6812 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 15:55:19 -0400
+Subject: [PATCH] =?UTF-8?q?feat(frete):=20cat=C3=A1logo=20de=20produtos=20?=
+ =?UTF-8?q?separado=20do=20de=20encomenda=20(produtos.modulo)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- migration produtos.modulo (existentes viram 'encomenda'); catalogar grava por módulo
+- encomenda e frete mostram só o próprio catálogo
+- Cadastros gerais: seção 'Produtos do frete' separada (ex.: caixa de frango, fardo de Coca)
+- v2026.10.26.22
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ .../Controllers/Admin/CadastroController.php  | 10 +++++--
+ app/Http/Controllers/EncomendaController.php  |  2 +-
+ app/Http/Controllers/FreteController.php      |  2 +-
+ app/Services/EncomendaService.php             |  2 +-
+ app/Services/FreteService.php                 |  2 +-
+ app/Support/Versao.php                        |  2 +-
+ .../0001_01_51_000000_produto_modulo.php      | 29 +++++++++++++++++++
+ resources/views/admin/cadastros.blade.php     | 19 ++++++++++++
+ 8 files changed, 61 insertions(+), 7 deletions(-)
+ create mode 100644 database/migrations/0001_01_51_000000_produto_modulo.php
+
+diff --git a/app/Http/Controllers/Admin/CadastroController.php b/app/Http/Controllers/Admin/CadastroController.php
+index cf49aee..2e36aed 100644
+--- a/app/Http/Controllers/Admin/CadastroController.php
++++ b/app/Http/Controllers/Admin/CadastroController.php
+@@ -41,7 +41,8 @@ public function index()
+         return view('admin.cadastros', [
+             'embarcacoes' => Embarcacao::orderBy('nome')->get(),
+             'setores' => Setor::orderBy('nome')->get(),
+-            'produtos' => Produto::orderBy('nome')->get(),
++            'produtos' => Produto::where('modulo', 'encomenda')->orderBy('nome')->get(),
++            'produtosFrete' => Produto::where('modulo', 'frete')->orderBy('nome')->get(),
+             'estacoes' => Estacao::orderBy('nome')->get(),
+             'categorias' => AvulsoCategoria::orderBy('ordem')->orderBy('nome')->get(),
+             'tiposPassageiro' => TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(),
+@@ -75,9 +76,14 @@ public function store(Request $request, string $tipo)
+         $data = $request->validate([
+             'nome' => 'required|string|max:120',
+             'valor_padrao' => 'nullable|numeric|min:0',
++            'modulo' => 'nullable|in:encomenda,frete',
+         ]);
+         $m = $this->tipos[$tipo];
+-        $m::create($tipo === 'produtos' ? $data : ['nome' => $data['nome']]);
++        if ($tipo === 'produtos') {
++            Produto::create(['nome' => $data['nome'], 'valor_padrao' => $data['valor_padrao'] ?? 0, 'modulo' => $data['modulo'] ?? 'encomenda', 'ativo' => true]);
++        } else {
++            $m::create(['nome' => $data['nome']]);
++        }
+         return back()->with('ok', 'Cadastrado.');
+     }
+ 
+diff --git a/app/Http/Controllers/EncomendaController.php b/app/Http/Controllers/EncomendaController.php
+index 516c24e..b9c490e 100644
+--- a/app/Http/Controllers/EncomendaController.php
++++ b/app/Http/Controllers/EncomendaController.php
+@@ -132,7 +132,7 @@ public function create()
+             'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
+         ])->values();
+ 
+-        $catalogo = Produto::where('ativo', true)->orderByDesc('usos')->orderBy('nome')
++        $catalogo = Produto::where('ativo', true)->where('modulo', 'encomenda')->orderByDesc('usos')->orderBy('nome')
+             ->get(['id', 'nome', 'valor_padrao'])
+             ->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'valor' => (float) $p->valor_padrao])->values();
+ 
+diff --git a/app/Http/Controllers/FreteController.php b/app/Http/Controllers/FreteController.php
+index 419925e..21862d7 100644
+--- a/app/Http/Controllers/FreteController.php
++++ b/app/Http/Controllers/FreteController.php
+@@ -149,7 +149,7 @@ public function create()
+             'id' => $r->id, 'nome' => $r->nome,
+             'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
+         ])->values();
+-        $catalogo = \App\Models\Produto::where('ativo', true)->orderByDesc('usos')->orderBy('nome')
++        $catalogo = \App\Models\Produto::where('ativo', true)->where('modulo', 'frete')->orderByDesc('usos')->orderBy('nome')
+             ->get(['id', 'nome', 'valor_padrao'])
+             ->map(fn ($p) => ['id' => $p->id, 'nome' => $p->nome, 'valor' => (float) $p->valor_padrao])->values();
+ 
+diff --git a/app/Services/EncomendaService.php b/app/Services/EncomendaService.php
+index 74c0f31..27be3b9 100644
+--- a/app/Services/EncomendaService.php
++++ b/app/Services/EncomendaService.php
+@@ -164,7 +164,7 @@ protected function catalogar($empresa, ?string $nome, $valor): void
+         $nome = trim((string) $nome);
+         if ($nome === '') return;
+         $p = Produto::firstOrCreate(
+-            ['empresa_id' => $empresa->id, 'nome' => $nome],
++            ['empresa_id' => $empresa->id, 'nome' => $nome, 'modulo' => 'encomenda'],
+             ['valor_padrao' => (float) $valor, 'ativo' => true]
+         );
+         $p->increment('usos');
+diff --git a/app/Services/FreteService.php b/app/Services/FreteService.php
+index ca96857..1a1b185 100644
+--- a/app/Services/FreteService.php
++++ b/app/Services/FreteService.php
+@@ -138,7 +138,7 @@ protected function catalogar($empresa, ?string $nome, $valor): void
+     {
+         $nome = trim((string) $nome);
+         if ($nome === '') return;
+-        $p = Produto::firstOrCreate(['empresa_id' => $empresa->id, 'nome' => $nome], ['valor_padrao' => (float) $valor, 'ativo' => true]);
++        $p = Produto::firstOrCreate(['empresa_id' => $empresa->id, 'nome' => $nome, 'modulo' => 'frete'], ['valor_padrao' => (float) $valor, 'ativo' => true]);
+         $p->increment('usos');
+     }
+ }
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index fcc85df..cfb3652 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.21';
++    public const ATUAL = 'v2026.10.26.22';
+ }
+diff --git a/database/migrations/0001_01_51_000000_produto_modulo.php b/database/migrations/0001_01_51_000000_produto_modulo.php
+new file mode 100644
+index 0000000..98d903d
+--- /dev/null
++++ b/database/migrations/0001_01_51_000000_produto_modulo.php
+@@ -0,0 +1,29 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++/** Separa o catálogo de produtos por módulo (encomenda x frete). Os existentes ficam como 'encomenda'. */
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('produtos', function (Blueprint $t) {
++            if (! Schema::hasColumn('produtos', 'modulo')) {
++                $t->string('modulo', 12)->default('encomenda')->after('empresa_id');
++                $t->index(['empresa_id', 'modulo', 'ativo']);
++            }
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('produtos', function (Blueprint $t) {
++            if (Schema::hasColumn('produtos', 'modulo')) {
++                try { $t->dropIndex(['empresa_id', 'modulo', 'ativo']); } catch (\Throwable $e) {}
++                $t->dropColumn('modulo');
++            }
++        });
++    }
++};
+diff --git a/resources/views/admin/cadastros.blade.php b/resources/views/admin/cadastros.blade.php
+index d29ba5b..c75fa50 100644
+--- a/resources/views/admin/cadastros.blade.php
++++ b/resources/views/admin/cadastros.blade.php
+@@ -56,6 +56,25 @@
+   </div>
+ @endforeach
+ 
++{{-- catálogo do FRETE (separado do de encomenda) --}}
++<div class="card p-4 space-y-2">
++  <h2 class="font-bold text-sm text-slate-500 uppercase">Produtos do frete (catálogo)</h2>
++  <p class="text-[11px] text-slate-400 -mt-1">Ex.: caixa de frango, fardo de Coca-Cola… (separado da encomenda)</p>
++  <form method="post" action="{{ route('admin.cadastros.store','produtos') }}" class="flex gap-2">@csrf
++    <input type="hidden" name="modulo" value="frete">
++    <input name="nome" class="input !min-h-[42px]" placeholder="Nome" required>
++    <input name="valor_padrao" type="number" step="0.01" min="0" class="input !min-h-[42px] !w-28 text-right" placeholder="Valor">
++    <button class="btn btn-accent btn-sm">+</button></form>
++  <div class="divide-y text-sm">
++    @forelse($produtosFrete as $r)
++      <div class="flex items-center justify-between py-1.5 {{ isset($r->ativo) && !$r->ativo ? 'opacity-40 line-through' : '' }}">
++        <span>{{ $r->nome }} <span class="text-slate-400">R$ {{ number_format($r->valor_padrao,2,',','.') }}</span></span>
++        <form method="post" action="{{ route('admin.cadastros.destroy',['produtos',$r->id]) }}" onsubmit="return confirm('Remover?')">@csrf @method('DELETE')<button class="text-red-500 text-xs">remover</button></form>
++      </div>
++    @empty <div class="py-3 text-slate-400">Nenhum. Adicione os produtos que viajam por frete.</div> @endforelse
++  </div>
++</div>
++
+ <div class="card p-4 space-y-2 md:col-span-2" x-data="tiposEditor(@js($tiposPassageiro->map(fn($t)=>[
+      'id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor',
+      'percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,
+-- 
+2.43.0
+

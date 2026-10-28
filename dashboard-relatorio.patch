@@ -1,0 +1,370 @@
+From 6c9ac6f7a1d38ff30c4572c764e1deaa9aa547e5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 00:40:37 -0400
+Subject: [PATCH] =?UTF-8?q?feat(admin):=20dashboard=20gerencial=20(todos?=
+ =?UTF-8?q?=20os=20m=C3=B3dulos)=20+=20relat=C3=B3rio=20resumido?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Dashboard em Administração: KPIs (caixa líquido, recebido, a receber, cadastros), recebido por módulo e por forma (PIX manual/auto), quem mais viaja, quem mais envia (encomendas+fretes), devedores há mais tempo, rotas mais movimentadas — com seletor de período
+- Relatório 'meu': alterna entre Resumido (só totais) e Analítico (item a item)
+- v2026.10.26.10
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ .../Controllers/Admin/DashboardController.php |  94 +++++++++++
+ app/Http/Controllers/RelatorioController.php  |   3 +-
+ app/Support/Versao.php                        |   2 +-
+ resources/views/admin/dashboard.blade.php     | 146 ++++++++++++++++++
+ resources/views/caixa/meu.blade.php           |  14 +-
+ resources/views/layouts/app.blade.php         |   1 +
+ routes/web.php                                |   1 +
+ 7 files changed, 257 insertions(+), 4 deletions(-)
+ create mode 100644 app/Http/Controllers/Admin/DashboardController.php
+ create mode 100644 resources/views/admin/dashboard.blade.php
+
+diff --git a/app/Http/Controllers/Admin/DashboardController.php b/app/Http/Controllers/Admin/DashboardController.php
+new file mode 100644
+index 0000000..411aebb
+--- /dev/null
++++ b/app/Http/Controllers/Admin/DashboardController.php
+@@ -0,0 +1,94 @@
++<?php
++
++namespace App\Http\Controllers\Admin;
++
++use App\Http\Controllers\CaixaController;
++use App\Http\Controllers\Controller;
++use App\Models\Encomenda;
++use App\Models\Frete;
++use App\Models\Pagamento;
++use App\Models\Passagem;
++use App\Models\PassagemPassageiro;
++use Illuminate\Http\Request;
++
++/**
++ * Dashboard gerencial: visão de todos os módulos — recebimentos, cadastros,
++ * quem mais viaja, quem mais envia e quem deve há mais tempo.
++ */
++class DashboardController extends Controller
++{
++    public function index(Request $request)
++    {
++        if (! $request->filled('periodo')) $request->merge(['periodo' => 'mes']);
++        [$inicio, $fim, $periodo] = CaixaController::periodo($request);
++
++        // ---------------- Caixa do período ----------------
++        $pagBase = Pagamento::where('estornado', false)->whereBetween('created_at', [$inicio, $fim]);
++        $entradas = (float) (clone $pagBase)->where('meio', '!=', 'desconto')->where('tipo_mov', '!=', 'saida')->sum('valor');
++        $saidas = (float) (clone $pagBase)->where('tipo_mov', 'saida')->sum('valor');
++        $liquido = $entradas - $saidas;
++
++        $canalSql = Pagamento::canalSql();
++        $porCanal = (clone $pagBase)->where('meio', '!=', 'desconto')->where('tipo_mov', '!=', 'saida')
++            ->selectRaw("$canalSql as canal, SUM(valor) valor")->groupBy('canal')->pluck('valor', 'canal');
++        $porModulo = (clone $pagBase)->where('meio', '!=', 'desconto')->where('tipo_mov', '!=', 'saida')
++            ->selectRaw('modulo, SUM(valor) valor, COUNT(*) qtd')->groupBy('modulo')->get()->keyBy('modulo');
++
++        // ---------------- Cadastros do período ----------------
++        $ini = $inicio; $f = $fim;
++        $cad = [
++            'encomenda' => Encomenda::whereBetween('created_at', [$ini, $f])->where('cancelada', false)->count(),
++            'passagem'  => Passagem::whereBetween('created_at', [$ini, $f])->where('cancelada', false)->where('tipo', '!=', 'camarote')->count(),
++            'camarote'  => Passagem::whereBetween('created_at', [$ini, $f])->where('cancelada', false)->where('tipo', 'camarote')->count(),
++            'frete'     => Frete::whereBetween('created_at', [$ini, $f])->where('cancelada', false)->count(),
++        ];
++
++        // ---------------- A receber em aberto (tudo, não cancelado) ----------------
++        $aReceber = (float) Encomenda::where('cancelada', false)->where('devido', '>', 0.009)->sum('devido')
++            + (float) Passagem::where('cancelada', false)->where('devido', '>', 0.009)->sum('devido')
++            + (float) Frete::where('cancelada', false)->where('devido', '>', 0.009)->sum('devido');
++
++        // ---------------- Quem mais viaja (passageiros no período) ----------------
++        $topPassageiros = PassagemPassageiro::whereHas('passagem', fn ($q) => $q->where('cancelada', false)->whereBetween('created_at', [$ini, $f]))
++            ->selectRaw("TRIM(nome) nome, COUNT(*) qtd, SUM(valor_total) valor")
++            ->groupByRaw('TRIM(nome)')->havingRaw("TRIM(nome) <> ''")
++            ->orderByDesc('qtd')->limit(10)->get();
++
++        // ---------------- Quem mais envia (encomendas + fretes no período) ----------------
++        $envEnc = Encomenda::where('cancelada', false)->whereBetween('created_at', [$ini, $f])
++            ->selectRaw("TRIM(remetente_nome) nome, COUNT(*) qtd, SUM(total) valor")->groupByRaw('TRIM(remetente_nome)')->get();
++        $envFre = Frete::where('cancelada', false)->whereBetween('created_at', [$ini, $f])
++            ->selectRaw("TRIM(remetente_nome) nome, COUNT(*) qtd, SUM(total) valor")->groupByRaw('TRIM(remetente_nome)')->get();
++        $topRemetentes = $envEnc->concat($envFre)
++            ->filter(fn ($r) => trim((string) $r->nome) !== '')
++            ->groupBy('nome')
++            ->map(fn ($g, $nome) => (object) ['nome' => $nome, 'qtd' => $g->sum('qtd'), 'valor' => $g->sum('valor')])
++            ->sortByDesc('qtd')->take(10)->values();
++
++        // ---------------- Devedores há mais tempo (todos os módulos, em aberto) ----------------
++        $dev = collect();
++        Encomenda::where('cancelada', false)->where('devido', '>', 0.009)->orderBy('created_at')->limit(40)->get()
++            ->each(fn ($e) => $dev->push((object) ['modulo' => 'encomenda', 'numero' => $e->numeroFormatado(), 'cliente' => $e->remetente_nome ?: $e->destinatario_nome, 'devido' => (float) $e->devido, 'data' => $e->created_at, 'url' => route('encomendas.show', $e)]));
++        Passagem::where('cancelada', false)->where('devido', '>', 0.009)->orderBy('created_at')->limit(40)->get()
++            ->each(fn ($p) => $dev->push((object) ['modulo' => $p->tipo === 'camarote' ? 'camarote' : 'passagem', 'numero' => $p->numeroFormatado(), 'cliente' => $p->comprador_nome ?: '—', 'devido' => (float) $p->devido, 'data' => $p->created_at, 'url' => route('passagens.show', $p)]));
++        Frete::where('cancelada', false)->where('devido', '>', 0.009)->orderBy('created_at')->limit(40)->get()
++            ->each(fn ($fr) => $dev->push((object) ['modulo' => 'frete', 'numero' => $fr->numeroFormatado(), 'cliente' => $fr->remetente_nome ?: '—', 'devido' => (float) $fr->devido, 'data' => $fr->created_at, 'url' => route('fretes.show', $fr)]));
++        $devedores = $dev->sortBy('data')->take(15)->values();
++        $totalDevedores = $dev->count();
++
++        // ---------------- Top rotas do período ----------------
++        $topRotas = collect();
++        foreach ([[Encomenda::class, 'encomenda'], [Passagem::class, 'passagem'], [Frete::class, 'frete']] as [$model, $mod]) {
++            $model::where('cancelada', false)->whereBetween('created_at', [$ini, $f])
++                ->selectRaw("CONCAT(origem,' → ',destino) rota, COUNT(*) qtd")->groupBy('rota')->get()
++                ->each(fn ($r) => $topRotas->push($r));
++        }
++        $topRotas = $topRotas->groupBy('rota')->map(fn ($g, $rota) => (object) ['rota' => $rota, 'qtd' => $g->sum('qtd')])
++            ->sortByDesc('qtd')->take(8)->values();
++
++        return view('admin.dashboard', compact(
++            'inicio', 'fim', 'periodo', 'entradas', 'saidas', 'liquido', 'porCanal', 'porModulo',
++            'cad', 'aReceber', 'topPassageiros', 'topRemetentes', 'devedores', 'totalDevedores', 'topRotas'
++        ))->with(['canais' => Pagamento::CANAIS]);
++    }
++}
+diff --git a/app/Http/Controllers/RelatorioController.php b/app/Http/Controllers/RelatorioController.php
+index 09b6f5e..628a299 100644
+--- a/app/Http/Controllers/RelatorioController.php
++++ b/app/Http/Controllers/RelatorioController.php
+@@ -26,8 +26,9 @@ public function meu(Request $request)
+             ->whereBetween('created_at', [$inicio, $fim])->with('encomenda')->orderByDesc('id')->get();
+ 
+         $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('canal')->map->sum('valor');
++        $modo = $request->input('modo') === 'resumido' ? 'resumido' : 'analitico';
+ 
+-        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos'))
++        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos', 'modo'))
+             ->with(['meios' => Pagamento::CANAIS]);
+     }
+ }
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index f66a237..76ef450 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.9';
++    public const ATUAL = 'v2026.10.26.10';
+ }
+diff --git a/resources/views/admin/dashboard.blade.php b/resources/views/admin/dashboard.blade.php
+new file mode 100644
+index 0000000..99bbb45
+--- /dev/null
++++ b/resources/views/admin/dashboard.blade.php
+@@ -0,0 +1,146 @@
++@extends('layouts.app')
++@section('titulo','Dashboard')
++@section('conteudo')
++@php
++  use App\Support\Modulos;
++  $brl = fn($v) => 'R$ '.number_format((float)$v,2,',','.');
++  $maxMod = max(1, $porModulo->max('valor') ?? 1);
++  $maxCanal = max(1, collect($porCanal)->max() ?? 1);
++  $cadTotal = array_sum($cad);
++@endphp
++
++<div class="space-y-4 max-w-6xl mx-auto">
++  <div class="flex items-center gap-3">
++    <span class="text-2xl">📊</span>
++    <div><div class="text-xl font-extrabold">Dashboard gerencial</div><div class="text-xs text-slate-500">Visão de todos os módulos</div></div>
++  </div>
++
++  <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim"></x-periodo>
++
++  {{-- ===== KPIs ===== --}}
++  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
++    <div class="rounded-2xl p-4 text-white shadow" style="background:linear-gradient(135deg,#0b1a33,#1e3a5f)">
++      <div class="text-[11px] uppercase opacity-70">Caixa (líquido)</div>
++      <div class="text-2xl font-extrabold">{{ $brl($liquido) }}</div>
++      <div class="text-[10px] opacity-70">entradas {{ $brl($entradas) }} · saídas {{ $brl($saidas) }}</div>
++    </div>
++    <div class="rounded-2xl p-4 shadow bg-white">
++      <div class="text-[11px] uppercase text-slate-500">Recebido no período</div>
++      <div class="text-2xl font-extrabold text-emerald-600">{{ $brl($entradas) }}</div>
++      <div class="text-[10px] text-slate-400">todas as formas</div>
++    </div>
++    <div class="rounded-2xl p-4 shadow bg-white">
++      <div class="text-[11px] uppercase text-slate-500">A receber (em aberto)</div>
++      <div class="text-2xl font-extrabold text-red-600">{{ $brl($aReceber) }}</div>
++      <div class="text-[10px] text-slate-400">{{ $totalDevedores }} pedido(s) em aberto</div>
++    </div>
++    <div class="rounded-2xl p-4 shadow bg-white">
++      <div class="text-[11px] uppercase text-slate-500">Cadastros no período</div>
++      <div class="text-2xl font-extrabold">{{ $cadTotal }}</div>
++      <div class="text-[10px] text-slate-400">enc {{ $cad['encomenda'] }} · pas {{ $cad['passagem'] }} · cam {{ $cad['camarote'] }} · frete {{ $cad['frete'] }}</div>
++    </div>
++  </div>
++
++  <div class="grid lg:grid-cols-2 gap-4">
++    {{-- ===== Receita por módulo ===== --}}
++    <div class="card p-4">
++      <div class="font-bold text-sm text-slate-500 uppercase mb-3">Recebido por módulo</div>
++      <div class="space-y-2">
++        @forelse($porModulo->sortByDesc('valor') as $mod=>$row)
++          @php $cor = Modulos::hex($mod); @endphp
++          <div>
++            <div class="flex justify-between text-sm"><span class="font-semibold">{{ Modulos::icone($mod) }} {{ Modulos::rotulo($mod) }}</span><span class="font-bold">{{ $brl($row->valor) }}</span></div>
++            <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:{{ round($row->valor/$maxMod*100) }}%;background:{{ $cor }}"></div></div>
++          </div>
++        @empty
++          <div class="text-sm text-slate-400 py-4 text-center">Sem recebimentos no período.</div>
++        @endforelse
++      </div>
++    </div>
++
++    {{-- ===== Receita por forma ===== --}}
++    <div class="card p-4">
++      <div class="font-bold text-sm text-slate-500 uppercase mb-3">Recebido por forma</div>
++      <div class="space-y-2">
++        @php $temCanal = collect($porCanal)->sum() > 0; @endphp
++        @if($temCanal)
++          @foreach($canais as $ck=>$cl)
++            @php $v = (float)($porCanal[$ck] ?? 0); @endphp
++            @if($v>0)
++            <div>
++              <div class="flex justify-between text-sm"><span class="font-semibold">{{ $cl }}</span><span class="font-bold">{{ $brl($v) }}</span></div>
++              <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full bg-indigo-500" style="width:{{ round($v/$maxCanal*100) }}%"></div></div>
++            </div>
++            @endif
++          @endforeach
++        @else
++          <div class="text-sm text-slate-400 py-4 text-center">Sem recebimentos no período.</div>
++        @endif
++      </div>
++    </div>
++  </div>
++
++  <div class="grid lg:grid-cols-2 gap-4">
++    {{-- ===== Quem mais viaja ===== --}}
++    <div class="card overflow-hidden">
++      <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b flex items-center gap-2">🧍 Quem mais viaja <span class="text-[10px] font-normal normal-case text-slate-400">(passageiros)</span></div>
++      <div class="divide-y">
++        @forelse($topPassageiros as $i=>$p)
++          <div class="flex items-center gap-3 p-3 text-sm">
++            <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">{{ $i+1 }}</span>
++            <div class="flex-1 min-w-0 font-semibold truncate">{{ $p->nome }}</div>
++            <div class="text-right"><div class="font-bold">{{ $p->qtd }} viagem(ns)</div><div class="text-[11px] text-slate-400">{{ $brl($p->valor) }}</div></div>
++          </div>
++        @empty <div class="p-6 text-center text-slate-400 text-sm">Sem passageiros no período.</div> @endforelse
++      </div>
++    </div>
++
++    {{-- ===== Quem mais envia ===== --}}
++    <div class="card overflow-hidden">
++      <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b flex items-center gap-2">📦 Quem mais envia <span class="text-[10px] font-normal normal-case text-slate-400">(encomendas + fretes)</span></div>
++      <div class="divide-y">
++        @forelse($topRemetentes as $i=>$r)
++          <div class="flex items-center gap-3 p-3 text-sm">
++            <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">{{ $i+1 }}</span>
++            <div class="flex-1 min-w-0 font-semibold truncate">{{ $r->nome }}</div>
++            <div class="text-right"><div class="font-bold">{{ $r->qtd }} envio(s)</div><div class="text-[11px] text-slate-400">{{ $brl($r->valor) }}</div></div>
++          </div>
++        @empty <div class="p-6 text-center text-slate-400 text-sm">Sem envios no período.</div> @endforelse
++      </div>
++    </div>
++  </div>
++
++  {{-- ===== Devedores há mais tempo ===== --}}
++  <div class="card overflow-hidden">
++    <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b flex items-center gap-2">⏳ Devendo há mais tempo <span class="text-[10px] font-normal normal-case text-slate-400">(em aberto, todos os módulos)</span></div>
++    <div class="divide-y">
++      @forelse($devedores as $d)
++        @php $dias = (int) $d->data->diffInDays(now()); $cor = Modulos::hex($d->modulo); @endphp
++        <a href="{{ $d->url }}" class="flex items-center gap-3 p-3 text-sm hover:bg-slate-50">
++          <span class="chip shrink-0" style="background:{{ $cor }}20;color:{{ $cor }}">{{ Modulos::icone($d->modulo) }} #{{ $d->numero }}</span>
++          <div class="flex-1 min-w-0 font-semibold truncate">{{ $d->cliente }}</div>
++          <div class="text-right">
++            <div class="font-bold text-red-600">{{ $brl($d->devido) }}</div>
++            <div class="text-[11px] {{ $dias>=15 ? 'text-red-500 font-bold' : 'text-slate-400' }}">{{ $dias }} dia(s) · {{ $d->data->format('d/m/Y') }}</div>
++          </div>
++        </a>
++      @empty <div class="p-6 text-center text-slate-400 text-sm">Ninguém devendo. 🎉</div> @endforelse
++    </div>
++    @if($totalDevedores > $devedores->count())
++      <div class="p-2 text-center text-[11px] text-slate-400">Mostrando os {{ $devedores->count() }} mais antigos de {{ $totalDevedores }} em aberto.</div>
++    @endif
++  </div>
++
++  {{-- ===== Top rotas ===== --}}
++  @if($topRotas->count())
++  <div class="card p-4">
++    <div class="font-bold text-sm text-slate-500 uppercase mb-3">🗺️ Rotas mais movimentadas</div>
++    <div class="flex flex-wrap gap-2">
++      @foreach($topRotas as $r)
++        <span class="chip bg-slate-100 text-slate-700">{{ $r->rota }} <b class="ml-1">{{ $r->qtd }}</b></span>
++      @endforeach
++    </div>
++  </div>
++  @endif
++</div>
++@endsection
+diff --git a/resources/views/caixa/meu.blade.php b/resources/views/caixa/meu.blade.php
+index 4b128dc..6bf3fce 100644
+--- a/resources/views/caixa/meu.blade.php
++++ b/resources/views/caixa/meu.blade.php
+@@ -2,8 +2,14 @@
+ @section('titulo','Meu relatório')
+ @section('conteudo')
+ <div class="space-y-4">
+-<div class="flex items-center justify-between"><h1 class="text-xl font-bold">Meu relatório <span class="text-slate-400 font-normal text-base">· {{ auth()->user()->name }}</span></h1>
+-  <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Imprimir</button></div>
++<div class="flex items-center justify-between flex-wrap gap-2"><h1 class="text-xl font-bold">Meu relatório <span class="text-slate-400 font-normal text-base">· {{ auth()->user()->name }}</span></h1>
++  <div class="flex items-center gap-2 no-print">
++    <div class="inline-flex rounded-xl border overflow-hidden text-sm">
++      <a href="{{ request()->fullUrlWithQuery(['modo'=>'resumido']) }}" class="px-3 py-1.5 font-semibold {{ $modo==='resumido' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Resumido</a>
++      <a href="{{ request()->fullUrlWithQuery(['modo'=>'analitico']) }}" class="px-3 py-1.5 font-semibold {{ $modo==='analitico' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Analítico</a>
++    </div>
++    <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>
++  </div></div>
+ 
+ <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim" />
+ 
+@@ -15,6 +21,9 @@
+   @endforeach
+ </div>
+ 
++@if($modo==='resumido')
++  <div class="card p-4 text-sm text-slate-500">Resumo do período — {{ $cadastros->count() }} cadastro(s) · recebido R$ {{ number_format($porMeio->sum(),2,',','.') }} · {{ $entregas->count() }} entrega(s). Para ver item a item, use o modo <b>Analítico</b>.</div>
++@else
+ <div class="grid lg:grid-cols-2 gap-4">
+   <div class="card overflow-hidden">
+     <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Encomendas que cadastrei ({{ $cadastros->count() }})</div>
+@@ -43,5 +52,6 @@
+     </div>
+   </div>
+ </div>
++@endif
+ </div>
+ @endsection
+diff --git a/resources/views/layouts/app.blade.php b/resources/views/layouts/app.blade.php
+index 4bb47ec..7f92782 100644
+--- a/resources/views/layouts/app.blade.php
++++ b/resources/views/layouts/app.blade.php
+@@ -133,6 +133,7 @@
+   if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
+   if ($g) $grupos['Caixa'] = $g;
+   if ($u->isAdmin() || $u->isSuper()) $grupos['Administração'] = [
++      ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'],
+       ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
+       ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
+       ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'],
+diff --git a/routes/web.php b/routes/web.php
+index 3aac9c1..27036b0 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -176,6 +176,7 @@
+ 
+     // ---------------- Admin da empresa ----------------
+     Route::prefix('admin')->middleware('perm:admin')->name('admin.')->group(function () {
++        Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+         Route::get('/empresa', [EmpresaController::class, 'editar'])->name('empresa');
+         Route::post('/empresa', [EmpresaController::class, 'salvar']);
+         Route::resource('usuarios', UsuarioController::class)->except(['show']);
+-- 
+2.43.0
+

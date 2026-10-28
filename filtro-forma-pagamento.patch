@@ -1,0 +1,141 @@
+From 972f437c87a6a71c88aca0a8f5d0090b2da1a997 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 27 Oct 2026 09:21:45 -0400
+Subject: [PATCH] =?UTF-8?q?feat(relatorios):=20filtro=20por=20forma=20de?=
+ =?UTF-8?q?=20pagamento=20em=20Minhas=20vendas=20e=20Meu=20relat=C3=B3rio?=
+ =?UTF-8?q?=20(Pagamento::scopeCanal,=20divide=20PIX=20manual/autom=C3=A1t?=
+ =?UTF-8?q?ico)=20=E2=80=94=20v2026.10.26.16?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Http/Controllers/PassagemController.php       |  4 +++-
+ app/Http/Controllers/RelatorioController.php      |  5 ++++-
+ app/Models/Pagamento.php                          | 11 +++++++++++
+ app/Support/Versao.php                            |  2 +-
+ resources/views/caixa/meu.blade.php               |  7 ++++++-
+ resources/views/passagens/minhas-vendas.blade.php |  6 +++++-
+ 6 files changed, 30 insertions(+), 5 deletions(-)
+
+diff --git a/app/Http/Controllers/PassagemController.php b/app/Http/Controllers/PassagemController.php
+index ae1c27e..1c60f56 100644
+--- a/app/Http/Controllers/PassagemController.php
++++ b/app/Http/Controllers/PassagemController.php
+@@ -489,8 +489,10 @@ public function minhasVendas(Request $request)
+         $u = auth()->user();
+         [$inicio, $fim, $periodo] = \App\Http\Controllers\CaixaController::periodo($request);
+ 
++        $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
+         $vendas = Passagem::where('user_id', $u->id)->where('cancelada', false)
+             ->whereBetween('created_at', [$inicio, $fim])
++            ->when($canal, fn ($q) => $q->whereHas('pagamentos', fn ($w) => $w->canal($canal)))
+             ->with(['passageiros:id,passagem_id', 'embarcacao:id,nome'])
+             ->orderByDesc('id')->get();
+ 
+@@ -520,7 +522,7 @@ public function minhasVendas(Request $request)
+             ];
+         }
+ 
+-        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo'));
++        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal'));
+     }
+ 
+     /** Tela de check-in (hub): escaneia o QR do bilhete ou busca pelo numero. */
+diff --git a/app/Http/Controllers/RelatorioController.php b/app/Http/Controllers/RelatorioController.php
+index 628a299..25146e2 100644
+--- a/app/Http/Controllers/RelatorioController.php
++++ b/app/Http/Controllers/RelatorioController.php
+@@ -19,7 +19,10 @@ public function meu(Request $request)
+         $cadastros = Encomenda::when(! $todos, fn ($q) => $q->where('user_id', $uid))
+             ->whereBetween('created_at', [$inicio, $fim])->with('embarcacao')->orderByDesc('id')->get();
+ 
++        $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
++
+         $recebimentos = Pagamento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('estornado', false)
++            ->when($canal, fn ($q) => $q->canal($canal))
+             ->whereBetween('created_at', [$inicio, $fim])->with('encomenda')->orderByDesc('id')->get();
+ 
+         $entregas = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')
+@@ -28,7 +31,7 @@ public function meu(Request $request)
+         $porMeio = $recebimentos->where('meio', '!=', 'desconto')->groupBy('canal')->map->sum('valor');
+         $modo = $request->input('modo') === 'resumido' ? 'resumido' : 'analitico';
+ 
+-        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos', 'modo'))
++        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal'))
+             ->with(['meios' => Pagamento::CANAIS]);
+     }
+ }
+diff --git a/app/Models/Pagamento.php b/app/Models/Pagamento.php
+index 256f132..1c555be 100644
+--- a/app/Models/Pagamento.php
++++ b/app/Models/Pagamento.php
+@@ -43,6 +43,17 @@ public function getCanalAttribute(): string
+         return (string) $this->meio;
+     }
+ 
++    /** Filtra por canal (forma de pagamento), dividindo o PIX em manual/automático. */
++    public function scopeCanal($q, ?string $canal)
++    {
++        return match ($canal) {
++            'pix_manual' => $q->where('meio', 'pix')->where(fn ($w) => $w->where('pix_auto', false)->orWhereNull('pix_auto')),
++            'pix_auto'   => $q->where('meio', 'pix')->where('pix_auto', true),
++            'dinheiro', 'debito', 'credito' => $q->where('meio', $canal),
++            default      => $q,
++        };
++    }
++
+     public function encomenda(): BelongsTo { return $this->belongsTo(Encomenda::class); }
+     public function user(): BelongsTo { return $this->belongsTo(User::class); }
+ 
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index d4934d1..a70324a 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.15';
++    public const ATUAL = 'v2026.10.26.16';
+ }
+diff --git a/resources/views/caixa/meu.blade.php b/resources/views/caixa/meu.blade.php
+index 6bf3fce..b647f76 100644
+--- a/resources/views/caixa/meu.blade.php
++++ b/resources/views/caixa/meu.blade.php
+@@ -11,7 +11,12 @@
+     <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>
+   </div></div>
+ 
+-<x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim" />
++<x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
++  <input type="hidden" name="modo" value="{{ $modo }}">
++  <div><label class="label">Forma</label>
++    <select name="canal" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as formas</option>
++      @foreach(\App\Models\Pagamento::CANAIS as $ck=>$cv)<option value="{{ $ck }}" @selected(($canal ?? '')===$ck)>{{ $cv }}</option>@endforeach</select></div>
++</x-periodo>
+ 
+ <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+   <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Cadastrei</div><div class="text-xl font-extrabold">{{ $cadastros->count() }}</div><div class="text-xs text-slate-400">R$ {{ number_format($cadastros->sum('total'),2,',','.') }}</div></div>
+diff --git a/resources/views/passagens/minhas-vendas.blade.php b/resources/views/passagens/minhas-vendas.blade.php
+index 9e11d36..38a9245 100644
+--- a/resources/views/passagens/minhas-vendas.blade.php
++++ b/resources/views/passagens/minhas-vendas.blade.php
+@@ -7,7 +7,11 @@
+     <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Imprimir</button>
+   </div>
+ 
+-  <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim" />
++  <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
++    <div><label class="label">Forma</label>
++      <select name="canal" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as formas</option>
++        @foreach(\App\Models\Pagamento::CANAIS as $ck=>$cv)<option value="{{ $ck }}" @selected(($canal ?? '')===$ck)>{{ $cv }}</option>@endforeach</select></div>
++  </x-periodo>
+ 
+   <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Passagens</div><div class="text-xl font-extrabold">{{ $totais['qtd'] }}</div><div class="text-xs text-slate-400">{{ $totais['passageiros'] }} passageiro(s)</div></div>
+-- 
+2.43.0
+

@@ -1,0 +1,417 @@
+From aabbdef8639d4d1b55107dcc7eda4d3db0faffb2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 26 Oct 2026 15:50:31 -0400
+Subject: [PATCH] feat(pix): servidor cria o pedido ao confirmar o PIX e a tela
+ redireciona sozinha
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- /cobranca/pix/gerar guarda o pedido (payload) + operador + modo de impressão na cobranca
+- ConfirmaPagamento::criarPedidoDoPayload cria encomenda/passagem no pagamento (idempotente, lockForUpdate + uuid determinístico); webhook, verificador e polling criam 1x só
+- /cobranca/{id}/status: ao confirmar, cria e devolve {url,id,imprimir}; a tela só redireciona (fim do travamento de 15s no /sync)
+- encomenda/passagem: gerarPixDinamico envia o pedido; checarPix->finalizarPix redireciona automático (igual botão normal)
+- migration: cobrancas.payload/user_id/imprimir/erro
+- UI: stepper - / + nos Volumes (encomenda), bom no celular e desktop
+- v2026.10.26.5
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015Zd7DTSSZ9HHLry84qtC63
+---
+ app/Http/Controllers/CobrancaController.php   | 35 +++++++++++--
+ app/Models/Cobranca.php                       |  2 +-
+ app/Services/ConfirmaPagamento.php            | 52 ++++++++++++++++++-
+ app/Support/Versao.php                        |  2 +-
+ .../0001_01_46_000000_cobranca_payload.php    | 40 ++++++++++++++
+ resources/views/encomendas/create.blade.php   | 46 ++++++++++++----
+ resources/views/passagens/create.blade.php    | 48 ++++++++++++-----
+ 7 files changed, 192 insertions(+), 33 deletions(-)
+ create mode 100644 database/migrations/0001_01_46_000000_cobranca_payload.php
+
+diff --git a/app/Http/Controllers/CobrancaController.php b/app/Http/Controllers/CobrancaController.php
+index dbde61f..30adb4d 100644
+--- a/app/Http/Controllers/CobrancaController.php
++++ b/app/Http/Controllers/CobrancaController.php
+@@ -25,6 +25,8 @@ public function gerarAvulso(Request $request, MercadoPago $mp)
+             'descricao' => 'nullable|string|max:120',
+             'cliente_nome' => 'nullable|string|max:120',
+             'cliente_telefone' => 'nullable|string|max:30',
++            'payload' => 'nullable|array',      // pedido a criar quando o PIX confirmar
++            'imprimir' => 'nullable|string|max:20',
+         ]);
+         if (! auth()->user()->podePixDinamico()) {
+             return response()->json(['ok' => false, 'erro' => 'Você não tem permissão para gerar PIX dinâmico.'], 403);
+@@ -44,9 +46,12 @@ public function gerarAvulso(Request $request, MercadoPago $mp)
+         $cob = Cobranca::create([
+             'empresa_id' => $empresa->id,
+             'pagamento_api_id' => $api->id,
++            'user_id' => auth()->id(),
+             'modulo' => $data['modulo'],
+             'referencia_tipo' => null,
+             'referencia_id' => null,
++            'payload' => $data['payload'] ?? null,
++            'imprimir' => $data['imprimir'] ?? null,
+             'provider' => 'mercadopago',
+             'provider_payment_id' => $r['payment_id'] ?? null,
+             'valor' => (float) $data['valor'],
+@@ -96,19 +101,41 @@ public function imprimir(Cobranca $cobranca)
+         return view('impressao.pix', ['numero' => (string) $cobranca->id, 'c' => $cobranca, 'rotulo' => ucfirst((string) $cobranca->modulo), 'empresa' => Tenant::empresa()]);
+     }
+ 
+-    /** Status de uma cobrança (consulta o MP se ainda pendente). Usado pela tela que aguarda o pagamento. */
+-    public function status(Cobranca $cobranca, MercadoPago $mp)
++    /**
++     * Status de uma cobrança (consulta o MP se ainda pendente). Usado pela tela que aguarda o pagamento.
++     * Ao confirmar, o SERVIDOR já cria o pedido (encomenda/passagem) e devolve a URL pra tela redirecionar.
++     */
++    public function status(Cobranca $cobranca, MercadoPago $mp, \App\Services\ConfirmaPagamento $confirma)
+     {
+         abort_unless($cobranca->empresa_id === Tenant::id(), 404);
++
++        // ainda pendente: consulta o MP (curto). Se pagou, aplica (cria o pedido).
+         if ($cobranca->status !== 'pago' && $cobranca->provider_payment_id && $cobranca->api) {
+             try {
+                 $st = $mp->consultar($cobranca->api, (string) $cobranca->provider_payment_id, 8);
+                 if (($st['ok'] ?? false) && ($st['pago'] ?? false)) {
+-                    $cobranca->forceFill(['status' => 'pago', 'pago_em' => now()])->save();
++                    $confirma->aplicar($cobranca);
+                 }
+             } catch (\Throwable $e) {}
++        } elseif ($cobranca->status === 'pago' && ! $cobranca->referencia_id && $cobranca->payload) {
++            // pago pelo webhook antes da tela ver, mas o pedido ainda não foi criado → cria agora
++            try { $confirma->criarPedidoDoPayload($cobranca); } catch (\Throwable $e) {}
++        }
++
++        $cobranca->refresh();
++        $resp = ['pago' => $cobranca->status === 'pago', 'valor' => (float) $cobranca->valor];
++
++        if ($cobranca->status === 'pago') {
++            $resp['imprimir'] = $cobranca->imprimir;
++            $resp['erro'] = $cobranca->erro;
++            if ($cobranca->referencia_id) {
++                $resp['id'] = (int) $cobranca->referencia_id;
++                $resp['url'] = $cobranca->referencia_tipo === Passagem::class
++                    ? route('passagens.show', $cobranca->referencia_id)
++                    : route('encomendas.show', $cobranca->referencia_id);
++            }
+         }
+-        return response()->json(['pago' => $cobranca->status === 'pago', 'valor' => (float) $cobranca->valor]);
++        return response()->json($resp);
+     }
+ 
+     public function pixEncomenda(Encomenda $encomenda, MercadoPago $mp)
+diff --git a/app/Models/Cobranca.php b/app/Models/Cobranca.php
+index 356f219..01adc0e 100644
+--- a/app/Models/Cobranca.php
++++ b/app/Models/Cobranca.php
+@@ -12,7 +12,7 @@ class Cobranca extends Model
+ 
+     protected $table = 'cobrancas';
+     protected $guarded = [];
+-    protected $casts = ['valor' => 'decimal:2', 'pago_em' => 'datetime'];
++    protected $casts = ['valor' => 'decimal:2', 'pago_em' => 'datetime', 'payload' => 'array'];
+ 
+     public function api(): BelongsTo
+     {
+diff --git a/app/Services/ConfirmaPagamento.php b/app/Services/ConfirmaPagamento.php
+index 4d86e16..e895151 100644
+--- a/app/Services/ConfirmaPagamento.php
++++ b/app/Services/ConfirmaPagamento.php
+@@ -52,10 +52,16 @@ public function verificarPendentes(int $horas = 48): int
+     /** Marca paga + baixa + aviso. Retorna true se confirmou agora (não estava paga). */
+     public function aplicar(Cobranca $cob): bool
+     {
+-        if ($cob->status === 'pago') return false;
+-        $cob->forceFill(['status' => 'pago', 'pago_em' => now()])->save();
++        if ($cob->status === 'pago' && ! ($cob->payload && ! $cob->referencia_id)) return false;
++        $cob->forceFill(['status' => 'pago', 'pago_em' => $cob->pago_em ?: now()])->save();
+         Tenant::set($cob->empresa_id);
+ 
++        // Pedido de balcão montado na própria cobrança (encomenda/passagem): o SERVIDOR cria agora.
++        if (! $cob->referencia_id && $cob->payload && in_array($cob->modulo, ['encomenda', 'passagem'], true)) {
++            $this->criarPedidoDoPayload($cob);
++            return true;
++        }
++
+         $valorFmt = number_format((float) $cob->valor, 2, ',', '.');
+ 
+         if ($cob->referencia_tipo === Conversa::class && $cob->referencia_id) {
+@@ -80,6 +86,48 @@ public function aplicar(Cobranca $cob): bool
+ 
+         return true;
+     }
++
++    /**
++     * Cria o pedido (encomenda/passagem) guardado na cobrança, exatamente como se o operador
++     * tivesse clicado em "Salvar" — só que disparado pela confirmação do PIX. Idempotente.
++     */
++    public function criarPedidoDoPayload(Cobranca $cob): void
++    {
++        if ($cob->referencia_id || ! $cob->payload) return;
++
++        \Illuminate\Support\Facades\DB::transaction(function () use ($cob) {
++            $c = Cobranca::withoutGlobalScopes()->whereKey($cob->id)->lockForUpdate()->first();
++            if (! $c || $c->referencia_id || ! $c->payload) return; // outra via (webhook/poll) já criou
++
++            Tenant::set($c->empresa_id);
++            $op = $c->user_id ? \App\Models\User::withoutGlobalScopes()->find($c->user_id) : null;
++            if (! $op) $op = \App\Models\User::withoutGlobalScopes()->where('empresa_id', $c->empresa_id)->orderByDesc('admin')->first();
++            if (! $op) { $c->forceFill(['erro' => 'Operador não encontrado'])->save(); return; }
++
++            // garante o pagamento PIX no pedido (valor da cobrança), sem duplicar
++            $data = $c->payload;
++            $pags = collect($data['pagamentos'] ?? [])->reject(fn ($p) => ($p['meio'] ?? '') === 'pix')->values()->all();
++            $pags[] = ['meio' => 'pix', 'valor' => (float) $c->valor];
++            $data['pagamentos'] = $pags;
++
++            try {
++                if ($c->modulo === 'passagem') {
++                    $rec = $this->pas->criar($data, (int) $op->id, 'pix-pas-'.$c->id);
++                    $tipo = Passagem::class;
++                } else {
++                    $rec = $this->enc->criar($data, (int) $op->id, 'pix-enc-'.$c->id);
++                    $tipo = Encomenda::class;
++                }
++            } catch (\Throwable $e) {
++                report($e);
++                $c->forceFill(['erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 250)])->save();
++                return;
++            }
++
++            $c->forceFill(['referencia_tipo' => $tipo, 'referencia_id' => $rec->id, 'erro' => null])->save();
++        });
++    }
++
+     /** Cria a passagem SE já pagou e já tem venda + dados do passageiro. Retorna true se já existe/criou. */
+     public function tentarCriarPassagem(Conversa $conv): bool
+     {
+diff --git a/app/Support/Versao.php b/app/Support/Versao.php
+index b2ad636..264dbff 100644
+--- a/app/Support/Versao.php
++++ b/app/Support/Versao.php
+@@ -8,5 +8,5 @@
+  */
+ class Versao
+ {
+-    public const ATUAL = 'v2026.10.26.4';
++    public const ATUAL = 'v2026.10.26.5';
+ }
+diff --git a/database/migrations/0001_01_46_000000_cobranca_payload.php b/database/migrations/0001_01_46_000000_cobranca_payload.php
+new file mode 100644
+index 0000000..e600e3f
+--- /dev/null
++++ b/database/migrations/0001_01_46_000000_cobranca_payload.php
+@@ -0,0 +1,40 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++/**
++ * Guarda o pedido (encomenda/passagem) na própria cobrança para que o SERVIDOR
++ * crie o registro assim que o PIX confirmar — a tela só redireciona, sem depender
++ * de o navegador salvar depois do pagamento.
++ */
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('cobrancas', function (Blueprint $t) {
++            if (! Schema::hasColumn('cobrancas', 'user_id')) {
++                $t->unsignedBigInteger('user_id')->nullable()->after('pagamento_api_id');
++            }
++            if (! Schema::hasColumn('cobrancas', 'payload')) {
++                $t->longText('payload')->nullable()->after('referencia_id'); // JSON do pedido a criar
++            }
++            if (! Schema::hasColumn('cobrancas', 'imprimir')) {
++                $t->string('imprimir', 20)->nullable()->after('payload'); // direto|navegador|pix|nao
++            }
++            if (! Schema::hasColumn('cobrancas', 'erro')) {
++                $t->string('erro', 300)->nullable()->after('imprimir'); // falha ao criar pós-pagamento
++            }
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('cobrancas', function (Blueprint $t) {
++            foreach (['user_id', 'payload', 'imprimir', 'erro'] as $c) {
++                if (Schema::hasColumn('cobrancas', $c)) $t->dropColumn($c);
++            }
++        });
++    }
++};
+diff --git a/resources/views/encomendas/create.blade.php b/resources/views/encomendas/create.blade.php
+index 2a02dd7..87d3284 100644
+--- a/resources/views/encomendas/create.blade.php
++++ b/resources/views/encomendas/create.blade.php
+@@ -166,7 +166,11 @@ class="h-8 rounded text-sm transition"
+       <div class="ml-auto flex items-center gap-2">
+         <span class="text-[11px] font-bold uppercase opacity-80">Volumes</span>
+         <button type="button" x-show="volumesManual" x-cloak @click="volumesManual=false; recalcVolumes()" class="text-[10px] font-bold uppercase bg-white/20 rounded px-1.5 py-0.5 hover:bg-white/30" title="Voltar ao cálculo automático">auto</button>
+-        <input name="volumes" type="number" min="1" x-model.number="volumes" @input="volumesManual=true" class="w-16 rounded-lg text-center font-extrabold text-slate-900 py-1 text-base" style="background:var(--cor2)" inputmode="numeric">
++        <div class="flex items-center rounded-xl overflow-hidden shadow" style="background:var(--cor2)">
++          <button type="button" @click="volumesManual=true; volumes=Math.max(1,(Number(volumes)||1)-1)" class="w-9 h-9 flex items-center justify-center text-slate-900 text-xl font-black leading-none active:scale-90 hover:bg-black/10" aria-label="Menos um volume">−</button>
++          <input name="volumes" type="number" min="1" x-model.number="volumes" @input="volumesManual=true" class="w-12 h-9 text-center bg-transparent border-0 focus:ring-0 text-slate-900 font-extrabold text-base p-0" inputmode="numeric">
++          <button type="button" @click="volumesManual=true; volumes=(Number(volumes)||0)+1" class="w-9 h-9 flex items-center justify-center text-slate-900 text-xl font-black leading-none active:scale-90 hover:bg-black/10" aria-label="Mais um volume">+</button>
++        </div>
+       </div>
+     </div>
+     <div class="sec-b">
+@@ -417,12 +421,15 @@ function novaEncomenda(){
+     fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+     gerarPixDinamico(){
+       if(this.pixPagando) return;
++      if(!this.$el.reportValidity()){ return; }
+       if(!this.origemSel || !this.destinoSel){ alert('Preencha a origem e o destino antes de gerar o PIX.'); return; }
++      if(!this.itens.length){ alert('Adicione pelo menos um item.'); return; }
+       const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
+       const valor=Math.max((Number(this.total)||0)-outros,0);
+       if(valor<=0){ alert('Sem valor a cobrar. Adicione itens.'); return; }
++      const pedido=this.montarDados(this.$el);
+       this.pixCobId=null; this.pixCopia=''; this.pixQr=''; this.pixValor=valor; this.pixModal=true; this.pixPagando=true;
+-      fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'encomenda',valor:valor,descricao:'Encomenda'})})
++      fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'encomenda',valor:valor,descricao:'Encomenda',imprimir:this.imprimir,payload:pedido})})
+         .then(r=>r.json()).then(d=>{
+           if(!d.ok){ this.pixModal=false; this.pixPagando=false; alert(d.erro||'Falha ao gerar PIX'); return; }
+           this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.imprimirPix(d.id);
+@@ -434,28 +441,45 @@ function novaEncomenda(){
+       this.pixChecando=true;
+       fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
+         if(d && d.pago){
+-          clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false;
+-          this.pag.pix=Number(this.pixValor)||0;
+-          this.$nextTick(()=>{ try{ if(this.$el && this.$el.requestSubmit){ this.$el.requestSubmit(); } else { this.salvar({target:this.$el,preventDefault(){}}); } }catch(e){ this.salvar({target:this.$el,preventDefault(){}}); } }); setTimeout(()=>{ if(this.salvando){ this.salvando=false; alert('Pagamento recebido! Se não avançou sozinho, confira os dados e clique em Salvar.'); } }, 15000);
++          clearInterval(this.pixPoll); this.pixPagando=false;
++          this.finalizarPix(d);
+         }
+       }).catch(()=>{}).finally(()=>{ this.pixChecando=false; });
+     },
++    // pago: o servidor já criou a encomenda. Só imprimimos (se for o caso) e redirecionamos.
++    finalizarPix(d){
++      if(d.erro || !d.url){
++        this.pixModal=false;
++        alert('Pagamento recebido! '+(d.erro ? ('Não consegui cadastrar automaticamente: '+d.erro+'. ') : '')+'Confira os dados e clique em Salvar.');
++        return;
++      }
++      this.salvando=true; // trava os botões durante o redirecionamento
++      if(this.imprimir==='pix'){ window.location.href='/imprimir/pix/'+d.id; return; }
++      if(this.imprimir==='direto'){
++        try{ fetch('/imprimir/direto/'+d.id+'/comprovante',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf}}); fetch('/imprimir/direto/'+d.id+'/etiqueta',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf}}); }catch(e){}
++      }
++      window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
++    },
+     cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
+     copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
+     imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+-    async salvar(ev){
+-      const form = ev.target;
+-      if (!form.reportValidity()) return;
+-      this.salvando = true;
++    montarDados(form){
+       const fd = new FormData(form);
+-      const dados = {
++      return {
+         origem: fd.get('origem'), destino: fd.get('destino'), embarcacao_id: fd.get('embarcacao_id') || null, rota_id: fd.get('rota_id') || null, viagem_data: this.viagemData || null, lancamento_em: this.lancamentoEm || null, pre_id: fd.get('pre_id') || null, setor: fd.get('setor'),
+         remetente_nome: fd.get('remetente_nome'), remetente_telefone: fd.get('remetente_telefone'), remetente_documento: fd.get('remetente_documento'),
+         destinatario_nome: fd.get('destinatario_nome'), destinatario_telefone: fd.get('destinatario_telefone'), destinatario_documento: fd.get('destinatario_documento'),
+-        volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0, pix_cobranca_id: this.pixCobId || null,
++        volumes: this.volumes, forma: this.forma, observacao: fd.get('observacao'), desconto: Number(this.desconto)||0,
+         itens: this.itens.map(i => ({descricao:i.descricao, quantidade:Number(i.quantidade)||1, valor_unitario:Number(i.valor)||0, observacao:i.obs||null})),
+         pagamentos: this.forma==='faturado' ? [] : this.meios.filter(m => Number(this.pag[m.k])>0).map(m => ({meio:m.k, valor:Number(this.pag[m.k])})),
+       };
++    },
++    async salvar(ev){
++      const form = ev.target;
++      if (!form.reportValidity()) return;
++      this.salvando = true;
++      const dados = this.montarDados(form);
++      dados.pix_cobranca_id = this.pixCobId || null;
+       try {
+         const r = await FBREOffline.salvarEncomenda(dados);
+         if (r.servidor && r.servidor.ok) {
+diff --git a/resources/views/passagens/create.blade.php b/resources/views/passagens/create.blade.php
+index 706a7f2..c4482f6 100644
+--- a/resources/views/passagens/create.blade.php
++++ b/resources/views/passagens/create.blade.php
+@@ -609,11 +609,13 @@ function novaPassagem(){
+       gerarPixDinamico(){
+         if(this.pixPagando) return;
+         if(!this.origemSel || !this.destinoSel){ alert('Escolha a origem e o destino antes de gerar o PIX.'); return; }
++        if(!this.validarPassageiros()) return;
+         const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
+         const valor=Math.max((Number(this.total)||0)-outros,0);
+         if(valor<=0){ alert('Sem valor a cobrar.'); return; }
++        const pedido=this.montarDados();
+         this.pixCobId=null; this.pixCopia=''; this.pixQr=''; this.pixValor=valor; this.pixModal=true; this.pixPagando=true;
+-        fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'passagem',valor:valor,descricao:'Passagem'})})
++        fetch('/cobranca/pix/gerar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},body:JSON.stringify({modulo:'passagem',valor:valor,descricao:'Passagem',imprimir:this.imprimir,payload:pedido})})
+           .then(r=>r.json()).then(d=>{
+             if(!d.ok){ this.pixModal=false; this.pixPagando=false; alert(d.erro||'Falha ao gerar PIX'); return; }
+             this.pixCobId=d.id; this.pixQr=d.qr_base64||''; this.pixCopia=d.copia_cola||''; this.pixValor=d.valor; this.imprimirPix(d.id);
+@@ -625,30 +627,48 @@ function novaPassagem(){
+         this.pixChecando=true;
+         fetch('/cobranca/'+this.pixCobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
+           if(d && d.pago){
+-            clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false;
+-            this.pag.pix=Number(this.pixValor)||0;
+-            this.$nextTick(()=>{ try{ if(this.$el && this.$el.requestSubmit){ this.$el.requestSubmit(); } else { this.salvar({target:this.$el,preventDefault(){}}); } }catch(e){ this.salvar({target:this.$el,preventDefault(){}}); } }); setTimeout(()=>{ if(this.salvando){ this.salvando=false; alert('Pagamento recebido! Se não avançou sozinho, confira os dados e clique em Salvar.'); } }, 15000);
++            clearInterval(this.pixPoll); this.pixPagando=false;
++            this.finalizarPix(d);
+           }
+-        }).catch(()=>{});
++        }).catch(()=>{}).finally(()=>{ this.pixChecando=false; });
++      },
++      // pago: o servidor já criou a passagem. Só imprimimos (se for o caso) e redirecionamos.
++      finalizarPix(d){
++        if(d.erro || !d.url){
++          this.pixModal=false;
++          alert('Pagamento recebido! '+(d.erro ? ('Não consegui cadastrar automaticamente: '+d.erro+'. ') : '')+'Confira os dados e clique em Salvar.');
++          return;
++        }
++        this.salvando=true;
++        if(this.imprimir==='pix'){ window.location.href='/imprimir/pix-passagem/'+d.id; return; }
++        window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
+       },
+       cancelarPix(){ if(this.pixPoll) clearInterval(this.pixPoll); this.pixPagando=false; this.pixModal=false; this.pixCobId=null; },
+       copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
+     imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+-      async salvar(ev){
+-        if(this.salvando) return;
+-        if(!this.passageiros.length){ alert('Adicione ao menos um passageiro.'); return; }
+-        if(this.passageiros.some(p=>!p.nome.trim())){ alert('Informe o nome de todos os passageiros.'); return; }
+-        if(this.usaPoltrona){ const ass=this.passageiros.map(p=>p.poltrona).filter(Boolean); if(new Set(ass).size!==ass.length){ alert('Há poltronas repetidas.'); return; } }
+-        this.salvando=true;
+-        try{ if(this.origemSel) localStorage.setItem('fbre_origem',this.origemSel); if(this.embarcacaoSel) localStorage.setItem('fbre_transporte',this.embarcacaoSel); }catch(e){}
+-        const dados={
++      validarPassageiros(){
++        if(!this.passageiros.length){ alert('Adicione ao menos um passageiro.'); return false; }
++        if(this.passageiros.some(p=>!p.nome.trim())){ alert('Informe o nome de todos os passageiros.'); return false; }
++        if(this.usaPoltrona){ const ass=this.passageiros.map(p=>p.poltrona).filter(Boolean); if(new Set(ass).size!==ass.length){ alert('Há poltronas repetidas.'); return false; } }
++        return true;
++      },
++      montarDados(){
++        return {
+           origem:this.origemSel, destino:this.destinoSel,
+           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
+           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
+-          forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null, pix_cobranca_id:this.pixCobId||null,
++          forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
+           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
+           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
+         };
++      },
++      async salvar(ev){
++        if(this.salvando) return;
++        if(!this.validarPassageiros()) return;
++        this.salvando=true;
++        try{ if(this.origemSel) localStorage.setItem('fbre_origem',this.origemSel); if(this.embarcacaoSel) localStorage.setItem('fbre_transporte',this.embarcacaoSel); }catch(e){}
++        const dados=this.montarDados();
++        dados.pix_cobranca_id=this.pixCobId||null;
+         try{
+           const r=await FBREOffline.salvarModulo('passagem', dados);
+           if(r.servidor && r.servidor.ok){ if(this.imprimir==='pix'){ window.location.href='/imprimir/pix-passagem/'+r.servidor.id; return; } window.location.href=r.servidor.url+(this.imprimir==='navegador'?'?print=1':''); return; }
+-- 
+2.43.0
+
