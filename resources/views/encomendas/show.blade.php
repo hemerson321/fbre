@@ -82,7 +82,7 @@
 
 {{-- MODAL PAGAR --}}
 <div x-show="modal==='pagar'" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" @click.self="modal=null">
-  <form method="post" action="{{ route('encomendas.pagar',$e) }}" @submit="if(!FBRE.docOk($event.target.entregue_documento?.value)){ $event.preventDefault(); alert('CPF de quem retirou é inválido. Confira os números ou deixe em branco.'); return; } baixaOffline($event, true)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3" x-data="{ d:0,p:0,de:0,c:0,ds:0, devido:{{ (float)$e->devido }} }">
+  <form method="post" action="{{ route('encomendas.pagar',$e) }}" @submit="(()=>{ const v=$event.target.entregue_documento?.value||''; if(v.trim() && !FBRE.cpfValido(v)){ $event.preventDefault(); alert('CPF de quem retirou inválido. Corrija ou deixe em branco.'); return false;} return true; })() && baixaOffline($event, true)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3" x-data="{ d:0,p:0,de:0,c:0,ds:0, devido:{{ (float)$e->devido }} }">
     @csrf
     <h3 class="text-lg font-bold">Registrar pagamento</h3>
     <div class="text-sm">Falta pagar: <b class="text-red-600">R$ {{ number_format($e->devido,2,',','.') }}</b></div>
@@ -98,7 +98,10 @@
     @if(!$e->entregue)
       <div class="grid grid-cols-2 gap-2">
         <input name="entregue_para" class="input" placeholder="Quem retirou (opcional)">
-        <input name="entregue_documento" class="input" placeholder="CPF de quem retirou" inputmode="numeric">
+        <div x-data="{doc:''}">
+          <input name="entregue_documento" class="input w-full" :class="{'!border-red-400 !ring-1 !ring-red-300': doc && !FBRE.cpfValido(doc)}" placeholder="CPF de quem retirou" inputmode="numeric" maxlength="11" x-model="doc" @input="doc=doc.replace(/\D/g,'').slice(0,11)">
+          <div x-show="doc && !FBRE.cpfValido(doc)" x-cloak class="text-[11px] text-red-500 mt-0.5">CPF inválido</div>
+        </div>
       </div>
       <p class="text-xs text-emerald-600">Ao quitar o valor, a entrega é dada automaticamente. ✓</p>
     @endif
@@ -111,12 +114,16 @@
 
 {{-- MODAL ENTREGAR --}}
 <div x-show="modal==='entregar'" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" @click.self="modal=null">
-  <form method="post" action="{{ route('encomendas.entregar',$e) }}" @submit="if(!FBRE.docOk($event.target.entregue_documento?.value)){ $event.preventDefault(); alert('CPF de quem retirou é inválido. Confira os números ou deixe em branco.'); return; } baixaOffline($event, false)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3">
+  <form method="post" action="{{ route('encomendas.entregar',$e) }}" @submit="if(!FBRE.cpfValido($event.target.entregue_documento?.value)){ $event.preventDefault(); alert('Informe um CPF válido de quem retirou (11 dígitos).'); return; } baixaOffline($event, false)" class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3">
     @csrf
     <h3 class="text-lg font-bold">Baixa na entrega</h3>
     @if($e->devido>0 && $e->forma==='faturado')<div class="text-sm bg-amber-50 border border-amber-200 rounded-lg p-2">Faturado: será entregue agora e cobrado na fatura (<b>R$ {{ number_format($e->devido,2,',','.') }}</b> em aberto).</div>@endif
     <div><label class="label">Quem retirou</label><input name="entregue_para" class="input" placeholder="Nome de quem recebeu" autofocus></div>
-    <div><label class="label">CPF de quem retirou</label><input name="entregue_documento" class="input" placeholder="CPF" inputmode="numeric"></div>
+    <div x-data="{doc:''}">
+      <label class="label">CPF de quem retirou <span class="text-red-500">*</span></label>
+      <input name="entregue_documento" class="input w-full" :class="{'!border-red-400 !ring-1 !ring-red-300': doc && !FBRE.cpfValido(doc)}" placeholder="CPF (obrigatório)" inputmode="numeric" maxlength="11" x-model="doc" @input="doc=doc.replace(/\D/g,'').slice(0,11)">
+      <div x-show="doc && !FBRE.cpfValido(doc)" x-cloak class="text-[11px] text-red-500 mt-0.5">CPF inválido</div>
+    </div>
     <div class="flex gap-2 pt-1">
       <button type="button" class="btn btn-ghost flex-1" @click="modal=null">Cancelar</button>
       <button class="btn btn-primary flex-1">Confirmar entrega</button>
