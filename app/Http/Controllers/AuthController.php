@@ -12,10 +12,16 @@ class AuthController extends Controller
     /** /login — usa a última empresa lembrada no cookie, se houver. */
     public function form(Request $request)
     {
-        $empresa = null;
-        $slug = $request->cookie('fbre_empresa') ?: (config('fbre.single') ? config('fbre.empresa') : null);
-        if ($slug) {
-            $empresa = Empresa::where('slug', $slug)->where('ativo', true)->first();
+        // 1) domínio próprio do cliente (ex.: ajatopassagem.com.br) tem prioridade
+        $host = strtolower(preg_replace('/^www\./', '', $request->getHost()));
+        $empresa = Empresa::where('dominio', $host)->where('ativo', true)->first();
+
+        // 2) senão, a última empresa lembrada no cookie / modo single
+        if (! $empresa) {
+            $slug = $request->cookie('fbre_empresa') ?: (config('fbre.single') ? config('fbre.empresa') : null);
+            if ($slug) {
+                $empresa = Empresa::where('slug', $slug)->where('ativo', true)->first();
+            }
         }
         return view('auth.login', ['empresa' => $empresa]);
     }

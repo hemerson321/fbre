@@ -247,6 +247,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/empresas', [EmpresaController::class, 'index'])->name('empresas');
         Route::post('/empresas', [EmpresaController::class, 'store'])->name('empresas.store');
         Route::post('/empresas/{empresa}/toggle', [EmpresaController::class, 'toggle'])->name('empresas.toggle');
+        Route::post('/empresas/{empresa}/dominio', [EmpresaController::class, 'dominio'])->name('empresas.dominio');
         Route::post('/empresas/{empresa}/entrar', [EmpresaController::class, 'entrar'])->name('empresas.entrar');
         Route::post('/empresas/sair', [EmpresaController::class, 'sair'])->name('empresas.sair');
     });

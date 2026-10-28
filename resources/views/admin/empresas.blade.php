@@ -10,6 +10,7 @@
   <div><label class="label">Nome fantasia</label><input name="nome_fantasia" class="input"></div>
   <div><label class="label">CNPJ</label><input name="cnpj" class="input"></div>
   <div><label class="label">Validade do contrato</label><input name="validade" type="date" class="input" value="{{ now()->addYear()->toDateString() }}"></div>
+  <div class="sm:col-span-2"><label class="label">Domínio próprio (opcional)</label><input name="dominio" class="input" placeholder="ex.: ajatopassagem.com.br" autocapitalize="none" inputmode="url"><p class="text-[11px] text-slate-400 mt-0.5">O cliente acessa por esse domínio e vê a marca dele. Aponte o DNS pro mesmo servidor e adicione o domínio no EasyPanel.</p></div>
   <div class="sm:col-span-2 label pt-2">Usuário administrador do cliente</div>
   <div><label class="label">Nome</label><input name="admin_nome" class="input" required></div>
   <div><label class="label">Login</label><input name="admin_login" class="input" required placeholder="ex.: admin.empresa" autocapitalize="none"></div>
@@ -25,6 +26,12 @@
       <div class="font-semibold">{{ $e->nomeExibicao() }} @if($ativa==$e->id)<span class="chip st-verde">operando</span>@endif @if($e->vencida())<span class="chip st-vermelho">vencida</span>@endif @if(!$e->ativo)<span class="chip st-cinza">inativa</span>@endif</div>
       <div class="text-xs text-slate-500">{{ $e->cnpj }} · {{ $e->users_count }} usuários · {{ $e->encomendas_count }} encomendas · validade {{ $e->validade?->format('d/m/Y') ?? '—' }}</div>
       <div class="text-xs mt-0.5">Login: <a href="{{ url('/'.$e->slug) }}" target="_blank" class="font-mono text-[var(--cor2)] hover:underline">{{ url('/'.$e->slug) }}</a></div>
+      <form method="post" action="{{ route('super.empresas.dominio',$e) }}" class="flex items-center gap-1 mt-1">@csrf
+        <span class="text-xs text-slate-500">Domínio:</span>
+        <input name="dominio" value="{{ $e->dominio }}" placeholder="sem domínio próprio" class="input !min-h-0 !py-0.5 !px-1.5 text-xs w-52" autocapitalize="none" inputmode="url">
+        <button class="btn btn-ghost btn-sm !py-0.5">Salvar</button>
+        @if($e->dominio)<a href="https://{{ $e->dominio }}" target="_blank" class="text-xs text-[var(--cor2)] hover:underline">abrir ↗</a>@endif
+      </form>
     </div>
     <form method="post" action="{{ route('super.empresas.entrar',$e) }}">@csrf<button class="btn btn-ghost btn-sm">Entrar</button></form>
     <form method="post" action="{{ route('super.empresas.toggle',$e) }}">@csrf<button class="btn btn-sm {{ $e->ativo?'btn-danger':'btn-primary' }}">{{ $e->ativo?'Bloquear':'Ativar' }}</button></form>

@@ -93,12 +93,16 @@ class EmpresaController extends Controller
 
     public function store(Request $request)
     {
-        $request->merge(['admin_login' => strtolower(trim((string) $request->input('admin_login')))]);
+        $request->merge([
+            'admin_login' => strtolower(trim((string) $request->input('admin_login'))),
+            'dominio' => $this->normalizarDominio($request->input('dominio')),
+        ]);
         $data = $request->validate([
             'nome' => 'required|string|max:150',
             'nome_fantasia' => 'nullable|string|max:100',
             'cnpj' => 'nullable|string|max:20',
             'validade' => 'nullable|date',
+            'dominio' => 'nullable|string|max:120|unique:empresas,dominio',
             'admin_nome' => 'required|string|max:100',
             'admin_login' => 'required|string|min:3|max:40|regex:/^[a-z0-9._-]+$/|unique:users,login',
             'admin_senha' => 'required|string|min:6',
@@ -114,6 +118,7 @@ class EmpresaController extends Controller
             'nome_fantasia' => $data['nome_fantasia'] ?? null,
             'cnpj' => $data['cnpj'] ?? null,
             'slug' => $slug,
+            'dominio' => $data['dominio'] ?? null,
             'validade' => $data['validade'] ?? null,
             'recursos' => ['print_agent'],
         ]);
@@ -134,6 +139,30 @@ class EmpresaController extends Controller
         Tenant::set(auth()->user()->empresa_id);
 
         return back()->with('ok', "Empresa {$empresa->nomeExibicao()} criada.");
+    }
+
+    /** Define/atualiza o domínio próprio de uma empresa (ex.: ajatopassagem.com.br). */
+    public function dominio(Request $request, Empresa $empresa)
+    {
+        $request->merge(['dominio' => $this->normalizarDominio($request->input('dominio'))]);
+        $request->validate(['dominio' => 'nullable|string|max:120|unique:empresas,dominio,'.$empresa->id]);
+        $empresa->update(['dominio' => $request->input('dominio')]);
+
+        return back()->with('ok', $request->input('dominio')
+            ? "Domínio de {$empresa->nomeExibicao()}: {$request->input('dominio')}"
+            : "Domínio de {$empresa->nomeExibicao()} removido.");
+    }
+
+    /** Deixa só o host: tira http(s)://, caminho e www. */
+    protected function normalizarDominio(?string $v): ?string
+    {
+        $v = trim((string) $v);
+        if ($v === '') return null;
+        $v = preg_replace('#^https?://#i', '', $v);
+        $v = preg_replace('#/.*$#', '', $v);
+        $v = preg_replace('/^www\./i', '', $v);
+        $v = strtolower(trim($v));
+        return $v !== '' ? $v : null;
     }
 
     public function toggle(Empresa $empresa)
