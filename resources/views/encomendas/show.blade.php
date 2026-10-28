@@ -99,7 +99,8 @@
       <div class="grid grid-cols-2 gap-2">
         <input name="entregue_para" class="input" placeholder="Quem retirou (opcional)">
         <div x-data="{doc:''}">
-          <input name="entregue_documento" class="input w-full" :class="{'!border-red-400 !ring-1 !ring-red-300': doc && !FBRE.cpfValido(doc)}" placeholder="CPF de quem retirou" inputmode="numeric" maxlength="11" x-model="doc" @input="doc=doc.replace(/\D/g,'').slice(0,11)">
+          <input name="entregue_documento" class="input w-full" :class="{'!border-red-400 !ring-1 !ring-red-300': doc && !FBRE.cpfValido(doc), '!border-emerald-400 !ring-1 !ring-emerald-300': doc && FBRE.cpfValido(doc)}" placeholder="CPF de quem retirou" inputmode="numeric" maxlength="14" x-model="doc" @input="doc=FBRE.cpfMask(doc)">
+          <div x-show="doc && FBRE.cpfValido(doc)" x-cloak class="text-[11px] text-emerald-600 mt-0.5">✓ CPF válido</div>
           <div x-show="doc && !FBRE.cpfValido(doc)" x-cloak class="text-[11px] text-red-500 mt-0.5">CPF inválido</div>
         </div>
       </div>
@@ -121,7 +122,8 @@
     <div><label class="label">Quem retirou</label><input name="entregue_para" class="input" placeholder="Nome de quem recebeu" autofocus></div>
     <div x-data="{doc:''}">
       <label class="label">CPF de quem retirou <span class="text-red-500">*</span></label>
-      <input name="entregue_documento" class="input w-full" :class="{'!border-red-400 !ring-1 !ring-red-300': doc && !FBRE.cpfValido(doc)}" placeholder="CPF (obrigatório)" inputmode="numeric" maxlength="11" x-model="doc" @input="doc=doc.replace(/\D/g,'').slice(0,11)">
+      <input name="entregue_documento" class="input w-full" :class="{'!border-red-400 !ring-1 !ring-red-300': doc && !FBRE.cpfValido(doc), '!border-emerald-400 !ring-1 !ring-emerald-300': doc && FBRE.cpfValido(doc)}" placeholder="CPF (obrigatório)" inputmode="numeric" maxlength="14" x-model="doc" @input="doc=FBRE.cpfMask(doc)">
+      <div x-show="doc && FBRE.cpfValido(doc)" x-cloak class="text-[11px] text-emerald-600 mt-0.5">✓ CPF válido</div>
       <div x-show="doc && !FBRE.cpfValido(doc)" x-cloak class="text-[11px] text-red-500 mt-0.5">CPF inválido</div>
     </div>
     <div class="flex gap-2 pt-1">

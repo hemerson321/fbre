@@ -309,6 +309,14 @@ document.addEventListener('alpine:init', () => {
     },
     // regra do sistema: documento opcional; se o usuário digitou algo com cara de CPF (11 dígitos), tem que ser válido.
     docOk: s => { const t = String(s||'').trim(); if (!t) return true; return FBRE.pareceCpf(t) ? FBRE.cpfValido(t) : true; },
+    // formata o CPF enquanto digita: 000.000.000-00 (máx 11 dígitos)
+    cpfMask: s => {
+      const c = FBRE.soDigitos(s).slice(0,11);
+      if (c.length > 9) return c.slice(0,3)+'.'+c.slice(3,6)+'.'+c.slice(6,9)+'-'+c.slice(9);
+      if (c.length > 6) return c.slice(0,3)+'.'+c.slice(3,6)+'.'+c.slice(6);
+      if (c.length > 3) return c.slice(0,3)+'.'+c.slice(3);
+      return c;
+    },
   };
 </script>
 @stack('scripts')
