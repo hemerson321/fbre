@@ -226,44 +226,7 @@ function taxasEditor(taxas){ return { taxas: (taxas&&taxas.length)?taxas:[{orige
   </div>
 </div>
 
-@if(\App\Support\Tenant::empresa()->temRecurso('viagens'))
-<div class="card p-4 md:col-span-2" x-data="{ aberta:null }">
-  <div class="flex items-center justify-between mb-2">
-    <div>
-      <h2 class="font-bold text-sm text-slate-500 uppercase">Rotas e calendário</h2>
-      <p class="text-xs text-slate-500">A rota guarda as paradas (cidade + dia da semana + hora). As viagens são criadas sozinhas a partir disso. Serve também para fretes e passagens no futuro.</p>
-    </div>
-    <button class="btn btn-accent btn-sm" @click="aberta = aberta==='nova' ? null : 'nova'">➕ Nova rota</button>
-  </div>
-
-  <div x-show="aberta==='nova'" x-cloak class="rounded-xl bg-slate-50 border border-slate-200 p-3 mb-3">
-    @include('admin._rota_form', ['rota' => null, 'localidades' => $localidadesNomes])
-  </div>
-
-  <div class="space-y-2">
-  @forelse($rotas as $r)
-    <div class="rounded-xl border border-slate-200 p-3 {{ $r->ativo?'':'opacity-60' }}">
-      <div class="flex items-start justify-between gap-2">
-        <div>
-          <div class="font-bold">{{ $r->nome }} @if(!$r->ativo)<span class="chip st-cinza">inativa</span>@endif</div>
-          <div class="text-xs text-slate-600 mt-0.5">{{ $r->resumoCalendario() }}</div>
-          @if($r->embarcacao)<div class="text-[11px] text-slate-400">Embarcação: {{ $r->embarcacao->nome }}</div>@endif
-        </div>
-        <div class="flex gap-2 shrink-0">
-          <button class="btn btn-ghost btn-sm" @click="aberta = aberta==={{ $r->id }} ? null : {{ $r->id }}">Editar</button>
-          <form method="post" action="{{ route('admin.rotas.toggle',$r) }}">@csrf<button class="btn btn-sm {{ $r->ativo?'btn-ghost':'btn-primary' }}">{{ $r->ativo?'Desativar':'Ativar' }}</button></form>
-        </div>
-      </div>
-      <div x-show="aberta==={{ $r->id }}" x-cloak class="mt-3 pt-3 border-t">
-        @include('admin._rota_form', ['rota' => $r, 'localidades' => $localidadesNomes])
-      </div>
-    </div>
-  @empty
-    <div class="py-4 text-center text-slate-400 text-sm">Nenhuma rota. Crie a primeira (ex.: Manaus seg → Coari ter → Tefé sex).</div>
-  @endforelse
-  </div>
-</div>
-@endif
+{{-- Rotas e horários agora ficam no menu Passagens (RotaController@index → admin.rotas) --}}
 
 @if(auth()->user()->podeZerar())
 <div class="card p-4 md:col-span-2 border border-red-200 bg-red-50" x-data="{ open:false, txt:'' }">

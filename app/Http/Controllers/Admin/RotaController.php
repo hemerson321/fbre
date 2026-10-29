@@ -15,8 +15,20 @@ class RotaController extends Controller
 {
     public function index()
     {
-        // rotas agora vivem dentro de "Cadastros gerais"
-        return redirect()->route('admin.cadastros');
+        $empresa = Tenant::empresa();
+        return view('admin.rotas', [
+            'rotas' => Rota::with(['paradas', 'embarcacao'])->orderBy('nome')->get(),
+            'embarcacoes' => Embarcacao::orderBy('nome')->get(),
+            'tiposPassageiro' => \App\Models\TipoPassageiro::where('ativo', true)
+                ->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(),
+            'trechoPrecosMapa' => TrechoPreco::where('ativo', true)
+                ->get(['origem', 'destino', 'tipo_passageiro_id', 'tarifa', 'alimentacao', 'integral'])
+                ->mapWithKeys(fn ($r) => [mb_strtolower($r->origem.'|'.$r->destino.'|'.$r->tipo_passageiro_id) => ['tarifa' => (float) $r->tarifa, 'alim' => (float) $r->alimentacao, 'integral' => (float) $r->integral]])
+                ->toArray(),
+            'usaAlimentacao' => (bool) $empresa->config('usa_alimentacao', false),
+            'localidades' => Rota::todasLocalidades(),
+            'dias' => Rota::DIAS,
+        ]);
     }
 
     public function store(Request $request)

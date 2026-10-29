@@ -121,6 +121,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','baixa')) $g[] = ['r'=>route('passagens.scanner'), 'l'=>'Check-in / embarque', 'i'=>'📷'];
   if ($u->permite('passagem','ver'))   $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
+  if (($u->isAdmin() || $u->isSuper()) && $u->temModulo('passagem')) $g[] = ['r'=>route('admin.rotas'), 'l'=>'Rotas e horários', 'i'=>'🗺️'];
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;
   // Camarote / Suítes (módulo próprio, permissão separada)
   $g = [];
@@ -137,17 +138,20 @@ document.addEventListener('alpine:init', () => {
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰'];
   if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
   if ($g) $grupos['Caixa'] = $g;
-  if ($u->isAdmin() || $u->isSuper()) $grupos['Administração'] = [
-      ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'],
-      ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
-      ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
-      ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'],
-      ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'],
-      ['r'=>route('admin.pagamentos'), 'l'=>'Pagamentos (APIs)', 'i'=>'💳'],
-      ['r'=>route('admin.llm'), 'l'=>'Provedores de IA', 'i'=>'🧠'],
-      ['r'=>route('admin.agentes'), 'l'=>'Agentes IA', 'i'=>'🤖'],
-      ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'],
-  ];
+  if ($u->isAdmin() || $u->isSuper()) {
+      $adm = [
+          ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'],
+          ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
+          ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
+      ];
+      if ($modOn('camarote')) $adm[] = ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'];
+      $adm[] = ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'];
+      $adm[] = ['r'=>route('admin.pagamentos'), 'l'=>'Pagamentos (APIs)', 'i'=>'💳'];
+      $adm[] = ['r'=>route('admin.llm'), 'l'=>'Provedores de IA', 'i'=>'🧠'];
+      $adm[] = ['r'=>route('admin.agentes'), 'l'=>'Agentes IA', 'i'=>'🤖'];
+      $adm[] = ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'];
+      $grupos['Administração'] = $adm;
+  }
   if (($u->isAdmin() || $u->isSuper()) && $empresa?->config('usa_revendedores')) $grupos['Administração'][] = ['r'=>route('admin.acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
   if ($u->ehRevendedor()) $grupos['Revendedor'] = [['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝']];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
