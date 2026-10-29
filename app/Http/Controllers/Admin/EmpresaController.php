@@ -44,6 +44,10 @@ class EmpresaController extends Controller
             'ia_provider' => 'nullable|in:claude,openai',
             'ia_token' => 'nullable|string|max:255',
             'ia_modelo' => 'nullable|string|max:80',
+            'modulos_ativos' => 'nullable|array',
+            'modulos_ativos.*' => 'nullable|string|max:20',
+            'cores_modulo' => 'nullable|array',
+            'cores_modulo.*' => 'nullable|string|max:9',
         ]);
 
         // Componentes da passagem (opcionais): taxa de servico e alimentacao
@@ -56,6 +60,17 @@ class EmpresaController extends Controller
             $config['wa_conexao_'.$mk] = $request->input('wa_conexao.'.$mk) ?: null;
         }
         $config['cores_por_modulo'] = $request->boolean('cores_por_modulo');
+        // módulos que a empresa usa (só chaves válidas) + cor de cada módulo
+        $config['modulos_ativos'] = array_values(array_intersect(
+            array_keys(\App\Support\Modulos::LISTA),
+            (array) $request->input('modulos_ativos', [])
+        ));
+        $cores = [];
+        foreach (array_keys(\App\Support\Modulos::LISTA) as $mk) {
+            $c = (string) $request->input('cores_modulo.'.$mk);
+            if (preg_match('/^#[0-9a-fA-F]{6}$/', $c)) $cores[$mk] = strtolower($c);
+        }
+        $config['cores_modulo'] = $cores;
         $config['usa_revendedores'] = $request->boolean('usa_revendedores');
         $config['revendedor_multi'] = $request->boolean('revendedor_multi');
         $config['meudanfe_token'] = trim((string) $request->input('meudanfe_token')) ?: null;
@@ -63,7 +78,7 @@ class EmpresaController extends Controller
         $config['ia_token'] = trim((string) $request->input('ia_token')) ?: null;
         $config['ia_modelo'] = trim((string) $request->input('ia_modelo')) ?: null;
         $data['config'] = $config;
-        unset($data['label_taxa_embarque'], $data['label_alimentacao'], $data['wa_conexao'], $data['cores_por_modulo'], $data['ia_provider'], $data['ia_token'], $data['ia_modelo']);
+        unset($data['label_taxa_embarque'], $data['label_alimentacao'], $data['wa_conexao'], $data['cores_por_modulo'], $data['ia_provider'], $data['ia_token'], $data['ia_modelo'], $data['modulos_ativos'], $data['cores_modulo']);
 
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');

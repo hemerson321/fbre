@@ -26,20 +26,25 @@
     'avulso'    => 'Em breve.',
     'recibo'    => 'Em breve.',
   ];
-  $coresPorModulo = (bool) (\App\Support\Tenant::empresa()?->config('cores_por_modulo', true) ?? true);
-  $corEmp = \App\Support\Tenant::empresa()?->cor_primaria ?? '#0b1a33';
+  $emp = \App\Support\Tenant::empresa();
+  $coresPorModulo = (bool) ($emp?->config('cores_por_modulo', true) ?? true);
+  $corEmp = $emp?->cor_primaria ?? '#0b1a33';
+  $modAtivos = $emp?->config('modulos_ativos');
+  $modOn = fn ($m) => empty($modAtivos) || in_array($m, (array) $modAtivos, true);
   $mods = [];
   foreach (Modulos::LISTA as $k => [$rot,$ic,$cor,$hex]) {
     if (! $u->temModulo($k)) continue;      // sem o módulo, nem aparece
+    if (! $modOn($k)) continue;             // empresa não usa esse módulo
     if (! isset($rotaCriar[$k])) continue;  // módulo ainda não construído: não mostra "Em breve"
-    $mods[] = ['k'=>$k, 't'=>$rot, 'i'=>$ic, 'hex'=>($coresPorModulo ? $hex : $corEmp), 'r'=>$rotaCriar[$k](), 'd'=>$desc[$k] ?? ''];
+    $corMod = $emp?->config('cores_modulo.'.$k) ?: $hex;
+    $mods[] = ['k'=>$k, 't'=>$rot, 'i'=>$ic, 'hex'=>($coresPorModulo ? $corMod : $corEmp), 'r'=>$rotaCriar[$k](), 'd'=>$desc[$k] ?? ''];
   }
 
   // Ferramentas (caixa, relatório, admin)
   $tools = [];
-  if ($u->temModulo('encomenda') || $u->podeFiltrar()) $tools[] = ['r'=>route('encomendas.index'), 'i'=>'📦', 't'=>'Encomendas / baixa'];
-  if ($u->temModulo('passagem')) $tools[] = ['r'=>route('passagens.index'), 'i'=>'🧾', 't'=>'Passagens / embarque'];
-  if ($u->temModulo('frete')) $tools[] = ['r'=>route('fretes.index'), 'i'=>'📦', 't'=>'Fretes / entrega'];
+  if (($u->temModulo('encomenda') || $u->podeFiltrar()) && $modOn('encomenda')) $tools[] = ['r'=>route('encomendas.index'), 'i'=>'📦', 't'=>'Encomendas / baixa'];
+  if ($u->temModulo('passagem') && $modOn('passagem')) $tools[] = ['r'=>route('passagens.index'), 'i'=>'🧾', 't'=>'Passagens / embarque'];
+  if ($u->temModulo('frete') && $modOn('frete')) $tools[] = ['r'=>route('fretes.index'), 'i'=>'📦', 't'=>'Fretes / entrega'];
   if ($u->podeVerCaixa())  $tools[] = ['r'=>route('caixa.index'), 'i'=>'💰', 't'=>$u->caixaTodos()?'Caixa geral':'Meu caixa'];
   if ($u->podeRelatorio()) $tools[] = ['r'=>route('relatorio.meu'), 'i'=>'📋', 't'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório'];
   if ($u->isAdmin() || $u->isSuper()) {

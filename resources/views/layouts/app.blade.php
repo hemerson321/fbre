@@ -13,7 +13,12 @@
         default => null,
     };
     $coresPorModulo = (bool) ($empresa?->config('cores_por_modulo', true) ?? true);
-    $headerCor = ($moduloAtual && $coresPorModulo) ? \App\Support\Modulos::hex($moduloAtual) : $cor1;
+    // cor de cada módulo: a da empresa (config cores_modulo) ou a cor padrão do módulo
+    $corModulo = fn ($m) => ($empresa?->config('cores_modulo.'.$m)) ?: \App\Support\Modulos::hex($m);
+    // módulos que a empresa usa (config modulos_ativos); vazio/ausente = todos
+    $modAtivos = $empresa?->config('modulos_ativos');
+    $modOn = fn ($m) => empty($modAtivos) || in_array($m, (array) $modAtivos, true);
+    $headerCor = ($moduloAtual && $coresPorModulo) ? $corModulo($moduloAtual) : $cor1;
     $headerGrad = 'linear-gradient(100deg, '.$headerCor.', color-mix(in srgb, '.$headerCor.' 70%, #000))';
 @endphp
 <!doctype html>
@@ -108,7 +113,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('encomenda','cadastra')) $g[] = ['r'=>route('encomendas.create'), 'l'=>'Nova encomenda', 'i'=>'➕'];
   if ($u->permite('encomenda','ver')) $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
   if ($u->permite('encomenda','precadastro')) $g[] = ['r'=>route('pre.index'), 'l'=>'Pré-cadastros', 'i'=>'🪧', 'b'=>(\App\Models\PreCadastro::where('status','pendente')->count() ?: null)];
-  if ($g) $grupos['Encomendas'] = $g;
+  if ($g && $modOn('encomenda')) $grupos['Encomendas'] = $g;
   // Passagem (só aparece se o operador tiver o módulo liberado)
   $g = [];
   if ($u->permite('passagem','cadastra')) $g[] = ['r'=>route('passagens.create'), 'l'=>'Nova passagem', 'i'=>'🎫'];
@@ -116,18 +121,18 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','baixa')) $g[] = ['r'=>route('passagens.scanner'), 'l'=>'Check-in / embarque', 'i'=>'📷'];
   if ($u->permite('passagem','ver'))   $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
-  if ($g) $grupos['Passagens'] = $g;
+  if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;
   // Camarote / Suítes (módulo próprio, permissão separada)
   $g = [];
   if ($u->permite('camarote','cadastra')) $g[] = ['r'=>route('passagens.camarote.create'), 'l'=>'Vender suíte/camarote', 'i'=>'🛏️'];
   if ($u->temModulo('camarote')) $g[] = ['r'=>route('passagens.camarote.lista'), 'l'=>'Camarotes / embarque', 'i'=>'🧾'];
   if ($u->temModulo('camarote')) $g[] = ['r'=>route('passagens.camarotes'), 'l'=>'Ocupação / reservas', 'i'=>'🗺️'];
-  if ($g) $grupos['Camarotes'] = $g;
+  if ($g && $modOn('camarote')) $grupos['Camarotes'] = $g;
   // Frete
   $g = [];
   if ($u->permite('frete','cadastra')) $g[] = ['r'=>route('fretes.create'), 'l'=>'Novo frete', 'i'=>'🚢'];
   if ($u->permite('frete','ver'))      $g[] = ['r'=>route('fretes.index'), 'l'=>'Fretes / entrega', 'i'=>'📦'];
-  if ($g) $grupos['Fretes'] = $g;
+  if ($g && $modOn('frete')) $grupos['Fretes'] = $g;
   $g = [];
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰'];
   if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
@@ -148,12 +153,12 @@ document.addEventListener('alpine:init', () => {
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
   // cor e ícone de cada grupo do menu (identidade visual por módulo)
   $metaGrupo = [
-    'Encomendas'    => ['📦', \App\Support\Modulos::hex('encomenda')],
-    'Passagens'     => ['🎫', \App\Support\Modulos::hex('passagem')],
-    'Camarotes'     => ['🛏️', \App\Support\Modulos::hex('camarote')],
-    'Fretes'        => ['🚢', \App\Support\Modulos::hex('frete')],
-    'Lanchonete'    => ['🍔', \App\Support\Modulos::hex('lanchonete')],
-    'WiFi'          => ['📶', \App\Support\Modulos::hex('wifi')],
+    'Encomendas'    => ['📦', $corModulo('encomenda')],
+    'Passagens'     => ['🎫', $corModulo('passagem')],
+    'Camarotes'     => ['🛏️', $corModulo('camarote')],
+    'Fretes'        => ['🚢', $corModulo('frete')],
+    'Lanchonete'    => ['🍔', $corModulo('lanchonete')],
+    'WiFi'          => ['📶', $corModulo('wifi')],
     'Caixa'         => ['💰', '#0b1a33'],
     'Revendedor'    => ['🤝', '#0e7490'],
     'Administração' => ['⚙️', '#334155'],

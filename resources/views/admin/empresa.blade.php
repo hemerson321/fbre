@@ -26,6 +26,23 @@
     <input type="checkbox" name="cores_por_modulo" value="1" @checked($empresa->config('cores_por_modulo', true)) class="w-5 h-5 rounded mt-0.5">
     <span><span class="font-semibold text-sm">Cada módulo com sua cor</span><br><span class="text-xs text-slate-500">Ligado: o topo e o menu mudam de cor por módulo (encomenda azul, passagem verde, frete laranja...). Desligado: tudo na cor da empresa.</span></span>
   </label>
+
+  <div class="mt-3">
+    <div class="font-semibold text-sm">Módulos e cores desta empresa</div>
+    <p class="text-xs text-slate-500 mb-2">Marque os módulos que esta empresa usa (só os marcados aparecem no menu) e escolha a cor de cada um, pra combinar com a logo. Se não marcar nenhum, todos aparecem.</p>
+    @php $modAtivos = $empresa->config('modulos_ativos'); $todosMods = empty($modAtivos); @endphp
+    <div class="grid sm:grid-cols-2 gap-2">
+      @foreach(\App\Support\Modulos::LISTA as $mk => $info)
+        @php [$rotulo,$icone,$tw,$hex] = $info; $corAtual = $empresa->config('cores_modulo.'.$mk) ?: $hex; @endphp
+        <label class="flex items-center gap-2 border rounded-lg px-2 py-1.5">
+          <input type="checkbox" name="modulos_ativos[]" value="{{ $mk }}" class="w-5 h-5 rounded shrink-0" @checked($todosMods || in_array($mk, (array) $modAtivos, true))>
+          <span class="text-base">{{ $icone }}</span>
+          <span class="flex-1 text-sm font-semibold truncate">{{ $rotulo }}</span>
+          <input type="color" name="cores_modulo[{{ $mk }}]" value="{{ $corAtual }}" class="w-9 h-8 rounded border p-0.5 shrink-0" title="Cor do módulo {{ $rotulo }}">
+        </label>
+      @endforeach
+    </div>
+  </div>
 </div>
 
 <div class="border-t pt-3 mt-1" x-data="{ts:{{ $empresa->config('usa_taxa_embarque', false) ? 'true':'false' }}, al:{{ $empresa->config('usa_alimentacao', true) ? 'true':'false' }}}">
