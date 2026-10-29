@@ -44,8 +44,6 @@ class EmpresaController extends Controller
             'ia_provider' => 'nullable|in:claude,openai',
             'ia_token' => 'nullable|string|max:255',
             'ia_modelo' => 'nullable|string|max:80',
-            'modulos_ativos' => 'nullable|array',
-            'modulos_ativos.*' => 'nullable|string|max:20',
             'cores_modulo' => 'nullable|array',
             'cores_modulo.*' => 'nullable|string|max:9',
         ]);
@@ -60,11 +58,7 @@ class EmpresaController extends Controller
             $config['wa_conexao_'.$mk] = $request->input('wa_conexao.'.$mk) ?: null;
         }
         $config['cores_por_modulo'] = $request->boolean('cores_por_modulo');
-        // módulos que a empresa usa (só chaves válidas) + cor de cada módulo
-        $config['modulos_ativos'] = array_values(array_intersect(
-            array_keys(\App\Support\Modulos::LISTA),
-            (array) $request->input('modulos_ativos', [])
-        ));
+        // cor de cada módulo (só a cor; quais módulos a empresa tem é definido pelo super no cadastro)
         $cores = [];
         foreach (array_keys(\App\Support\Modulos::LISTA) as $mk) {
             $c = (string) $request->input('cores_modulo.'.$mk);
@@ -78,7 +72,7 @@ class EmpresaController extends Controller
         $config['ia_token'] = trim((string) $request->input('ia_token')) ?: null;
         $config['ia_modelo'] = trim((string) $request->input('ia_modelo')) ?: null;
         $data['config'] = $config;
-        unset($data['label_taxa_embarque'], $data['label_alimentacao'], $data['wa_conexao'], $data['cores_por_modulo'], $data['ia_provider'], $data['ia_token'], $data['ia_modelo'], $data['modulos_ativos'], $data['cores_modulo']);
+        unset($data['label_taxa_embarque'], $data['label_alimentacao'], $data['wa_conexao'], $data['cores_por_modulo'], $data['ia_provider'], $data['ia_token'], $data['ia_modelo'], $data['cores_modulo']);
 
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
@@ -118,6 +112,8 @@ class EmpresaController extends Controller
             'cnpj' => 'nullable|string|max:20',
             'validade' => 'nullable|date',
             'dominio' => 'nullable|string|max:120|unique:empresas,dominio',
+            'modulos_ativos' => 'nullable|array',
+            'modulos_ativos.*' => 'nullable|string|max:20',
             'admin_nome' => 'required|string|max:100',
             'admin_login' => 'required|string|min:3|max:40|regex:/^[a-z0-9._-]+$/|unique:users,login',
             'admin_senha' => 'required|string|min:6',
@@ -136,6 +132,10 @@ class EmpresaController extends Controller
             'dominio' => $data['dominio'] ?? null,
             'validade' => $data['validade'] ?? null,
             'recursos' => ['print_agent'],
+            'config' => ['modulos_ativos' => array_values(array_intersect(
+                array_keys(\App\Support\Modulos::LISTA),
+                (array) $request->input('modulos_ativos', [])
+            ))],
         ]);
 
         User::create([
@@ -193,7 +193,16 @@ class EmpresaController extends Controller
             'nome' => 'required|string|max:150',
             'nome_fantasia' => 'nullable|string|max:100',
             'cnpj' => 'nullable|string|max:20',
+            'modulos_ativos' => 'nullable|array',
+            'modulos_ativos.*' => 'nullable|string|max:20',
         ]);
+        $config = $empresa->config ?? [];
+        $config['modulos_ativos'] = array_values(array_intersect(
+            array_keys(\App\Support\Modulos::LISTA),
+            (array) $request->input('modulos_ativos', [])
+        ));
+        $data['config'] = $config;
+        unset($data['modulos_ativos']);
         $empresa->update($data);
 
         return back()->with('ok', "Dados de {$empresa->nomeExibicao()} atualizados.");

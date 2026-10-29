@@ -28,14 +28,14 @@
   </label>
 
   <div class="mt-3">
-    <div class="font-semibold text-sm">Módulos e cores desta empresa</div>
-    <p class="text-xs text-slate-500 mb-2">Marque os módulos que esta empresa usa (só os marcados aparecem no menu) e escolha a cor de cada um, pra combinar com a logo. Se não marcar nenhum, todos aparecem.</p>
+    <div class="font-semibold text-sm">Cor de cada módulo</div>
+    <p class="text-xs text-slate-500 mb-2">Escolha a cor de cada módulo pra combinar com a sua logo. Quais módulos a empresa usa é definido no contrato (fale com o suporte da GERATEC).</p>
     @php $modAtivos = $empresa->config('modulos_ativos'); $todosMods = empty($modAtivos); @endphp
     <div class="grid sm:grid-cols-2 gap-2">
       @foreach(\App\Support\Modulos::LISTA as $mk => $info)
+        @continue(! $todosMods && ! in_array($mk, (array) $modAtivos, true))
         @php [$rotulo,$icone,$tw,$hex] = $info; $corAtual = $empresa->config('cores_modulo.'.$mk) ?: $hex; @endphp
         <label class="flex items-center gap-2 border rounded-lg px-2 py-1.5">
-          <input type="checkbox" name="modulos_ativos[]" value="{{ $mk }}" class="w-5 h-5 rounded shrink-0" @checked($todosMods || in_array($mk, (array) $modAtivos, true))>
           <span class="text-base">{{ $icone }}</span>
           <span class="flex-1 text-sm font-semibold truncate">{{ $rotulo }}</span>
           <input type="color" name="cores_modulo[{{ $mk }}]" value="{{ $corAtual }}" class="w-9 h-8 rounded border p-0.5 shrink-0" title="Cor do módulo {{ $rotulo }}">

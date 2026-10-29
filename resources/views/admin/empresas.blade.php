@@ -11,6 +11,15 @@
   <div><label class="label">CNPJ</label><input name="cnpj" class="input"></div>
   <div><label class="label">Validade do contrato</label><input name="validade" type="date" class="input" value="{{ now()->addYear()->toDateString() }}"></div>
   <div class="sm:col-span-2"><label class="label">Domínio próprio (opcional)</label><input name="dominio" class="input" placeholder="ex.: ajatopassagem.com.br" autocapitalize="none" inputmode="url"><p class="text-[11px] text-slate-400 mt-0.5">O cliente acessa por esse domínio e vê a marca dele. Aponte o DNS pro mesmo servidor e adicione o domínio no EasyPanel.</p></div>
+  <div class="sm:col-span-2">
+    <label class="label">Módulos que esta empresa contrata</label>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-1">
+      @foreach(\App\Support\Modulos::LISTA as $mk => $info)
+        <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="modulos_ativos[]" value="{{ $mk }}" class="w-4 h-4 rounded shrink-0" checked> <span class="truncate">{{ $info[1] }} {{ $info[0] }}</span></label>
+      @endforeach
+    </div>
+    <p class="text-[11px] text-slate-400 mt-0.5">Desmarque os que o cliente não vai usar. A cor de cada módulo o cliente ajusta em "Minha empresa".</p>
+  </div>
   <div class="sm:col-span-2 label pt-2">Usuário administrador do cliente</div>
   <div><label class="label">Nome</label><input name="admin_nome" class="input" required></div>
   <div><label class="label">Login</label><input name="admin_login" class="input" required placeholder="ex.: admin.empresa" autocapitalize="none"></div>
@@ -51,6 +60,15 @@
       <div><label class="label !text-xs">Razão social</label><input name="nome" class="input !min-h-0 py-1 text-sm" value="{{ $e->nome }}" required></div>
       <div><label class="label !text-xs">Nome fantasia</label><input name="nome_fantasia" class="input !min-h-0 py-1 text-sm" value="{{ $e->nome_fantasia }}"></div>
       <div><label class="label !text-xs">CNPJ</label><input name="cnpj" class="input !min-h-0 py-1 text-sm" value="{{ $e->cnpj }}"></div>
+      <div class="sm:col-span-3">
+        <label class="label !text-xs">Módulos que esta empresa contrata</label>
+        @php $mAtivos = $e->config('modulos_ativos'); $todosM = empty($mAtivos); @endphp
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-1">
+          @foreach(\App\Support\Modulos::LISTA as $mk => $info)
+            <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="modulos_ativos[]" value="{{ $mk }}" class="w-4 h-4 rounded shrink-0" @checked($todosM || in_array($mk, (array) $mAtivos, true))> <span class="truncate">{{ $info[1] }} {{ $info[0] }}</span></label>
+          @endforeach
+        </div>
+      </div>
       <div class="sm:col-span-3 flex gap-2"><button class="btn btn-accent btn-sm">Salvar dados</button><button type="button" class="btn btn-ghost btn-sm" @click="ed=false">Cancelar</button></div>
     </form>
   </div>
