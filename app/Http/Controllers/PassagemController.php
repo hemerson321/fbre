@@ -84,7 +84,7 @@ class PassagemController extends Controller
             ->merge(Rota::todasLocalidades())->filter()->unique()->sort()->values();
         $cidadesPerm = $u->cidadesPermitidas();
         if ($cidadesPerm) $localidades = $localidades->intersect($cidadesPerm)->values();
-        $rotas = Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect();
+        $rotas = Tenant::empresa()->usaViagens() ? Rota::paraSelecao() : collect();
         // linhas (com paradas) para o JS resolver a viagem a partir de origem/destino (igual ao encomenda)
         $linhas = $rotas->map(fn ($r) => [
             'id' => $r->id,
@@ -193,7 +193,7 @@ class PassagemController extends Controller
         $cidadesPerm = $u->cidadesPermitidas();
         if ($cidadesPerm) $locs = $locs->intersect($cidadesPerm)->values();
 
-        $rotas = Tenant::empresa()->temRecurso('viagens') ? Rota::paraSelecao() : collect();
+        $rotas = Tenant::empresa()->usaViagens() ? Rota::paraSelecao() : collect();
         $linhas = $rotas->map(fn ($r) => [
             'id' => $r->id, 'nome' => $r->nome,
             'paradas' => $r->paradas->map(fn ($pp) => ['n' => $pp->localidade, 'd' => $pp->dia_semana, 'h' => $pp->hora ? substr($pp->hora, 0, 5) : null])->values(),

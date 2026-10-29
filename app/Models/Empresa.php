@@ -30,6 +30,17 @@ class Empresa extends Model
         return in_array($recurso, $this->recursos ?? [], true);
     }
 
+    /**
+     * Usa o calendário de viagens (datas de saída já programadas pela rota)?
+     * Sim se tiver o recurso antigo OU se já houver pelo menos uma rota ativa cadastrada.
+     * Assim, basta criar uma rota com os dias da semana para as viagens aparecerem.
+     */
+    public function usaViagens(): bool
+    {
+        return $this->temRecurso('viagens')
+            || Rota::withoutGlobalScopes()->where('empresa_id', $this->id)->where('ativo', true)->exists();
+    }
+
     public function config(string $chave, $padrao = null)
     {
         return data_get($this->config, $chave, $padrao);
