@@ -19,20 +19,30 @@ php artisan migrate --force
 if [ "$SEED_ON_BOOT" = "1" ]; then php artisan db:seed --force || echo "AVISO: seed falhou (ignorado)"; fi
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 
-# trava de seguranca: se alguma view compilada virar PHP invalido
-# (ex.: diretiva @if colada -> "unexpected endif"), aborta o deploy
-# em vez de servir 500 pra todo mundo. Pega a classe de erro do v23.
+# checagem: alguma view compilada virou PHP invalido? (ex.: diretiva @if colada -> "unexpected endif")
+# Por padrao so AVISA (nao derruba o site). Para abortar o deploy, defina DEPLOY_STRICT=1
+# no .env -- recomendado SO depois de configurar um healthcheck no EasyPanel, senao
+# o container quebrado substitui o bom e o site fica fora do ar.
+view_quebrada=0
 for f in storage/framework/views/*.php; do
   [ -e "$f" ] || continue
   if ! php -l "$f" >/dev/null 2>&1; then
+    view_quebrada=1
     echo "=================================================="
-    echo "DEPLOY ABORTADO: view compilada ficou invalida:"
-    php -l "$f"
+    echo "VIEW COMPILADA INVALIDA: $f"
+    php -l "$f" || true
     echo "=================================================="
-    exit 1
   fi
 done
-echo "OK: todas as views compiladas sao PHP valido."
+if [ "$view_quebrada" = "1" ]; then
+  if [ "$DEPLOY_STRICT" = "1" ]; then
+    echo "DEPLOY_STRICT=1 -> abortando o deploy."
+    exit 1
+  fi
+  echo "AVISO: ha view(s) com PHP invalido, mas seguindo o boot (DEPLOY_STRICT!=1)."
+else
+  echo "OK: todas as views compiladas sao PHP valido."
+fi
 
 chown -R www-data:www-data storage bootstrap/cache
 
