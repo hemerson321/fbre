@@ -186,6 +186,44 @@ class EmpresaController extends Controller
         return back()->with('ok', $empresa->ativo ? 'Empresa ativada.' : 'Empresa desativada.');
     }
 
+    /** Edição rápida dos dados básicos de uma empresa (pelo painel super). */
+    public function editarSuper(Request $request, Empresa $empresa)
+    {
+        $data = $request->validate([
+            'nome' => 'required|string|max:150',
+            'nome_fantasia' => 'nullable|string|max:100',
+            'cnpj' => 'nullable|string|max:20',
+        ]);
+        $empresa->update($data);
+
+        return back()->with('ok', "Dados de {$empresa->nomeExibicao()} atualizados.");
+    }
+
+    /** Exclui uma empresa (só sem movimento). Remove a empresa e seus usuários. */
+    public function excluir(Request $request, Empresa $empresa)
+    {
+        $u = auth()->user();
+        if ($empresa->id === $u->empresa_id) {
+            return back()->withErrors(['excluir' => 'Você não pode excluir a sua própria empresa.']);
+        }
+        if ((int) $request->session()->get('empresa_ativa') === $empresa->id) {
+            return back()->withErrors(['excluir' => 'Saia da empresa (botão "sair da empresa") antes de excluí-la.']);
+        }
+        $temEncomenda = $empresa->encomendas()->exists();
+        $temPassagem = \App\Models\Passagem::withoutGlobalScopes()->where('empresa_id', $empresa->id)->exists();
+        if ($temEncomenda || $temPassagem) {
+            return back()->withErrors(['excluir' => 'Essa empresa tem movimento (encomendas/passagens). Use "Bloquear" em vez de excluir.']);
+        }
+
+        $nome = $empresa->nomeExibicao();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($empresa) {
+            User::where('empresa_id', $empresa->id)->delete();
+            $empresa->delete();
+        });
+
+        return back()->with('ok', "Empresa {$nome} excluída.");
+    }
+
     public function entrar(Request $request, Empresa $empresa)
     {
         $request->session()->put('empresa_ativa', $empresa->id);
