@@ -19,6 +19,16 @@ php artisan migrate --force
 if [ "$SEED_ON_BOOT" = "1" ]; then php artisan db:seed --force || echo "AVISO: seed falhou (ignorado)"; fi
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 
+# versiona o service worker com a versao do app -> o PWA detecta a troca, reinstala
+# e apaga o cache antigo a cada deploy (senao o operador fica vendo a tela velha).
+if [ -f public/sw.js ]; then
+  APPVER=$(grep -oE "ATUAL = '[^']+'" app/Support/Versao.php | grep -oE "v[0-9.]+")
+  if [ -n "$APPVER" ]; then
+    sed -i "s/const VERSAO = '[^']*'/const VERSAO = 'fbre-${APPVER}'/" public/sw.js
+    echo "service worker versionado: fbre-${APPVER}"
+  fi
+fi
+
 # checagem: alguma view compilada virou PHP invalido? (ex.: diretiva @if colada -> "unexpected endif")
 # Por padrao so AVISA (nao derruba o site). Para abortar o deploy, defina DEPLOY_STRICT=1
 # no .env -- recomendado SO depois de configurar um healthcheck no EasyPanel, senao
