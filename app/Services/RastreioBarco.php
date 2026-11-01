@@ -52,6 +52,7 @@ class RastreioBarco
             if ($this->chave((string) ($c['cidade'] ?? '')) === $alvo && $alvo !== '') {
                 $c['barco'] = $j['barco'] ?? $barco->nome;
                 $c['online'] = (bool) data_get($j, 'posicao.online', false);
+                $c['velocidade'] = (float) data_get($j, 'posicao.velocidade_kmh', 0);
 
                 return $c;
             }

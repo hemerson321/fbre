@@ -31,6 +31,9 @@
     @if($e->devido > 0)<button class="btn btn-accent btn-sm" @click="modal='pagar'">💵 Registrar pagamento</button>@endif
     @if(!$e->entregue && ($e->devido <= 0 || $e->forma === 'faturado'))<button class="btn btn-primary btn-sm" @click="modal='entregar'">📦 Dar baixa na entrega</button>@endif
     @if(!$e->entregue && $e->devido > 0 && $e->forma !== 'faturado')<span class="text-xs text-amber-600 self-center">Receba o pagamento para liberar a entrega.</span>@endif
+    @if(!$e->entregue && !$e->avisado_chegada_em && $e->destinatario_telefone)
+      <form method="post" action="{{ route('encomendas.avisar-chegada',$e) }}" onsubmit="return confirm('Enviar WhatsApp avisando {{ $e->destinatario_nome }} que a encomenda está chegando?')">@csrf<button class="btn btn-ghost btn-sm">📲 Avisar chegada</button></form>
+    @endif
   @endif
   @if(($u->isAdmin()||$u->isSuper()) && !$e->cancelada)
     <button class="btn btn-danger btn-sm" @click="modal='cancelar'">✖ Cancelar</button>
@@ -54,10 +57,16 @@
       <div class="text-sm bg-sky-50 border border-sky-200 rounded-lg p-2">
         🚤 <b>{{ $rastreio['barco'] }}</b>
         @unless($rastreio['online']) <span class="text-slate-400 text-xs">(sinal antigo)</span> @endunless
-        — chega em {{ $e->destino }}
-        @if($rastreio['quando']) <b>{{ $rastreio['quando'] }}</b> @endif
-        @if($rastreio['falta']) · faltam {{ $rastreio['falta'] }} @endif
-        <div class="text-xs text-slate-500 mt-0.5">O aviso no WhatsApp do destinatário sai automático ~1h antes da chegada.</div>
+        @if($rastreio['parado'])
+          <span class="text-amber-600">— parado no momento.</span> Chega em {{ $e->destino }}
+          @if($rastreio['quando']) (previsão <b>{{ $rastreio['quando'] }}</b>) @endif
+          @if($rastreio['km']) · {{ $rastreio['km'] }} km @endif
+        @else
+          — chega em {{ $e->destino }}
+          @if($rastreio['quando']) <b>{{ $rastreio['quando'] }}</b> @endif
+          @if($rastreio['falta']) · faltam {{ $rastreio['falta'] }} @endif
+        @endif
+        <div class="text-xs text-slate-500 mt-0.5">O aviso sai automático ~1h antes. Você também pode avisar na hora no botão "Avisar chegada".</div>
       </div>
     @endif
     <h2 class="font-bold text-sm text-slate-500 uppercase pt-2">Remetente</h2>

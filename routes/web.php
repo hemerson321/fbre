@@ -86,6 +86,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/encomendas/{encomenda}', [EncomendaController::class, 'show'])->name('encomendas.show');
     Route::post('/encomendas/{encomenda}/pagar', [EncomendaController::class, 'pagar'])->name('encomendas.pagar')->middleware('perm:baixa');
     Route::post('/encomendas/{encomenda}/entregar', [EncomendaController::class, 'entregar'])->name('encomendas.entregar')->middleware('perm:baixa');
+    Route::post('/encomendas/{encomenda}/avisar-chegada', [EncomendaController::class, 'avisarChegada'])->name('encomendas.avisar-chegada')->middleware('perm:baixa');
     Route::post('/encomendas/{encomenda}/cancelar', [EncomendaController::class, 'cancelar'])->name('encomendas.cancelar')->middleware('perm:admin');
     Route::get('/pessoas/buscar', [EncomendaController::class, 'buscarPessoa'])->name('pessoas.buscar');
 

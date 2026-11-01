@@ -246,6 +246,8 @@ class EncomendaController extends Controller
                     'quando' => $svc->quandoChega($trecho['chegada_prevista_iso'] ?? null),
                     'barco' => $trecho['barco'] ?? $encomenda->embarcacao->nome,
                     'online' => (bool) ($trecho['online'] ?? false),
+                    'parado' => (bool) ($trecho['parado'] ?? false),
+                    'km' => $trecho['km_falta'] ?? null,
                 ];
             }
         }
@@ -309,6 +311,39 @@ class EncomendaController extends Controller
 
         return redirect()->route('encomendas.show', ['encomenda' => $encomenda, 'print' => 1])
             ->with('ok', 'Entrega registrada.');
+    }
+
+    /** Avisa o destinatário no WhatsApp na hora (botão manual, não depende do rastreio). */
+    public function avisarChegada(Encomenda $encomenda)
+    {
+        abort_if($encomenda->cancelada, 422, 'Encomenda cancelada.');
+        if ($encomenda->entregue) {
+            return back()->withErrors(['avisar' => 'Encomenda já entregue.']);
+        }
+        $fone = trim((string) $encomenda->destinatario_telefone);
+        if ($fone === '') {
+            return back()->withErrors(['avisar' => 'Destinatário sem telefone cadastrado.']);
+        }
+        $empresa = \App\Support\Tenant::empresa();
+        $conexao = $empresa?->whatsappConexao('encomenda');
+        if (! $conexao) {
+            return back()->withErrors(['avisar' => 'Configure o WhatsApp do módulo encomenda em Administração → WhatsApp.']);
+        }
+
+        $barco = $encomenda->embarcacao?->nome;
+        $msg = "📦 Olá, {$encomenda->destinatario_nome}!\n"
+            ."Sua encomenda Nº {$encomenda->numeroFormatado()} está chegando em {$encomenda->destino}.\n"
+            .($barco ? "Barco: {$barco}.\n" : '')
+            .($empresa?->nomeExibicao() ?? 'FBRE');
+
+        $r = app(\App\Services\WhatsApp::class)->enviarTexto($conexao, $fone, $msg);
+        if (empty($r['ok'])) {
+            return back()->withErrors(['avisar' => 'Não consegui enviar o WhatsApp: '.($r['erro'] ?? 'erro desconhecido')]);
+        }
+
+        $encomenda->update(['avisado_chegada_em' => now()]);
+
+        return back()->with('ok', 'Destinatário avisado no WhatsApp.');
     }
 
     public function cancelar(Request $request, Encomenda $encomenda)
