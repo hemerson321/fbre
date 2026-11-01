@@ -31,6 +31,11 @@
             <button class="btn btn-primary btn-sm">Salvar</button>
             <a href="#" onclick="event.preventDefault(); if(confirm('Remover embarcação?')) this.closest('form').nextElementSibling.submit();" class="text-red-500 text-xs pb-2">remover</a>
           </div>
+          <div class="mt-2">
+            <label class="label">URL de rastreio do barco (opcional)</label>
+            <input name="rastreio_url" class="input !min-h-[40px] font-mono text-xs" value="{{ $e->rastreio_url }}" placeholder="https://rionave.com/wp-json/riotag/v1/posicao/TOKEN" autocapitalize="none" inputmode="url">
+            <p class="text-[11px] text-slate-400 mt-0.5">Cole o link da API de posição deste barco. Com ele, o sistema avisa o destinatário no WhatsApp ~1h antes da encomenda chegar na cidade de destino.</p>
+          </div>
         </form>
         <form method="post" action="{{ route('admin.cadastros.destroy',['embarcacoes',$e->id]) }}" class="hidden">@csrf @method('DELETE')</form>
       @empty <div class="text-slate-400 text-sm">Nenhuma embarcação.</div> @endforelse

@@ -11,3 +11,6 @@ use Illuminate\Support\Facades\Schedule;
 
 // confere pagamentos PIX pendentes e avisa o cliente
 Schedule::command('pagamentos:verificar')->everyMinute()->withoutOverlapping();
+
+// avisa o cliente da encomenda ~1h antes do barco chegar no destino (rastreio por embarcação)
+Schedule::command('encomendas:avisar-chegada')->everyFiveMinutes()->withoutOverlapping();
