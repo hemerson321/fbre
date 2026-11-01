@@ -20,6 +20,14 @@
     </div>
     <p class="text-[11px] text-slate-400 mt-0.5">Desmarque os que o cliente não vai usar. A cor de cada módulo o cliente ajusta em "Minha empresa".</p>
   </div>
+  <div class="sm:col-span-2">
+    <label class="label">Recursos liberados</label>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1">
+      <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="usa_revendedores" value="1" class="w-4 h-4 rounded shrink-0"> <span>🤝 Afiliados / Revendedores</span></label>
+      <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="revendedor_multi" value="1" class="w-4 h-4 rounded shrink-0"> <span>👥 Multiagente (filiados)</span></label>
+    </div>
+    <p class="text-[11px] text-slate-400 mt-0.5">Afiliados: agentes que vendem passagem e acertam com a empresa. Multiagente: cada afiliado tem seus próprios vendedores.</p>
+  </div>
   <div class="sm:col-span-2 label pt-2">Usuário administrador do cliente</div>
   <div><label class="label">Nome</label><input name="admin_nome" class="input" required></div>
   <div><label class="label">Login</label><input name="admin_login" class="input" required placeholder="ex.: admin.empresa" autocapitalize="none"></div>
@@ -46,6 +54,7 @@
       </div>
       <div class="flex flex-col gap-1 shrink-0">
         <form method="post" action="{{ route('super.empresas.entrar',$e) }}">@csrf<button class="btn btn-ghost btn-sm w-full">Entrar</button></form>
+        <form method="post" action="{{ route('super.empresas.usuarios',$e) }}">@csrf<button class="btn btn-ghost btn-sm w-full">👥 Usuários</button></form>
         <button type="button" class="btn btn-ghost btn-sm w-full" @click="ed=!ed">✏️ Editar</button>
         <form method="post" action="{{ route('super.empresas.toggle',$e) }}">@csrf<button class="btn btn-sm w-full {{ $e->ativo?'btn-danger':'btn-primary' }}">{{ $e->ativo?'Bloquear':'Ativar' }}</button></form>
         @if($ativa!=$e->id)
@@ -67,6 +76,13 @@
           @foreach(\App\Support\Modulos::LISTA as $mk => $info)
             <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="modulos_ativos[]" value="{{ $mk }}" class="w-4 h-4 rounded shrink-0" @checked($todosM || in_array($mk, (array) $mAtivos, true))> <span class="truncate">{{ $info[1] }} {{ $info[0] }}</span></label>
           @endforeach
+        </div>
+      </div>
+      <div class="sm:col-span-3">
+        <label class="label !text-xs">Recursos liberados</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1">
+          <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="usa_revendedores" value="1" class="w-4 h-4 rounded shrink-0" @checked($e->config('usa_revendedores'))> <span>🤝 Afiliados / Revendedores</span></label>
+          <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="revendedor_multi" value="1" class="w-4 h-4 rounded shrink-0" @checked($e->config('revendedor_multi'))> <span>👥 Multiagente (filiados)</span></label>
         </div>
       </div>
       <div class="sm:col-span-3 flex gap-2"><button class="btn btn-accent btn-sm">Salvar dados</button><button type="button" class="btn btn-ghost btn-sm" @click="ed=false">Cancelar</button></div>

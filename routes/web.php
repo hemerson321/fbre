@@ -251,6 +251,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/empresas/{empresa}/editar', [EmpresaController::class, 'editarSuper'])->name('empresas.editar');
         Route::post('/empresas/{empresa}/excluir', [EmpresaController::class, 'excluir'])->name('empresas.excluir');
         Route::post('/empresas/{empresa}/entrar', [EmpresaController::class, 'entrar'])->name('empresas.entrar');
+        Route::post('/empresas/{empresa}/usuarios', [EmpresaController::class, 'entrarUsuarios'])->name('empresas.usuarios');
         Route::post('/empresas/sair', [EmpresaController::class, 'sair'])->name('empresas.sair');
     });
 });

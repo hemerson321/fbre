@@ -65,8 +65,6 @@ class EmpresaController extends Controller
             if (preg_match('/^#[0-9a-fA-F]{6}$/', $c)) $cores[$mk] = strtolower($c);
         }
         $config['cores_modulo'] = $cores;
-        $config['usa_revendedores'] = $request->boolean('usa_revendedores');
-        $config['revendedor_multi'] = $request->boolean('revendedor_multi');
         $config['meudanfe_token'] = trim((string) $request->input('meudanfe_token')) ?: null;
         $config['ia_provider'] = $request->input('ia_provider') ?: 'claude';
         $config['ia_token'] = trim((string) $request->input('ia_token')) ?: null;
@@ -132,10 +130,14 @@ class EmpresaController extends Controller
             'dominio' => $data['dominio'] ?? null,
             'validade' => $data['validade'] ?? null,
             'recursos' => ['print_agent'],
-            'config' => ['modulos_ativos' => array_values(array_intersect(
-                array_keys(\App\Support\Modulos::LISTA),
-                (array) $request->input('modulos_ativos', [])
-            ))],
+            'config' => [
+                'modulos_ativos' => array_values(array_intersect(
+                    array_keys(\App\Support\Modulos::LISTA),
+                    (array) $request->input('modulos_ativos', [])
+                )),
+                'usa_revendedores' => $request->boolean('usa_revendedores'),
+                'revendedor_multi' => $request->boolean('revendedor_multi'),
+            ],
         ]);
 
         User::create([
@@ -201,6 +203,8 @@ class EmpresaController extends Controller
             array_keys(\App\Support\Modulos::LISTA),
             (array) $request->input('modulos_ativos', [])
         ));
+        $config['usa_revendedores'] = $request->boolean('usa_revendedores');
+        $config['revendedor_multi'] = $request->boolean('revendedor_multi');
         $data['config'] = $config;
         unset($data['modulos_ativos']);
         $empresa->update($data);
@@ -237,6 +241,13 @@ class EmpresaController extends Controller
     {
         $request->session()->put('empresa_ativa', $empresa->id);
         return redirect()->route('encomendas.index')->with('ok', "Você está operando como {$empresa->nomeExibicao()}.");
+    }
+
+    /** Entra na empresa e abre direto a tela de Usuários (permissões), pelo painel super. */
+    public function entrarUsuarios(Request $request, Empresa $empresa)
+    {
+        $request->session()->put('empresa_ativa', $empresa->id);
+        return redirect()->route('admin.usuarios.index')->with('ok', "Permissões de usuários de {$empresa->nomeExibicao()}.");
     }
 
     public function sair(Request $request)
