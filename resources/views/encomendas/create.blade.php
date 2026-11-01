@@ -153,7 +153,7 @@
             </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
-            <input name="{{ $k }}_telefone" class="field" inputmode="tel" placeholder="WhatsApp" x-model="telefone" value="{{ old($k.'_telefone') }}">
+            <input name="{{ $k }}_telefone" class="field" inputmode="tel" placeholder="WhatsApp" maxlength="16" x-model="telefone" @input="telefone = FBRE.foneMask($event.target.value)" value="{{ old($k.'_telefone') }}">
             <input name="{{ $k }}_documento" class="field" inputmode="numeric" placeholder="CPF / CNPJ" x-model="documento" value="{{ old($k.'_documento') }}">
           </div>
         </div>
@@ -518,7 +518,7 @@ function pessoa(nome='', telefone=''){
     nome:nome, telefone:telefone, documento:'', lista:[], aberto:false,
     async buscar(){ if(this.nome.length<2){this.lista=[];return;}
       const r=await fetch(`{{ route('pessoas.buscar') }}?q=${encodeURIComponent(this.nome)}`); this.lista=await r.json(); this.aberto=true; },
-    escolher(p){ this.nome=p.nome; this.telefone=p.telefone||''; this.documento=p.documento||''; this.aberto=false; this.lista=[]; }
+    escolher(p){ this.nome=p.nome; this.telefone=FBRE.foneMask(p.telefone||''); this.documento=p.documento||''; this.aberto=false; this.lista=[]; }
   }
 }
 </script>
