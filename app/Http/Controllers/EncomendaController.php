@@ -331,10 +331,13 @@ class EncomendaController extends Controller
         }
 
         $barco = $encomenda->embarcacao?->nome;
+        $empresaNome = $empresa?->nomeExibicao() ?? 'FBRE';
+        $barcoLinha = ($barco && mb_strtolower(trim($barco)) !== mb_strtolower(trim($empresaNome))) ? "Barco: {$barco}.\n" : '';
         $msg = "📦 Olá, {$encomenda->destinatario_nome}!\n"
             ."Sua encomenda Nº {$encomenda->numeroFormatado()} está chegando em {$encomenda->destino}.\n"
-            .($barco ? "Barco: {$barco}.\n" : '')
-            .($empresa?->nomeExibicao() ?? 'FBRE');
+            .$barcoLinha
+            ."{$empresaNome}\n"
+            ."\n⚠️ Mensagem automática, não responda por aqui.";
 
         $r = app(\App\Services\WhatsApp::class)->enviarTexto($conexao, $fone, $msg);
         if (empty($r['ok'])) {

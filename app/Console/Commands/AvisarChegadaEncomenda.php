@@ -63,11 +63,14 @@ class AvisarChegadaEncomenda extends Command
 
                 $hora = trim((string) ($info['hora_local_cidade'] ?? ''));
                 $barcoNome = (string) ($info['barco'] ?? $barco->nome);
+                $empresaNome = $empresa?->nomeExibicao() ?? 'FBRE';
+                $barcoLinha = (mb_strtolower(trim($barcoNome)) !== mb_strtolower(trim($empresaNome))) ? "Barco: {$barcoNome}.\n" : '';
                 $msg = "📦 Olá, {$enc->destinatario_nome}!\n"
                     ."Sua encomenda Nº {$enc->numeroFormatado()} está chegando em {$enc->destino} em cerca de 1 hora"
                     .($hora !== '' ? " (previsão {$hora})" : '').".\n"
-                    ."Barco: {$barcoNome}.\n"
-                    .($empresa?->nomeExibicao() ?? 'FBRE');
+                    .$barcoLinha
+                    ."{$empresaNome}\n"
+                    ."\n⚠️ Mensagem automática, não responda por aqui.";
 
                 $r = $wa->enviarTexto($conexao, (string) $enc->destinatario_telefone, $msg);
                 if (! empty($r['ok'])) {
