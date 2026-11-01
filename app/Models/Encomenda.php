@@ -18,6 +18,7 @@ class Encomenda extends Model
         'entregue' => 'boolean',
         'cancelada' => 'boolean',
         'entregue_em' => 'datetime',
+        'avisado_chegada_em' => 'datetime',
         'subtotal' => 'decimal:2',
         'desconto' => 'decimal:2',
         'total' => 'decimal:2',

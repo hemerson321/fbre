@@ -234,9 +234,25 @@ class EncomendaController extends Controller
     public function show(Encomenda $encomenda)
     {
         $encomenda->load(['itens', 'pagamentos.user', 'embarcacao', 'operador', 'entreguePor', 'eventos.user']);
+
+        // rastreio ao vivo: se o barco tem URL e a encomenda não foi entregue, quando chega no destino
+        $rastreio = null;
+        if (! $encomenda->entregue && ! $encomenda->avisado_chegada_em && $encomenda->embarcacao?->rastreio_url) {
+            $svc = app(\App\Services\RastreioBarco::class);
+            $trecho = $svc->trechoAte($encomenda->embarcacao, (string) $encomenda->destino);
+            if ($trecho) {
+                $rastreio = [
+                    'falta' => $trecho['falta'] ?? null,
+                    'quando' => $svc->quandoChega($trecho['chegada_prevista_iso'] ?? null),
+                    'barco' => $trecho['barco'] ?? $encomenda->embarcacao->nome,
+                    'online' => (bool) ($trecho['online'] ?? false),
+                ];
+            }
+        }
+
         try {
             // renderiza dentro do try pra capturar erro de Blade (o servidor trata warning como exceção)
-            return response(view('encomendas.show', ['e' => $encomenda, 'meios' => Pagamento::MEIOS])->render());
+            return response(view('encomendas.show', ['e' => $encomenda, 'meios' => Pagamento::MEIOS, 'rastreio' => $rastreio])->render());
         } catch (\Throwable $ex) {
             $u = auth()->user();
             if ($u && ($u->isAdmin() || $u->isSuper())) {

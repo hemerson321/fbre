@@ -48,6 +48,18 @@
     <h2 class="font-bold text-sm text-slate-500 uppercase">Rota</h2>
     <div class="text-lg font-bold">{{ $e->origem }} → {{ $e->destino }}</div>
     <div class="text-sm text-slate-600">Transporte: <b>{{ $e->embarcacao?->nome ?? '—' }}</b> · Volumes: <b>{{ $e->volumes }}</b></div>
+    @if($e->avisado_chegada_em)
+      <div class="text-sm bg-emerald-50 border border-emerald-200 rounded-lg p-2">✅ Destinatário avisado no WhatsApp em <b>{{ $e->avisado_chegada_em->format('d/m H:i') }}</b>.</div>
+    @elseif(!empty($rastreio ?? null))
+      <div class="text-sm bg-sky-50 border border-sky-200 rounded-lg p-2">
+        🚤 <b>{{ $rastreio['barco'] }}</b>
+        @unless($rastreio['online']) <span class="text-slate-400 text-xs">(sinal antigo)</span> @endunless
+        — chega em {{ $e->destino }}
+        @if($rastreio['quando']) <b>{{ $rastreio['quando'] }}</b> @endif
+        @if($rastreio['falta']) · faltam {{ $rastreio['falta'] }} @endif
+        <div class="text-xs text-slate-500 mt-0.5">O aviso no WhatsApp do destinatário sai automático ~1h antes da chegada.</div>
+      </div>
+    @endif
     <h2 class="font-bold text-sm text-slate-500 uppercase pt-2">Remetente</h2>
     <div><b>{{ $e->remetente_nome }}</b><div class="text-sm text-slate-500">{{ $e->remetente_telefone }} {{ $e->remetente_documento }}</div></div>
     <h2 class="font-bold text-sm text-slate-500 uppercase pt-2">Destinatário</h2>
