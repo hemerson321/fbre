@@ -49,9 +49,15 @@ class WhatsApp
                 'text' => $texto,
             ]);
 
-        return $r->successful()
-            ? ['ok' => true, 'resposta' => $r->json()]
-            : ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.$r->body()];
+        if ($r->successful()) {
+            return ['ok' => true, 'resposta' => $r->json()];
+        }
+        // Evolution responde exists:false quando o número não tem WhatsApp
+        if (data_get($r->json(), 'response.message.0.exists') === false) {
+            return ['ok' => false, 'erro' => 'Esse número não tem WhatsApp (confira o DDD e o número).'];
+        }
+
+        return ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.$r->body()];
     }
 
     /** Meta WhatsApp Cloud API (oficial). */

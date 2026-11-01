@@ -335,6 +335,31 @@ document.addEventListener('alpine:init', () => {
       if (d.length <= 10) return '('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);
       return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
     },
+    // valida CNPJ (14 dígitos + dígitos verificadores)
+    cnpjValido: s => {
+      const c = FBRE.soDigitos(s);
+      if (c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false;
+      const calc = base => {
+        let soma = 0, pos = base - 7;
+        for (let i = base; i >= 1; i--) { soma += parseInt(c[base - i],10) * pos--; if (pos < 2) pos = 9; }
+        const r = soma % 11; return r < 2 ? 0 : 11 - r;
+      };
+      return calc(12) === parseInt(c[12],10) && calc(13) === parseInt(c[13],10);
+    },
+    // formata CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00) conforme os dígitos
+    docMask: s => {
+      const d = FBRE.soDigitos(s).slice(0,14);
+      if (d.length <= 11) return FBRE.cpfMask(d);
+      return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12);
+    },
+    // CPF/CNPJ opcional: vazio OK; se digitou, tem que ser CPF(11) ou CNPJ(14) válido
+    cpfCnpjOk: s => {
+      const d = FBRE.soDigitos(s);
+      if (d.length === 0) return true;
+      if (d.length === 11) return FBRE.cpfValido(d);
+      if (d.length === 14) return FBRE.cnpjValido(d);
+      return false;
+    },
   };
 </script>
 @stack('scripts')

@@ -154,8 +154,10 @@
           </div>
           <div class="grid grid-cols-2 gap-2">
             <input name="{{ $k }}_telefone" class="field" inputmode="tel" placeholder="WhatsApp" maxlength="16" x-model="telefone" @input="telefone = FBRE.foneMask($event.target.value)" value="{{ old($k.'_telefone') }}">
-            <input name="{{ $k }}_documento" class="field" inputmode="numeric" placeholder="CPF / CNPJ" x-model="documento" value="{{ old($k.'_documento') }}">
+            <input name="{{ $k }}_documento" class="field" inputmode="numeric" placeholder="CPF / CNPJ" maxlength="18" x-model="documento" @input="documento = FBRE.docMask($event.target.value)" value="{{ old($k.'_documento') }}">
           </div>
+          <p class="text-xs text-red-500 mt-0.5" x-show="documento && !FBRE.cpfCnpjOk(documento)" x-cloak>CPF/CNPJ inválido.</p>
+          <p class="text-xs text-emerald-600 mt-0.5" x-show="documento && FBRE.cpfCnpjOk(documento)" x-cloak x-text="FBRE.soDigitos(documento).length===14 ? 'CNPJ válido ✓' : 'CPF válido ✓'"></p>
         </div>
         @endforeach
       </div>
@@ -491,6 +493,9 @@ function novaEncomenda(){
     async salvar(ev){
       const form = ev.target;
       if (!form.reportValidity()) return;
+      const rd = form.remetente_documento?.value || '', dd = form.destinatario_documento?.value || '';
+      if (rd.trim() && !FBRE.cpfCnpjOk(rd)) { alert('CPF/CNPJ do remetente inválido. Corrija ou deixe em branco.'); form.remetente_documento.focus(); return; }
+      if (dd.trim() && !FBRE.cpfCnpjOk(dd)) { alert('CPF/CNPJ do destinatário inválido. Corrija ou deixe em branco.'); form.destinatario_documento.focus(); return; }
       this.salvando = true;
       const dados = this.montarDados(form);
       dados.pix_cobranca_id = this.pixCobId || null;
@@ -518,7 +523,7 @@ function pessoa(nome='', telefone=''){
     nome:nome, telefone:telefone, documento:'', lista:[], aberto:false,
     async buscar(){ if(this.nome.length<2){this.lista=[];return;}
       const r=await fetch(`{{ route('pessoas.buscar') }}?q=${encodeURIComponent(this.nome)}`); this.lista=await r.json(); this.aberto=true; },
-    escolher(p){ this.nome=p.nome; this.telefone=FBRE.foneMask(p.telefone||''); this.documento=p.documento||''; this.aberto=false; this.lista=[]; }
+    escolher(p){ this.nome=p.nome; this.telefone=FBRE.foneMask(p.telefone||''); this.documento=FBRE.docMask(p.documento||''); this.aberto=false; this.lista=[]; }
   }
 }
 </script>
