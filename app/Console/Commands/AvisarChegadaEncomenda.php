@@ -69,6 +69,7 @@ class AvisarChegadaEncomenda extends Command
                     ."Sua encomenda Nº {$enc->numeroFormatado()} está chegando em {$enc->destino} em cerca de 1 hora"
                     .($hora !== '' ? " (previsão {$hora})" : '').".\n"
                     .$barcoLinha
+                    .'Acompanhe o barco no mapa: https://rionave.com/?b='.rawurlencode($barcoNome)."\n"
                     ."{$empresaNome}\n"
                     ."\n⚠️ Mensagem automática, não responda por aqui.";
 

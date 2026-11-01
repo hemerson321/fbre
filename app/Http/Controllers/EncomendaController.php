@@ -333,9 +333,11 @@ class EncomendaController extends Controller
         $barco = $encomenda->embarcacao?->nome;
         $empresaNome = $empresa?->nomeExibicao() ?? 'FBRE';
         $barcoLinha = ($barco && mb_strtolower(trim($barco)) !== mb_strtolower(trim($empresaNome))) ? "Barco: {$barco}.\n" : '';
+        $linkLinha = ($barco && $encomenda->embarcacao?->rastreio_url) ? 'Acompanhe o barco no mapa: https://rionave.com/?b='.rawurlencode($barco)."\n" : '';
         $msg = "📦 Olá, {$encomenda->destinatario_nome}!\n"
             ."Sua encomenda Nº {$encomenda->numeroFormatado()} está chegando em {$encomenda->destino}.\n"
             .$barcoLinha
+            .$linkLinha
             ."{$empresaNome}\n"
             ."\n⚠️ Mensagem automática, não responda por aqui.";
 
