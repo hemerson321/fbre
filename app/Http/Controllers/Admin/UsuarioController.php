@@ -122,9 +122,12 @@ class UsuarioController extends Controller
             'transportes_permitidos.*' => 'integer',
             'embarcacao_principal_id' => 'nullable|integer',
         ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
-        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'ativo', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo', 'perm_financeiro', 'perm_pix_manual', 'perm_pix_dinamico', 'checkin_auto', 'is_revendedor'] as $b) {
+        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo', 'perm_financeiro', 'perm_pix_manual', 'perm_pix_dinamico', 'checkin_auto', 'is_revendedor'] as $b) {
             $data[$b] = $request->boolean($b);
         }
+        // ativo: no cadastro o usuário já nasce ativo (o form só mostra o checkbox na edição);
+        // na edição respeita o checkbox "Usuário ativo".
+        $data['ativo'] = $u ? $request->boolean('ativo') : true;
         // listas vazias viram null (= tudo liberado)
         foreach (['loc_permitidas', 'setores_permitidos', 'transportes_permitidos'] as $lista) {
             $data[$lista] = ! empty($data[$lista]) ? array_values($data[$lista]) : null;
