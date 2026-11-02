@@ -68,9 +68,7 @@ class ImpressaoController extends Controller
 
     public function enfileirar(Encomenda $encomenda, string $tipo, ?int $estacaoId = null): ?FilaImpressao
     {
-        $estacao = $estacaoId
-            ? Estacao::where('ativo', true)->find($estacaoId)
-            : Estacao::where('ativo', true)->orderByDesc('visto_em')->first();
+        $estacao = Estacao::resolver($estacaoId);
 
         if (! $estacao) return null;
 

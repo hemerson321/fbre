@@ -33,6 +33,7 @@ class UsuarioController extends Controller
             'setores' => Setor::orderBy('nome')->pluck('nome'),
             'cidades' => Rota::todasLocalidades(),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
+            'estacoes' => \App\Models\Estacao::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'revendedores' => User::where('is_revendedor', true)->where('id', '!=', $u->id)->orderBy('name')->get(['id', 'name']),
             'empresa' => \App\Support\Tenant::empresa(),
         ];
@@ -121,6 +122,7 @@ class UsuarioController extends Controller
             'transportes_permitidos' => 'nullable|array',
             'transportes_permitidos.*' => 'integer',
             'embarcacao_principal_id' => 'nullable|integer',
+            'estacao_id' => 'nullable|integer|exists:estacoes,id',
         ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
         foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo', 'perm_financeiro', 'perm_pix_manual', 'perm_pix_dinamico', 'checkin_auto', 'is_revendedor'] as $b) {
             $data[$b] = $request->boolean($b);
@@ -133,6 +135,7 @@ class UsuarioController extends Controller
             $data[$lista] = ! empty($data[$lista]) ? array_values($data[$lista]) : null;
         }
         $data['embarcacao_principal_id'] = $data['embarcacao_principal_id'] ?? null;
+        $data['estacao_id'] = ($data['estacao_id'] ?? null) ?: null;
         $data['prefixo'] = strtoupper($data['prefixo']);
         // revendedor: se é revendedor, não tem pai; vendedor tem pai (revendedor_id)
         $data['revendedor_id'] = ($data['is_revendedor'] ?? false) ? null : (($data['revendedor_id'] ?? null) ?: null);

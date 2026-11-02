@@ -73,7 +73,7 @@ class CobrancaController extends Controller
     {
         abort_unless($cobranca->empresa_id === Tenant::id(), 404);
         $empresa = Tenant::empresa();
-        $estacao = Estacao::where('ativo', true)->orderByDesc('visto_em')->first();
+        $estacao = Estacao::resolver();
         if (! $estacao) {
             return response()->json(['ok' => false, 'erro' => 'Nenhuma estação de impressão ativa.']);
         }
