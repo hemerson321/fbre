@@ -599,46 +599,52 @@ class PassagemController extends Controller
 
         $passagem->loadMissing(['passageiros', 'embarcacao', 'operador']);
         $empresa = Tenant::empresa();
-        $emp = [
-            'nome' => $empresa->nomeExibicao(),
-            'cnpj' => $empresa->cnpj,
-            'telefone' => $empresa->telefone,
-            'whatsapp' => $empresa->whatsapp,
-            'rodape' => $empresa->rodape_comprovante,
-        ];
         $pax = $passagem->passageiros->values();
         $tot = $pax->count();
         $checkin = route('checkin', $passagem);
+        $brl = fn ($v) => \App\Support\Recibo::brl($v);
         $n = 0;
 
         foreach ($pax as $i => $pz) {
+            // o LAYOUT do bilhete vive aqui (servidor). O agente só executa as linhas.
+            $doc = new \App\Support\Recibo;
+            $doc->txt(mb_strtoupper($empresa->nomeExibicao()), 'c', true, 2);
+            if ($empresa->cnpj) $doc->txt('CNPJ '.$empresa->cnpj, 'c');
+            $doc->linha();
+            $doc->txt('PASSAGEM No '.$passagem->numeroFormatado(), 'c', true, 2);
+            $doc->txt('Bilhete '.($i + 1).'/'.$tot.'  '.$passagem->created_at->format('d/m/Y H:i'), 'c');
+            if ($passagem->operador?->name) $doc->txt('Op: '.$passagem->operador->name, 'c');
+            $doc->linha();
+            $doc->txt(mb_strtoupper($pz->nome ?: 'PASSAGEIRO'), 'c', true, 2);
+            $sub = trim((string) $pz->tipo);
+            if ($pz->poltrona) $sub .= ' - Poltrona '.$pz->poltrona;
+            if ($pz->documento) $sub .= ' - Doc '.$pz->documento;
+            if ($sub !== '') $doc->txt(trim($sub, ' -'), 'c');
+            $doc->linha();
+            $doc->txt('ORIGEM  >  DESTINO', 'c');
+            $doc->txt($passagem->origem.'  >  '.$passagem->destino, 'c', true);
+            if ($passagem->data_viagem) $doc->lr('VIAGEM', $passagem->data_viagem->format('d/m/Y'));
+            if ($passagem->embarcacao?->nome) $doc->lr('BARCO', $passagem->embarcacao->nome);
+            $doc->linha();
+            $doc->lr('Transporte', $brl($pz->valor_passagem));
+            $adic = (float) (($pz->valor_alimentacao ?? 0) + ($pz->valor_taxa ?? 0));
+            if ($adic > 0) $doc->lr('Alim.+Adic.', $brl($adic));
+            $doc->lr('TOTAL', $brl($pz->valor_total), true);
+            if ((float) $passagem->devido > 0.009) $doc->txt('PASSAGEM COM VALOR EM ABERTO', 'c', true);
+            $doc->linha();
+            $doc->qr($checkin, 8);
+            $doc->txt('CHECK-IN - apresente no embarque', 'c');
+            if ($empresa->rodape_comprovante) { $doc->linha(); $doc->txt($empresa->rodape_comprovante, 'c'); }
+            $doc->feed(4)->cortar();
+
             \App\Models\FilaImpressao::create([
                 'estacao_id' => $estacao->id,
                 'encomenda_id' => null,
-                'tipo' => 'passagem',
+                'tipo' => 'generico',
                 'dados' => [
-                    'empresa' => $emp,
-                    'passagem' => [
-                        'numero' => $passagem->numeroFormatado(),
-                        'data' => $passagem->created_at->format('d/m/Y H:i'),
-                        'operador' => $passagem->operador?->name,
-                        'origem' => $passagem->origem,
-                        'destino' => $passagem->destino,
-                        'viagem' => $passagem->data_viagem?->format('d/m/Y'),
-                        'embarcacao' => $passagem->embarcacao?->nome,
-                        'bilhete' => ($i + 1).'/'.$tot,
-                        'devido' => (float) $passagem->devido,
-                        'checkin' => $checkin,
-                    ],
-                    'passageiro' => [
-                        'nome' => $pz->nome,
-                        'tipo' => $pz->tipo,
-                        'documento' => $pz->documento,
-                        'poltrona' => $pz->poltrona,
-                        'transporte' => (float) $pz->valor_passagem,
-                        'adicional' => (float) (($pz->valor_alimentacao ?? 0) + ($pz->valor_taxa ?? 0)),
-                        'total' => (float) $pz->valor_total,
-                    ],
+                    'linhas' => $doc->toArray(),
+                    'impressora' => 'comprovante',
+                    'ref' => $passagem->numeroFormatado().' ('.($i + 1).'/'.$tot.')',
                 ],
             ]);
             $n++;

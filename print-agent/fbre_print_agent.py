@@ -283,6 +283,30 @@ def montar_passagem(d, col):
     return p.bytes()
 
 
+def montar_generico(d, col):
+    # o servidor manda as linhas prontas; o agente so executa.
+    # novos tipos de impresso = so codigo online, sem atualizar o agente.
+    p = EscPos(col)
+    for ln in d.get("linhas", []):
+        op = ln.get("op")
+        if op == "txt":
+            p.txt(ln.get("t", ""), ln.get("align", "l"), bool(ln.get("bold", False)), int(ln.get("size", 1) or 1))
+        elif op == "lr":
+            p.lr(ln.get("l", ""), ln.get("r", ""), bool(ln.get("bold", False)))
+        elif op == "col2":
+            p.col2(ln.get("l", ""), ln.get("r", ""), bool(ln.get("bold", False)))
+        elif op == "linha":
+            p.linha(ln.get("ch", "-") or "-")
+        elif op == "qr":
+            if ln.get("data"): p.qr(ln["data"], int(ln.get("size", 8) or 8))
+        elif op == "feed":
+            p.feed(int(ln.get("n", 3) or 3))
+        elif op == "cut":
+            p.cortar()
+        # op desconhecido: ignora (compatibilidade pra frente)
+    return p.bytes()
+
+
 # ---------------------------------------------------------------- saída
 def enviar(cfg_sec, dados: bytes):
     tipo = cfg_sec.get("tipo", "windows")
@@ -377,9 +401,13 @@ def loop(parar: threading.Event):
                         raw = montar_pix(dados, col); enviar(cfg["impressora_comprovante"], raw)
                     elif job["tipo"] == "passagem":
                         raw = montar_passagem(dados, col); enviar(cfg["impressora_comprovante"], raw)
+                    elif job["tipo"] == "generico":
+                        imp = (dados.get("impressora") or "comprovante")
+                        sec = cfg["impressora_etiqueta"] if imp == "etiqueta" else cfg["impressora_comprovante"]
+                        raw = montar_generico(dados, col); enviar(sec, raw)
                     else:
                         raise RuntimeError("tipo não suportado: " + job["tipo"])
-                    num = (dados.get("encomenda") or {}).get("numero", "") or (dados.get("passagem") or {}).get("numero", "") or (dados.get("pix") and brl(dados["pix"].get("valor",0))) or ""
+                    num = (dados.get("encomenda") or {}).get("numero", "") or (dados.get("passagem") or {}).get("numero", "") or dados.get("ref", "") or (dados.get("pix") and brl(dados["pix"].get("valor",0))) or ""
                     api.done(job["id"]); log(f"Impresso {job['tipo']} #{num}")
                 except Exception as ex:
                     log(f"Erro no job {job['id']}: {ex}")
