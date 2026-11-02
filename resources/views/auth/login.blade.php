@@ -2,7 +2,7 @@
   $cor1 = $empresa?->cor_primaria ?? '#0b1a33';
   $cor2 = $empresa?->cor_secundaria ?? '#00a8e8';
   $logo = $empresa?->logo ? '/'.$empresa->logo : '/img/logo-geratec.png';
-  $nome = $empresa?->nomeExibicao() ?? 'FBRE';
+  $nome = $empresa?->nomeExibicao() ?? 'GERATEC';
 @endphp
 <!doctype html>
 <html lang="pt-BR">
@@ -49,7 +49,7 @@
 
     <p class="text-center text-white/40 text-[11px] mt-6">
       @if($empresa && ! config('fbre.single'))<a href="/login" class="hover:text-white/70">Entrar em outra empresa</a> · @endif
-      FBRE · GERATEC Soluções
+      <a href="https://geratec.com.br/" target="_blank" rel="noopener" class="hover:text-white/70">GERATEC</a>
     </p>
   </div>
 </body>

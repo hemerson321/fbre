@@ -28,7 +28,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <meta name="theme-color" content="{{ $headerCor }}">
-<title>@yield('titulo', 'FBRE') · {{ $empresa?->nomeExibicao() ?? 'FBRE' }}</title>
+<title>@yield('titulo', 'GERATEC') · {{ $empresa?->nomeExibicao() ?? 'GERATEC' }}</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="{{ $empresa?->logo ? '/'.$empresa->logo : '/img/icon.png' }}">
 <link rel="apple-touch-icon" href="{{ $empresa?->logo ? '/'.$empresa->logo : '/img/icon.png' }}">
@@ -183,7 +183,7 @@ document.addEventListener('alpine:init', () => {
         <img src="/{{ $empresa->logo }}" alt="" class="h-9 w-9 rounded-lg object-cover bg-white/90 p-0.5 shrink-0">
       @endif
       <div class="min-w-0">
-        <div class="font-bold leading-tight truncate">{{ $empresa?->nomeExibicao() ?? 'FBRE' }}</div>
+        <div class="font-bold leading-tight truncate">{{ $empresa?->nomeExibicao() ?? 'GERATEC' }}</div>
         <div class="text-[11px] opacity-70 leading-tight truncate">{{ $u->name }} · {{ $u->setor ?: 'Operador' }}</div>
       </div>
     </a>
@@ -281,7 +281,7 @@ document.addEventListener('alpine:init', () => {
   @endif
   @yield('conteudo')
   {{-- versão do sistema (atualiza a cada deploy — serve pra conferir se a atualização entrou) --}}
-  <div class="no-print text-center text-[10px] text-slate-400 py-4 mb-20 lg:mb-2 select-all">FBRE · {{ \App\Support\Versao::ATUAL }}</div>
+  <div class="no-print text-center text-[10px] text-slate-400 py-4 mb-20 lg:mb-2"><a href="https://geratec.com.br/" target="_blank" rel="noopener" class="hover:underline">GERATEC</a> · <span class="select-all">{{ \App\Support\Versao::ATUAL }}</span></div>
 </main>
 
 {{-- ===== BARRA INFERIOR (mobile / POS) ===== --}}
