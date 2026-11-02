@@ -255,7 +255,11 @@
         try{ const t=localStorage.getItem('fbre_transporte'); if(t)this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{try{if(v)localStorage.setItem('fbre_origem',v)}catch(e){}});
         this.$watch('embarcacaoSel', v=>{try{if(v)localStorage.setItem('fbre_transporte',v)}catch(e){}});
-        window._fretePessoas={rem:this.rem,dest:this.dest}; this.resolverLinha(); },
+        window._fretePessoas={rem:this.rem,dest:this.dest}; this.resolverLinha();
+        // À vista fecha o total automático; parcial só no "A receber".
+        this.$watch('forma', ()=>this.ajustarAvista());
+        this.$watch('total', ()=>this.ajustarAvista()); },
+      ajustarAvista(){ if(this.forma==='avista'){ this.pag.dinheiro = +Math.max(this.total - this.pagoSemDinheiro, 0).toFixed(2); } },
       calcValor(){ if(!this.valorManual){ this.valor = Math.round((Number(this.peso)||0)*(Number(this.precoKilo)||0)*100)/100; } },
       // viagem (igual passagem/encomenda)
       isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
@@ -352,6 +356,7 @@
         if(this.salvando) return;
         if(!this.rem.nome.trim()||!this.dest.nome.trim()){ alert('Informe remetente e destinatário.'); return; }
         if(!this.itens.filter(i=>(i.descricao||'').trim()).length){ alert('Adicione ao menos um item.'); return; }
+        if(this.forma==='avista' && this.devido > 0.009){ alert('À vista precisa fechar o valor total. Para deixar saldo em aberto, use "A receber".'); return; }
         this.salvando=true;
         const dados=this.montarDados();
         try{ const r=await FBREOffline.salvarModulo('frete', dados);

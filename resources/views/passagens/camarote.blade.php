@@ -24,7 +24,7 @@
 @endpush
 @section('conteudo')
 @php $emp=\App\Support\Tenant::empresa(); $corMod=(bool)($emp?->config('cores_por_modulo', true) ?? true); @endphp
-<form method="post" action="{{ route('passagens.camarote.store') }}" x-data="vendaCamarote()" x-init="boot()" @submit="prep()"
+<form method="post" action="{{ route('passagens.camarote.store') }}" x-data="vendaCamarote()" x-init="boot()" @submit="prep($event)"
       class="mx-auto max-w-[1440px] space-y-2"
       style="--cor1:{{ $corMod ? '#7c3aed' : ($emp?->cor_primaria ?? '#0b1a33') }};--cor2:{{ $corMod ? '#a78bfa' : ($emp?->cor_secundaria ?? '#00a8e8') }}">
 @csrf
@@ -389,8 +389,12 @@ function vendaCamarote(){
       return out;
     },
     escolherDia(iso){ this.dataViagem=iso; this.viagemLabel=this.rotuloData(iso); this.calAberto=false; },
-    boot(){ if(this.camId){ this.trocaCam(); } this.resolveData(); },
-    prep(){ if(!this.comprador.nome && this.ocupantes[0]) this.comprador.nome=this.ocupantes[0].nome; },
+    boot(){ if(this.camId){ this.trocaCam(); } this.resolveData(); this.$watch('forma', ()=>this.ajustarAvista()); },
+    ajustarAvista(){ if(this.forma==='avista'){ this.pag.dinheiro = +Math.max(this.total()-this.pagoSemDinheiro(),0).toFixed(2); } },
+    prep(ev){
+      if(this.forma==='avista' && this.devido()>0.009){ if(ev) ev.preventDefault(); alert('À vista precisa fechar o valor total. Para deixar saldo em aberto, use "A receber".'); return; }
+      if(!this.comprador.nome && this.ocupantes[0]) this.comprador.nome=this.ocupantes[0].nome;
+    },
   };
 }
 </script>

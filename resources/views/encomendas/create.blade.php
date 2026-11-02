@@ -354,8 +354,12 @@ function novaEncomenda(){
       // transporte: lembra a última escolha
       try { const t = localStorage.getItem('fbre_transporte'); if (t) this.embarcacaoSel = t; } catch(e){}
       this.$watch('embarcacaoSel', v => { try { if (v) localStorage.setItem('fbre_transporte', v); } catch(e){} });
+      // À vista fecha o total automático; parcial só no "A receber".
+      this.$watch('forma', () => this.ajustarAvista());
+      this.$watch('total', () => this.ajustarAvista());
       this.resolverLinha();
     },
+    ajustarAvista(){ if(this.forma==='avista'){ this.pag.dinheiro = +Math.max(this.total - this.pagoSemDinheiro, 0).toFixed(2); } },
     addItem(d,v){ this.itens.push({id:Date.now()+Math.random(), descricao:d, quantidade:1, valor:v, obs:''}); this.recalcVolumes(); },
     get volumesAuto(){ const n = this.itens.reduce((s,i)=>s+(Number(i.quantidade)||0),0); return Math.max(1, Math.round(n)); },
     recalcVolumes(){ if (!this.volumesManual) this.volumes = this.volumesAuto; },
@@ -496,6 +500,7 @@ function novaEncomenda(){
       const rd = form.remetente_documento?.value || '', dd = form.destinatario_documento?.value || '';
       if (rd.trim() && !FBRE.cpfCnpjOk(rd)) { alert('CPF/CNPJ do remetente inválido. Corrija ou deixe em branco.'); form.remetente_documento.focus(); return; }
       if (dd.trim() && !FBRE.cpfCnpjOk(dd)) { alert('CPF/CNPJ do destinatário inválido. Corrija ou deixe em branco.'); form.destinatario_documento.focus(); return; }
+      if (this.forma==='avista' && this.devido > 0.009) { alert('À vista precisa fechar o valor total. Para deixar saldo em aberto, use "A receber".'); return; }
       this.salvando = true;
       const dados = this.montarDados(form);
       dados.pix_cobranca_id = this.pixCobId || null;
