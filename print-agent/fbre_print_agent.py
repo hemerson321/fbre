@@ -247,6 +247,42 @@ def montar_pix(d, col):
     return p.bytes()
 
 
+def montar_passagem(d, col):
+    # um bilhete por passageiro (o servidor manda um job por passageiro)
+    pg, pax, emp = d["passagem"], d["passageiro"], d.get("empresa", {})
+    p = EscPos(col)
+    if emp.get("nome"): p.txt(emp["nome"].upper(), "c", True, 2)
+    if emp.get("cnpj"): p.txt(f"CNPJ {emp['cnpj']}", "c")
+    p.linha()
+    p.txt(f"PASSAGEM No {pg['numero']}", "c", True, 2)
+    tops = " ".join(x for x in [pg.get("bilhete") and f"Bilhete {pg['bilhete']}", pg.get("data")] if x)
+    if tops: p.txt(tops, "c")
+    if pg.get("operador"): p.txt("Op: " + pg["operador"], "c")
+    p.linha()
+    p.txt((pax.get("nome") or "PASSAGEIRO").upper(), "c", True, 2)
+    sub = pax.get("tipo") or ""
+    if pax.get("poltrona"): sub += f" - Poltrona {pax['poltrona']}"
+    if pax.get("documento"): sub += f" - Doc {pax['documento']}"
+    if sub.strip(): p.txt(sub.strip(" -"), "c")
+    p.linha()
+    p.txt("ORIGEM  >  DESTINO", "c")
+    p.txt(f"{pg['origem']}  >  {pg['destino']}", "c", True)
+    if pg.get("viagem"): p.lr("VIAGEM", pg["viagem"])
+    if pg.get("embarcacao"): p.lr("BARCO", pg["embarcacao"])
+    p.linha()
+    p.lr("Transporte", brl(pax.get("transporte", 0)))
+    if pax.get("adicional", 0) > 0: p.lr("Alim.+Adic.", brl(pax["adicional"]))
+    p.lr("TOTAL", brl(pax.get("total", 0)), True)
+    if pg.get("devido", 0) > 0.009: p.txt("PASSAGEM COM VALOR EM ABERTO", "c", True)
+    p.linha()
+    if pg.get("checkin"):
+        p.qr(pg["checkin"], 8)
+        p.txt("CHECK-IN - apresente no embarque", "c")
+    if emp.get("rodape"): p.linha(); p.txt(emp["rodape"], "c")
+    p.feed(4); p.cortar()
+    return p.bytes()
+
+
 # ---------------------------------------------------------------- saída
 def enviar(cfg_sec, dados: bytes):
     tipo = cfg_sec.get("tipo", "windows")
@@ -339,9 +375,11 @@ def loop(parar: threading.Event):
                         raw = montar_etiqueta(dados, col); enviar(cfg["impressora_etiqueta"], raw)
                     elif job["tipo"] == "pix":
                         raw = montar_pix(dados, col); enviar(cfg["impressora_comprovante"], raw)
+                    elif job["tipo"] == "passagem":
+                        raw = montar_passagem(dados, col); enviar(cfg["impressora_comprovante"], raw)
                     else:
                         raise RuntimeError("tipo não suportado: " + job["tipo"])
-                    num = (dados.get("encomenda") or {}).get("numero", "") or (dados.get("pix") and brl(dados["pix"].get("valor",0))) or ""
+                    num = (dados.get("encomenda") or {}).get("numero", "") or (dados.get("passagem") or {}).get("numero", "") or (dados.get("pix") and brl(dados["pix"].get("valor",0))) or ""
                     api.done(job["id"]); log(f"Impresso {job['tipo']} #{num}")
                 except Exception as ex:
                     log(f"Erro no job {job['id']}: {ex}")

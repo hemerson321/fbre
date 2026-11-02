@@ -122,6 +122,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/meus-filiados/salvar/{filiado?}', [AcertoController::class, 'salvarFiliado'])->name('filiados.salvar');
     Route::post('/meus-filiados/{filiado}/baixa', [AcertoController::class, 'baixaFiliado'])->name('filiados.baixa');
     Route::get('/passagens/{passagem}/comprovante', [\App\Http\Controllers\PassagemController::class, 'comprovante'])->name('passagens.comprovante')->middleware('perm:passagem.ver');
+    Route::post('/passagens/{passagem}/imprimir-direto', [\App\Http\Controllers\PassagemController::class, 'imprimirDireto'])->name('passagens.imprimir-direto')->middleware('perm:passagem.ver');
     Route::get('/passagens/{passagem}', [\App\Http\Controllers\PassagemController::class, 'show'])->name('passagens.show')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/pagar', [\App\Http\Controllers\PassagemController::class, 'pagar'])->name('passagens.pagar')->middleware('perm:passagem.baixa');
     Route::get('/imprimir/pix-passagem/{passagem}', [\App\Http\Controllers\CobrancaController::class, 'pixPassagem'])->name('imprimir.pix.passagem')->middleware('perm:passagem.baixa');

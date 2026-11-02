@@ -70,6 +70,7 @@
   <button onclick="FBRE.abrirImpressao('{{ route('imprimir.pix.passagem',$p) }}')" class="btn btn-accent w-full">💠 Gerar PIX dinâmico (imprimir QR)</button>
   @endif
 
+  <button type="button" onclick="imprimirDiretoPassagem(this)" class="btn btn-ghost w-full">⚡ Imprimir direto (1 por passageiro)</button>
   <div class="flex gap-2">
     <button onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost flex-1">🖨 Comprovante</button>
     <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost flex-1">📄 PDF / Enviar</button>
@@ -88,6 +89,19 @@
 </div>
 @endsection
 @push('scripts')
+<script>
+function imprimirDiretoPassagem(btn){
+  const txt = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Enviando pra impressora...';
+  fetch('{{ route('passagens.imprimir-direto',$p) }}', {method:'POST', headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d && d.ok){ btn.textContent = '✅ Enviado ('+d.jobs+' bilhete'+(d.jobs>1?'s':'')+')'; setTimeout(()=>{btn.textContent=txt; btn.disabled=false;}, 2500); }
+      else { alert((d && d.erro) || 'Não consegui enviar pra impressora.'); btn.textContent=txt; btn.disabled=false; }
+    })
+    .catch(()=>{ alert('Falha de conexão ao enviar pra impressora.'); btn.textContent=txt; btn.disabled=false; });
+}
+</script>
 @if(request('print'))
 <script>document.addEventListener('DOMContentLoaded',()=>FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}'));</script>
 @endif

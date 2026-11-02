@@ -588,6 +588,69 @@ class PassagemController extends Controller
         return redirect()->route('checkin', $p);
     }
 
+    /** Impressão direta pelo Agente (token): um bilhete por passageiro, mesmo em compra junta. */
+    public function imprimirDireto(Passagem $passagem)
+    {
+        abort_unless($passagem->empresa_id === Tenant::id(), 404);
+        $estacao = \App\Models\Estacao::resolver();
+        if (! $estacao) {
+            return response()->json(['ok' => false, 'erro' => 'Nenhuma estação de impressão ativa.'], 422);
+        }
+
+        $passagem->loadMissing(['passageiros', 'embarcacao', 'operador']);
+        $empresa = Tenant::empresa();
+        $emp = [
+            'nome' => $empresa->nomeExibicao(),
+            'cnpj' => $empresa->cnpj,
+            'telefone' => $empresa->telefone,
+            'whatsapp' => $empresa->whatsapp,
+            'rodape' => $empresa->rodape_comprovante,
+        ];
+        $pax = $passagem->passageiros->values();
+        $tot = $pax->count();
+        $checkin = route('checkin', $passagem);
+        $n = 0;
+
+        foreach ($pax as $i => $pz) {
+            \App\Models\FilaImpressao::create([
+                'estacao_id' => $estacao->id,
+                'encomenda_id' => null,
+                'tipo' => 'passagem',
+                'dados' => [
+                    'empresa' => $emp,
+                    'passagem' => [
+                        'numero' => $passagem->numeroFormatado(),
+                        'data' => $passagem->created_at->format('d/m/Y H:i'),
+                        'operador' => $passagem->operador?->name,
+                        'origem' => $passagem->origem,
+                        'destino' => $passagem->destino,
+                        'viagem' => $passagem->data_viagem?->format('d/m/Y'),
+                        'embarcacao' => $passagem->embarcacao?->nome,
+                        'bilhete' => ($i + 1).'/'.$tot,
+                        'devido' => (float) $passagem->devido,
+                        'checkin' => $checkin,
+                    ],
+                    'passageiro' => [
+                        'nome' => $pz->nome,
+                        'tipo' => $pz->tipo,
+                        'documento' => $pz->documento,
+                        'poltrona' => $pz->poltrona,
+                        'transporte' => (float) $pz->valor_passagem,
+                        'adicional' => (float) (($pz->valor_alimentacao ?? 0) + ($pz->valor_taxa ?? 0)),
+                        'total' => (float) $pz->valor_total,
+                    ],
+                ],
+            ]);
+            $n++;
+        }
+
+        if ($n === 0) {
+            return response()->json(['ok' => false, 'erro' => 'Passagem sem passageiros para imprimir.'], 422);
+        }
+
+        return ['ok' => true, 'jobs' => $n, 'estacao' => $estacao->nome];
+    }
+
     public function comprovante(Passagem $passagem)
     {
         abort_unless($passagem->empresa_id === Tenant::id(), 404);
