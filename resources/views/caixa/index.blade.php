@@ -54,11 +54,6 @@
     <select name="viagem_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">— período —</option>
       @foreach($viagens as $v)<option value="{{ $v->id }}" @selected($viagemId==$v->id)>{{ $v->numeroFormatado() }} · {{ $v->nome }}</option>@endforeach</select></div>
   @endif
-  @if($embarcacoes->count())
-  <div><label class="label">Transporte</label>
-    <select name="embarcacao_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
-      @foreach($embarcacoes as $b)<option value="{{ $b->id }}" @selected(($embarcacaoId ?? '')==$b->id)>{{ $b->nome }}</option>@endforeach</select></div>
-  @endif
 </x-periodo>
 @if($viagemId)<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Mostrando o caixa da viagem selecionada (o período acima é ignorado).</div>@endif
 
@@ -84,17 +79,6 @@
   @empty <tr><td colspan="7" class="p-6 text-center text-slate-400">Sem movimento no período.</td></tr> @endforelse
   </tbody></table>
 </div>
-
-@if($emAberto->sum() > 0.009)
-<div class="card overflow-hidden">
-  <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b flex items-center justify-between"><span>Em aberto (a receber) por operador</span><span class="text-amber-600">R$ {{ number_format($emAberto->sum(),2,',','.') }}</span></div>
-  <table class="w-full text-sm"><tbody class="divide-y">
-  @foreach($emAberto->sortDesc() as $uid=>$v)@if($v > 0.009)
-    <tr><td class="p-3 font-semibold">{{ $usuarios[$uid]->name ?? '—' }}</td><td class="p-3 text-right font-bold text-amber-600">R$ {{ number_format($v,2,',','.') }}</td></tr>
-  @endif @endforeach
-  </tbody></table>
-</div>
-@endif
 
 <div class="card overflow-hidden">
   <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Lançamentos</div>

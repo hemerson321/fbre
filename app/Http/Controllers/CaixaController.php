@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Embarcacao;
 use App\Models\Encomenda;
 use App\Models\Evento;
 use App\Models\Pagamento;
-use App\Models\Passagem;
 use App\Models\User;
 use App\Models\Viagem;
 use App\Models\AvulsoCategoria;
@@ -24,23 +22,10 @@ class CaixaController extends Controller
         $viagemId = $request->input('viagem_id');
         $modulo = $request->input('modulo');
         $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
-        $embarcacaoId = $request->input('embarcacao_id');
         $viagens = \App\Support\Tenant::empresa()->temRecurso('viagens')
             ? Viagem::orderByDesc('data_partida')->limit(60)->get() : collect();
-        $embarcacoes = Embarcacao::where('ativo', true)->orderBy('nome')->get(['id', 'nome']);
         // quando filtra por viagem, ignora o período (viagem é o recorte)
         $encIds = $viagemId ? Encomenda::where('viagem_id', $viagemId)->pluck('id') : null;
-
-        // Filtro por Transporte (embarcação): escopa os pagamentos pela fonte (encomenda/passagem).
-        $encEmb = $embarcacaoId ? Encomenda::where('embarcacao_id', $embarcacaoId)->pluck('id') : collect();
-        $pasEmb = $embarcacaoId ? Passagem::where('embarcacao_id', $embarcacaoId)->pluck('id') : collect();
-        $scopeEmb = function ($q) use ($embarcacaoId, $encEmb, $pasEmb) {
-            if (! $embarcacaoId) return;
-            $q->where(function ($w) use ($encEmb, $pasEmb) {
-                $w->where(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', $encEmb))
-                  ->orWhere(fn ($x) => $x->whereIn('modulo', ['passagem', 'camarote'])->whereIn('origem_id', $pasEmb));
-            });
-        };
 
         $base = Pagamento::where('estornado', false)
             ->where('meio', '!=', 'desconto')
@@ -49,7 +34,6 @@ class CaixaController extends Controller
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($modulo, fn ($q) => $q->where('modulo', $modulo))
             ->when($canal, fn ($q) => $this->filtrarCanal($q, $canal))
-            ->when($embarcacaoId, $scopeEmb)
             ->where('tipo_mov', '!=', 'saida');
 
         $canalSql = Pagamento::canalSql();
@@ -60,25 +44,6 @@ class CaixaController extends Controller
                 'meios' => $rows->pluck('valor', 'canal'),
             ]);
         $porModulo = (clone $base)->selectRaw('modulo, SUM(valor) valor, COUNT(*) qtd')->groupBy('modulo')->get()->keyBy('modulo');
-
-        // EM ABERTO (a receber) por operador: soma o "devido" das vendas do recorte.
-        $emAberto = collect();
-        $somarAberto = function ($query) use (&$emAberto) {
-            foreach ($query->where('devido', '>', 0.009)->groupBy('user_id')->selectRaw('user_id, SUM(devido) as v')->get() as $r) {
-                if ($r->user_id) $emAberto[$r->user_id] = round(($emAberto[$r->user_id] ?? 0) + (float) $r->v, 2);
-            }
-        };
-        if ((! $modulo || $modulo === 'passagem') && $encIds === null) {
-            $somarAberto(Passagem::whereBetween('created_at', [$inicio, $fim])->where('cancelada', false)
-                ->when($userId, fn ($q) => $q->where('user_id', $userId))
-                ->when($embarcacaoId, fn ($q) => $q->where('embarcacao_id', $embarcacaoId)));
-        }
-        if (! $modulo || $modulo === 'encomenda') {
-            $somarAberto(Encomenda::when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
-                ->when($encIds !== null, fn ($q) => $q->whereIn('id', $encIds))
-                ->when($userId, fn ($q) => $q->where('user_id', $userId))
-                ->when($embarcacaoId, fn ($q) => $q->where('embarcacao_id', $embarcacaoId)));
-        }
 
         $usuarios = User::where('empresa_id', auth()->user()->empresa_id)->orderBy('name')->get()->keyBy('id');
 
@@ -106,7 +71,7 @@ class CaixaController extends Controller
 
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'embarcacoes', 'embarcacaoId', 'emAberto'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas]);
     }
 
