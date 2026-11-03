@@ -80,7 +80,7 @@ function gerarPdf(){
   // altura da pagina = maior bilhete (px->mm) + folga, pra nao sobrar espaco vazio no PDF
   var _h=0; document.querySelectorAll('.ticket').forEach(function(el){ if(el.offsetHeight>_h) _h=el.offsetHeight; });
   var _mm=Math.ceil(_h/96*25.4)+8; if(_mm<70) _mm=70;
-  var opt={ margin:[2,2,2,2], filename:'passagem-{{ $p->numeroFormatado() }}.pdf', image:{type:'jpeg',quality:0.95}, html2canvas:{scale:2,useCORS:true}, jsPDF:{unit:'mm',format:[80,_mm],orientation:'portrait'}, pagebreak:{mode:['css','legacy']} };
+  var opt={ margin:0, filename:'passagem-{{ $p->numeroFormatado() }}.pdf', image:{type:'jpeg',quality:0.95}, html2canvas:{scale:2,useCORS:true}, jsPDF:{unit:'mm',format:[80,_mm],orientation:'portrait'}, pagebreak:{mode:['css']} };
   html2pdf().set(opt).from(document.body).toPdf().output('blob').then(async function(blob){
     if(bar) bar.style.display='block';
     try{

@@ -254,8 +254,14 @@ class PassagemController extends Controller
                     'documento' => $pax->documento,
                     'nacionalidade' => $pax->nacionalidade ?: 'Brasil',
                     'nascimento' => $pax->nascimento,
+                    'origem' => $p->origem,
                     'destino' => $p->destino,
+                    'data' => $p->data_viagem,
                     'numero' => $p->numeroFormatado(),
+                    'tipo' => $p->tipo === 'camarote' ? ('Camarote'.($p->camarote?->nome ? ' '.$p->camarote->nome : '')) : ($pax->papel ?: $pax->tipo),
+                    'poltrona' => $pax->poltrona,
+                    'checkin' => (bool) $pax->checkin,
+                    'embarcou' => (bool) $p->embarcou,
                     'camarote' => $p->tipo === 'camarote' ? ($p->camarote?->nome ?: 'Camarote') : null,
                 ]);
             }
