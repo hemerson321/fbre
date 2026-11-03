@@ -2,23 +2,27 @@
 @section('titulo','Nova passagem')
 @push('head')
 <style type="text/tailwindcss">
-  .sec { @apply rounded-2xl flex flex-col; background:#fff; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px -12px rgba(15,23,42,.18); }
-  .sec-h { @apply flex items-center gap-2.5 px-3.5 py-2 text-white rounded-t-2xl; background: linear-gradient(90deg, var(--cor1), color-mix(in srgb, var(--cor1) 70%, var(--cor2))); }
-  .sec-h .n { @apply inline-flex w-6 h-6 rounded-full items-center justify-center text-[12px] font-extrabold text-slate-900; background: var(--cor2); }
+  /* No celular: fundo suave pros cards "flutuarem" como app */
+  @media (max-width:1023px){ body{ background:#eef2f7; } }
+  .sec { @apply rounded-2xl flex flex-col overflow-hidden; background:#fff; box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 14px 34px -20px rgba(15,23,42,.38); }
+  .sec-h { @apply flex items-center gap-2.5 px-4 py-3 text-white; background: linear-gradient(100deg, var(--cor1), color-mix(in srgb, var(--cor1) 72%, black)); }
+  .sec-h .ic { @apply text-[15px] leading-none -ml-0.5 mr-0.5; }
+  .sec-h .n { @apply inline-flex w-6 h-6 rounded-full items-center justify-center text-[12px] font-extrabold text-slate-900 shadow-sm; background: var(--cor2); }
   .sec-h .t { @apply text-[13px] font-bold uppercase tracking-wide; }
-  .sec-b { @apply p-3 flex-1 flex flex-col gap-2.5; }
-  .field { @apply rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[15px] w-full transition; min-height: 44px; }
+  .sec-b { @apply p-3.5 flex-1 flex flex-col gap-3; }
+  .field { @apply rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-[15px] w-full transition; min-height: 46px; }
   .field:focus { @apply outline-none bg-white; border-color: var(--cor2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor2) 25%, transparent); }
   .lbl { @apply block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1; }
   .forma { @apply flex-1 rounded-xl border-2 py-2.5 text-[13px] font-bold text-center cursor-pointer transition text-slate-500 border-slate-200 bg-white; }
   .forma.on { background: var(--cor1); color:#fff; border-color: var(--cor1); }
-  .pax { @apply rounded-xl p-2.5 border; background:#fff; border-color:#e2e8f0; }
-  .pax:nth-child(even){ background:#f8fafc; }
-  .pessoa { @apply rounded-xl p-2.5 space-y-1.5 border; background: color-mix(in srgb, var(--cor2) 7%, white); border-color: color-mix(in srgb, var(--cor2) 30%, white); }
+  .pax { @apply rounded-xl p-3 border; background:#fff; border-color:#e8edf3; box-shadow:0 1px 2px rgba(15,23,42,.04); }
+  .pax:nth-child(even){ background:#fbfcfe; }
+  .pessoa { @apply rounded-xl p-3 space-y-2 border; background: color-mix(in srgb, var(--cor2) 7%, white); border-color: color-mix(in srgb, var(--cor2) 30%, white); }
   @media (min-width:1024px){
     .field{min-height:36px;font-size:14px;padding-top:.3rem;padding-bottom:.3rem}
     .sec-b{padding:.55rem .6rem;gap:.45rem}
     .sec-h{padding-top:.3rem;padding-bottom:.3rem}
+    .sec-h .ic{display:none}
     .lbl{margin-bottom:.1rem;font-size:10px}
     .forma{padding-top:.4rem;padding-bottom:.4rem}
   }
@@ -73,7 +77,7 @@
   {{-- COLUNA 1: rota + comprador --}}
   <div class="lg:col-span-3 space-y-2">
     <section class="sec shrink-0">
-      <div class="sec-h"><span class="n">1</span><span class="t">Rota</span></div>
+      <div class="sec-h"><span class="n">1</span><span class="ic">🗺️</span><span class="t">Rota</span></div>
       <div class="sec-b">
         <div class="grid grid-cols-2 gap-2">
           <div><label class="lbl">Origem</label>
@@ -104,7 +108,7 @@
     </section>
 
     <section class="sec shrink-0">
-      <div class="sec-h"><span class="n">2</span><span class="t">Comprador (opcional)</span></div>
+      <div class="sec-h"><span class="n">2</span><span class="ic">👤</span><span class="t">Comprador (opcional)</span></div>
       <div class="sec-b">
         <div class="pessoa" x-data="pessoaBusca()">
           <div class="relative">
@@ -130,7 +134,7 @@
   {{-- COLUNA 2: passageiros --}}
   <section class="sec lg:col-span-6">
     <div class="sec-h">
-      <span class="n">3</span><span class="t">Passageiros</span>
+      <span class="n">3</span><span class="ic">🎫</span><span class="t">Passageiros</span>
       <span class="ml-auto text-[13px] font-bold">(<span x-text="passageiros.length"></span>)</span>
       <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold" @click="addPax()">＋ passageiro</button>
       <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1" @click="abrirCaptura()">📷 Captura</button>
@@ -201,7 +205,7 @@
   {{-- COLUNA 3: pagamento --}}
   <div class="lg:col-span-3 space-y-2">
     <section class="sec shrink-0">
-      <div class="sec-h"><span class="n">4</span><span class="t">Pagamento</span></div>
+      <div class="sec-h"><span class="n">4</span><span class="ic">💳</span><span class="t">Pagamento</span></div>
       <div class="sec-b">
         <div class="flex gap-1.5">
           @foreach(\App\Models\Passagem::FORMAS as $k=>$l)
