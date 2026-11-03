@@ -320,8 +320,8 @@
   <div x-show="capturaAberta" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" @click.self="fecharCaptura()">
     <div class="bg-white rounded-2xl p-5 w-full max-w-sm text-center space-y-3">
       <div class="font-extrabold text-lg" style="color:var(--cor1)">📷 Captura por foto</div>
-      <p class="text-sm text-slate-500">No próprio celular: toque em <b>“Abrir no meu celular”</b>. Em outro aparelho: aponte a câmera pro QR. Tire a foto do RG — o passageiro é preenchido aqui sozinho.</p>
-      <a :href="capturaUrl" x-show="capturaUrl" x-cloak target="_blank" rel="noopener" class="block w-full rounded-xl text-white font-extrabold py-3 text-base active:scale-[.98] transition" style="background:var(--cor1)">📲 Abrir no meu celular</a>
+      <p class="text-sm text-slate-500">Neste aparelho: toque em <b>“Abrir”</b>. Em outro: aponte a câmera pro QR. Tire a foto do documento — o passageiro é preenchido aqui sozinho.</p>
+      <a :href="capturaUrl" x-show="capturaUrl" x-cloak target="_blank" rel="noopener" class="block w-full rounded-xl text-white font-extrabold py-3 text-base active:scale-[.98] transition" style="background:var(--cor1)">📷 Abrir</a>
       <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">ou escaneie o QR de outro aparelho</div>
       <div id="qr-captura" class="inline-block p-3 bg-white rounded-xl border border-slate-200 mx-auto"></div>
       <div class="text-sm font-semibold" style="color:var(--cor1)" x-text="capturaStatus"></div>
