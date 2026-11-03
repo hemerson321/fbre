@@ -26,7 +26,7 @@
 @endpush
 @section('conteudo')
 <form method="post" action="{{ route('passagens.store') }}" x-data="novaPassagem()" @submit.prevent="salvar($event)"
-      class="mx-auto max-w-[1440px] space-y-2" @php $emp=\App\Support\Tenant::empresa(); $corMod=(bool)($emp?->config('cores_por_modulo', true) ?? true); @endphp style="--cor1:{{ $corMod ? '#059669' : ($emp?->cor_primaria ?? '#0b1a33') }};--cor2:{{ $corMod ? '#34d399' : ($emp?->cor_secundaria ?? '#00a8e8') }}">
+      class="mx-auto max-w-[1440px] space-y-2 pb-28 lg:pb-0" @php $emp=\App\Support\Tenant::empresa(); $corMod=(bool)($emp?->config('cores_por_modulo', true) ?? true); @endphp style="--cor1:{{ $corMod ? '#059669' : ($emp?->cor_primaria ?? '#0b1a33') }};--cor2:{{ $corMod ? '#34d399' : ($emp?->cor_secundaria ?? '#00a8e8') }}">
 @csrf
 <div class="flex items-center justify-between gap-3 flex-wrap">
   <div class="flex items-center gap-x-4 gap-y-1 flex-wrap">
@@ -251,9 +251,11 @@
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="navegador" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
-        <button x-show="total>0 || forma!=='avista'" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || !passageiros.length">
-          <span x-show="!salvando">💾 Salvar passagem</span><span x-show="salvando">Salvando…</span>
-        </button>
+        <div class="hidden lg:block">
+          <button x-show="total>0 || forma!=='avista'" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || !passageiros.length">
+            <span x-show="!salvando">💾 Salvar passagem</span><span x-show="salvando">Salvando…</span>
+          </button>
+        </div>
         <p class="text-[11px] text-slate-400 text-center" x-show="!passageiros.length">Adicione ao menos um passageiro.</p>
       </div>
     </section>
@@ -340,6 +342,30 @@
       <button type="button" x-show="pixQr" @click="copiarPix()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
       <button type="button" @click="cancelarPix()" class="btn btn-ghost btn-sm w-full text-slate-500">Cancelar</button>
     </div>
+  </div>
+
+  {{-- BARRA FIXA (celular): resumo + confirmar, sempre visível --}}
+  <div class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-4 pt-2.5 shadow-[0_-10px_30px_-12px_rgba(15,23,42,.3)]" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
+    <div class="flex items-end justify-between mb-2">
+      <div>
+        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-none">Valor final</div>
+        <div class="text-[26px] font-extrabold tracking-tight leading-tight" style="color:var(--cor1)" x-text="FBRE.moeda(total)"></div>
+      </div>
+      <div class="text-right pb-1">
+        <template x-if="devido>0.009">
+          <div><span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Devido</span>
+            <div class="text-sm font-extrabold text-amber-600 leading-none" x-text="FBRE.moeda(devido)"></div></div>
+        </template>
+        <template x-if="total>0 && devido<=0.009">
+          <span class="text-[12px] font-bold rounded-lg px-2 py-1 bg-emerald-100 text-emerald-700">Pago ✓</span>
+        </template>
+        <div class="text-[11px] text-slate-400 font-semibold" x-text="passageiros.length+(passageiros.length===1?' passageiro':' passageiros')"></div>
+      </div>
+    </div>
+    <button type="submit" x-show="total>0 || forma!=='avista'" class="w-full rounded-2xl py-3.5 text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:opacity-40" style="background:var(--cor1)" :disabled="salvando || !passageiros.length">
+      <span x-show="!salvando">✅ Confirmar venda</span><span x-show="salvando">Salvando…</span>
+    </button>
+    <p class="text-[11px] text-slate-400 text-center mt-1" x-show="!passageiros.length">Adicione ao menos um passageiro.</p>
   </div>
 </form>
 @endsection
