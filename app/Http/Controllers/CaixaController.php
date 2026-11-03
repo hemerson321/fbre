@@ -45,7 +45,7 @@ class CaixaController extends Controller
             ]);
         $porModulo = (clone $base)->selectRaw('modulo, SUM(valor) valor, COUNT(*) qtd')->groupBy('modulo')->get()->keyBy('modulo');
 
-        $usuarios = User::where('empresa_id', auth()->user()->empresa_id)->orderBy('name')->get()->keyBy('id');
+        $usuarios = User::where('empresa_id', Tenant::id())->orderBy('name')->get()->keyBy('id');
 
         $descontos = Pagamento::where('estornado', false)->where('meio', 'desconto')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
