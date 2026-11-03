@@ -615,11 +615,12 @@ class PassagemController extends Controller
             $doc->txt('Bilhete '.($i + 1).'/'.$tot.'  '.$passagem->created_at->format('d/m/Y H:i'), 'c');
             if ($passagem->operador?->name) $doc->txt('Op: '.$passagem->operador->name, 'c');
             $doc->linha();
-            $doc->txt(mb_strtoupper($pz->nome ?: 'PASSAGEIRO'), 'c', true, 2);
-            $sub = trim((string) $pz->tipo);
-            if ($pz->poltrona) $sub .= ' - Poltrona '.$pz->poltrona;
-            if ($pz->documento) $sub .= ' - Doc '.$pz->documento;
-            if ($sub !== '') $doc->txt(trim($sub, ' -'), 'c');
+            $doc->txt(mb_strtoupper($pz->nome ?: 'PASSAGEIRO'), 'c', true, 1);
+            if (trim((string) $pz->tipo) !== '') $doc->txt(mb_strtoupper(trim((string) $pz->tipo)), 'c', true, 2);
+            $sub = [];
+            if ($pz->poltrona) $sub[] = 'Poltrona '.$pz->poltrona;
+            if ($pz->documento) $sub[] = 'Doc '.$pz->documento;
+            if ($sub) $doc->txt(implode('  -  ', $sub), 'c');
             $doc->linha();
             $doc->txt('ORIGEM  >  DESTINO', 'c');
             $doc->txt($passagem->origem.'  >  '.$passagem->destino, 'c', true);

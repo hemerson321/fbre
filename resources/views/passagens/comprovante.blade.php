@@ -35,35 +35,36 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.q
   </div>
   @endforeach
 @else
-  {{-- PASSAGEM comum: 1 comprovante com todos os passageiros --}}
+  {{-- PASSAGEM comum: 1 bilhete por passageiro (mesmo formato da impressão direta) --}}
+  @php $tot=$p->passageiros->count(); @endphp
+  @foreach($p->passageiros as $i => $pax)
   <div class="ticket">
     <div class="c b lg">{{ strtoupper($e?->nomeExibicao() ?? 'FBRE') }}</div>
     @if($e?->cnpj)<div class="c sm">CNPJ {{ $e->cnpj }}</div>@endif<hr>
     <div class="c b xl">PASSAGEM {{ $p->numeroFormatado() }}</div>
-    <div class="c sm">{{ $p->created_at->format('d/m/Y H:i') }} · {{ $p->operador?->name }}</div><hr>
+    <div class="c sm">Bilhete {{ $i+1 }}/{{ $tot }} · {{ $p->created_at->format('d/m/Y H:i') }} · {{ $p->operador?->name }}</div><hr>
+    <div class="pax-nome">{{ strtoupper($pax->nome ?: 'PASSAGEIRO') }}</div>
+    <div class="c lg b">{{ strtoupper($pax->papel ?: $pax->tipo) }}</div>
+    @php $extra=[]; if($pax->poltrona) $extra[]='Poltrona '.$pax->poltrona; if($pax->documento) $extra[]='Doc '.$pax->documento; @endphp
+    @if($extra)<div class="c sm">{{ implode(' · ', $extra) }}</div>@endif
+    <hr>
     <table>
       <tr><td class="b">ORIGEM</td><td class="r">{{ $p->origem }}</td></tr>
       <tr><td class="b">DESTINO</td><td class="r">{{ $p->destino }}</td></tr>
       @if($p->data_viagem)<tr><td class="b">VIAGEM</td><td class="r">{{ $p->data_viagem->format('d/m/Y') }}</td></tr>@endif
       @if($p->embarcacao)<tr><td class="b">BARCO</td><td class="r">{{ $p->embarcacao->nome }}</td></tr>@endif
     </table><hr>
-    <div class="b">PASSAGEIROS</div>
     <table>
-      @foreach($p->passageiros as $pax)
-      <tr><td>{{ $pax->nome }}<div class="sm">{{ $pax->papel ? ucfirst($pax->papel) : $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div>@if($pax->valor_integral > $pax->valor_total + 0.009)<div class="sm">Preço normal {{ number_format((float) $pax->valor_integral,2,',','.') }} · Pago {{ number_format((float) $pax->valor_total,2,',','.') }}</div>@endif<div class="sm">Transp. {{ number_format((float) $pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. {{ number_format((float) $pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div></td><td class="r b">{{ number_format((float) $pax->valor_total,2,',','.') }}</td></tr>
-      @endforeach
-    </table><hr>
-    <table>
-      <tr><td>Tarifa de Transporte</td><td class="r">R$ {{ number_format((float) $p->subtotal,2,',','.') }}</td></tr>
-      <tr><td>Alimentação + Adicional</td><td class="r">R$ {{ number_format((float) $p->alimentacao_total + $p->taxa_total,2,',','.') }}</td></tr>
-      @if($p->desconto>0)<tr><td>Desconto</td><td class="r">-{{ number_format((float) $p->desconto,2,',','.') }}</td></tr>@endif
-      <tr class="lg"><td class="b">TOTAL</td><td class="r b">R$ {{ number_format((float) $p->total,2,',','.') }}</td></tr>
-      <tr><td>Pago</td><td class="r">R$ {{ number_format((float) $p->pago,2,',','.') }}</td></tr>
-      <tr><td class="b">DEVIDO</td><td class="r b">R$ {{ number_format((float) $p->devido,2,',','.') }}</td></tr>
+      @if($pax->valor_integral > $pax->valor_total + 0.009)<tr><td class="sm">Preço normal</td><td class="r sm">{{ number_format((float) $pax->valor_integral,2,',','.') }}</td></tr>@endif
+      <tr><td>Transporte</td><td class="r">R$ {{ number_format((float) $pax->valor_passagem,2,',','.') }}</td></tr>
+      @if(($pax->valor_alimentacao + $pax->valor_taxa)>0)<tr><td>Alimentação + Adicional</td><td class="r">R$ {{ number_format((float) $pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}</td></tr>@endif
+      <tr class="lg"><td class="b">TOTAL</td><td class="r b">R$ {{ number_format((float) $pax->valor_total,2,',','.') }}</td></tr>
     </table>
+    @if($p->devido>0.009)<div class="c sm b">PASSAGEM COM VALOR EM ABERTO</div>@endif
     @if($e?->rodape_comprovante)<hr><div class="c sm">{{ $e->rodape_comprovante }}</div>@endif
     <hr><div class="c"><div class="qrp" data-url="{{ route('checkin',$p) }}"></div><div class="sm b">CHECK-IN</div><div class="sm">Apresente no embarque</div></div><br>
   </div>
+  @endforeach
 @endif
 
 <div id="pdfbar" class="c" style="display:none"><br><button onclick="gerarPdf()" style="padding:8px 14px;font-size:13px;border:1px solid #000;border-radius:8px;background:#fff">📄 Baixar / Compartilhar PDF</button></div>
@@ -76,7 +77,10 @@ function qrImprimir(){
 }
 function gerarPdf(){
   var bar=document.getElementById('pdfbar'); if(bar) bar.style.display='none';
-  var opt={ margin:[2,2,2,2], filename:'passagem-{{ $p->numeroFormatado() }}.pdf', image:{type:'jpeg',quality:0.95}, html2canvas:{scale:2,useCORS:true}, jsPDF:{unit:'mm',format:[80,260],orientation:'portrait'} };
+  // altura da pagina = maior bilhete (px->mm) + folga, pra nao sobrar espaco vazio no PDF
+  var _h=0; document.querySelectorAll('.ticket').forEach(function(el){ if(el.offsetHeight>_h) _h=el.offsetHeight; });
+  var _mm=Math.ceil(_h/96*25.4)+8; if(_mm<70) _mm=70;
+  var opt={ margin:[2,2,2,2], filename:'passagem-{{ $p->numeroFormatado() }}.pdf', image:{type:'jpeg',quality:0.95}, html2canvas:{scale:2,useCORS:true}, jsPDF:{unit:'mm',format:[80,_mm],orientation:'portrait'}, pagebreak:{mode:['css','legacy']} };
   html2pdf().set(opt).from(document.body).toPdf().output('blob').then(async function(blob){
     if(bar) bar.style.display='block';
     try{
