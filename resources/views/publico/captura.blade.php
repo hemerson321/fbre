@@ -60,7 +60,7 @@
 
     <button type="button" @click="enviar()" :disabled="!foto || enviando"
       class="w-full rounded-xl text-white font-extrabold py-4 text-lg disabled:opacity-40" style="background:var(--cor2)">
-      <span x-text="enviando ? 'Enviando e lendo...' : 'Enviar pro computador'"></span>
+      <span x-text="enviando ? 'Enviando e lendo...' : 'Enviar pra venda'"></span>
     </button>
 
     <template x-if="msg">
@@ -68,7 +68,7 @@
     </template>
   </div>
 
-  <p class="text-xs text-slate-400 text-center">A foto vai pro computador do operador e os dados são preenchidos automaticamente. Dá pra enviar vários passageiros seguidos.</p>
+  <p class="text-xs text-slate-400 text-center">A foto vai pra tela de venda do operador (computador, celular ou maquineta) e os dados são preenchidos automaticamente. Dá pra enviar vários passageiros seguidos.</p>
 </div>
 
 <script>
