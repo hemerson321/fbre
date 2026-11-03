@@ -64,8 +64,8 @@ class CaixaController extends Controller
         // EM ABERTO (a receber) por operador: soma o "devido" das vendas do recorte.
         $emAberto = collect();
         $somarAberto = function ($query) use (&$emAberto) {
-            foreach ($query->where('devido', '>', 0.009)->selectRaw('user_id, SUM(devido) v')->groupBy('user_id')->pluck('v', 'user_id') as $uid => $v) {
-                if ($uid) $emAberto[$uid] = round(($emAberto[$uid] ?? 0) + (float) $v, 2);
+            foreach ($query->where('devido', '>', 0.009)->groupBy('user_id')->selectRaw('user_id, SUM(devido) as v')->get() as $r) {
+                if ($r->user_id) $emAberto[$r->user_id] = round(($emAberto[$r->user_id] ?? 0) + (float) $r->v, 2);
             }
         };
         if ((! $modulo || $modulo === 'passagem') && $encIds === null) {
