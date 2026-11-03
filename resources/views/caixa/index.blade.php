@@ -44,8 +44,11 @@
   @endif
   <div><label class="label">Módulo</label>
     <select name="modulo" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos os módulos</option>
-      @php $_ma = \App\Support\Tenant::empresa()?->config('modulos_ativos'); $_modOn = fn ($m) => empty($_ma) || in_array($m, (array) $_ma, true); @endphp
-      @foreach(\App\Support\Modulos::LISTA as $mk=>$mv)@if($_modOn($mk) && auth()->user()->temModulo($mk))<option value="{{ $mk }}" @selected(($modulo ?? '')===$mk)>{{ $mv[1] }} {{ $mv[0] }}</option>@endif@endforeach</select></div>
+      @php
+        $_ma = \App\Support\Tenant::empresa()?->config('modulos_ativos');
+        $_mods = collect(\App\Support\Modulos::LISTA)->filter(fn ($mv, $mk) => (empty($_ma) || in_array($mk, (array) $_ma, true)) && auth()->user()->temModulo($mk));
+      @endphp
+      @foreach($_mods as $mk=>$mv)<option value="{{ $mk }}" @selected(($modulo ?? '')===$mk)>{{ $mv[1] }} {{ $mv[0] }}</option>@endforeach</select></div>
   <div><label class="label">Forma</label>
     <select name="canal" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as formas</option>
       @foreach(\App\Models\Pagamento::CANAIS as $ck=>$cv)<option value="{{ $ck }}" @selected(($canal ?? '')===$ck)>{{ $cv }}</option>@endforeach</select></div>
