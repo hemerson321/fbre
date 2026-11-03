@@ -48,6 +48,7 @@
 <div class="border-t pt-3 mt-1" x-data="{ts:{{ $empresa->config('usa_taxa_embarque', false) ? 'true':'false' }}, al:{{ $empresa->config('usa_alimentacao', true) ? 'true':'false' }}}">
   <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">Componentes da passagem (opcional)</h2>
   <p class="text-xs text-slate-500 mb-2">Ligue só o que você cobra. Ficam separados da tarifa no cadastro e no comprovante.</p>
+  <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="comprador_passagem" value="1" @checked($empresa->config('comprador_passagem', true)) class="w-5 h-5 rounded"> <span class="font-semibold">Mostrar “Comprador” na venda (quem está comprando)</span></label>
   <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="usa_taxa_embarque" value="1" x-model="ts" class="w-5 h-5 rounded"> <span class="font-semibold">Cobrar taxa de embarque</span></label>
   <div x-show="ts" x-cloak class="pl-7 pb-2"><label class="label !text-xs">Nome que aparece</label><input name="label_taxa_embarque" class="input !min-h-[38px]" value="{{ $empresa->config('label_taxa_embarque') ?: 'Taxa de embarque' }}" maxlength="40"><p class="text-xs text-slate-400 mt-1">Defina os valores em <b>Cadastros gerais → Taxa de embarque</b>.</p></div>
   <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="usa_alimentacao" value="1" x-model="al" class="w-5 h-5 rounded"> <span class="font-semibold">Cobrar alimentação</span></label>

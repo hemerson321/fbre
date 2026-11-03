@@ -107,6 +107,7 @@
       </div>
     </section>
 
+    @if($mostraComprador ?? true)
     <section class="sec shrink-0">
       <div class="sec-h"><span class="n">2</span><span class="ic">👤</span><span class="t">Comprador (opcional)</span></div>
       <div class="sec-b">
@@ -129,6 +130,7 @@
         </div>
       </div>
     </section>
+    @endif
   </div>
 
   {{-- COLUNA 2: passageiros --}}
@@ -318,10 +320,12 @@
   <div x-show="capturaAberta" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" @click.self="fecharCaptura()">
     <div class="bg-white rounded-2xl p-5 w-full max-w-sm text-center space-y-3">
       <div class="font-extrabold text-lg" style="color:var(--cor1)">📷 Captura por foto</div>
-      <p class="text-sm text-slate-500">Abra a câmera do celular e aponte pro QR. Tire a foto do RG — o passageiro é preenchido aqui sozinho.</p>
+      <p class="text-sm text-slate-500">No próprio celular: toque em <b>“Abrir no meu celular”</b>. Em outro aparelho: aponte a câmera pro QR. Tire a foto do RG — o passageiro é preenchido aqui sozinho.</p>
+      <a :href="capturaUrl" x-show="capturaUrl" x-cloak target="_blank" rel="noopener" class="block w-full rounded-xl text-white font-extrabold py-3 text-base active:scale-[.98] transition" style="background:var(--cor1)">📲 Abrir no meu celular</a>
+      <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">ou escaneie o QR de outro aparelho</div>
       <div id="qr-captura" class="inline-block p-3 bg-white rounded-xl border border-slate-200 mx-auto"></div>
       <div class="text-sm font-semibold" style="color:var(--cor1)" x-text="capturaStatus"></div>
-      <div class="text-[11px] text-slate-400 break-all" x-show="capturaUrl" x-text="capturaUrl"></div>
+      <a :href="capturaUrl" x-show="capturaUrl" x-cloak target="_blank" rel="noopener" class="block text-[11px] text-slate-400 break-all underline" x-text="capturaUrl"></a>
       <button type="button" @click="fecharCaptura()" class="w-full rounded-xl border-2 font-bold py-2.5" style="border-color:var(--cor1);color:var(--cor1)">Fechar</button>
     </div>
   </div>
@@ -417,10 +421,9 @@
         if(this.tipos.length && this.normalId==null) this.normalId=this.tipos[0].id;
         try{ const o=localStorage.getItem('fbre_origem'); if(o) this.origemSel=o; }catch(e){}
         if(!this.origemSel && this.cidades.length) this.origemSel=this.cidades[0];
-        try{ const dd=localStorage.getItem('fbre_destino'); if(dd) this.destinoSel=dd; }catch(e){}
+        // destino NÃO é lembrado: muda a cada venda, começa sempre em branco
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
-        this.$watch('destinoSel', v=>{ try{ if(v) localStorage.setItem('fbre_destino',v); else localStorage.removeItem('fbre_destino');}catch(e){} });
         this.$watch('embarcacaoSel', ()=>this.mudarEmbarcacao());
         this.addPax();
         this.mudarEmbarcacao();

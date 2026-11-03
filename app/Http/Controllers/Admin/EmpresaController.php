@@ -41,6 +41,7 @@ class EmpresaController extends Controller
             'wa_conexao' => 'nullable|array',
             'wa_conexao.*' => 'nullable|integer',
             'cores_por_modulo' => 'nullable|boolean',
+            'comprador_passagem' => 'nullable|boolean',
             'ia_provider' => 'nullable|in:claude,openai',
             'ia_token' => 'nullable|string|max:255',
             'ia_modelo' => 'nullable|string|max:80',
@@ -52,6 +53,7 @@ class EmpresaController extends Controller
         $config = $empresa->config ?? [];
         $config['usa_taxa_embarque'] = $request->boolean('usa_taxa_embarque');
         $config['usa_alimentacao'] = $request->boolean('usa_alimentacao');
+        $config['comprador_passagem'] = $request->boolean('comprador_passagem');
         $config['label_taxa_embarque'] = trim((string) $request->input('label_taxa_embarque')) ?: 'Taxa de embarque';
         $config['label_alimentacao'] = trim((string) $request->input('label_alimentacao')) ?: 'Alimentação';
         foreach (array_keys(\App\Support\Modulos::LISTA) as $mk) {
@@ -70,7 +72,7 @@ class EmpresaController extends Controller
         $config['ia_token'] = trim((string) $request->input('ia_token')) ?: null;
         $config['ia_modelo'] = trim((string) $request->input('ia_modelo')) ?: null;
         $data['config'] = $config;
-        unset($data['label_taxa_embarque'], $data['label_alimentacao'], $data['wa_conexao'], $data['cores_por_modulo'], $data['ia_provider'], $data['ia_token'], $data['ia_modelo'], $data['cores_modulo']);
+        unset($data['label_taxa_embarque'], $data['label_alimentacao'], $data['wa_conexao'], $data['cores_por_modulo'], $data['comprador_passagem'], $data['ia_provider'], $data['ia_token'], $data['ia_modelo'], $data['cores_modulo']);
 
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');

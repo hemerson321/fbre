@@ -107,6 +107,7 @@ class PassagemController extends Controller
             'checkinAuto' => (bool) $u->checkin_auto,
             'podeParcial' => $u->podeParcial(),
             'podeRetroativo' => $u->podeRetroativo(),
+            'mostraComprador' => (bool) Tenant::empresa()->config('comprador_passagem', true),
             'usaTaxaEmbarque' => (bool) Tenant::empresa()->config('usa_taxa_embarque', false),
             'usaAlimentacao' => (bool) Tenant::empresa()->config('usa_alimentacao', true),
             'labelTaxa' => Tenant::empresa()->config('label_taxa_embarque') ?: 'Taxa de embarque',
