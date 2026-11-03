@@ -3,7 +3,7 @@
 @push('head')
 <style type="text/tailwindcss">
   /* No celular: fundo suave pros cards "flutuarem" como app */
-  @media (max-width:1023px){ body{ background:#eef2f7; } }
+  @media (max-width:1023px){ body{ background:#eef2f7; overflow-x:hidden; } }
   .sec { @apply rounded-2xl flex flex-col overflow-hidden; background:#fff; box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 14px 34px -20px rgba(15,23,42,.38); }
   .sec-h { @apply flex items-center gap-2.5 px-4 py-3 text-white; background: linear-gradient(100deg, var(--cor1), color-mix(in srgb, var(--cor1) 72%, black)); }
   .sec-h .ic { @apply text-[15px] leading-none -ml-0.5 mr-0.5; }
@@ -36,7 +36,7 @@
   <div class="flex items-center gap-x-4 gap-y-1 flex-wrap">
     <h1 class="text-lg font-extrabold" style="color:var(--cor1)">🎫 Nova passagem</h1>
     <span class="text-[11px] font-bold rounded-lg px-2 py-0.5 text-white" style="background:var(--cor1)">Nº <span x-text="numeroPreview"></span></span>
-    <div x-show="viagemData" x-cloak class="flex items-center gap-1.5 relative">
+    <div x-show="viagemData" x-cloak class="flex flex-wrap items-center gap-1.5 relative max-w-full min-w-0">
       <span class="lbl !mb-0 whitespace-nowrap">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></span>
       <button type="button" @click="abrirCal()" class="field !min-h-0 !py-1 text-sm font-semibold whitespace-nowrap" style="width:auto">
         📅 <span x-text="viagemLabel || 'escolher'"></span>
@@ -135,9 +135,9 @@
   <section class="sec lg:col-span-6">
     <div class="sec-h">
       <span class="n">3</span><span class="ic">🎫</span><span class="t">Passageiros</span>
-      <span class="ml-auto text-[13px] font-bold">(<span x-text="passageiros.length"></span>)</span>
-      <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold" @click="addPax()">＋ passageiro</button>
-      <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1" @click="abrirCaptura()">📷 Captura</button>
+      <span class="ml-auto text-[13px] font-bold shrink-0">(<span x-text="passageiros.length"></span>)</span>
+      <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold shrink-0 whitespace-nowrap" @click="addPax()">＋<span class="hidden sm:inline"> passageiro</span></button>
+      <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1 shrink-0 whitespace-nowrap" @click="abrirCaptura()">📷<span class="hidden sm:inline"> Captura</span></button>
     </div>
     <div class="sec-b">
       <div x-show="capturaAviso" x-cloak class="mb-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold px-3 py-2" x-text="capturaAviso"></div>
