@@ -180,7 +180,7 @@ document.addEventListener('alpine:init', () => {
     </button>
     <a href="{{ route('inicio') }}" class="flex items-center gap-3 min-w-0 flex-1 hover:opacity-90" title="Início">
       @if($empresa?->logo)
-        <img src="/{{ $empresa->logo }}" alt="" class="h-9 w-9 rounded-lg object-cover bg-white/90 p-0.5 shrink-0">
+        <img onerror="this.style.display='none'" src="/{{ $empresa->logo }}" alt="" class="h-9 w-9 rounded-lg object-cover bg-white/90 p-0.5 shrink-0">
       @endif
       <div class="min-w-0">
         <div class="font-bold leading-tight truncate">{{ $empresa?->nomeExibicao() ?? 'GERATEC' }}</div>

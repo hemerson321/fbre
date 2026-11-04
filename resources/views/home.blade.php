@@ -62,7 +62,7 @@
   {{-- Boas-vindas --}}
   <div class="rounded-2xl p-5 text-white shadow-md" style="background: linear-gradient(120deg, var(--cor1), color-mix(in srgb, var(--cor1) 65%, var(--cor2)))">
     <div class="flex items-center gap-4">
-      @if($empresa?->logo)<img src="/{{ $empresa->logo }}" alt="" class="h-14 w-14 rounded-xl object-cover bg-white/90 p-1 shrink-0">@endif
+      @if($empresa?->logo)<img onerror="this.style.display='none'" src="/{{ $empresa->logo }}" alt="" class="h-14 w-14 rounded-xl object-cover bg-white/90 p-1 shrink-0">@endif
       <div class="min-w-0">
         <div class="text-sm opacity-80">{{ $saud }},</div>
         <h1 class="text-2xl font-extrabold leading-tight truncate">{{ $primeiro }} 👋</h1>
