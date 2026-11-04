@@ -112,7 +112,7 @@ class User extends Authenticatable
     public function financeiro(): bool    { return (bool) $this->perm_financeiro; }
     public function podePixManual(): bool    { return $this->admin || ($this->perm_pix_manual ?? true); }
     public function podePixDinamico(): bool  { return $this->admin || ($this->perm_pix_dinamico ?? true); }
-    public function podeVerCaixa(): bool  { return $this->admin || $this->perm_caixa || $this->financeiro(); }
+    public function podeVerCaixa(): bool  { return ! $this->is_revendedor && ($this->admin || $this->perm_caixa || $this->financeiro()); }
     public function podeFiltrar(): bool   { return $this->admin || $this->perm_filtro; }
     public function podeRelatorio(): bool { return $this->admin || $this->perm_relatorio || $this->financeiro(); }
     public function podeImprimir(): bool  { return $this->permite('encomenda', 'imprimir'); }
