@@ -762,7 +762,7 @@
       montarDados(){
         return {
           origem:this.origemSel, destino:this.destinoSel,
-          embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, viagem_data:this.viagemData||null,
+          embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
@@ -821,7 +821,7 @@
       <div class="c b lg">${esc((e.nome||'FBRE').toUpperCase())}</div>${e.cnpj?`<div class="c sm">CNPJ ${esc(e.cnpj)}</div>`:''}<hr>
       <div class="c b xl">PASSAGEM ${esc(d.numero_completo)}</div>
       <div class="c sm">${new Date().toLocaleString('pt-BR')}</div><hr>
-      <table><tr><td class="b">ORIGEM</td><td class="r">${esc(d.origem)}</td></tr><tr><td class="b">DESTINO</td><td class="r">${esc(d.destino)}</td></tr>${d.viagem_data?`<tr><td class="b">VIAGEM</td><td class="r">${esc(d.viagem_data)}</td></tr>`:''}</table><hr>
+      <table><tr><td class="b">ORIGEM</td><td class="r">${esc(d.origem)}</td></tr><tr><td class="b">DESTINO</td><td class="r">${esc(d.destino)}</td></tr>${d.data_viagem?`<tr><td class="b">VIAGEM</td><td class="r">${esc(d.data_viagem)}</td></tr>`:''}</table><hr>
       <div class="b">PASSAGEIROS</div><table>${linhas}</table><hr>
       <table><tr><td>Tarifa de Transporte</td><td class="r">${moeda(subT)}</td></tr><tr><td>Alimentação + Adicional</td><td class="r">${moeda(subA+subX)}</td></tr>${desc>0?`<tr><td>Desconto</td><td class="r">-${moeda(desc)}</td></tr>`:''}<tr class="lg"><td class="b">TOTAL</td><td class="r b">${moeda(total)}</td></tr><tr><td>Pago</td><td class="r">${moeda(pago)}</td></tr><tr><td class="b">DEVIDO</td><td class="r b">${moeda(devido)}</td></tr></table>
       ${e.rodape?`<hr><div class="c sm">${esc(e.rodape)}</div>`:''}<hr><div class="c sm">Apresente esta passagem no embarque.</div><br><br></body></html>`;
