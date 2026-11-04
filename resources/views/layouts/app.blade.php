@@ -239,13 +239,13 @@ document.addEventListener('alpine:init', () => {
 </header>
 
 {{-- ===== GAVETA (mobile) ===== --}}
-<aside class="no-print fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-2xl transform transition lg:hidden"
+<aside class="no-print fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-2xl transform transition lg:hidden flex flex-col"
        :class="menu ? 'translate-x-0' : '-translate-x-full'" x-cloak>
   <div class="flex items-center justify-between p-4 border-b">
     <span class="font-bold">Menu</span>
     <button @click="menu=false" class="p-2">✕</button>
   </div>
-  <nav class="p-3 space-y-3 text-sm">
+  <nav class="p-3 space-y-3 text-sm flex-1 overflow-y-auto overscroll-contain pb-8">
     <a href="{{ route('inicio') }}" @if($ativo(route('inicio'))) style="border-left:4px solid var(--cor1)" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo(route('inicio')) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
       <span class="text-lg w-6 text-center">👋</span>Bem Vindo
     </a>
