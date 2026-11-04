@@ -67,14 +67,14 @@
             </select>
           </div>
         </div>
-        <div><label class="lbl">Transporte</label>
-          <select class="field" x-model="embarcacaoSel"><option value="">—</option>
-            @foreach($embarcacoes as $b)<option value="{{ $b->id }}">{{ $b->nome }}{{ $b->usa_poltrona?' 🪑':'' }}</option>@endforeach
-          </select></div>
-        <div class="mt-1">
-        <div x-show="viagemData" x-cloak class="flex flex-wrap items-center gap-1.5 relative max-w-full min-w-0">
-          <span class="lbl !mb-0 whitespace-nowrap">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></span>
-          <button type="button" @click="abrirCal()" class="field !min-h-0 !py-1 text-sm font-semibold whitespace-nowrap" style="width:auto">
+        <div class="grid grid-cols-2 gap-2 items-start">
+          <div><label class="lbl">Transporte</label>
+            <select class="field" x-model="embarcacaoSel"><option value="">—</option>
+              @foreach($embarcacoes as $b)<option value="{{ $b->id }}">{{ $b->nome }}{{ $b->usa_poltrona?' 🪑':'' }}</option>@endforeach
+            </select></div>
+        <div x-show="viagemData" x-cloak class="relative max-w-full min-w-0">
+          <label class="lbl">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></label>
+          <button type="button" @click="abrirCal()" class="field !min-h-0 !py-1 text-sm font-semibold whitespace-nowrap w-full text-left">
             📅 <span x-text="viagemLabel || 'escolher'"></span>
           </button>
           <div x-show="calAberto" x-cloak @click.outside="calAberto=false" class="absolute top-full left-0 mt-1 z-40 bg-white rounded-xl border shadow-xl p-2 w-64 text-slate-700">
