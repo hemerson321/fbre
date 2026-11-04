@@ -30,7 +30,7 @@
     </template>
   </div>
   <datalist id="locais">@foreach($localidades as $l)<option value="{{ $l }}">@endforeach</datalist>
-  <p class="text-xs text-slate-400 mt-1">A 1ª parada define quando a viagem começa (dia da semana da partida).</p>
+  <p class="text-xs text-slate-400 mt-1">A 1ª parada define quando a viagem começa. Os trechos e preços valem no <b>sentido das paradas</b> (de cima para baixo). Para a volta, cadastre outra rota na ordem inversa.</p>
 </div>
 <div x-show="trechos.length" x-cloak class="border-t pt-3">
   <label class="label">Preços das passagens (por trecho e por tipo)</label>
@@ -195,7 +195,7 @@ function rotaForm(paradas, precos, tipos, flags){
     get trechos(){
       const cidades = this.paradas.map(p=>(p.localidade||'').trim()).filter(Boolean);
       const vistos = new Set(); const out=[];
-      for(let i=0;i<cidades.length;i++){ for(let j=0;j<cidades.length;j++){ if(i===j) continue;
+      for(let i=0;i<cidades.length;i++){ for(let j=i+1;j<cidades.length;j++){
         const o=cidades[i], d=cidades[j]; if(o.toLowerCase()===d.toLowerCase()) continue;
         const key=(o+'|'+d).toLowerCase(); if(vistos.has(key)) continue; vistos.add(key);
         out.push({o,d,key});

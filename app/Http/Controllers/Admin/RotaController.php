@@ -110,8 +110,11 @@ class RotaController extends Controller
             $c = trim($p['localidade'] ?? '');
             if ($c !== '') $cidades[] = $c;
         }
-        foreach ($cidades as $o) {
-            foreach ($cidades as $d) {
+        $n = count($cidades);
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = $i + 1; $j < $n; $j++) {
+                $o = $cidades[$i];
+                $d = $cidades[$j];
                 if (mb_strtolower($o) === mb_strtolower($d)) continue;
                 TrechoPreco::where('empresa_id', $empresaId)
                     ->whereRaw('LOWER(origem)=?', [mb_strtolower($o)])
