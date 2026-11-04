@@ -72,30 +72,36 @@
             <select class="field" x-model="embarcacaoSel"><option value="">—</option>
               @foreach($embarcacoes as $b)<option value="{{ $b->id }}">{{ $b->nome }}{{ $b->usa_poltrona?' 🪑':'' }}</option>@endforeach
             </select></div>
-        <div x-show="viagemData" x-cloak class="relative max-w-full min-w-0">
-          <label class="lbl">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></label>
-          <button type="button" @click="abrirCal()" class="field !min-h-0 !py-1 text-sm font-semibold whitespace-nowrap w-full text-left">
-            📅 <span x-text="viagemLabel || 'escolher'"></span>
+        <div x-show="viagemData" x-cloak class="max-w-full min-w-0">
+          <label class="lbl">Viagem</label>
+          <button type="button" @click="abrirCal()" class="field !min-h-0 !py-1 text-sm font-semibold w-full text-left truncate">
+            📅 <span x-text="(viagemLabel||'escolher').replace(/ \d{1,2}:\d{2}.*$/,'')"></span>
           </button>
-          <div x-show="calAberto" x-cloak @click.outside="calAberto=false" class="absolute top-full left-0 mt-1 z-40 bg-white rounded-xl border shadow-xl p-2 w-64 text-slate-700">
-            <div class="flex items-center justify-between mb-1">
-              <button type="button" @click="mudarMes(-1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">‹</button>
-              <div class="text-sm font-bold capitalize" x-text="nomeMes"></div>
-              <button type="button" @click="mudarMes(1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">›</button>
+          <div x-show="calAberto" x-cloak @click="calAberto=false" class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+            <div @click.stop class="bg-white rounded-2xl border shadow-2xl p-3 w-72 max-w-full text-slate-700">
+              <div class="text-center mb-2">
+                <span x-show="linhaNome" class="block text-[11px] font-semibold text-slate-400" x-text="linhaNome"></span>
+                <span class="text-sm font-bold" style="color:var(--cor1)" x-text="viagemLabel"></span>
+              </div>
+              <div class="flex items-center justify-between mb-1">
+                <button type="button" @click="mudarMes(-1)" class="w-8 h-8 rounded hover:bg-slate-100 text-lg leading-none">‹</button>
+                <div class="text-sm font-bold capitalize" x-text="nomeMes"></div>
+                <button type="button" @click="mudarMes(1)" class="w-8 h-8 rounded hover:bg-slate-100 text-lg leading-none">›</button>
+              </div>
+              <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1">
+                <template x-for="(d,i) in ['D','S','T','Q','Q','S','S']" :key="i"><div x-text="d"></div></template>
+              </div>
+              <div class="grid grid-cols-7 gap-0.5">
+                <template x-for="c in calDias" :key="c.iso">
+                  <button type="button" :disabled="!c.valido" @click="c.valido && escolherDia(c.iso)"
+                    class="h-9 rounded text-sm transition"
+                    :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed'))"
+                    :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : '')"
+                    x-text="c.dia"></button>
+                </template>
+              </div>
+              <div class="text-[10px] text-slate-400 mt-2 text-center">Só os dias de viagem da linha ficam disponíveis.</div>
             </div>
-            <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1">
-              <template x-for="(d,i) in ['D','S','T','Q','Q','S','S']" :key="i"><div x-text="d"></div></template>
-            </div>
-            <div class="grid grid-cols-7 gap-0.5">
-              <template x-for="c in calDias" :key="c.iso">
-                <button type="button" :disabled="!c.valido" @click="c.valido && escolherDia(c.iso)"
-                  class="h-8 rounded text-sm transition"
-                  :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed'))"
-                  :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : '')"
-                  x-text="c.dia"></button>
-              </template>
-            </div>
-            <div class="text-[10px] text-slate-400 mt-1 text-center">Só os dias de viagem da linha ficam disponíveis.</div>
           </div>
         </div>
         </div>
