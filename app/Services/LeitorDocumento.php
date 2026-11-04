@@ -17,6 +17,7 @@ class LeitorDocumento
         .'{"nome":"nome completo","documento":"RG ou CPF como está no documento","nascimento":"dd/mm/aaaa",'
         .'"sexo":"M ou F","nacionalidade":"nacionalidade",'
         .'"foto_box":{"x":0,"y":0,"w":0,"h":0}}. '
+        .'O campo "sexo" deve ser sempre "M" ou "F". Se o documento mostrar o sexo, use-o; se NAO mostrar (por exemplo CNH, que nao traz o campo sexo), deduza o sexo pelo primeiro nome da pessoa. Nunca deixe o sexo vazio. '
         .'Em foto_box informe a posição da FOTO 3x4 do titular na imagem, em PORCENTAGEM (0 a 100) relativa à largura/altura. '
         .'Se um campo não for legível, use "". Retorne SOMENTE o JSON.';
 

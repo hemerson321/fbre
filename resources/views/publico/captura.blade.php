@@ -48,19 +48,29 @@
     </div>
 
     <div>
-      <label class="lbl">Foto do RG / documento</label>
+      <label class="lbl">Fotos dos documentos</label>
       <input type="file" accept="image/*" capture="environment" class="hidden" x-ref="cam" @change="escolher($event)">
-      <button type="button" @click="$refs.cam.click()" class="w-full rounded-xl text-white font-bold py-4 text-lg" style="background:var(--cor1)">
-        📷 <span x-text="foto ? 'Trocar foto' : 'Abrir câmera'"></span>
-      </button>
-      <template x-if="foto">
-        <img :src="foto" class="mt-2 w-full rounded-xl border">
+      <input type="file" accept="image/*" multiple class="hidden" x-ref="gal" @change="escolher($event)">
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" @click="$refs.cam.click()" class="rounded-xl text-white font-bold py-4 text-base" style="background:var(--cor1)">📷 Câmera</button>
+        <button type="button" @click="$refs.gal.click()" class="rounded-xl font-bold py-4 text-base border-2" style="border-color:var(--cor1);color:var(--cor1)">🖼️ Galeria</button>
+      </div>
+      <template x-if="fila.length">
+        <div class="mt-2 grid grid-cols-3 gap-2">
+          <template x-for="(f,i) in fila" :key="f.id">
+            <div class="relative">
+              <img :src="f.src" class="w-full h-24 object-cover rounded-lg border">
+              <span class="absolute bottom-1 left-1 bg-black/60 text-white text-xs rounded px-1" x-text="i+1"></span>
+              <button type="button" @click="remover(i)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-sm font-bold leading-none">×</button>
+            </div>
+          </template>
+        </div>
       </template>
     </div>
 
-    <button type="button" @click="enviar()" :disabled="!foto || enviando"
+    <button type="button" @click="enviar()" :disabled="!fila.length || enviando"
       class="w-full rounded-xl text-white font-extrabold py-4 text-lg disabled:opacity-40" style="background:var(--cor2)">
-      <span x-text="enviando ? 'Enviando e lendo...' : 'Enviar pra venda'"></span>
+      <span x-text="enviando ? ('Enviando '+progresso+'...') : (fila.length>1 ? ('Enviar '+fila.length+' documentos pra venda') : 'Enviar pra venda')"></span>
     </button>
 
     <template x-if="msg">
@@ -68,25 +78,25 @@
     </template>
   </div>
 
-  <p class="text-xs text-slate-400 text-center">A foto vai pra tela de venda do operador (computador, celular ou maquineta) e os dados são preenchidos automaticamente. Dá pra enviar vários passageiros seguidos.</p>
+  <p class="text-xs text-slate-400 text-center">As fotos vão pra tela de venda do operador (computador, celular ou maquineta) e os dados são preenchidos automaticamente. Dá pra tirar ou escolher vários documentos e enviar todos de uma vez.</p>
 </div>
 
 <script>
 function captura(){
   return {
     e:@js($e), u:@js($u), s:@js($s),
-    origem:'', destino:'', foto:null, enviando:false, msg:'', msgOk:false, enviados:0,
+    origem:'', destino:'', fila:[], enviando:false, msg:'', msgOk:false, enviados:0, progresso:'', _seq:0,
     init(){
       try{ const o=localStorage.getItem('fbre_cap_origem'); if(o) this.origem=o; const d=localStorage.getItem('fbre_cap_destino'); if(d) this.destino=d; }catch(e){}
       this.$watch('origem', v=>{ try{ localStorage.setItem('fbre_cap_origem', v||''); }catch(e){} });
       this.$watch('destino', v=>{ try{ localStorage.setItem('fbre_cap_destino', v||''); }catch(e){} });
     },
     escolher(ev){
-      const f=ev.target.files && ev.target.files[0]; if(!f) return;
-      const r=new FileReader();
-      r.onload=()=>{ this.redimensionar(r.result).then(d=>this.foto=d); };
-      r.readAsDataURL(f);
+      const files=Array.from(ev.target.files||[]);
+      files.forEach(f=>{ const r=new FileReader(); r.onload=()=>{ this.redimensionar(r.result).then(d=>this.fila.push({id:(++this._seq),src:d})); }; r.readAsDataURL(f); });
+      ev.target.value='';
     },
+    remover(i){ this.fila.splice(i,1); },
     redimensionar(dataUrl){
       return new Promise(res=>{
         const img=new Image();
@@ -102,23 +112,25 @@ function captura(){
       });
     },
     async enviar(){
-      if(!this.foto||this.enviando) return;
+      if(!this.fila.length||this.enviando) return;
       this.enviando=true; this.msg='';
-      try{
-        const r=await fetch(@js(route('captura.enviar')),{
-          method:'POST',
-          headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]')?.content||''},
-          body:JSON.stringify({e:this.e,u:this.u,s:this.s,origem:this.origem,destino:this.destino,foto:this.foto})
-        });
-        const j=await r.json();
-        if(j.ok){
-          this.enviados++;
-          this.msgOk=true;
-          this.msg = (j.lido ? '✅ Passageiro '+this.enviados+' enviado e lido!' : '✅ Passageiro '+this.enviados+' enviado (leitura falhou'+(j.erro?': '+j.erro:'')+', preencha no PC)')+' Tire a foto do próximo.';
-          this.foto=null; this.$refs.cam.value='';
-        } else { this.msgOk=false; this.msg='Não foi possível enviar.'; }
-      }catch(e){ this.msgOk=false; this.msg='Sem conexão: '+e.message; }
-      this.enviando=false;
+      const total=this.fila.length; let ok=0, falhou=0;
+      for(let i=0;i<total;i++){
+        this.progresso=(i+1)+' de '+total;
+        try{
+          const r=await fetch(@js(route('captura.enviar')),{
+            method:'POST',
+            headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]')?.content||''},
+            body:JSON.stringify({e:this.e,u:this.u,s:this.s,origem:this.origem,destino:this.destino,foto:this.fila[i].src})
+          });
+          const j=await r.json();
+          if(j.ok){ ok++; this.enviados++; } else { falhou++; }
+        }catch(e){ falhou++; }
+      }
+      this.fila=[];
+      this.msgOk=(falhou===0);
+      this.msg='✅ '+ok+' passageiro(s) enviado(s)'+(falhou?(' · '+falhou+' falhou'):'')+'. Pode enviar o próximo grupo.';
+      this.enviando=false; this.progresso='';
     },
   };
 }
