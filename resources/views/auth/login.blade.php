@@ -1,4 +1,8 @@
 @php
+  // garante a empresa pelo dominio (o robo do WhatsApp/preview entra sem login)
+  if (! $empresa) {
+    $empresa = \App\Models\Empresa::where('dominio', strtolower(preg_replace('/^www\./', '', request()->getHost())))->where('ativo', true)->first();
+  }
   $cor1 = $empresa?->cor_primaria ?? '#0b1a33';
   $cor2 = $empresa?->cor_secundaria ?? '#00a8e8';
   $logo = $empresa?->logo ? '/'.$empresa->logo : '/img/logo-geratec.png';
@@ -11,6 +15,15 @@
 <meta name="theme-color" content="{{ $cor1 }}">
 <title>Entrar · {{ $nome }}</title>
 <link rel="icon" href="{{ $logo }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ $nome }}">
+<meta property="og:title" content="{{ $nome }}">
+<meta property="og:description" content="Sistema de passagens e encomendas">
+<meta property="og:image" content="{{ url($logo) }}">
+<meta property="og:url" content="{{ url()->current() }}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{{ $nome }}">
+<meta name="twitter:image" content="{{ url($logo) }}">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
