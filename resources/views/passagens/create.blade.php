@@ -190,7 +190,7 @@
             {{-- linha 5: dados extras (sempre visíveis) --}}
             <div class="grid grid-cols-2 gap-2 mt-1.5">
               <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm w-full" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
-              <div><label class="lbl">Nascimento</label><input type="date" class="field !min-h-0 py-1 text-sm w-full" x-model="p.nascimento" @change="aplicarIdade(p)"></div>
+              <div><label class="lbl">Nascimento</label><input type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" class="field !min-h-0 py-1 text-sm w-full" x-model="p.nasc_br" @input="mascaraNasc(p)"></div>
               <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" inputmode="tel" placeholder="(00) 00000-0000"></div>
               <div><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.nacionalidade" placeholder="Brasileira"></div>
             </div>
@@ -436,7 +436,7 @@
       ajustarAvista(){ if(this.forma==='avista'){ this.pag.dinheiro = +Math.max(this.total - this.pagoSemDinheiro, 0).toFixed(2); } },
 
       // ---- passageiros ----
-      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', foto_rg:'', foto:'', checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
+      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       paxTotal(p){ return Math.round(((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))*100)/100; },
       setPaxTotal(p,v){ const total=Math.max(Number(v)||0,0); const fixo=(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0); p.valor_passagem=Math.round(Math.max(total-fixo,0)*100)/100; },
@@ -478,7 +478,7 @@
         if(idx<0){ const np=this.novoPax(); this.aplicarTipo(np); this.passageiros.push(np); idx=this.passageiros.length-1; }
         const p=this.passageiros[idx];
         if(it.nome) p.nome=it.nome;
-        if(it.nascimento) p.nascimento=it.nascimento;
+        if(it.nascimento){ p.nascimento=it.nascimento; p.nasc_br=this.isoToBr(it.nascimento); }
         if(it.sexo) p.sexo=it.sexo;
         if(it.nacionalidade) p.nacionalidade=it.nacionalidade;
         if(it.documento) p.documento=it.documento;
@@ -518,7 +518,7 @@
         }catch(e){ this.camStatus='Erro: '+e.message; }
         this.camLendo=false; },
       preencherPax(idx, j){ const p=this.passageiros[idx]; if(!p) return;
-        if(j.nome) p.nome=j.nome; if(j.nascimento) p.nascimento=j.nascimento; if(j.sexo) p.sexo=j.sexo;
+        if(j.nome) p.nome=j.nome; if(j.nascimento){ p.nascimento=j.nascimento; p.nasc_br=this.isoToBr(j.nascimento); } if(j.sexo) p.sexo=j.sexo;
         if(j.nacionalidade) p.nacionalidade=j.nacionalidade; if(j.documento) p.documento=j.documento;
         if(j.foto) p.foto=j.foto; if(j.foto_rg) p.foto_rg=j.foto_rg; p._mais=true; this.aplicarIdade(p); },
       rmPax(i){ this.passageiros.splice(i,1); },
@@ -536,6 +536,8 @@
       tipoPorIdade(nasc){ const a=this.idadeAnos(nasc); if(a===null) return null; let melhor=null, span=1e9;
         this.tipos.forEach(t=>{ const mn=(t.idade_min===null||t.idade_min===undefined||t.idade_min==='')?null:Number(t.idade_min); const mx=(t.idade_max===null||t.idade_max===undefined||t.idade_max==='')?null:Number(t.idade_max); if(mn===null&&mx===null) return; if((mn===null||a>=mn)&&(mx===null||a<=mx)){ const s=(mx===null?120:mx)-(mn===null?0:mn); if(s<span){ span=s; melhor=t; } } });
         return melhor; },
+      isoToBr(iso){ if(!iso) return ''; const a=(''+iso).slice(0,10).split('-'); return a.length===3 ? a[2]+'/'+a[1]+'/'+a[0] : ''; },
+      mascaraNasc(p){ let v=(p.nasc_br||'').replace(/[^0-9]/g,'').slice(0,8); let o=v; if(v.length>4) o=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4); else if(v.length>2) o=v.slice(0,2)+'/'+v.slice(2); p.nasc_br=o; if(v.length===8){ const d=+v.slice(0,2), m=+v.slice(2,4), a=+v.slice(4,8); if(d>=1&&d<=31&&m>=1&&m<=12&&a>=1900&&a<=2100){ p.nascimento=v.slice(4,8)+'-'+v.slice(2,4)+'-'+v.slice(0,2); this.aplicarIdade(p); return; } } p.nascimento=''; },
       aplicarIdade(p){ const t=this.tipoPorIdade(p.nascimento); if(t){ p.tipo_id=t.id; this.aplicarTipo(p); } },
       trechoGet(tipoId){ const o=(this.origemSel||'').trim().toLowerCase(), d=(this.destinoSel||'').trim().toLowerCase();
         return this.trechoMap[o+'|'+d+'|'+tipoId] || this.trechoMap[d+'|'+o+'|'+tipoId] || null; },
