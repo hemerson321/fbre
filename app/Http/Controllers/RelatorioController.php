@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Encomenda;
 use App\Models\Evento;
 use App\Models\Pagamento;
+use App\Models\Passagem;
 use Illuminate\Http\Request;
 
 /** Relatório do próprio operador (só vê o que ele mesmo fez). */
@@ -46,8 +47,25 @@ class RelatorioController extends Controller
         $recebimentos = $modo === 'analitico' ? (clone $pagQ)->with('encomenda')->orderByDesc('id')->limit($limite)->get() : collect();
         $entregas     = $modo === 'analitico' ? (clone $evQ)->with('encomenda')->orderByDesc('id')->limit($limite)->get() : collect();
 
+        // Acerto do agente externo (revendedor): quanto vendeu, comissao dele e quanto passar pra empresa
+        $acerto = null;
+        $uu = auth()->user();
+        if ($uu->is_revendedor) {
+            $passQ = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->whereBetween('created_at', [$inicio, $fim]);
+            $bruto = (float) (clone $passQ)->sum('total');
+            $aPassar = (float) (clone $passQ)->sum('acerto_empresa_valor');
+            $acerto = [
+                'qtd' => (clone $passQ)->count(),
+                'bruto' => $bruto,
+                'a_passar' => round($aPassar, 2),
+                'comissao' => round($bruto - $aPassar, 2),
+                'pct' => (int) ($uu->comissao_pct ?? 0),
+                'modo' => $uu->modo_acerto ?? 'cheio',
+            ];
+        }
+
         return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite'))
-            ->with(['meios' => Pagamento::CANAIS]);
+            ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto]);
     }
 
     /** Exporta os recebimentos do período (e filtro de forma) em CSV — sem travar a tela. */
