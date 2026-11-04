@@ -97,6 +97,7 @@ class UsuarioController extends Controller
             'perm_retroativo' => 'nullable|boolean',
             'perm_parcial' => 'nullable|boolean',
             'perm_zerar' => 'nullable|boolean',
+            'pode_desconto' => 'nullable|boolean',
             'perm_passagem' => 'nullable|boolean',
             'perm_frete' => 'nullable|boolean',
             'perm_camarote' => 'nullable|boolean',
@@ -124,7 +125,7 @@ class UsuarioController extends Controller
             'embarcacao_principal_id' => 'nullable|integer',
             'estacao_id' => 'nullable|integer|exists:estacoes,id',
         ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
-        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo', 'perm_financeiro', 'perm_pix_manual', 'perm_pix_dinamico', 'checkin_auto', 'is_revendedor'] as $b) {
+        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'pode_desconto', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo', 'perm_financeiro', 'perm_pix_manual', 'perm_pix_dinamico', 'checkin_auto', 'is_revendedor'] as $b) {
             $data[$b] = $request->boolean($b);
         }
         // ativo: no cadastro o usuário já nasce ativo (o form só mostra o checkbox na edição);
@@ -139,6 +140,7 @@ class UsuarioController extends Controller
         $data['prefixo'] = strtoupper($data['prefixo']);
         // revendedor: se é revendedor, não tem pai; vendedor tem pai (revendedor_id)
         $data['revendedor_id'] = ($data['is_revendedor'] ?? false) ? null : (($data['revendedor_id'] ?? null) ?: null);
+        if ($data['is_revendedor'] ?? false) $data['pode_desconto'] = false; // agente/revendedor nunca da desconto
         $data['modo_acerto'] = $data['modo_acerto'] ?? 'cheio';
         $data['comissao_pct'] = (int) ($data['comissao_pct'] ?? 0);
 
