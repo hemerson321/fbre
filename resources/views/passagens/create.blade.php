@@ -223,7 +223,10 @@
           <template x-for="m in meios" :key="m.k">
             <div x-show="m.k!=='pix' || pixManual">
               <label class="lbl" x-text="m.l"></label>
-              <input class="field text-right font-semibold w-full" x-money="pag[m.k]">
+              <div class="flex gap-1">
+                <input class="field text-right font-semibold w-full" x-money="pag[m.k]">
+                <button type="button" @click="preencher(m.k)" title="Lancar o valor total nesta forma" class="shrink-0 rounded-xl border-2 w-12 flex items-center justify-center font-extrabold text-lg transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">=</button>
+              </div>
             </div>
           </template>
           {{-- PIX Automático: gera o QR e aguarda o pagamento --}}
@@ -234,7 +237,6 @@
           @if(auth()->user()?->podeDesconto())
           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           @endif
-          <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
         </div>
         <p x-show="forma==='faturado'" class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">Faturado: nada é recebido agora.</p>
 
@@ -457,6 +459,7 @@
         // Pagamento: o operador escolhe o meio; nada vem preenchido por padrao.
       },
       ajustarAvista(){ /* desativado: operador escolhe o meio de pagamento, nao preenche dinheiro automatico */ },
+      preencher(meio){ const outros=this.meios.reduce((s,m)=> m.k===meio ? s : s+(Number(this.pag[m.k])||0), 0); this.pag[meio]=+Math.max(this.total-outros,0).toFixed(2); },
 
       // ---- passageiros ----
       novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
