@@ -64,8 +64,9 @@ class RelatorioController extends Controller
             ];
         }
 
+        $temEncomenda = $uu->temModulo('encomenda');
         return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite'))
-            ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto]);
+            ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'temEncomenda' => $temEncomenda]);
     }
 
     /** Exporta os recebimentos do período (e filtro de forma) em CSV — sem travar a tela. */

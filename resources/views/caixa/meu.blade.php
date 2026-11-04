@@ -20,7 +20,7 @@
 </x-periodo>
 
 <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
-  <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Cadastrei</div><div class="text-xl font-extrabold">{{ $totais['cadastros'] }}</div><div class="text-xs text-slate-400">R$ {{ number_format($totais['cadastros_valor'],2,',','.') }}</div></div>
+  @if($temEncomenda)<div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Cadastrei</div><div class="text-xl font-extrabold">{{ $totais['cadastros'] }}</div><div class="text-xs text-slate-400">R$ {{ number_format($totais['cadastros_valor'],2,',','.') }}</div></div>@endif
   <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Recebi</div><div class="text-xl font-extrabold text-emerald-600">R$ {{ number_format($porMeio->sum(),2,',','.') }}</div></div>
   @foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)
     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m] ?? 0,2,',','.') }}</div></div>
@@ -49,6 +49,7 @@
   <div class="card p-3 text-xs text-amber-700 bg-amber-50 border border-amber-200">Período grande: mostrando os <b>{{ $limite }}</b> mais recentes de cada lista. Para tudo, use <b>⬇️ Exportar CSV</b>.</div>
 @endif
 <div class="grid lg:grid-cols-2 gap-4">
+@if($temEncomenda)
   <div class="card overflow-hidden">
     <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Encomendas que cadastrei ({{ $totais['cadastros'] }})</div>
     <div class="divide-y text-sm">
@@ -57,6 +58,7 @@
       @empty <div class="p-6 text-center text-slate-400">Nenhum cadastro.</div> @endforelse
     </div>
   </div>
+@endif
   <div class="space-y-4">
     <div class="card overflow-hidden">
       <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Recebimentos ({{ $totais['recebido_qtd'] }})</div>
@@ -66,6 +68,7 @@
         @empty <div class="p-6 text-center text-slate-400">Nenhum recebimento.</div> @endforelse
       </div>
     </div>
+    @if($temEncomenda)
     <div class="card overflow-hidden">
       <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Entregas que dei baixa ({{ $totais['entregas'] }})</div>
       <div class="divide-y text-sm">
@@ -74,6 +77,7 @@
         @empty <div class="p-6 text-center text-slate-400">Nenhuma entrega.</div> @endforelse
       </div>
     </div>
+    @endif
   </div>
 </div>
 @endif
