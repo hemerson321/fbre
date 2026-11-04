@@ -199,6 +199,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/rotas', [RotaController::class, 'store'])->name('rotas.store');
         Route::put('/rotas/{rota}', [RotaController::class, 'update'])->name('rotas.update');
         Route::post('/rotas/{rota}/toggle', [RotaController::class, 'toggle'])->name('rotas.toggle');
+        Route::post('/rotas/{rota}/duplicar', [RotaController::class, 'duplicar'])->name('rotas.duplicar');
         // Suítes / Camarotes (catálogo + preços por trecho)
         Route::get('/camarotes', [CamaroteController::class, 'index'])->name('camarotes');
         Route::post('/camarotes/{camarote?}', [CamaroteController::class, 'salvar'])->name('camarotes.salvar');

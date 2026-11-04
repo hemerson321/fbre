@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('titulo','Rotas e calendário')
 @section('conteudo')
-<div class="max-w-4xl mx-auto space-y-4" x-data="{ editando:null }">
+<div class="max-w-4xl mx-auto space-y-4" x-data="{ editando: {{ request('editar') ? (int) request('editar') : 'null' }} }">
 <div class="flex items-center justify-between">
   <div>
     <h1 class="text-xl font-bold">Rotas e calendário</h1>
@@ -27,6 +27,7 @@
       </div>
       <div class="flex gap-2 shrink-0">
         <button class="btn btn-ghost btn-sm" @click="editando = editando==={{ $r->id }} ? null : {{ $r->id }}">Editar</button>
+        <form method="post" action="{{ route('admin.rotas.duplicar',$r) }}">@csrf<button class="btn btn-ghost btn-sm" title="Criar uma copia desta rota">⧉ Copiar</button></form>
         <form method="post" action="{{ route('admin.rotas.toggle',$r) }}">@csrf<button class="btn btn-sm {{ $r->ativo?'btn-ghost':'btn-primary' }}">{{ $r->ativo?'Desativar':'Ativar' }}</button></form>
       </div>
     </div>

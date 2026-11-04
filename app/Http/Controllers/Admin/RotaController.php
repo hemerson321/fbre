@@ -58,6 +58,27 @@ class RotaController extends Controller
         return back()->with('ok', $rota->ativo ? 'Rota ativada.' : 'Rota desativada.');
     }
 
+    /** Duplica uma rota (paradas) para cadastrar outro transporte sem refazer tudo. */
+    public function duplicar(Rota $rota)
+    {
+        abort_unless($rota->empresa_id === \App\Support\Tenant::id(), 404);
+        $nova = Rota::create([
+            'nome' => mb_substr($rota->nome.' (copia)', 0, 80),
+            'embarcacao_id' => null,
+            'descricao' => $rota->descricao,
+        ]);
+        foreach ($rota->paradas()->orderBy('ordem')->get() as $p) {
+            $nova->paradas()->create([
+                'ordem' => $p->ordem,
+                'localidade' => $p->localidade,
+                'dia_semana' => $p->dia_semana,
+                'hora' => $p->hora,
+            ]);
+        }
+        return redirect()->route('admin.rotas', ['editar' => $nova->id])
+            ->with('ok', 'Rota copiada de "'.$rota->nome.'". Ajuste a embarcacao e os dias e salve.');
+    }
+
     protected function validar(Request $request): array
     {
         return $request->validate([
