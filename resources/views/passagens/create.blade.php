@@ -526,10 +526,12 @@
         const t=this.tipos.find(x=>String(x.id)===String(p.tipo_id)) || this.tipos[0];
         if(t){ p.tipo_id=t.id; p.tipo=t.nome; p.percentual=t.percentual; p.paga_taxa=!!t.paga_taxa; p.modo=t.modo||'valor'; }
         const pr=this.precoDoTipo(t);
-        p.valor_passagem = pr.tarifa;
-        p.valor_alimentacao = this.usaAlim ? pr.alim : 0;
+        const _tar=Number(pr.tarifa)||0, _alim=this.usaAlim?(Number(pr.alim)||0):0, _integ=Number(pr.integral)||0;
+        // regra: "com desconto" vazio => cobra o INTEGRAL (preco normal); com desconto preenchido => cobra o com desconto
+        if(_tar>0){ p.valor_passagem=_tar; p.valor_alimentacao=_alim; }
+        else { p.valor_passagem=_integ; p.valor_alimentacao=0; }
         p.valor_taxa = (this.usaEmbarque && p.paga_taxa) ? this.taxaDoTrecho() : 0;
-        p.valor_integral = Math.max(Number(pr.integral)||0, (Number(p.valor_passagem)||0)+(Number(p.valor_alimentacao)||0)+(Number(p.valor_taxa)||0));
+        p.valor_integral = Math.max(_integ, (Number(p.valor_passagem)||0)+(Number(p.valor_alimentacao)||0)+(Number(p.valor_taxa)||0));
       },
       // ---- tipo automatico pela idade (data de nascimento) ----
       idadeAnos(nasc){ if(!nasc) return null; const d=new Date(nasc); if(isNaN(d.getTime())) return null; const h=new Date(); let a=h.getFullYear()-d.getFullYear(); const m=h.getMonth()-d.getMonth(); if(m<0||(m===0&&h.getDate()<d.getDate())) a--; return a>=0?a:null; },
