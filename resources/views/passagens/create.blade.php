@@ -753,7 +753,7 @@
         const pxErr=this.passageiros.find(p=>!FBRE.docOk(p.documento));
         if(pxErr){ alert('CPF inválido no passageiro "'+((pxErr.nome||'').trim()||'sem nome')+'". Confira os números ou deixe em branco.'); return false; }
         if(!FBRE.docOk(this.compradorDoc)){ alert('CPF do comprador inválido. Confira os números ou deixe em branco.'); return false; }
-        if(this.usaPoltrona){ const ass=this.passageiros.map(p=>p.poltrona).filter(Boolean); if(new Set(ass).size!==ass.length){ alert('Há poltronas repetidas.'); return false; } }
+        if(this.usaPoltrona){ const semPol=this.passageiros.find(p=>!p.poltrona); if(semPol){ alert('Este transporte usa poltrona. Escolha a poltrona de "'+((semPol.nome||'').trim()||'sem nome')+'" antes de salvar.'); return false; } const ass=this.passageiros.map(p=>p.poltrona).filter(Boolean); if(new Set(ass).size!==ass.length){ alert('Há poltronas repetidas.'); return false; } }
         return true;
       },
       // ---- autocomplete de passageiro (busca em pessoas já cadastradas) ----
