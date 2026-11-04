@@ -100,7 +100,7 @@ class User extends Authenticatable
     }
     public function setoresPermitidos(): array    { return array_values($this->setores_permitidos ?? []); }
     public function transportesPermitidos(): array { return array_map('intval', $this->transportes_permitidos ?? []); }
-    public function podeRetroativo(): bool        { return $this->admin || $this->gerente() || $this->perm_retroativo; }
+    public function podeRetroativo(): bool        { return $this->super_admin || (bool) $this->perm_retroativo; }
     public function podeParcial(): bool           { return $this->admin || $this->gerente() || (bool) $this->perm_parcial; }
     public function gerente(): bool               { return $this->papel === 'gerente'; }
     public function caixaTodos(): bool            { return $this->admin || $this->gerente() || $this->caixa_todos || $this->financeiro(); }

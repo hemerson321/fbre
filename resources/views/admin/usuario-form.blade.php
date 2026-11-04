@@ -151,7 +151,7 @@
 
   <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 mt-2 border-t pt-2">Administrativo</div>
   @php $admPerms = [
-    'perm_retroativo' => ['Lançar em datas retroativas', 'Cadastrar em dias anteriores (feito na mão e lançado depois). Gerente já tem.'],
+    'perm_retroativo' => ['Lançar em datas retroativas', 'Cadastrar em dias anteriores (feito na mão e lançado depois).'],
     'perm_parcial'    => ['Receber pagamento parcial', 'Pode deixar saldo (valor parcial). Sem isso, só pago total ou a receber. Gerente já tem.'],
     'pode_desconto'   => ['Dar desconto na venda', 'Pode baixar o valor da passagem na hora (desconto do operador). Agentes/revendedores nunca têm.'],
     'perm_zerar'      => ['Zerar o sistema', 'Pode apagar TODAS as encomendas/caixa e recomeçar do zero (botão em Cadastros gerais). Use com cuidado.'],
