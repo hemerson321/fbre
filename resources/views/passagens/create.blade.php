@@ -451,7 +451,7 @@
         // destino NÃO é lembrado: muda a cada venda, começa sempre em branco
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
-        this.$watch('embarcacaoSel', ()=>this.mudarEmbarcacao());
+        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
         this.addPax();
         this.mudarEmbarcacao();
         this.onRota();
