@@ -69,7 +69,7 @@
     </div>
     @endif
   </div>
-  <a href="{{ route('passagens.index') }}" class="text-sm text-slate-500 hover:underline">← voltar</a>
+
 </div>
 
 <div class="grid gap-2 lg:grid-cols-12 items-start">
@@ -93,14 +93,10 @@
             </select>
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div><label class="lbl">Transporte</label>
-            <select class="field" x-model="embarcacaoSel"><option value="">—</option>
-              @foreach($embarcacoes as $b)<option value="{{ $b->id }}">{{ $b->nome }}{{ $b->usa_poltrona?' 🪑':'' }}</option>@endforeach
-            </select></div>
-          <div><label class="lbl">Data</label>
-            <input type="date" class="field" x-model="viagemData" @change="viagemLabel=rotulo(viagemData)"></div>
-        </div>
+        <div><label class="lbl">Transporte</label>
+          <select class="field" x-model="embarcacaoSel"><option value="">—</option>
+            @foreach($embarcacoes as $b)<option value="{{ $b->id }}">{{ $b->nome }}{{ $b->usa_poltrona?' 🪑':'' }}</option>@endforeach
+          </select></div>
         <div x-show="precoInfo" class="text-[11px] font-semibold" style="color:var(--cor1)" x-cloak>
           💲 Preço do trecho carregado
         </div>

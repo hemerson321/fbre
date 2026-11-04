@@ -48,8 +48,18 @@ class UsuarioController extends Controller
     {
         $data = $this->validar($request);
         $data['empresa_id'] = Tenant::id();
+        if (empty($data['prefixo'])) $data['prefixo'] = $this->gerarPrefixo($data['papel'] ?? null);
         User::create($data);
         return redirect()->route('admin.usuarios.index')->with('ok', 'Usuário criado.');
+    }
+
+    /** Gera um codigo de encomenda unico pelo tipo: agente=AG, gerente=GE, operador=OP. */
+    protected function gerarPrefixo(?string $papel): string
+    {
+        $base = $papel === 'agencia_externa' ? 'AG' : ($papel === 'gerente' ? 'GE' : 'OP');
+        $n = 1;
+        do { $cod = $base . $n; $n++; } while (User::withoutGlobalScopes()->where('prefixo', $cod)->exists());
+        return $cod;
     }
 
     public function edit(User $usuario)
@@ -63,6 +73,7 @@ class UsuarioController extends Controller
         abort_unless($usuario->empresa_id === Tenant::id(), 404);
         $data = $this->validar($request, $usuario);
         if (empty($data['password'])) unset($data['password']);
+        if (empty($data['prefixo'])) $data['prefixo'] = $usuario->prefixo ?: $this->gerarPrefixo($data['papel'] ?? null);
         $usuario->update($data);
         return redirect()->route('admin.usuarios.index')->with('ok', 'Usuário atualizado.');
     }
@@ -82,7 +93,7 @@ class UsuarioController extends Controller
             'name' => 'required|string|max:100',
             'login' => ['required', 'string', 'min:3', 'max:40', 'regex:/^[a-z0-9._-]+$/', Rule::unique('users', 'login')->ignore($u?->id)],
             'password' => [$u ? 'nullable' : 'required', 'string', 'min:6'],
-            'prefixo' => ['required', 'string', 'max:8', 'regex:/^[A-Za-z0-9]+$/', Rule::unique('users', 'prefixo')->ignore($u?->id)],
+            'prefixo' => ['nullable', 'string', 'max:8', 'regex:/^[A-Za-z0-9]+$/', Rule::unique('users', 'prefixo')->ignore($u?->id)],
             'setor' => 'nullable|string|max:60',
             'papel' => 'nullable|in:operador_barco,agencia_externa,gerente',
             'admin' => 'nullable|boolean',
