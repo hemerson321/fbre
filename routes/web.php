@@ -53,7 +53,10 @@ Route::view('/bloqueado', 'auth.bloqueado')->middleware('auth')->name('bloqueado
 
 // Manifest dinamico do PWA: usa a logo da empresa como icone do app instalado
 Route::get('/manifest.webmanifest', function () {
-    $e = \App\Support\Tenant::empresa();
+    // resolve a empresa pelo DOMINIO (o manifest e buscado sem sessao/login,
+    // entao Tenant::empresa() viria vazio e cairia no padrao FBRE)
+    $e = \App\Models\Empresa::where('dominio', request()->getHost())->first()
+        ?: \App\Support\Tenant::empresa();
     $nome = $e?->nomeExibicao() ?: 'FBRE';
     $icones = $e ? $e->iconesPwa() : [];
     $i192 = $icones['192'] ?? ($e?->logo ?: 'img/icon.png');
