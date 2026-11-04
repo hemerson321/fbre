@@ -41,12 +41,12 @@
 @if($modo==='resumido')
   <div class="card p-4 text-sm text-slate-600">
     Resumo do período — <b>{{ $totais['cadastros'] }}</b> cadastro(s) · recebido <b>R$ {{ number_format($porMeio->sum(),2,',','.') }}</b> · <b>{{ $totais['entregas'] }}</b> entrega(s).
-    <div class="text-slate-400 mt-1">Para ver item a item, use o modo <b>Analítico</b>. Para a lista completa do período, use <b>Exportar CSV</b>.</div>
+    <div class="text-slate-400 mt-1">Para ver item a item, use o modo <b>Analítico</b>.</div>
   </div>
 @else
 @php $muito = max($totais['cadastros'], $totais['recebido_qtd'], $totais['entregas']) > $limite; @endphp
 @if($muito)
-  <div class="card p-3 text-xs text-amber-700 bg-amber-50 border border-amber-200">Período grande: mostrando os <b>{{ $limite }}</b> mais recentes de cada lista. Para tudo, use <b>⬇️ Exportar CSV</b>.</div>
+  <div class="card p-3 text-xs text-amber-700 bg-amber-50 border border-amber-200">Período grande: mostrando os <b>{{ $limite }}</b> mais recentes de cada lista.</div>
 @endif
 <div class="grid lg:grid-cols-2 gap-4">
 @if($temEncomenda)
