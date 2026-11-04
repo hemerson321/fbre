@@ -85,6 +85,13 @@ class PassagemController extends Controller
         $cidadesPerm = $u->cidadesPermitidas();
         if ($cidadesPerm) $localidades = $localidades->intersect($cidadesPerm)->values();
         $rotas = Tenant::empresa()->usaViagens() ? Rota::paraSelecao() : collect();
+        // ordena as cidades pela ORDEM DAS PARADAS das rotas (ordem da viagem), nao alfabetica
+        $ordemParadas = $rotas->flatMap(fn ($r) => $r->paradas->sortBy('ordem')->pluck('localidade'))->filter()->unique()->values();
+        if ($ordemParadas->isNotEmpty()) {
+            $localidades = $ordemParadas->filter(fn ($c) => $localidades->contains($c))
+                ->merge($localidades->reject(fn ($c) => $ordemParadas->contains($c))->sort())
+                ->unique()->values();
+        }
         // linhas (com paradas) para o JS resolver a viagem a partir de origem/destino (igual ao encomenda)
         $linhas = $rotas->map(fn ($r) => [
             'id' => $r->id,
