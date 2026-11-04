@@ -279,7 +279,30 @@
       <span class="chip bg-red-100 text-red-700">ocupada</span>
       <span class="chip" style="background:color-mix(in srgb,var(--cor1) 15%,white);color:var(--cor1)">selecionada</span>
     </div>
-    <div class="mx-auto" style="max-width:260px">
+    <template x-if="temLayout">
+      <div class="mx-auto" style="max-width:360px">
+        <div class="text-center text-[11px] font-bold text-slate-400 mb-1">⬆ PROA (frente)</div>
+        <div class="rounded-t-[44px] rounded-b-2xl border-2 px-2 py-3" style="border-color:var(--cor1);background:linear-gradient(180deg,color-mix(in srgb,var(--cor1) 10%,white),#eef2f7)">
+          <template x-for="(bloco,bi) in blocosPoltrona" :key="bi">
+            <div :class="bi>0 ? 'mt-2.5 pt-2.5 border-t border-dashed border-slate-300 space-y-1.5' : 'space-y-1.5'">
+              <template x-for="(f,ri) in bloco" :key="ri">
+                <div class="flex items-center justify-center gap-1">
+                  <div class="flex gap-1"><template x-for="n in f.esq" :key="n">
+                    <button type="button" class="min-w-[36px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="assentoClasse(n)" :disabled="estaOcupada(n) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
+                  </template></div>
+                  <div class="w-4 text-center text-[9px] text-slate-300 select-none" x-show="f.dir.length">║</div>
+                  <div class="flex gap-1"><template x-for="n in f.dir" :key="n">
+                    <button type="button" class="min-w-[36px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="assentoClasse(n)" :disabled="estaOcupada(n) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
+                  </template></div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+        <div class="text-center text-[11px] font-bold text-slate-400 mt-1">POPA (fundo) ⬇</div>
+      </div>
+    </template>
+    <div x-show="!temLayout" class="mx-auto" style="max-width:260px">
       <div class="text-center text-[11px] font-bold text-slate-400 mb-1">⬆ PROA (frente)</div>
       <div class="rounded-t-[36px] rounded-b-2xl border-2 border-slate-300 bg-slate-50 px-2 py-3 space-y-1.5">
         <template x-for="(f,ri) in fileiras" :key="ri">
@@ -390,7 +413,7 @@
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
       pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
-      embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4)])->values()),
+      embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4),'layout'=>(string)($e->poltronas_lista ?? '')])->values()),
       podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
       capturaAberta:false, capturaUrl:'', capturaSid:'', capturaDesde:0, capturaTimer:null, capturaStatus:'', capturaAviso:'', _avisoT:null,
       camAberta:false, camStream:null, camFacing:'environment', camTargetIdx:0, camStatus:'', camLendo:false,
@@ -409,7 +432,7 @@
       rotaId:'', linhaNome:'', paradasInfo:[], viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
       diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
       // poltrona
-      usaPoltrona:false, qtdPoltronas:0, colunasPoltrona:4, ocupadas:[], mapaAberto:false, paxAtual:0,
+      usaPoltrona:false, qtdPoltronas:0, colunasPoltrona:4, poltronasLayout:'', temLayout:false, ocupadas:[], mapaAberto:false, paxAtual:0,
       numeroPreview:'—',
 
       init(){
@@ -620,6 +643,7 @@
       mudarEmbarcacao(){
         const e=this.embarcacoesData.find(x=>x.id===String(this.embarcacaoSel));
         this.usaPoltrona=!!(e&&e.poltrona); this.qtdPoltronas=e?e.qtd:0; this.colunasPoltrona=e&&e.colunas?e.colunas:4;
+        this.poltronasLayout=(e&&e.layout)?e.layout:''; this.temLayout=this.poltronasLayout.trim().length>0;
         if(this.usaPoltrona) this.carregarOcupadas(); else this.passageiros.forEach(p=>p.poltrona='');
       },
       async carregarOcupadas(){
@@ -645,6 +669,16 @@
         const rows=[]; let n=1;
         while(n<=qtd){ const r=[]; for(let c=0;c<col && n<=qtd;c++){ r.push(n++); } rows.push({esq:r.slice(0,meio), dir:r.slice(meio)}); }
         return rows;
+      },
+      // mapa por NOME: cada bloco = fileiras; "|" separa esquerda/direita; linha vazia separa blocos
+      get blocosPoltrona(){
+        const txt=(this.poltronasLayout||'').replace(/\r/g,'');
+        return txt.split(/\n[ \t]*\n/).map(b=>
+          b.split('\n').filter(l=>l.trim()).map(linha=>{
+            const p=linha.split('|');
+            return { esq:(p[0]||'').trim().split(/\s+/).filter(Boolean), dir:(p[1]||'').trim().split(/\s+/).filter(Boolean) };
+          })
+        ).filter(b=>b.length);
       },
 
       // ---- totais ----

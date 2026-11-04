@@ -28,6 +28,11 @@
                 @foreach([2=>'2 (1+1)',3=>'3 (2+1)',4=>'4 (2+2)',5=>'5 (3+2)',6=>'6 (3+3)'] as $cn=>$cl)<option value="{{ $cn }}" @selected(($e->poltronas_colunas ?: 4)==$cn)>{{ $cl }}</option>@endforeach
               </select>
             </div>
+            <div x-show="pol" x-cloak class="w-full">
+              <label class="label">Mapa de poltronas por nome (opcional)</label>
+              <textarea name="poltronas_lista" rows="4" class="input !min-h-[90px] text-xs" style="font-family:ui-monospace,monospace" placeholder="02J 02C | 01C 01J&#10;04J 04M 04C | 03C 03M 03J&#10;(linha em branco separa blocos: areas, sofa...)">{{ $e->poltronas_lista }}</textarea>
+              <p class="text-[11px] text-slate-400 mt-0.5">Uma fileira por linha; poltronas separadas por espaco; <b>|</b> separa os dois lados (corredor); linha em branco separa blocos. Se preenchido, a venda usa esse mapa.</p>
+            </div>
             <button class="btn btn-primary btn-sm">Salvar</button>
             <a href="#" onclick="event.preventDefault(); if(confirm('Remover embarcação?')) this.closest('form').nextElementSibling.submit();" class="text-red-500 text-xs pb-2">remover</a>
           </div>

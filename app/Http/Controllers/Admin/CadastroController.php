@@ -168,6 +168,7 @@ class CadastroController extends Controller
             'usa_poltrona' => 'nullable|boolean',
             'poltronas_qtd' => 'nullable|integer|min:0|max:500',
             'poltronas_colunas' => 'nullable|integer|min:1|max:8',
+            'poltronas_lista' => 'nullable|string|max:8000',
             'rastreio_url' => 'nullable|url|max:255',
         ]);
         $embarcacao->update([
@@ -175,6 +176,7 @@ class CadastroController extends Controller
             'usa_poltrona' => $request->boolean('usa_poltrona'),
             'poltronas_qtd' => (int) ($data['poltronas_qtd'] ?? 0),
             'poltronas_colunas' => (int) ($data['poltronas_colunas'] ?? 4),
+            'poltronas_lista' => trim((string) ($data['poltronas_lista'] ?? '')) ?: null,
             'rastreio_url' => trim((string) ($data['rastreio_url'] ?? '')) ?: null,
         ]);
         return back()->with('ok', 'Embarcação atualizada.');
