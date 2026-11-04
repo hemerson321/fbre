@@ -454,11 +454,9 @@
         this.mudarEmbarcacao();
         this.onRota();
         this.iniciarCaptura();
-        // À vista fecha o total automático; parcial só no "A receber".
-        this.$watch('forma', ()=>this.ajustarAvista());
-        this.$watch('total', ()=>this.ajustarAvista());
+        // Pagamento: o operador escolhe o meio; nada vem preenchido por padrao.
       },
-      ajustarAvista(){ if(this.forma==='avista'){ this.pag.dinheiro = +Math.max(this.total - this.pagoSemDinheiro, 0).toFixed(2); } },
+      ajustarAvista(){ /* desativado: operador escolhe o meio de pagamento, nao preenche dinheiro automatico */ },
 
       // ---- passageiros ----
       novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
