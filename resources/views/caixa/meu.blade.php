@@ -3,13 +3,12 @@
 @section('conteudo')
 <div class="space-y-4">
 <div class="flex items-center justify-between flex-wrap gap-2"><h1 class="text-xl font-bold">Meu relatório <span class="text-slate-400 font-normal text-base">· {{ auth()->user()->name }}</span></h1>
-  <div class="flex items-center gap-2 no-print">
-    <div class="inline-flex rounded-xl border overflow-hidden text-sm">
-      <a href="{{ request()->fullUrlWithQuery(['modo'=>'resumido']) }}" class="px-3 py-1.5 font-semibold {{ $modo==='resumido' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Resumido</a>
-      <a href="{{ request()->fullUrlWithQuery(['modo'=>'analitico']) }}" class="px-3 py-1.5 font-semibold {{ $modo==='analitico' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Analítico</a>
+  <div class="flex items-center gap-2 no-print flex-wrap">
+    <div class="inline-flex rounded-xl border overflow-hidden text-sm shadow-sm">
+      <a href="{{ request()->fullUrlWithQuery(['modo'=>'resumido']) }}" class="px-4 py-2 font-semibold {{ $modo==='resumido' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Resumido</a>
+      <a href="{{ request()->fullUrlWithQuery(['modo'=>'analitico']) }}" class="px-4 py-2 font-semibold {{ $modo==='analitico' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Analítico</a>
     </div>
-    <a href="{{ route('relatorio.meu.exportar', request()->query()) }}" class="btn btn-ghost btn-sm">⬇️ Exportar CSV</a>
-    <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>
+    <button onclick="window.print()" class="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 shadow-sm">🖨 Imprimir</button>
   </div></div>
 
 <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
