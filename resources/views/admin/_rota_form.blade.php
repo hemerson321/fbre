@@ -125,6 +125,7 @@
       <input type="hidden" :name="`precos[${i}][tipo_id]`" :value="r.tipo_id">
       <input type="hidden" :name="`precos[${i}][tarifa]`" :value="r.tarifa">
       <input type="hidden" :name="`precos[${i}][alim]`" :value="r.alim">
+      <input type="hidden" :name="`precos[${i}][integral]`" :value="r.integral">
     </span>
   </template>
 </div>
