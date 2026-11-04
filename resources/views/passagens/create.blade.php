@@ -36,32 +36,6 @@
   <div class="flex items-center gap-x-4 gap-y-1 flex-wrap">
     <h1 class="text-lg font-extrabold" style="color:var(--cor1)">🎫 Nova passagem</h1>
     <span class="text-[11px] font-bold rounded-lg px-2 py-0.5 text-white" style="background:var(--cor1)">Nº <span x-text="numeroPreview"></span></span>
-    <div x-show="viagemData" x-cloak class="flex flex-wrap items-center gap-1.5 relative max-w-full min-w-0">
-      <span class="lbl !mb-0 whitespace-nowrap">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></span>
-      <button type="button" @click="abrirCal()" class="field !min-h-0 !py-1 text-sm font-semibold whitespace-nowrap" style="width:auto">
-        📅 <span x-text="viagemLabel || 'escolher'"></span>
-      </button>
-      <div x-show="calAberto" x-cloak @click.outside="calAberto=false" class="absolute top-full left-0 mt-1 z-40 bg-white rounded-xl border shadow-xl p-2 w-64 text-slate-700">
-        <div class="flex items-center justify-between mb-1">
-          <button type="button" @click="mudarMes(-1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">‹</button>
-          <div class="text-sm font-bold capitalize" x-text="nomeMes"></div>
-          <button type="button" @click="mudarMes(1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">›</button>
-        </div>
-        <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1">
-          <template x-for="(d,i) in ['D','S','T','Q','Q','S','S']" :key="i"><div x-text="d"></div></template>
-        </div>
-        <div class="grid grid-cols-7 gap-0.5">
-          <template x-for="c in calDias" :key="c.iso">
-            <button type="button" :disabled="!c.valido" @click="c.valido && escolherDia(c.iso)"
-              class="h-8 rounded text-sm transition"
-              :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed'))"
-              :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : '')"
-              x-text="c.dia"></button>
-          </template>
-        </div>
-        <div class="text-[10px] text-slate-400 mt-1 text-center">Só os dias de viagem da linha ficam disponíveis.</div>
-      </div>
-    </div>
     @if($podeRetroativo)
     <div class="flex items-center gap-1.5">
       <span class="lbl !mb-0 whitespace-nowrap">Lançamento</span>
@@ -97,6 +71,34 @@
           <select class="field" x-model="embarcacaoSel"><option value="">—</option>
             @foreach($embarcacoes as $b)<option value="{{ $b->id }}">{{ $b->nome }}{{ $b->usa_poltrona?' 🪑':'' }}</option>@endforeach
           </select></div>
+        <div class="mt-1">
+        <div x-show="viagemData" x-cloak class="flex flex-wrap items-center gap-1.5 relative max-w-full min-w-0">
+          <span class="lbl !mb-0 whitespace-nowrap">Viagem<span x-show="linhaNome" class="normal-case font-normal" x-text="' · '+linhaNome"></span></span>
+          <button type="button" @click="abrirCal()" class="field !min-h-0 !py-1 text-sm font-semibold whitespace-nowrap" style="width:auto">
+            📅 <span x-text="viagemLabel || 'escolher'"></span>
+          </button>
+          <div x-show="calAberto" x-cloak @click.outside="calAberto=false" class="absolute top-full left-0 mt-1 z-40 bg-white rounded-xl border shadow-xl p-2 w-64 text-slate-700">
+            <div class="flex items-center justify-between mb-1">
+              <button type="button" @click="mudarMes(-1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">‹</button>
+              <div class="text-sm font-bold capitalize" x-text="nomeMes"></div>
+              <button type="button" @click="mudarMes(1)" class="w-7 h-7 rounded hover:bg-slate-100 text-lg leading-none">›</button>
+            </div>
+            <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1">
+              <template x-for="(d,i) in ['D','S','T','Q','Q','S','S']" :key="i"><div x-text="d"></div></template>
+            </div>
+            <div class="grid grid-cols-7 gap-0.5">
+              <template x-for="c in calDias" :key="c.iso">
+                <button type="button" :disabled="!c.valido" @click="c.valido && escolherDia(c.iso)"
+                  class="h-8 rounded text-sm transition"
+                  :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed'))"
+                  :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : '')"
+                  x-text="c.dia"></button>
+              </template>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-1 text-center">Só os dias de viagem da linha ficam disponíveis.</div>
+          </div>
+        </div>
+        </div>
         <div x-show="precoInfo" class="text-[11px] font-semibold" style="color:var(--cor1)" x-cloak>
           💲 Preço do trecho carregado
         </div>
