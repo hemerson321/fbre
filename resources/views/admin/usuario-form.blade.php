@@ -59,6 +59,31 @@
   <p class="text-xs text-slate-500">No <b>valor cheio</b> repassa o total e a comissão é tratada à parte. Na <b>comissão</b>, fica com a % e repassa o resto.</p>
 </div>
 @endif
+
+<div class="rounded-xl bg-sky-50 border border-sky-200 p-3 space-y-2" x-data="{pm:'{{ old('pix_modo',$u->pix_modo ?: 'empresa') }}'}">
+  <div class="font-semibold text-sm">💠 Recebimento PIX deste operador</div>
+  <select name="pix_modo" x-model="pm" class="input !min-h-[40px]">
+    <option value="empresa">Usa o PIX da empresa (padrão)</option>
+    <option value="api">Conta própria (Mercado Pago) — PIX dinâmico, confirma sozinho</option>
+    <option value="estatico">PIX estático (chave própria) — gera QR na venda</option>
+  </select>
+  <div x-show="pm==='api'" x-cloak>
+    <label class="label !text-xs">Conta de pagamento (API)</label>
+    <select name="pix_api_id" class="input !min-h-[40px]">
+      <option value="">— escolha a conta —</option>
+      @foreach($pagamentoApis as $api)<option value="{{ $api->id }}" @selected(old('pix_api_id',$u->pix_api_id)==$api->id)>{{ $api->nome }}</option>@endforeach
+    </select>
+    <p class="text-xs text-slate-400 mt-0.5">Cadastre as contas em <b>Minha empresa → APIs de pagamento</b>. O PIX confirma sozinho.</p>
+  </div>
+  <div x-show="pm==='estatico'" x-cloak class="space-y-2">
+    <div><label class="label !text-xs">Chave PIX</label><input name="pix_chave" value="{{ old('pix_chave',$u->pix_chave) }}" class="input !min-h-[40px]" placeholder="CPF, telefone, e-mail ou aleatória" autocapitalize="none"></div>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="label !text-xs">Nome do recebedor</label><input name="pix_recebedor" value="{{ old('pix_recebedor',$u->pix_recebedor) }}" class="input !min-h-[40px]" maxlength="25"></div>
+      <div><label class="label !text-xs">Cidade</label><input name="pix_cidade" value="{{ old('pix_cidade',$u->pix_cidade) }}" class="input !min-h-[40px]" maxlength="15"></div>
+    </div>
+    <p class="text-xs text-slate-400">Na venda, o sistema gera o QR estático com a chave e o valor. O dinheiro cai direto pra ele.</p>
+  </div>
+</div>
 <div class="rounded-xl bg-slate-50 p-3 space-y-1">
   <div class="label">Permissões</div>
 

@@ -35,6 +35,7 @@ class UsuarioController extends Controller
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
             'estacoes' => \App\Models\Estacao::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'revendedores' => User::where('is_revendedor', true)->where('id', '!=', $u->id)->orderBy('name')->get(['id', 'name']),
+            'pagamentoApis' => \App\Models\PagamentoApi::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'provider']),
             'empresa' => \App\Support\Tenant::empresa(),
         ];
     }
@@ -124,6 +125,11 @@ class UsuarioController extends Controller
             'revendedor_id' => 'nullable|integer',
             'modo_acerto' => 'nullable|in:comissao,cheio',
             'comissao_pct' => 'nullable|integer|min:0|max:100',
+            'pix_modo' => 'nullable|in:empresa,api,estatico',
+            'pix_api_id' => 'nullable|integer',
+            'pix_chave' => 'nullable|string|max:140',
+            'pix_recebedor' => 'nullable|string|max:60',
+            'pix_cidade' => 'nullable|string|max:60',
             'mod_perms' => 'nullable|array',
             'mod_perms.*' => 'array',
             'ativo' => 'nullable|boolean',
@@ -142,6 +148,10 @@ class UsuarioController extends Controller
         // ativo: no cadastro o usuário já nasce ativo (o form só mostra o checkbox na edição);
         // na edição respeita o checkbox "Usuário ativo".
         $data['ativo'] = $u ? $request->boolean('ativo') : true;
+        // PIX do operador: limpa os campos que nao sao do modo escolhido
+        $data['pix_modo'] = $data['pix_modo'] ?? 'empresa';
+        if ($data['pix_modo'] !== 'api') $data['pix_api_id'] = null;
+        if ($data['pix_modo'] !== 'estatico') { $data['pix_chave'] = null; $data['pix_recebedor'] = null; $data['pix_cidade'] = null; }
         // listas vazias viram null (= tudo liberado)
         foreach (['loc_permitidas', 'setores_permitidos', 'transportes_permitidos'] as $lista) {
             $data[$lista] = ! empty($data[$lista]) ? array_values($data[$lista]) : null;
