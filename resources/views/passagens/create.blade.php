@@ -231,7 +231,9 @@
             <label class="lbl">PIX Automático</label>
             <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
           </div>
+          @if(auth()->user()?->podeDesconto())
           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+          @endif
           <div class="flex items-end"><button type="button" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''" @click="pag.dinheiro = +Math.max(total - pagoSemDinheiro, 0).toFixed(2)">Tudo em dinheiro</button></div>
         </div>
         <p x-show="forma==='faturado'" class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">Faturado: nada é recebido agora.</p>
