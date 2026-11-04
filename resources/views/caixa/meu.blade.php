@@ -30,10 +30,11 @@
 @if(!empty($acerto))
 <div class="card p-4" style="background:linear-gradient(135deg,#0b1a33,#13294d);color:#fff">
   <div class="text-[11px] font-bold uppercase opacity-70 mb-2">Acerto com a empresa · {{ $acerto['qtd'] }} passagem(ns) no período</div>
-  <div class="grid grid-cols-3 gap-3">
-    <div><div class="text-[11px] opacity-70">Vendi</div><div class="text-lg font-extrabold">R$ {{ number_format($acerto['bruto'],2,',','.') }}</div></div>
-    <div><div class="text-[11px] opacity-70">Minha comissão ({{ $acerto['pct'] }}%)</div><div class="text-lg font-extrabold text-emerald-300">R$ {{ number_format($acerto['comissao'],2,',','.') }}</div></div>
-    <div><div class="text-[11px] opacity-70">Passar pra empresa</div><div class="text-xl font-extrabold text-amber-300">R$ {{ number_format($acerto['a_passar'],2,',','.') }}</div></div>
+  <div class="text-xs opacity-70">Passar pra empresa</div>
+  <div class="text-3xl font-extrabold text-amber-300 leading-tight mb-3">R$ {{ number_format($acerto['a_passar'],2,',','.') }}</div>
+  <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+    <div><span class="opacity-70">Vendi:</span> <b>R$ {{ number_format($acerto['bruto'],2,',','.') }}</b></div>
+    <div><span class="opacity-70">Minha comissão ({{ $acerto['pct'] }}%):</span> <b class="text-emerald-300">R$ {{ number_format($acerto['comissao'],2,',','.') }}</b></div>
   </div>
 </div>
 @endif
