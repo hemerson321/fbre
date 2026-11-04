@@ -459,7 +459,7 @@
         // Pagamento: o operador escolhe o meio; nada vem preenchido por padrao.
       },
       ajustarAvista(){ /* desativado: operador escolhe o meio de pagamento, nao preenche dinheiro automatico */ },
-      preencher(meio){ const outros=this.meios.reduce((s,m)=> m.k===meio ? s : s+(Number(this.pag[m.k])||0), 0); this.pag[meio]=+Math.max(this.total-outros,0).toFixed(2); },
+      preencher(meio){ this.meios.forEach(m=>{ if(m.k!==meio) this.pag[m.k]=null; }); this.pag[meio]=+Math.max(this.total,0).toFixed(2); },
 
       // ---- passageiros ----
       novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
