@@ -463,6 +463,7 @@ class PassagemController extends Controller
             'usa_poltrona' => (bool) $emb->usa_poltrona,
             'qtd' => (int) $emb->poltronas_qtd,
             'colunas' => (int) ($emb->poltronas_colunas ?: 4),
+            'layout' => (string) ($emb->poltronas_lista ?? ''),
             'ocupadas' => $this->ocupadas($emb->id, $request->input('data_viagem'), $request->input('viagem_id'), $request->input('rota_id'), $request->input('origem'), $request->input('destino'))->values(),
         ];
     }

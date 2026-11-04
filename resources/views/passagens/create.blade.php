@@ -661,7 +661,7 @@
           if(this.origemSel)u.searchParams.set('origem',this.origemSel);
           if(this.destinoSel)u.searchParams.set('destino',this.destinoSel);
           const r=await fetch(u,{headers:{Accept:'application/json'},credentials:'same-origin'}); const j=await r.json();
-          this.ocupadas=(j.ocupadas||[]).map(String); if(j.colunas)this.colunasPoltrona=j.colunas;
+          this.ocupadas=(j.ocupadas||[]).map(String); if(j.colunas)this.colunasPoltrona=j.colunas; if(j.qtd)this.qtdPoltronas=j.qtd; if(j.layout!==undefined){ this.poltronasLayout=j.layout||''; this.temLayout=(j.layout||'').trim().length>0; }
         }catch(e){ this.ocupadas=[]; }
       },
       abrirMapa(i){ this.paxAtual=i; this.mapaAberto=true; this.carregarOcupadas(); },
