@@ -174,7 +174,12 @@ document.addEventListener('alpine:init', () => {
     'GERATEC'       => ['🛠️', '#334155'],
   ];
   if (! $coresPorModulo) { foreach ($metaGrupo as $k => $v) { $metaGrupo[$k][1] = $cor1; } }
-  $ativo = fn($r) => request()->url() === strtok($r, '?');
+  $ativo = function ($r) {
+      if (request()->url() !== strtok($r, '?')) return false;
+      parse_str(parse_url($r, PHP_URL_QUERY) ?: '', $qq);
+      foreach ($qq as $k => $v) { if ((string) request()->input($k) !== (string) $v) return false; }
+      return true;
+  };
 @endphp
 
 {{-- ===== BARRA DA EMPRESA ===== --}}
