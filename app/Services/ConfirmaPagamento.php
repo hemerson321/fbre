@@ -83,6 +83,9 @@ class ConfirmaPagamento
             Passagem::withoutGlobalScopes()->where('empresa_id', $cob->empresa_id)
                 ->where('revendedor_id', $cob->referencia_id)->where('cancelada', false)->where('acerto_empresa', false)
                 ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => $cob->referencia_id]);
+            \App\Models\Pagamento::withoutGlobalScopes()->where('empresa_id', $cob->empresa_id)
+                ->where('user_id', $cob->referencia_id)->where('modulo', 'avulso')->where('conferido', false)
+                ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => $cob->referencia_id]);
             return true;
         }
 

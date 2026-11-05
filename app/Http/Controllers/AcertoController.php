@@ -85,6 +85,10 @@ class AcertoController extends Controller
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
             ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
+        if (! $transporteId && ! $viagemId) {
+            Pagamento::where('user_id', $revendedor->id)->where('modulo', 'avulso')->where('conferido', false)
+                ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id()]);
+        }
         return back()->with('ok', 'Acerto de '.$revendedor->name.' baixado ('.$n.' passagens).');
     }
 
@@ -134,6 +138,10 @@ class AcertoController extends Controller
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
             ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
+        if (! $transporteId && ! $viagemId) {
+            Pagamento::whereIn('user_id', $revIds)->where('modulo', 'avulso')->where('conferido', false)
+                ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id()]);
+        }
         return back()->with('ok', 'Baixa feita em todos os agentes ('.$n.' passagens).');
     }
 
@@ -144,7 +152,10 @@ class AcertoController extends Controller
         abort_unless($u->ehRevendedor(), 403);
         $empresa = Tenant::empresa();
         $base = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->where('acerto_empresa', false);
-        $valor = round((float) (clone $base)->sum('acerto_empresa_valor'), 2);
+        $repasse = (float) (clone $base)->sum('acerto_empresa_valor');
+        $avEnt = (float) Pagamento::where('user_id', $u->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'entrada')->where('conferido', false)->sum('valor');
+        $avSai = (float) Pagamento::where('user_id', $u->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'saida')->where('conferido', false)->sum('valor');
+        $valor = round($repasse + $avEnt - $avSai, 2);
         if ($valor <= 0) return response()->json(['ok' => false, 'erro' => 'Você não tem valor pendente pra acertar.']);
         $api = $u->acerto_pix_api_id ? \App\Models\PagamentoApi::find($u->acerto_pix_api_id) : null;
         if (! $api || $api->ehEstatico()) return response()->json(['ok' => false, 'erro' => 'Esse agente não está no modo PIX automático (Mercado Pago).']);

@@ -54,6 +54,11 @@
     @if(($acerto['acertado_hoje'] ?? 0) > 0)
       <div class="flex justify-between text-sm"><span class="opacity-70">Acertado hoje</span><b class="text-emerald-300">R$ {{ number_format($acerto['acertado_hoje'],2,',','.') }}</b></div>
     @endif
+    @if(($acerto['av_entrada'] ?? 0) > 0 || ($acerto['av_saida'] ?? 0) > 0)
+      <div class="flex justify-between text-xs opacity-80"><span>Passagens a repassar</span><span>R$ {{ number_format($acerto['repasse_passagem'] ?? 0,2,',','.') }}</span></div>
+      @if(($acerto['av_entrada'] ?? 0) > 0)<div class="flex justify-between text-xs text-emerald-300"><span>+ Entradas avulsas</span><span>R$ {{ number_format($acerto['av_entrada'],2,',','.') }}</span></div>@endif
+      @if(($acerto['av_saida'] ?? 0) > 0)<div class="flex justify-between text-xs text-rose-300"><span>− Despesas / saídas</span><span>R$ {{ number_format($acerto['av_saida'],2,',','.') }}</span></div>@endif
+    @endif
     <div class="flex justify-between text-sm"><span class="opacity-70">Falta acertar (tudo em aberto)</span><b class="{{ ($acerto['total_devido'] ?? 0) > 0 ? 'text-amber-300':'text-emerald-300' }}">R$ {{ number_format($acerto['total_devido'] ?? 0,2,',','.') }}</b></div>
   </div>
   @if(($acerto['total_devido'] ?? 0) > 0)
@@ -135,6 +140,37 @@ function acertoPix(ac){
   };
 }
 </script>
+@endif
+
+@if(($podeAvulso ?? false))
+<div class="card p-4" x-data="{open:false, tipo:'entrada'}">
+  <div class="text-[11px] font-bold uppercase text-slate-500 mb-2">Caixa do agente — entrada / saída (entra no acerto)</div>
+  <div class="flex gap-2">
+    <button type="button" @click="tipo='entrada';open=true" class="btn btn-sm text-white flex-1" style="background:#059669">➕ Entrada avulsa</button>
+    <button type="button" @click="tipo='saida';open=true" class="btn btn-sm text-white flex-1" style="background:#e11d48">➖ Saída / despesa</button>
+  </div>
+  <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3" @click="open=false">
+    <form method="post" action="{{ route('caixa.avulso') }}" class="bg-white rounded-2xl p-4 w-full max-w-sm space-y-3" @click.stop>
+      @csrf
+      <input type="hidden" name="tipo_mov" :value="tipo">
+      <div class="font-bold text-lg" x-text="tipo==='entrada' ? '➕ Entrada avulsa' : '➖ Saída / despesa'"></div>
+      <div><label class="label">Categoria</label>
+        <select name="categoria" class="input" required>
+          <option value="">— escolher —</option>
+          @foreach($categorias as $c)<option value="{{ $c->nome }}" x-show="'{{ $c->tipo }}'==='ambos' || '{{ $c->tipo }}'===tipo">{{ $c->nome }}</option>@endforeach
+        </select>
+      </div>
+      <div><label class="label">Valor</label><input name="valor" class="input" x-money></div>
+      <div><label class="label">Forma</label>
+        <select name="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select></div>
+      <div><label class="label">Descrição (opcional)</label><input name="descricao" class="input" maxlength="200"></div>
+      <div class="flex gap-2 pt-1">
+        <button type="button" class="btn btn-ghost flex-1" @click="open=false">Cancelar</button>
+        <button class="btn flex-1 text-white" :style="tipo==='entrada'?'background:#059669':'background:#e11d48'">Registrar</button>
+      </div>
+    </form>
+  </div>
+</div>
 @endif
 
 @if($modo==='resumido')
