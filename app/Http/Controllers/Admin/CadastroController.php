@@ -68,8 +68,14 @@ class CadastroController extends Controller
             $data = $request->validate([
                 'nome' => 'required|string|max:60',
                 'tipo' => 'required|in:entrada,saida,ambos',
+                'conta_acerto' => 'nullable|boolean',
+                'comissao_pct' => 'nullable|integer|min:0|max:100',
             ]);
-            AvulsoCategoria::create(['nome' => $data['nome'], 'tipo' => $data['tipo'], 'ativo' => true]);
+            AvulsoCategoria::create([
+                'nome' => $data['nome'], 'tipo' => $data['tipo'], 'ativo' => true,
+                'conta_acerto' => $request->boolean('conta_acerto'),
+                'comissao_pct' => (int) ($data['comissao_pct'] ?? 0),
+            ]);
             return back()->with('ok', 'Categoria criada.');
         }
 

@@ -62,8 +62,8 @@ class RelatorioController extends Controller
             $empAcerto = \App\Support\Tenant::empresa();
             $acertoApi = $uu->acerto_pix_api_id ? \App\Models\PagamentoApi::find($uu->acerto_pix_api_id) : null;
             $repassePend = (float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)->sum('acerto_empresa_valor');
-            $avEnt = (float) Pagamento::where('user_id', $uu->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'entrada')->where('conferido', false)->sum('valor');
-            $avSai = (float) Pagamento::where('user_id', $uu->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'saida')->where('conferido', false)->sum('valor');
+            $avEnt = (float) Pagamento::where('user_id', $uu->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'entrada')->where('conferido', false)->where('acerto_conta', true)->selectRaw('COALESCE(SUM(valor * (100 - COALESCE(acerto_pct,0)) / 100),0) as v')->value('v');
+            $avSai = (float) Pagamento::where('user_id', $uu->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'saida')->where('conferido', false)->where('acerto_conta', true)->sum('valor');
             $acerto = [
                 'qtd' => (clone $passQ)->count(),
                 'bruto' => $bruto,

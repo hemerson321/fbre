@@ -107,6 +107,7 @@ class CaixaController extends Controller
             'meio' => 'required|in:dinheiro,pix,debito,credito',
             'descricao' => 'nullable|string|max:200',
         ]);
+        $cat = ! empty($data['categoria']) ? AvulsoCategoria::where('nome', $data['categoria'])->first() : null;
         Pagamento::create([
             'empresa_id' => Tenant::id(),
             'modulo' => 'avulso',
@@ -119,6 +120,8 @@ class CaixaController extends Controller
             'tipo_mov' => $data['tipo_mov'],
             'categoria' => $data['categoria'] ?? null,
             'descricao' => $data['descricao'] ?? null,
+            'acerto_conta' => $cat ? (bool) $cat->conta_acerto : true,
+            'acerto_pct' => $cat ? (int) $cat->comissao_pct : 0,
         ]);
         return back()->with('ok', ($data['tipo_mov'] === 'entrada' ? 'Entrada' : 'Saída') . ' avulsa registrada.');
     }

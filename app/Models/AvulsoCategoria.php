@@ -11,7 +11,7 @@ class AvulsoCategoria extends Model
 
     protected $table = 'avulso_categorias';
     protected $guarded = [];
-    protected $casts = ['ativo' => 'boolean'];
+    protected $casts = ['ativo' => 'boolean', 'conta_acerto' => 'boolean', 'comissao_pct' => 'integer'];
 
     public const TIPOS = ['entrada' => 'Entrada', 'saida' => 'Saída', 'ambos' => 'Entrada e saída'];
 }

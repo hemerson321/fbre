@@ -153,8 +153,8 @@ class AcertoController extends Controller
         $empresa = Tenant::empresa();
         $base = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->where('acerto_empresa', false);
         $repasse = (float) (clone $base)->sum('acerto_empresa_valor');
-        $avEnt = (float) Pagamento::where('user_id', $u->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'entrada')->where('conferido', false)->sum('valor');
-        $avSai = (float) Pagamento::where('user_id', $u->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'saida')->where('conferido', false)->sum('valor');
+        $avEnt = (float) Pagamento::where('user_id', $u->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'entrada')->where('conferido', false)->where('acerto_conta', true)->selectRaw('COALESCE(SUM(valor * (100 - COALESCE(acerto_pct,0)) / 100),0) as v')->value('v');
+        $avSai = (float) Pagamento::where('user_id', $u->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'saida')->where('conferido', false)->where('acerto_conta', true)->sum('valor');
         $valor = round($repasse + $avEnt - $avSai, 2);
         if ($valor <= 0) return response()->json(['ok' => false, 'erro' => 'Você não tem valor pendente pra acertar.']);
         $api = $u->acerto_pix_api_id ? \App\Models\PagamentoApi::find($u->acerto_pix_api_id) : null;

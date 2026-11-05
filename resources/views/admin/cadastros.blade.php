@@ -211,6 +211,8 @@ function taxasEditor(taxas){ return { taxas: (taxas&&taxas.length)?taxas:[{orige
       <option value="entrada">Só entrada</option>
       <option value="saida">Só saída</option>
     </select>
+    <label class="flex items-center gap-1.5 text-sm whitespace-nowrap"><input type="checkbox" name="conta_acerto" value="1" checked class="w-4 h-4 rounded"> Conta no acerto</label>
+    <input name="comissao_pct" type="number" min="0" max="100" class="input !min-h-[42px] !w-28" placeholder="Comissão %" title="% que fica com o agente nas entradas">
     <button class="btn btn-accent btn-sm">+ Adicionar</button>
   </form>
   <div class="flex flex-wrap gap-2 pt-1">
@@ -218,6 +220,7 @@ function taxasEditor(taxas){ return { taxas: (taxas&&taxas.length)?taxas:[{orige
       <span class="chip bg-slate-100 text-slate-700 flex items-center gap-2">
         {{ $c->nome }}
         <span class="text-[10px] uppercase font-bold {{ $c->tipo==='entrada'?'text-emerald-600':($c->tipo==='saida'?'text-red-600':'text-slate-400') }}">{{ \App\Models\AvulsoCategoria::TIPOS[$c->tipo] ?? $c->tipo }}</span>
+        @if(!$c->conta_acerto)<span class="text-[9px] text-slate-400">s/ acerto</span>@elseif(($c->comissao_pct ?? 0)>0)<span class="text-[9px] text-indigo-500 font-bold">{{ $c->comissao_pct }}%</span>@endif
         <form method="post" action="{{ route('admin.cadastros.destroy',['categorias',$c->id]) }}" onsubmit="return confirm('Remover categoria?')">@csrf @method('DELETE')<button class="text-red-500 text-xs">×</button></form>
       </span>
     @empty <span class="text-slate-400 text-sm">Nenhuma categoria ainda.</span> @endforelse
