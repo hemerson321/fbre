@@ -142,6 +142,7 @@ class EmpresaController extends Controller
                 )),
                 'usa_revendedores' => $request->boolean('usa_revendedores'),
                 'revendedor_multi' => $request->boolean('revendedor_multi'),
+                'usa_desconto' => $request->boolean('usa_desconto'),
             ],
         ]);
 
@@ -210,6 +211,7 @@ class EmpresaController extends Controller
         ));
         $config['usa_revendedores'] = $request->boolean('usa_revendedores');
         $config['revendedor_multi'] = $request->boolean('revendedor_multi');
+        $config['usa_desconto'] = $request->boolean('usa_desconto');
         $data['config'] = $config;
         unset($data['modulos_ativos']);
         $empresa->update($data);

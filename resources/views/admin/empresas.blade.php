@@ -25,8 +25,9 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1">
       <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="usa_revendedores" value="1" class="w-4 h-4 rounded shrink-0"> <span>🤝 Afiliados / Revendedores</span></label>
       <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="revendedor_multi" value="1" class="w-4 h-4 rounded shrink-0"> <span>👥 Multiagente (filiados)</span></label>
+      <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="usa_desconto" value="1" class="w-4 h-4 rounded shrink-0" checked> <span>🏷️ Trabalhar com desconto da tabela</span></label>
     </div>
-    <p class="text-[11px] text-slate-400 mt-0.5">Afiliados: agentes que vendem passagem e acertam com a empresa. Multiagente: cada afiliado tem seus próprios vendedores.</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">Afiliados: agentes que vendem passagem e acertam com a empresa. Multiagente: cada afiliado tem seus próprios vendedores. Desconto: se desmarcado, ninguém pode baixar o valor da tabela nesta empresa.</p>
   </div>
   <div class="sm:col-span-2 label pt-2">Usuário administrador do cliente</div>
   <div><label class="label">Nome</label><input name="admin_nome" class="input" required></div>
@@ -83,6 +84,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1">
           <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="usa_revendedores" value="1" class="w-4 h-4 rounded shrink-0" @checked($e->config('usa_revendedores'))> <span>🤝 Afiliados / Revendedores</span></label>
           <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="revendedor_multi" value="1" class="w-4 h-4 rounded shrink-0" @checked($e->config('revendedor_multi'))> <span>👥 Multiagente (filiados)</span></label>
+          <label class="flex items-center gap-2 border rounded-lg px-2 py-1 text-sm"><input type="checkbox" name="usa_desconto" value="1" class="w-4 h-4 rounded shrink-0" @checked($e->config('usa_desconto', true))> <span>🏷️ Trabalhar com desconto da tabela</span></label>
         </div>
       </div>
       <div class="sm:col-span-3 flex gap-2"><button class="btn btn-accent btn-sm">Salvar dados</button><button type="button" class="btn btn-ghost btn-sm" @click="ed=false">Cancelar</button></div>

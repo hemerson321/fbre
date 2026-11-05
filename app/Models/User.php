@@ -86,7 +86,12 @@ class User extends Authenticatable
     public function ehRevendedor(): bool { return (bool) $this->is_revendedor; }
 
     /** Pode dar desconto do operador na venda? Revendedor nunca; admin/super sempre; operador conforme a flag. */
-    public function podeDesconto(): bool { return ! $this->is_revendedor && ($this->super_admin || (bool) $this->pode_desconto); }
+    public function podeDesconto(): bool
+    {
+        $emp = \App\Support\Tenant::empresa();
+        if ($emp && ! $emp->config('usa_desconto', true)) return false;
+        return ! $this->is_revendedor && ($this->super_admin || (bool) $this->pode_desconto);
+    }
 
     /** O revendedor "dono" deste usuário: ele mesmo (se revendedor), ou o pai (se vendedor), ou null. */
     public function revendedorDono(): ?int
