@@ -63,6 +63,28 @@ class AcertoController extends Controller
         return back()->with('ok', 'Caixa de '.$operador->name.' conferido ('.$n.' lançamentos).');
     }
 
+    /** ADMIN confere o caixa de TODOS os operadores de balcao no periodo mostrado. */
+    public function baixaOperadoresTodos(Request $request)
+    {
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+        [$inicio, $fim] = CaixaController::periodo($request);
+        $opIds = User::where('empresa_id', Tenant::id())->where('is_revendedor', false)->select('id');
+        $n = Pagamento::where('estornado', false)->where('tipo_mov', '!=', 'saida')->where('conferido', false)
+            ->whereIn('user_id', $opIds)->whereBetween('created_at', [$inicio, $fim])
+            ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id()]);
+        return back()->with('ok', 'Caixa de todos os operadores conferido ('.$n.' lançamentos).');
+    }
+
+    /** ADMIN da baixa no acerto de TODOS os agentes externos (revendedores) de uma vez. */
+    public function baixaAgentesTodos(Request $request)
+    {
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+        $revIds = User::where('empresa_id', Tenant::id())->where('is_revendedor', true)->pluck('id');
+        $n = Passagem::whereIn('revendedor_id', $revIds)->where('cancelada', false)->where('acerto_empresa', false)
+            ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
+        return back()->with('ok', 'Baixa feita em todos os agentes ('.$n.' passagens).');
+    }
+
     public function baixaEmpresa(Request $request, User $revendedor)
     {
         abort_unless($revendedor->empresa_id === Tenant::id(), 404);

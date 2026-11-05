@@ -211,6 +211,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/acertos', [AcertoController::class, 'index'])->name('acertos');
         Route::post('/acertos/{revendedor}/baixa', [AcertoController::class, 'baixaEmpresa'])->name('acertos.baixa');
         Route::post('/acertos/operador/{operador}/baixa', [AcertoController::class, 'baixaOperador'])->name('acertos.baixa-operador');
+        Route::post('/acertos/operadores/baixa-todos', [AcertoController::class, 'baixaOperadoresTodos'])->name('acertos.operadores.baixa-todos');
+        Route::post('/acertos/agentes/baixa-todos', [AcertoController::class, 'baixaAgentesTodos'])->name('acertos.agentes.baixa-todos');
         // WhatsApp (conexoes oficiais e nao oficiais)
         Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp');
         Route::post('/whatsapp-servidor', [WhatsappController::class, 'servidor'])->name('whatsapp.servidor');

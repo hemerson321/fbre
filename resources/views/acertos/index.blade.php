@@ -11,10 +11,16 @@
 
   {{-- ===== OPERADORES DE BALCÃO ===== --}}
   <div>
-    <div class="flex items-center gap-2 mb-2">
+    <div class="flex items-center gap-2 mb-2 flex-wrap">
       <span class="text-base">💵</span>
       <h2 class="font-bold">Operadores de balcão</h2>
-      <span class="text-xs text-slate-400">— conferir o caixa do período</span>
+      <span class="text-xs text-slate-400 flex-1 min-w-[140px]">— cada “Conferir” já fecha TODAS as vendas do operador no período</span>
+      @if($ops->contains(fn ($l) => $l['qtd'] > 0))
+        <form method="post" action="{{ route('admin.acertos.operadores.baixa-todos') }}" onsubmit="return confirm('Conferir o caixa de TODOS os operadores no período?')">@csrf
+          <input type="hidden" name="periodo" value="{{ $periodo }}"><input type="hidden" name="inicio" value="{{ request('inicio') }}"><input type="hidden" name="hora_inicio" value="{{ request('hora_inicio') }}"><input type="hidden" name="fim" value="{{ request('fim') }}"><input type="hidden" name="hora_fim" value="{{ request('hora_fim') }}">
+          <button class="btn btn-primary btn-sm whitespace-nowrap">✓ Conferir todos</button>
+        </form>
+      @endif
     </div>
     @forelse($ops as $l)
       <div class="card p-4 flex items-center gap-3 mb-2">
@@ -48,10 +54,15 @@
   {{-- ===== AGENTES EXTERNOS (revendedores) ===== --}}
   @if($usaRev)
   <div>
-    <div class="flex items-center gap-2 mb-2">
+    <div class="flex items-center gap-2 mb-2 flex-wrap">
       <span class="text-base">🤝</span>
       <h2 class="font-bold">Agentes externos</h2>
-      <span class="text-xs text-slate-400">— o que cada um deve repassar</span>
+      <span class="text-xs text-slate-400 flex-1 min-w-[140px]">— o que cada um deve repassar</span>
+      @if($linhas->contains(fn ($l) => $l['total'] > 0))
+        <form method="post" action="{{ route('admin.acertos.agentes.baixa-todos') }}" onsubmit="return confirm('Dar baixa no acerto de TODOS os agentes?')">@csrf
+          <button class="btn btn-primary btn-sm whitespace-nowrap">Dar baixa em todos</button>
+        </form>
+      @endif
     </div>
     @forelse($linhas as $l)
       <div class="card p-4 flex items-center gap-3 mb-2">
