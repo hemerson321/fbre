@@ -50,8 +50,8 @@
             <label class="label">URL de rastreio do barco (opcional)</label>
             <input name="rastreio_url" class="input !min-h-[40px] font-mono text-xs" value="{{ $e->rastreio_url }}" placeholder="https://rionave.com/wp-json/riotag/v1/posicao/TOKEN" autocapitalize="none" inputmode="url">
             <div class="grid grid-cols-2 gap-2 mt-2">
-              <div><label class="label !text-xs">Cancel. antes da viagem %</label><input name="cancel_antes_pct" type="number" min="0" max="100" value="{{ $e->cancel_antes_pct }}" class="input !min-h-[40px]" placeholder="padrão empresa"></div>
-              <div><label class="label !text-xs">Cancel. depois da viagem %</label><input name="cancel_depois_pct" type="number" min="0" max="100" value="{{ $e->cancel_depois_pct }}" class="input !min-h-[40px]" placeholder="padrão empresa"></div>
+              <div><label class="label !text-xs">Cancel. antes da viagem %</label><input name="cancel_antes_pct" type="number" min="0" max="100" value="{{ $e->cancel_antes_pct ?? \App\Support\Tenant::empresa()?->config('cancel_antes_pct',10) }}" class="input !min-h-[40px]"></div>
+              <div><label class="label !text-xs">Cancel. depois da viagem %</label><input name="cancel_depois_pct" type="number" min="0" max="100" value="{{ $e->cancel_depois_pct ?? \App\Support\Tenant::empresa()?->config('cancel_depois_pct',30) }}" class="input !min-h-[40px]"></div>
             </div>
             <div class="grid grid-cols-2 gap-2 mt-2">
               <div><label class="label !text-xs">Dono do transporte (nome)</label>
