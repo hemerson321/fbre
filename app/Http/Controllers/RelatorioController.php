@@ -58,6 +58,7 @@ class RelatorioController extends Controller
             $passQ = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->whereBetween('created_at', [$inicio, $fim]);
             $bruto = (float) (clone $passQ)->sum('total');
             $aPassar = (float) (clone $passQ)->sum('acerto_empresa_valor');
+            $empAcerto = \App\Support\Tenant::empresa();
             $acerto = [
                 'qtd' => (clone $passQ)->count(),
                 'bruto' => $bruto,
@@ -65,6 +66,12 @@ class RelatorioController extends Controller
                 'comissao' => round($bruto - $aPassar, 2),
                 'pct' => (int) ($uu->comissao_pct ?? 0),
                 'modo' => $uu->modo_acerto ?? 'cheio',
+                'pix_modo' => $uu->acerto_pix_modo ?: 'estatico',
+                'emp_pix' => $empAcerto?->pix,
+                'emp_nome' => $empAcerto?->nomeExibicao(),
+                'emp_cidade' => $empAcerto?->config('cidade') ?: 'CIDADE',
+                'pode_dinamico' => (bool) ($empAcerto?->pagamentoApi('passagem')),
+                'total_devido' => round((float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)->sum('acerto_empresa_valor'), 2),
             ];
         }
 

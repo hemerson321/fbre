@@ -78,6 +78,14 @@ class ConfirmaPagamento
             return true;
         }
 
+        // Acerto do agente externo pago por PIX: baixa as passagens pendentes do revendedor.
+        if ($cob->referencia_tipo === 'acerto' && $cob->referencia_id) {
+            Passagem::withoutGlobalScopes()->where('empresa_id', $cob->empresa_id)
+                ->where('revendedor_id', $cob->referencia_id)->where('cancelada', false)->where('acerto_empresa', false)
+                ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => $cob->referencia_id]);
+            return true;
+        }
+
         $valorFmt = number_format((float) $cob->valor, 2, ',', '.');
 
         if ($cob->referencia_tipo === Conversa::class && $cob->referencia_id) {

@@ -30,7 +30,7 @@
 </label>
 
 @if($empresa && $empresa->config('usa_revendedores'))
-<div class="rounded-xl bg-amber-50 border border-amber-200 p-3 space-y-2" x-data="{rev:{{ old('is_revendedor',$u->is_revendedor)?'true':'false' }}, modo:'{{ old('modo_acerto',$u->modo_acerto ?: 'cheio') }}'}">
+<div class="rounded-xl bg-amber-50 border border-amber-200 p-3 space-y-2" x-data="{rev:{{ old('is_revendedor',$u->is_revendedor)?'true':'false' }}, modo:'{{ old('modo_acerto',$u->modo_acerto ?: 'cheio') }}', acm:'{{ old('acerto_pix_modo',$u->acerto_pix_modo ?: 'estatico') }}'}">
   <label class="flex items-start gap-2 cursor-pointer">
     <input type="checkbox" name="is_revendedor" value="1" x-model="rev" class="w-5 h-5 rounded mt-0.5">
     <span><span class="font-semibold text-sm">É revendedor de passagem</span><br><span class="text-xs text-slate-500">Vende passagem e pode ter filiados. Faz acerto com a empresa.</span></span>
@@ -57,6 +57,15 @@
       <input type="number" min="0" max="100" name="comissao_pct" value="{{ old('comissao_pct',$u->comissao_pct ?? 0) }}" class="input !min-h-[40px] text-right"></div>
   </div>
   <p class="text-xs text-slate-500">No <b>valor cheio</b> repassa o total e a comissão é tratada à parte. Na <b>comissão</b>, fica com a % e repassa o resto.</p>
+  <div x-show="rev" x-cloak class="border-t border-amber-200 pt-2">
+    <label class="label !text-xs">Como ele acerta (paga) a empresa</label>
+    <select name="acerto_pix_modo" x-model="acm" class="input !min-h-[40px]">
+      <option value="estatico">PIX da empresa + comprovante — empresa confere e dá baixa</option>
+      <option value="dinamico">PIX automático (Mercado Pago) — baixa sozinho ao pagar</option>
+    </select>
+    <p class="text-[11px] text-emerald-700" x-show="acm==='dinamico'">Ao pagar, o acerto baixa sozinho (precisa do Mercado Pago da empresa configurado).</p>
+    <p class="text-[11px] text-amber-700" x-show="acm==='estatico'" x-cloak>Ao pagar, aparece um aviso pra ele mandar o comprovante; a empresa dá baixa em Acertos.</p>
+  </div>
 </div>
 @endif
 

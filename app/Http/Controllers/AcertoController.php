@@ -137,6 +137,30 @@ class AcertoController extends Controller
         return back()->with('ok', 'Baixa feita em todos os agentes ('.$n.' passagens).');
     }
 
+    /** Agente externo gera um PIX (Mercado Pago da empresa) pra acertar; baixa sozinho no webhook. */
+    public function pagarEmpresa(Request $request, \App\Services\MercadoPago $mp)
+    {
+        $u = auth()->user();
+        abort_unless($u->ehRevendedor(), 403);
+        $empresa = Tenant::empresa();
+        $base = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->where('acerto_empresa', false);
+        $valor = round((float) (clone $base)->sum('acerto_empresa_valor'), 2);
+        if ($valor <= 0) return response()->json(['ok' => false, 'erro' => 'Você não tem valor pendente pra acertar.']);
+        $api = $empresa->pagamentoApi('passagem');
+        if (! $api) return response()->json(['ok' => false, 'erro' => 'A empresa não tem Mercado Pago configurado pra PIX automático. Use o PIX estático e mande o comprovante.']);
+        $r = $mp->cobrarPix($api, $valor, 'Acerto '.$u->name, ['nome' => $u->name]);
+        if (! ($r['ok'] ?? false)) return response()->json(['ok' => false, 'erro' => 'Não consegui gerar o PIX: '.($r['erro'] ?? 'erro')]);
+        $cob = \App\Models\Cobranca::create([
+            'empresa_id' => $empresa->id, 'pagamento_api_id' => $api->id, 'user_id' => $u->id,
+            'modulo' => 'passagem', 'referencia_tipo' => 'acerto', 'referencia_id' => $u->id,
+            'provider' => 'mercadopago', 'provider_payment_id' => $r['payment_id'] ?? null,
+            'valor' => $valor, 'status' => 'pendente',
+            'qr_copia_cola' => $r['copia_cola'] ?? null, 'qr_base64' => $r['qr_base64'] ?? null,
+            'ticket_url' => $r['ticket_url'] ?? null, 'cliente_nome' => $u->name,
+        ]);
+        return response()->json(['ok' => true, 'id' => $cob->id, 'valor' => $valor, 'qr_base64' => $cob->qr_base64, 'copia_cola' => $cob->qr_copia_cola]);
+    }
+
     /** Pagamento (passagem/encomenda) ligado a uma embarcação. */
     protected function filtraTransp(?int $t): \Closure
     {
