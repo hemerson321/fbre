@@ -81,8 +81,8 @@ class AcertoController extends Controller
                     'emb' => $emb,
                     'pct' => $pct,
                     'qtd' => (clone $pend)->count(),
-                    'dono' => (float) (clone $pend)->selectRaw('COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->value('v'),
-                    'pago' => (float) (clone $base)->where('acerto_dono', true)->selectRaw('COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->value('v'),
+                    'dono' => (float) (clone $pend)->selectRaw('COALESCE(SUM(CASE WHEN revendedor_id IS NOT NULL THEN acerto_empresa_valor ELSE total * (100 - '.$pct.') / 100 END),0) as v')->value('v'),
+                    'pago' => (float) (clone $base)->where('acerto_dono', true)->selectRaw('COALESCE(SUM(CASE WHEN revendedor_id IS NOT NULL THEN acerto_empresa_valor ELSE total * (100 - '.$pct.') / 100 END),0) as v')->value('v'),
                 ];
             })->filter(fn ($l) => $l['qtd'] > 0 || $l['pago'] > 0)->values();
 
@@ -99,10 +99,21 @@ class AcertoController extends Controller
         abort_unless(auth()->user()->podeAcerto(), 403);
         abort_unless($embarcacao->empresa_id === Tenant::id(), 404);
         $viagemId = $request->input('viagem_id') ?: null;
-        $n = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
-            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
-            ->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id()]);
-        return back()->with('ok', 'Acerto do dono de '.$embarcacao->nome.' pago ('.$n.' passagens).');
+        $pct = (int) $embarcacao->comissao_empresa_pct;
+        $q = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+            ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId));
+        $valorDono = (float) (clone $q)->selectRaw('COALESCE(SUM(CASE WHEN revendedor_id IS NOT NULL THEN acerto_empresa_valor ELSE total * (100 - '.$pct.') / 100 END),0) as v')->value('v');
+        $n = $q->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id()]);
+        if ($valorDono > 0) {
+            Pagamento::create([
+                'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
+                'meio' => 'dinheiro', 'valor' => $valorDono, 'user_id' => auth()->id(),
+                'momento' => 'baixa', 'tipo_mov' => 'saida',
+                'categoria' => 'Pagamento ao dono', 'descricao' => 'Pagamento ao dono - '.$embarcacao->nome.($embarcacao->dono_nome ? ' ('.$embarcacao->dono_nome.')' : ''),
+                'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false,
+            ]);
+        }
+        return back()->with('ok', 'Acerto do dono de '.$embarcacao->nome.' pago ('.$n.' passagens) - saida de R$ '.number_format($valorDono, 2, ',', '.').' no caixa.');
     }
 
     /** Relatorio do acerto de um transporte pra mandar pro dono (admin compartilha no WhatsApp). */
@@ -127,10 +138,20 @@ class AcertoController extends Controller
         abort_unless($revendedor->empresa_id === Tenant::id(), 404);
         $transporteId = $request->input('transporte_id') ?: null;
         $viagemId = $request->input('viagem_id') ?: null;
-        $n = Passagem::where('revendedor_id', $revendedor->id)->where('cancelada', false)->where('acerto_empresa', false)
-            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
-            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
-            ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
+        $q = Passagem::where('revendedor_id', $revendedor->id)->where('cancelada', false)->where('acerto_empresa', false)
+            ->when($transporteId, fn ($x) => $x->where('embarcacao_id', $transporteId))
+            ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId));
+        $valorRepasse = (float) (clone $q)->sum('acerto_empresa_valor');
+        $n = $q->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
+        if ($valorRepasse > 0) {
+            Pagamento::create([
+                'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
+                'meio' => 'dinheiro', 'valor' => $valorRepasse, 'user_id' => auth()->id(),
+                'momento' => 'baixa', 'tipo_mov' => 'entrada',
+                'categoria' => 'Repasse de agente', 'descricao' => 'Repasse do agente '.$revendedor->name,
+                'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false,
+            ]);
+        }
         if (! $transporteId && ! $viagemId) {
             Pagamento::where('user_id', $revendedor->id)->where('modulo', 'avulso')->where('conferido', false)
                 ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id()]);
@@ -180,10 +201,20 @@ class AcertoController extends Controller
         $viagemId = $request->input('viagem_id') ?: null;
         $revIds = User::where('empresa_id', Tenant::id())->where('is_revendedor', true)
             ->when($request->input('user_id'), fn ($q) => $q->where('id', $request->input('user_id')))->pluck('id');
-        $n = Passagem::whereIn('revendedor_id', $revIds)->where('cancelada', false)->where('acerto_empresa', false)
-            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
-            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
-            ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
+        $q = Passagem::whereIn('revendedor_id', $revIds)->where('cancelada', false)->where('acerto_empresa', false)
+            ->when($transporteId, fn ($x) => $x->where('embarcacao_id', $transporteId))
+            ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId));
+        $valorRepasse = (float) (clone $q)->sum('acerto_empresa_valor');
+        $n = $q->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
+        if ($valorRepasse > 0) {
+            Pagamento::create([
+                'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
+                'meio' => 'dinheiro', 'valor' => $valorRepasse, 'user_id' => auth()->id(),
+                'momento' => 'baixa', 'tipo_mov' => 'entrada',
+                'categoria' => 'Repasse de agente', 'descricao' => 'Repasse de agentes (baixa geral)',
+                'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false,
+            ]);
+        }
         if (! $transporteId && ! $viagemId) {
             Pagamento::whereIn('user_id', $revIds)->where('modulo', 'avulso')->where('conferido', false)
                 ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id()]);

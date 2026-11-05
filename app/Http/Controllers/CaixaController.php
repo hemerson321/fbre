@@ -33,6 +33,11 @@ class CaixaController extends Controller
             ? Viagem::orderByDesc('data_partida')->limit(60)->get() : collect();
         // quando filtra por viagem, ignora o período (viagem é o recorte)
         $encIds = $viagemId ? Encomenda::where('viagem_id', $viagemId)->pluck('id') : null;
+        // venda de agente de repasse (revendedor) NAO entra no caixa ate o acerto; o repasse vira entrada na baixa
+        $revendaIds = \App\Models\Passagem::whereNotNull('revendedor_id')->select('id');
+        $semRevenda = function ($q) use ($revendaIds) {
+            $q->where(fn ($w) => $w->where('modulo', '!=', 'passagem')->orWhereNotIn('origem_id', $revendaIds));
+        };
 
         $base = Pagamento::where('estornado', false)
             ->where('meio', '!=', 'desconto')
@@ -42,7 +47,8 @@ class CaixaController extends Controller
             ->when($modulo, fn ($q) => $q->where('modulo', $modulo))
             ->when($canal, fn ($q) => $this->filtrarCanal($q, $canal))
             ->when($transporteId, $filtraTransp)
-            ->where('tipo_mov', '!=', 'saida');
+            ->where('tipo_mov', '!=', 'saida')
+            ->where($semRevenda);
 
         $canalSql = Pagamento::canalSql();
         $porMeio = (clone $base)->selectRaw("$canalSql as canal, SUM(valor) valor, COUNT(*) qtd")->groupBy('canal')->get()->keyBy('canal');
@@ -58,7 +64,7 @@ class CaixaController extends Controller
         $descontos = Pagamento::where('estornado', false)->where('meio', 'desconto')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
-            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->sum('valor');
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->where($semRevenda)->sum('valor');
 
         $entregas = Evento::where('tipo', 'entrega')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
