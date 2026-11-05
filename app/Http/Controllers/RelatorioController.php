@@ -57,14 +57,15 @@ class RelatorioController extends Controller
         if ($uu->is_revendedor) {
             $passQ = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->whereBetween('created_at', [$inicio, $fim]);
             $bruto = (float) (clone $passQ)->sum('total');
-            $aPassar = (float) (clone $passQ)->sum('acerto_empresa_valor');
+            $repasseTotal = (float) (clone $passQ)->sum('acerto_empresa_valor');
+            $aPassar = (float) (clone $passQ)->where('acerto_empresa', false)->sum('acerto_empresa_valor');
             $empAcerto = \App\Support\Tenant::empresa();
             $acertoApi = $uu->acerto_pix_api_id ? \App\Models\PagamentoApi::find($uu->acerto_pix_api_id) : null;
             $acerto = [
                 'qtd' => (clone $passQ)->count(),
                 'bruto' => $bruto,
                 'a_passar' => round($aPassar, 2),
-                'comissao' => round($bruto - $aPassar, 2),
+                'comissao' => round($bruto - $repasseTotal, 2),
                 'pct' => (int) ($uu->comissao_pct ?? 0),
                 'modo' => $uu->modo_acerto ?? 'cheio',
                 'pix_modo' => $acertoApi ? ($acertoApi->ehEstatico() ? 'estatico' : 'dinamico') : 'nenhum',
