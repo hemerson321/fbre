@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Encomenda;
 use App\Models\Pagamento;
 use App\Models\Passagem;
 use App\Models\User;
@@ -14,30 +15,49 @@ use Illuminate\Support\Facades\Hash;
  */
 class AcertoController extends Controller
 {
-    // ---------- ADMIN: acerto da empresa com os revendedores ----------
+    // ---------- ADMIN: acerto da empresa (operadores de balcão + agentes externos) ----------
     public function index(Request $request)
     {
         abort_unless(auth()->user()->podeAcerto(), 403);
         [$inicio, $fim, $periodo] = CaixaController::periodo($request);
 
-        // Agentes externos (revendedores): devem repassar das passagens vendidas (nao depende do periodo).
-        $linhas = User::where('is_revendedor', true)->orderBy('name')->get()->map(function ($r) {
-            $base = Passagem::where('revendedor_id', $r->id)->where('cancelada', false);
-            $pend = (clone $base)->where('acerto_empresa', false);
-            return [
-                'rev' => $r,
-                'qtd' => (clone $pend)->count(),
-                'total' => (float) (clone $pend)->sum('acerto_empresa_valor'),
-                'acertado' => (float) (clone $base)->where('acerto_empresa', true)->sum('acerto_empresa_valor'),
-            ];
-        });
+        $transporteId = $request->input('transporte_id') ?: null;
+        $viagemId = $request->input('viagem_id') ?: null;
+        $opFiltro = $request->input('user_id') ?: null;
 
-        // Operadores de balcao (nao revendedores): conferir/validar o caixa do periodo.
-        $ops = User::where('empresa_id', Tenant::id())->where('is_revendedor', false)->orderBy('name')->get()
-            ->map(function ($o) use ($inicio, $fim) {
+        $transportes = \App\Models\Embarcacao::orderBy('nome')->get();
+        $viagens = Tenant::empresa()?->temRecurso('viagens')
+            ? \App\Models\Viagem::orderByDesc('data_partida')->limit(60)->get() : collect();
+        $pessoas = User::where('empresa_id', Tenant::id())->orderBy('name')->get();
+
+        $ft = $this->filtraTransp($transporteId);
+        $fv = $this->filtraViagem($viagemId);
+
+        // Agentes externos (revendedores): devem repassar das passagens vendidas.
+        $linhas = User::where('is_revendedor', true)
+            ->when($opFiltro, fn ($q) => $q->where('id', $opFiltro))
+            ->orderBy('name')->get()->map(function ($r) use ($transporteId, $viagemId) {
+                $base = Passagem::where('revendedor_id', $r->id)->where('cancelada', false)
+                    ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+                    ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
+                $pend = (clone $base)->where('acerto_empresa', false);
+                return [
+                    'rev' => $r,
+                    'qtd' => (clone $pend)->count(),
+                    'total' => (float) (clone $pend)->sum('acerto_empresa_valor'),
+                    'acertado' => (float) (clone $base)->where('acerto_empresa', true)->sum('acerto_empresa_valor'),
+                ];
+            });
+
+        // Operadores de balcão (não revendedores): conferir/validar o caixa do período.
+        $ops = User::where('empresa_id', Tenant::id())->where('is_revendedor', false)
+            ->when($opFiltro, fn ($q) => $q->where('id', $opFiltro))
+            ->orderBy('name')->get()
+            ->map(function ($o) use ($inicio, $fim, $transporteId, $viagemId, $ft, $fv) {
                 $base = Pagamento::where('user_id', $o->id)->where('estornado', false)
                     ->where('tipo_mov', '!=', 'saida')->where('meio', '!=', 'desconto')
-                    ->whereBetween('created_at', [$inicio, $fim]);
+                    ->whereBetween('created_at', [$inicio, $fim])
+                    ->when($transporteId, $ft)->when($viagemId, $fv);
                 $pend = (clone $base)->where('conferido', false);
                 return [
                     'op' => $o,
@@ -49,51 +69,94 @@ class AcertoController extends Controller
                 ];
             })->filter(fn ($l) => $l['qtd'] > 0 || $l['conferido'] > 0)->values();
 
-        return view('acertos.index', compact('linhas', 'ops', 'inicio', 'fim', 'periodo'));
-    }
-
-    /** ADMIN confere/valida o caixa de um operador de balcao no periodo mostrado. */
-    public function baixaOperador(Request $request, User $operador)
-    {
-        abort_unless(auth()->user()->podeAcerto(), 403);
-        abort_unless($operador->empresa_id === Tenant::id(), 404);
-        [$inicio, $fim] = CaixaController::periodo($request);
-        $n = Pagamento::where('user_id', $operador->id)->where('estornado', false)
-            ->where('tipo_mov', '!=', 'saida')->where('conferido', false)
-            ->whereBetween('created_at', [$inicio, $fim])
-            ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id()]);
-        return back()->with('ok', 'Caixa de '.$operador->name.' conferido ('.$n.' lançamentos).');
-    }
-
-    /** ADMIN confere o caixa de TODOS os operadores de balcao no periodo mostrado. */
-    public function baixaOperadoresTodos(Request $request)
-    {
-        abort_unless(auth()->user()->podeAcerto(), 403);
-        [$inicio, $fim] = CaixaController::periodo($request);
-        $opIds = User::where('empresa_id', Tenant::id())->where('is_revendedor', false)->select('id');
-        $n = Pagamento::where('estornado', false)->where('tipo_mov', '!=', 'saida')->where('conferido', false)
-            ->whereIn('user_id', $opIds)->whereBetween('created_at', [$inicio, $fim])
-            ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id()]);
-        return back()->with('ok', 'Caixa de todos os operadores conferido ('.$n.' lançamentos).');
-    }
-
-    /** ADMIN da baixa no acerto de TODOS os agentes externos (revendedores) de uma vez. */
-    public function baixaAgentesTodos(Request $request)
-    {
-        abort_unless(auth()->user()->podeAcerto(), 403);
-        $revIds = User::where('empresa_id', Tenant::id())->where('is_revendedor', true)->pluck('id');
-        $n = Passagem::whereIn('revendedor_id', $revIds)->where('cancelada', false)->where('acerto_empresa', false)
-            ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
-        return back()->with('ok', 'Baixa feita em todos os agentes ('.$n.' passagens).');
+        return view('acertos.index', compact(
+            'linhas', 'ops', 'inicio', 'fim', 'periodo',
+            'transportes', 'viagens', 'pessoas', 'transporteId', 'viagemId', 'opFiltro'
+        ));
     }
 
     public function baixaEmpresa(Request $request, User $revendedor)
     {
         abort_unless(auth()->user()->podeAcerto(), 403);
         abort_unless($revendedor->empresa_id === Tenant::id(), 404);
-        Passagem::where('revendedor_id', $revendedor->id)->where('cancelada', false)->where('acerto_empresa', false)
+        $transporteId = $request->input('transporte_id') ?: null;
+        $viagemId = $request->input('viagem_id') ?: null;
+        $n = Passagem::where('revendedor_id', $revendedor->id)->where('cancelada', false)->where('acerto_empresa', false)
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
             ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
-        return back()->with('ok', 'Acerto de '.$revendedor->name.' baixado.');
+        return back()->with('ok', 'Acerto de '.$revendedor->name.' baixado ('.$n.' passagens).');
+    }
+
+    /** ADMIN confere/valida o caixa de um operador de balcão no período + filtros mostrados. */
+    public function baixaOperador(Request $request, User $operador)
+    {
+        abort_unless(auth()->user()->podeAcerto(), 403);
+        abort_unless($operador->empresa_id === Tenant::id(), 404);
+        [$inicio, $fim] = CaixaController::periodo($request);
+        $transporteId = $request->input('transporte_id') ?: null;
+        $viagemId = $request->input('viagem_id') ?: null;
+        $n = Pagamento::where('user_id', $operador->id)->where('estornado', false)
+            ->where('tipo_mov', '!=', 'saida')->where('conferido', false)
+            ->whereBetween('created_at', [$inicio, $fim])
+            ->when($transporteId, $this->filtraTransp($transporteId))
+            ->when($viagemId, $this->filtraViagem($viagemId))
+            ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id()]);
+        return back()->with('ok', 'Caixa de '.$operador->name.' conferido ('.$n.' lançamentos).');
+    }
+
+    /** ADMIN confere o caixa de TODOS os operadores no período + filtros mostrados. */
+    public function baixaOperadoresTodos(Request $request)
+    {
+        abort_unless(auth()->user()->podeAcerto(), 403);
+        [$inicio, $fim] = CaixaController::periodo($request);
+        $transporteId = $request->input('transporte_id') ?: null;
+        $viagemId = $request->input('viagem_id') ?: null;
+        $opIds = User::where('empresa_id', Tenant::id())->where('is_revendedor', false)
+            ->when($request->input('user_id'), fn ($q) => $q->where('id', $request->input('user_id')))->select('id');
+        $n = Pagamento::where('estornado', false)->where('tipo_mov', '!=', 'saida')->where('conferido', false)
+            ->whereIn('user_id', $opIds)->whereBetween('created_at', [$inicio, $fim])
+            ->when($transporteId, $this->filtraTransp($transporteId))
+            ->when($viagemId, $this->filtraViagem($viagemId))
+            ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id()]);
+        return back()->with('ok', 'Caixa de todos os operadores conferido ('.$n.' lançamentos).');
+    }
+
+    /** ADMIN dá baixa no acerto de TODOS os agentes externos (com filtros transporte/viagem). */
+    public function baixaAgentesTodos(Request $request)
+    {
+        abort_unless(auth()->user()->podeAcerto(), 403);
+        $transporteId = $request->input('transporte_id') ?: null;
+        $viagemId = $request->input('viagem_id') ?: null;
+        $revIds = User::where('empresa_id', Tenant::id())->where('is_revendedor', true)
+            ->when($request->input('user_id'), fn ($q) => $q->where('id', $request->input('user_id')))->pluck('id');
+        $n = Passagem::whereIn('revendedor_id', $revIds)->where('cancelada', false)->where('acerto_empresa', false)
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
+        return back()->with('ok', 'Baixa feita em todos os agentes ('.$n.' passagens).');
+    }
+
+    /** Pagamento (passagem/encomenda) ligado a uma embarcação. */
+    protected function filtraTransp(?int $t): \Closure
+    {
+        return function ($q) use ($t) {
+            $q->where(function ($w) use ($t) {
+                $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', Passagem::where('embarcacao_id', $t)->select('id')))
+                  ->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', Encomenda::where('embarcacao_id', $t)->select('id')));
+            });
+        };
+    }
+
+    /** Pagamento (passagem/encomenda) ligado a uma viagem. */
+    protected function filtraViagem($v): \Closure
+    {
+        return function ($q) use ($v) {
+            $q->where(function ($w) use ($v) {
+                $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', Passagem::where('viagem_id', $v)->select('id')))
+                  ->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', Encomenda::where('viagem_id', $v)->select('id')));
+            });
+        };
     }
 
     // ---------- REVENDEDOR: meus filiados + acerto com eles ----------

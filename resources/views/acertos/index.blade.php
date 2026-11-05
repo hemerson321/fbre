@@ -6,8 +6,24 @@
   <div><h1 class="text-xl font-bold">Acertos</h1>
     <p class="text-xs text-slate-500">Confira o caixa dos operadores de balcão e dê baixa no que os agentes externos devem repassar.</p></div>
 
-  {{-- período (afeta o conferir dos operadores) --}}
-  <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim"></x-periodo>
+  {{-- filtros: período + transporte + viagem + operador/agente --}}
+  <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
+    <div><label class="label">Transporte</label>
+      <select name="transporte_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
+        @foreach($transportes as $t)<option value="{{ $t->id }}" @selected((string)$transporteId===(string)$t->id)>{{ $t->nome }}</option>@endforeach</select></div>
+    @if($viagens->count())
+    <div><label class="label">Viagem</label>
+      <select name="viagem_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas</option>
+        @foreach($viagens as $v)<option value="{{ $v->id }}" @selected((string)$viagemId===(string)$v->id)>{{ $v->numeroFormatado() }} · {{ $v->nome }}</option>@endforeach</select></div>
+    @endif
+    <div><label class="label">Operador / agente</label>
+      <select name="user_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
+        @foreach($pessoas as $p)<option value="{{ $p->id }}" @selected((string)$opFiltro===(string)$p->id)>{{ $p->name }}{{ $p->is_revendedor ? ' (agente)' : '' }}</option>@endforeach</select></div>
+  </x-periodo>
+
+  @php
+    $hidden = ['periodo'=>$periodo,'inicio'=>request('inicio'),'hora_inicio'=>request('hora_inicio'),'fim'=>request('fim'),'hora_fim'=>request('hora_fim'),'transporte_id'=>$transporteId,'viagem_id'=>$viagemId,'user_id'=>$opFiltro];
+  @endphp
 
   {{-- ===== OPERADORES DE BALCÃO ===== --}}
   <div>
@@ -16,8 +32,8 @@
       <h2 class="font-bold">Operadores de balcão</h2>
       <span class="text-xs text-slate-400 flex-1 min-w-[140px]">— cada “Conferir” já fecha TODAS as vendas do operador no período</span>
       @if($ops->contains(fn ($l) => $l['qtd'] > 0))
-        <form method="post" action="{{ route('admin.acertos.operadores.baixa-todos') }}" onsubmit="return confirm('Conferir o caixa de TODOS os operadores no período?')">@csrf
-          <input type="hidden" name="periodo" value="{{ $periodo }}"><input type="hidden" name="inicio" value="{{ request('inicio') }}"><input type="hidden" name="hora_inicio" value="{{ request('hora_inicio') }}"><input type="hidden" name="fim" value="{{ request('fim') }}"><input type="hidden" name="hora_fim" value="{{ request('hora_fim') }}">
+        <form method="post" action="{{ route('admin.acertos.operadores.baixa-todos') }}" onsubmit="return confirm('Conferir o caixa de TODOS os operadores no filtro atual?')">@csrf
+          @foreach($hidden as $hk=>$hv)<input type="hidden" name="{{ $hk }}" value="{{ $hv }}">@endforeach
           <button class="btn btn-primary btn-sm whitespace-nowrap">✓ Conferir todos</button>
         </form>
       @endif
@@ -34,12 +50,8 @@
           </div>
         </div>
         @if($l['qtd']>0)
-          <form method="post" action="{{ route('admin.acertos.baixa-operador',$l['op']) }}" onsubmit="return confirm('Conferir o caixa de {{ $l['op']->name }} no período? Marca {{ $l['qtd'] }} lançamentos como conferidos.')">@csrf
-            <input type="hidden" name="periodo" value="{{ $periodo }}">
-            <input type="hidden" name="inicio" value="{{ request('inicio') }}">
-            <input type="hidden" name="hora_inicio" value="{{ request('hora_inicio') }}">
-            <input type="hidden" name="fim" value="{{ request('fim') }}">
-            <input type="hidden" name="hora_fim" value="{{ request('hora_fim') }}">
+          <form method="post" action="{{ route('admin.acertos.baixa-operador',$l['op']) }}" onsubmit="return confirm('Conferir o caixa de {{ $l['op']->name }}? Marca {{ $l['qtd'] }} lançamentos como conferidos.')">@csrf
+            @foreach($hidden as $hk=>$hv)<input type="hidden" name="{{ $hk }}" value="{{ $hv }}">@endforeach
             <button class="btn btn-accent btn-sm whitespace-nowrap">✓ Conferir</button>
           </form>
         @else
@@ -47,7 +59,7 @@
         @endif
       </div>
     @empty
-      <div class="card p-6 text-center text-slate-400 text-sm">Sem movimento de operadores no período.</div>
+      <div class="card p-6 text-center text-slate-400 text-sm">Sem movimento de operadores no filtro.</div>
     @endforelse
   </div>
 
@@ -59,7 +71,8 @@
       <h2 class="font-bold">Agentes externos</h2>
       <span class="text-xs text-slate-400 flex-1 min-w-[140px]">— o que cada um deve repassar</span>
       @if($linhas->contains(fn ($l) => $l['total'] > 0))
-        <form method="post" action="{{ route('admin.acertos.agentes.baixa-todos') }}" onsubmit="return confirm('Dar baixa no acerto de TODOS os agentes?')">@csrf
+        <form method="post" action="{{ route('admin.acertos.agentes.baixa-todos') }}" onsubmit="return confirm('Dar baixa no acerto de TODOS os agentes no filtro atual?')">@csrf
+          @foreach($hidden as $hk=>$hv)<input type="hidden" name="{{ $hk }}" value="{{ $hv }}">@endforeach
           <button class="btn btn-primary btn-sm whitespace-nowrap">Dar baixa em todos</button>
         </form>
       @endif
@@ -76,6 +89,7 @@
         </div>
         @if($l['total']>0)
           <form method="post" action="{{ route('admin.acertos.baixa',$l['rev']) }}" onsubmit="return confirm('Dar baixa no acerto de {{ $l['rev']->name }}? Marca {{ $l['qtd'] }} passagens como acertadas.')">@csrf
+            @foreach($hidden as $hk=>$hv)<input type="hidden" name="{{ $hk }}" value="{{ $hv }}">@endforeach
             <button class="btn btn-accent btn-sm whitespace-nowrap">Dar baixa</button>
           </form>
         @else
@@ -83,7 +97,7 @@
         @endif
       </div>
     @empty
-      <div class="card p-6 text-center text-slate-400 text-sm">Nenhum agente externo cadastrado. Marque um usuário como revendedor em Usuários.</div>
+      <div class="card p-6 text-center text-slate-400 text-sm">Nenhum agente externo no filtro.</div>
     @endforelse
   </div>
   @endif
