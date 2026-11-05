@@ -58,7 +58,7 @@
       <a href="{{ route('passagens.show',$p) }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 row-{{ $p->cor() }}">
         <div class="flex-1 min-w-0">
           <div class="font-semibold">@if($p->tipo==='camarote')🛏️ @endif#{{ $p->numeroFormatado() }} · {{ $p->origem }} → {{ $p->destino }}</div>
-          <div class="text-xs text-slate-500 truncate">{{ $p->qtd_passageiros }} pax · {{ $p->comprador_nome ?: '—' }} · vendeu: {{ $p->operador?->name }}@if($p->embarcou) · <span class="text-emerald-600 font-semibold">✅ embarcou@if($p->embarcouPor): {{ $p->embarcouPor->name }}@endif</span>@elseif(!$p->cancelada) · <span class="text-amber-600 font-semibold">⏳ não embarcou</span>@endif</div>
+          <div class="text-xs text-slate-500 truncate">{{ $p->qtd_passageiros }} pax · {{ $p->comprador_nome ?: '—' }} · vendeu: {{ $p->operador?->name }}@if($p->embarcou) · <span class="text-emerald-600 font-semibold">✅ check-in@if($p->embarcouPor): {{ $p->embarcouPor->name }}@endif</span>@elseif(!$p->cancelada) · <span class="text-amber-600 font-semibold">⏳ sem check-in</span>@endif</div>
         </div>
         <div class="text-right">
           <div class="font-bold">R$ {{ number_format($p->total,2,',','.') }}</div>
