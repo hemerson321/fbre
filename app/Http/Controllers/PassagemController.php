@@ -709,6 +709,37 @@ class PassagemController extends Controller
     public function cancelar(Request $request, Passagem $passagem)
     {
         $data = $request->validate(['motivo' => 'required|string|min:3|max:300'], ['motivo.required' => 'Informe o motivo.']);
+        abort_if($passagem->cancelada, 422, 'Passagem já cancelada.');
+        $empresa = \App\Support\Tenant::empresa();
+
+        if ($empresa && $empresa->config('usa_cancel_transporte')) {
+            // Politica por transporte: empresa retem uma % e reembolsa o resto (saida no caixa).
+            $emb = $passagem->embarcacao;
+            $depois = (bool) $passagem->embarcou
+                || ($passagem->data_viagem && \Carbon\Carbon::parse($passagem->data_viagem)->endOfDay()->isPast());
+            $pct = $depois ? ($emb ? $emb->cancelDepois() : 30) : ($emb ? $emb->cancelAntes() : 10);
+            $pago = (float) $passagem->pago;
+            $retido = round($pago * $pct / 100, 2);
+            $reembolso = round($pago - $retido, 2);
+
+            if ($reembolso > 0.009) {
+                \App\Models\Pagamento::create([
+                    'empresa_id' => $empresa->id, 'modulo' => 'passagem', 'origem_id' => $passagem->id, 'encomenda_id' => null,
+                    'meio' => 'dinheiro', 'valor' => $reembolso, 'user_id' => auth()->id(),
+                    'momento' => 'baixa', 'tipo_mov' => 'saida', 'categoria' => 'Reembolso cancelamento',
+                    'descricao' => 'Cancelamento '.($depois ? 'apos' : 'antes').' da viagem — retido '.$pct.'%',
+                ]);
+            }
+            $passagem->forceFill([
+                'cancelada' => true, 'motivo_cancelamento' => $data['motivo'],
+                'cancel_retido' => $retido, 'cancel_reembolso' => $reembolso, 'cancel_fase' => $depois ? 'depois' : 'antes',
+            ])->save();
+            $passagem->recalcular();
+            return redirect()->route('passagens.show', $passagem)
+                ->with('ok', 'Cancelada. Retido '.$pct.'% (R$ '.number_format($retido, 2, ',', '.').'), reembolso R$ '.number_format($reembolso, 2, ',', '.').'.');
+        }
+
+        // Sem politica: estorna tudo (comportamento padrao).
         $passagem->forceFill(['cancelada' => true, 'motivo_cancelamento' => $data['motivo']])->save();
         $passagem->pagamentos()->update(['estornado' => true]);
         $passagem->recalcular();

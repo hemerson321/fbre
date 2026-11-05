@@ -49,6 +49,14 @@
   <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">Componentes da passagem (opcional)</h2>
   <p class="text-xs text-slate-500 mb-2">Ligue só o que você cobra. Ficam separados da tarifa no cadastro e no comprovante.</p>
   <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="comprador_passagem" value="1" @checked($empresa->config('comprador_passagem', true)) class="w-5 h-5 rounded"> <span class="font-semibold">Mostrar “Comprador” na venda (quem está comprando)</span></label>
+  <div class="border-t pt-2 mt-2" x-data="{cc:{{ $empresa->config('usa_cancel_transporte', false) ? 'true':'false' }}}">
+    <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="usa_cancel_transporte" value="1" x-model="cc" class="w-5 h-5 rounded"> <span class="font-semibold">Política de cancelamento por transporte</span></label>
+    <div x-show="cc" x-cloak class="grid grid-cols-2 gap-2 pl-7">
+      <div><label class="label !text-xs">Retém % se cancelar ANTES da viagem</label><input name="cancel_antes_pct" type="number" min="0" max="100" value="{{ $empresa->config('cancel_antes_pct', 10) }}" class="input !min-h-[38px]"></div>
+      <div><label class="label !text-xs">Retém % se cancelar DEPOIS da viagem</label><input name="cancel_depois_pct" type="number" min="0" max="100" value="{{ $empresa->config('cancel_depois_pct', 30) }}" class="input !min-h-[38px]"></div>
+    </div>
+    <p x-show="cc" x-cloak class="text-[11px] text-slate-400 pl-7 mt-0.5">Padrão da empresa. Cada transporte pode ter % próprias no cadastro de embarcações. Aparece no bilhete.</p>
+  </div>
   <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="usa_taxa_embarque" value="1" x-model="ts" class="w-5 h-5 rounded"> <span class="font-semibold">Cobrar taxa de embarque</span></label>
   <div x-show="ts" x-cloak class="pl-7 pb-2"><label class="label !text-xs">Nome que aparece</label><input name="label_taxa_embarque" class="input !min-h-[38px]" value="{{ $empresa->config('label_taxa_embarque') ?: 'Taxa de embarque' }}" maxlength="40"><p class="text-xs text-slate-400 mt-1">Defina os valores em <b>Cadastros gerais → Taxa de embarque</b>.</p></div>
   <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="usa_alimentacao" value="1" x-model="al" class="w-5 h-5 rounded"> <span class="font-semibold">Cobrar alimentação</span></label>

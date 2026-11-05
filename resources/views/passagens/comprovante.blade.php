@@ -30,6 +30,7 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.q
       @if($p->embarcacao)<tr><td class="b">BARCO</td><td class="r">{{ $p->embarcacao->nome }}</td></tr>@endif
     </table><hr>
     <div class="c"><div class="qrp" data-url="{{ route('checkin',$p) }}"></div><div class="sm b">CHECK-IN</div><div class="sm">Apresente no embarque</div></div>
+    @if($e && $e->config('usa_cancel_transporte'))<div class="sm c" style="margin-top:3px">Cancelamento: antes da viagem retém {{ $p->embarcacao?->cancel_antes_pct ?? $e->config('cancel_antes_pct',10) }}%, após a viagem retém {{ $p->embarcacao?->cancel_depois_pct ?? $e->config('cancel_depois_pct',30) }}%.</div>@endif
     <div class="c sm">Camarote total R$ {{ number_format((float) $p->total,2,',','.') }} · {{ $p->devido>0.009 ? 'DEVE R$ '.number_format((float) $p->devido,2,',','.') : 'PAGO' }}</div>
     <br>
   </div>
@@ -63,6 +64,7 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.q
     @if($p->devido>0.009)<div class="c sm b">PASSAGEM COM VALOR EM ABERTO</div>@endif
     @if($e?->rodape_comprovante)<hr><div class="c sm">{{ $e->rodape_comprovante }}</div>@endif
     <hr><div class="c"><div class="qrp" data-url="{{ route('checkin',$p) }}"></div><div class="sm b">CHECK-IN</div><div class="sm">Apresente no embarque</div></div><br>
+    @if($e && $e->config('usa_cancel_transporte'))<div class="sm c" style="margin-top:3px">Cancelamento: antes da viagem retém {{ $p->embarcacao?->cancel_antes_pct ?? $e->config('cancel_antes_pct',10) }}%, após a viagem retém {{ $p->embarcacao?->cancel_depois_pct ?? $e->config('cancel_depois_pct',30) }}%.</div>@endif
   </div>
   @endforeach
 @endif

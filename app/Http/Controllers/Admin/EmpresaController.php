@@ -54,6 +54,9 @@ class EmpresaController extends Controller
         $config['usa_taxa_embarque'] = $request->boolean('usa_taxa_embarque');
         $config['usa_alimentacao'] = $request->boolean('usa_alimentacao');
         $config['comprador_passagem'] = $request->boolean('comprador_passagem');
+        $config['usa_cancel_transporte'] = $request->boolean('usa_cancel_transporte');
+        $config['cancel_antes_pct'] = max(0, min(100, (int) $request->input('cancel_antes_pct', 10)));
+        $config['cancel_depois_pct'] = max(0, min(100, (int) $request->input('cancel_depois_pct', 30)));
         $config['label_taxa_embarque'] = trim((string) $request->input('label_taxa_embarque')) ?: 'Taxa de embarque';
         $config['label_alimentacao'] = trim((string) $request->input('label_alimentacao')) ?: 'Alimentação';
         foreach (array_keys(\App\Support\Modulos::LISTA) as $mk) {

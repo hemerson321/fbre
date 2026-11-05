@@ -11,5 +11,17 @@ class Embarcacao extends Model
 
     protected $table = 'embarcacoes';
     protected $guarded = [];
-    protected $casts = ['ativo' => 'boolean', 'usa_poltrona' => 'boolean', 'poltronas_qtd' => 'integer', 'poltronas_colunas' => 'integer'];
+    protected $casts = ['ativo' => 'boolean', 'usa_poltrona' => 'boolean', 'poltronas_qtd' => 'integer', 'poltronas_colunas' => 'integer', 'cancel_antes_pct' => 'integer', 'cancel_depois_pct' => 'integer'];
+
+    /** % que a empresa retem no cancelamento ANTES da viagem (deste transporte, ou padrao da empresa). */
+    public function cancelAntes(): int
+    {
+        return $this->cancel_antes_pct ?? (int) (\App\Support\Tenant::empresa()?->config('cancel_antes_pct', 10));
+    }
+
+    /** % retido DEPOIS da viagem. */
+    public function cancelDepois(): int
+    {
+        return $this->cancel_depois_pct ?? (int) (\App\Support\Tenant::empresa()?->config('cancel_depois_pct', 30));
+    }
 }

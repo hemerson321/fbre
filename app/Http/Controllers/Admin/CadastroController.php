@@ -176,6 +176,8 @@ class CadastroController extends Controller
             'poltronas_colunas' => 'nullable|integer|min:1|max:8',
             'poltronas_lista' => 'nullable|string|max:8000',
             'rastreio_url' => 'nullable|url|max:255',
+            'cancel_antes_pct' => 'nullable|integer|min:0|max:100',
+            'cancel_depois_pct' => 'nullable|integer|min:0|max:100',
         ]);
         $embarcacao->update([
             'nome' => $data['nome'],
@@ -184,6 +186,8 @@ class CadastroController extends Controller
             'poltronas_colunas' => (int) ($data['poltronas_colunas'] ?? 4),
             'poltronas_lista' => trim((string) ($data['poltronas_lista'] ?? '')) ?: null,
             'rastreio_url' => trim((string) ($data['rastreio_url'] ?? '')) ?: null,
+            'cancel_antes_pct' => ($data['cancel_antes_pct'] ?? '') !== '' ? (int) $data['cancel_antes_pct'] : null,
+            'cancel_depois_pct' => ($data['cancel_depois_pct'] ?? '') !== '' ? (int) $data['cancel_depois_pct'] : null,
         ]);
         return back()->with('ok', 'Embarcação atualizada.');
     }
