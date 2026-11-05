@@ -92,13 +92,27 @@
   @if(!$p->cancelada && !$p->transferida && ($empP?->config('usa_cancel_transporte')) && ($u->isAdmin()||$u->isSuper()))
   <form method="post" action="{{ route('passagens.transferir',$p) }}" class="card p-4 hidden" x-ref="transf">@csrf
     <div class="font-bold text-sm mb-2">↪ Transferir pra outro transporte</div>
-    <label class="label">Transporte destino</label>
-    <select name="embarcacao_id" class="input mb-2" required>
-      <option value="">— escolher —</option>
-      @foreach(\App\Models\Embarcacao::where('ativo',true)->orderBy('nome')->get() as $b)@if($b->id !== $p->embarcacao_id)<option value="{{ $b->id }}">{{ $b->nome }}</option>@endif @endforeach
-    </select>
-    <label class="label">Data da viagem (opcional)</label>
-    <input type="date" name="data_viagem" class="input mb-2" value="{{ $p->data_viagem?->toDateString() }}">
+    <div x-data="transfCal(@js($linhasShow ?? []), @js($p->origem))">
+      <label class="label">Transporte destino</label>
+      <select name="embarcacao_id" x-model="embSel" @change="onEmb()" class="input mb-2" required>
+        <option value="">— escolher —</option>
+        @foreach(\App\Models\Embarcacao::where('ativo',true)->orderBy('nome')->get() as $b)@if($b->id !== $p->embarcacao_id)<option value="{{ $b->id }}">{{ $b->nome }}</option>@endif @endforeach
+      </select>
+      <label class="label">Data da viagem</label>
+      <button type="button" @click="abrir()" class="input mb-2 w-full text-left font-semibold" :class="viagemDia===null?'text-slate-400':''">
+        📅 <span x-text="viagemDia===null ? 'escolha o transporte' : rotulo(viagemData)"></span>
+      </button>
+      <input type="hidden" name="data_viagem" :value="viagemData">
+      <div x-show="calAberto" x-cloak @click="calAberto=false" class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+        <div @click.stop class="bg-white rounded-2xl border shadow-2xl p-3 w-72 max-w-full text-slate-700">
+          <div class="text-center mb-2"><span x-show="linhaNome" class="block text-[11px] font-semibold text-slate-400" x-text="linhaNome"></span><span class="text-sm font-bold" style="color:var(--cor1)" x-text="rotulo(viagemData)"></span></div>
+          <div class="flex items-center justify-between mb-1"><button type="button" @click="mudarMes(-1)" class="w-8 h-8 rounded hover:bg-slate-100 text-lg leading-none">‹</button><div class="text-sm font-bold capitalize" x-text="nomeMes"></div><button type="button" @click="mudarMes(1)" class="w-8 h-8 rounded hover:bg-slate-100 text-lg leading-none">›</button></div>
+          <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1"><template x-for="(d,i) in ['D','S','T','Q','Q','S','S']" :key="i"><div x-text="d"></div></template></div>
+          <div class="grid grid-cols-7 gap-0.5"><template x-for="c in calDias" :key="c.iso"><button type="button" :disabled="!c.valido" @click="c.valido && escolher(c.iso)" class="h-9 rounded text-sm transition" :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed'))" :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : '')" x-text="c.dia"></button></template></div>
+          <div class="text-[10px] text-slate-400 mt-2 text-center">Só os dias de viagem da linha ficam disponíveis.</div>
+        </div>
+      </div>
+    </div>
     <label class="label">Motivo (opcional)</label>
     <input name="motivo" class="input mb-2" maxlength="300" placeholder="ex.: cliente perdeu a lancha 1">
     <button class="btn w-full text-white" style="background:#4f46e5">Confirmar transferência</button>
@@ -127,4 +141,43 @@ function imprimirDiretoPassagem(btn){
 @if(request('print'))
 <script>document.addEventListener('DOMContentLoaded',()=>FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}'));</script>
 @endif
+<script>
+function transfCal(linhas, origem){
+  return {
+    linhas: linhas||[], origem: origem||'', embSel:'', viagemData:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null, linhaNome:'',
+    diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sab'],
+    isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
+    get hojeISO(){ return this.isoLocal(new Date()); },
+    fmtBr(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); },
+    onEmb(){ this.resolver(); },
+    resolver(){
+      this.viagemDia=null; this.viagemData=''; this.viagemHora=''; this.linhaNome='';
+      const emb=this.embSel?String(this.embSel):''; if(!emb) return;
+      const n=x=>String(x||'').trim().toLowerCase();
+      const Ls=this.linhas.filter(L=>String(L.embarcacao_id||'')===emb);
+      let p=null, ln='';
+      for(const L of Ls){ const f=L.paradas.find(x=>n(x.n)===n(this.origem)); if(f && f.d!==null && f.d!==undefined && f.d!==''){ p=f; ln=L.nome; break; } }
+      if(!p && Ls[0] && Ls[0].paradas[0]){ p=Ls[0].paradas[0]; ln=Ls[0].nome; }
+      if(!p || p.d===null||p.d===undefined||p.d===''){ return; }
+      this.viagemDia=Number(p.d); this.viagemHora=p.h||''; this.linhaNome=ln;
+      this.viagemData=this.proxima(this.viagemDia);
+    },
+    proxima(dia){ const d=new Date(); d.setHours(0,0,0,0); while(d.getDay()!==dia) d.setDate(d.getDate()+1); return this.isoLocal(d); },
+    rotulo(iso){ if(!iso) return 'escolher'; const [y,m,day]=iso.split('-').map(Number); const d=new Date(y,m-1,day); return this.diasCurto[d.getDay()]+' '+this.fmtBr(d)+(this.viagemHora?' '+this.viagemHora:''); },
+    abrir(){ if(this.viagemDia===null) return; const base=this.viagemData||this.hojeISO; const [y,m]=base.split('-').map(Number); this.calMes=new Date(y,m-1,1); this.calAberto=true; },
+    mudarMes(nn){ const d=new Date(this.calMes); d.setMonth(d.getMonth()+nn); this.calMes=d; },
+    get nomeMes(){ return this.calMes ? this.calMes.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) : ''; },
+    get calDias(){
+      if(!this.calMes) return [];
+      const ano=this.calMes.getFullYear(), mes=this.calMes.getMonth();
+      const ini=new Date(ano,mes,1); ini.setDate(1-ini.getDay()); const out=[];
+      for(let i=0;i<42;i++){ const d=new Date(ini); d.setDate(ini.getDate()+i); const iso=this.isoLocal(d); const outroMes=d.getMonth()!==mes;
+        const valido=!outroMes && d.getDay()===this.viagemDia && iso>=this.hojeISO;
+        out.push({iso,dia:d.getDate(),valido,outroMes,sel:iso===this.viagemData}); }
+      return out;
+    },
+    escolher(iso){ this.viagemData=iso; this.calAberto=false; }
+  };
+}
+</script>
 @endpush

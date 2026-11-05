@@ -482,7 +482,13 @@ class PassagemController extends Controller
     public function show(Passagem $passagem)
     {
         $passagem->load(['passageiros', 'pagamentos.user', 'embarcacao', 'operador', 'embarcouPor']);
-        return view('passagens.show', ['p' => $passagem, 'meios' => Pagamento::MEIOS]);
+        $linhasShow = \App\Support\Tenant::empresa()->usaViagens()
+            ? \App\Models\Rota::paraSelecao()->map(fn ($r) => [
+                'id' => $r->id, 'nome' => $r->nome, 'embarcacao_id' => $r->embarcacao_id,
+                'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
+              ])->values()
+            : collect();
+        return view('passagens.show', ['p' => $passagem, 'meios' => Pagamento::MEIOS, 'linhasShow' => $linhasShow]);
     }
 
     // ---------------- BAIXA ----------------
