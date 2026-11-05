@@ -200,7 +200,14 @@ class CadastroController extends Controller
             'cancel_depois_pct' => 'nullable|integer|min:0|max:100',
             'dono_nome' => 'nullable|string|max:120',
             'comissao_empresa_pct' => 'nullable|integer|min:0|max:100',
+            'ficha' => 'nullable|array',
+            'tripulantes' => 'nullable|array',
         ]);
+        $ficha = collect($request->input('ficha', []))->map(fn ($v) => is_string($v) ? trim($v) : $v)->filter(fn ($v) => $v !== null && $v !== '')->all();
+        $trip = collect($request->input('tripulantes', []))->filter(fn ($t) => trim($t['nome'] ?? '') !== '')->map(fn ($t) => [
+            'nome' => trim($t['nome']), 'funcao' => trim($t['funcao'] ?? ''), 'nascimento' => ($t['nascimento'] ?? '') ?: null,
+            'cir' => trim($t['cir'] ?? ''), 'validade_cir' => ($t['validade_cir'] ?? '') ?: null,
+        ])->values()->all();
         $embarcacao->update([
             'nome' => $data['nome'],
             'usa_poltrona' => $request->boolean('usa_poltrona'),
@@ -212,6 +219,8 @@ class CadastroController extends Controller
             'cancel_depois_pct' => ($data['cancel_depois_pct'] ?? '') !== '' ? (int) $data['cancel_depois_pct'] : null,
             'dono_nome' => trim((string) ($data['dono_nome'] ?? '')) ?: null,
             'comissao_empresa_pct' => (int) ($data['comissao_empresa_pct'] ?? 0),
+            'ficha' => $ficha ?: null,
+            'tripulantes' => $trip ?: null,
         ]);
         return back()->with('ok', 'Embarcação atualizada.');
     }

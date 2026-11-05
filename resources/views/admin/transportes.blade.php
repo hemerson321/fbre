@@ -60,6 +60,51 @@
             </div>
             <p class="text-[11px] text-slate-400">A empresa fica com essa % de cada passagem deste transporte; o dono recebe o resto (acerto em Acertos).</p>
             <p class="text-[11px] text-slate-400 mt-0.5">Cole o link da API de posição deste barco. Com ele, o sistema avisa o destinatário no WhatsApp ~1h antes da encomenda chegar na cidade de destino.</p>
+            <div x-data="{ open:false, trip: {{ \Illuminate\Support\Js::from($e->tripulantes ?? []) }} }" class="mt-2">
+              <button type="button" @click="open=true" class="btn btn-ghost btn-sm">🚢 Ficha / tripulação da embarcação</button>
+              <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-3 overflow-auto">
+                <div @click.stop class="bg-white rounded-2xl p-5 max-w-3xl w-full my-6 space-y-3">
+                  <div class="flex items-center justify-between"><h3 class="font-bold text-lg">🚢 Ficha da embarcação <span class="text-slate-400 font-normal text-sm">(opcional)</span></h3><button type="button" @click="open=false" class="text-slate-400 text-2xl leading-none">&times;</button></div>
+                  <div class="grid sm:grid-cols-3 gap-2">
+                    <div><label class="label !text-xs">CNPJ</label><input name="ficha[cnpj]" value="{{ $e->ficha['cnpj'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">Nome oficial</label><input name="ficha[nome_oficial]" value="{{ $e->ficha['nome_oficial'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">Tipo</label><input name="ficha[tipo]" value="{{ $e->ficha['tipo'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">Bandeira</label><input name="ficha[bandeira]" value="{{ $e->ficha['bandeira'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">Qtd vagas</label><input name="ficha[qtd_vagas]" value="{{ $e->ficha['qtd_vagas'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">Valor Peso/KG</label><input name="ficha[valor_peso_kg]" value="{{ $e->ficha['valor_peso_kg'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">Inscrição marítima</label><input name="ficha[inscricao_maritima]" value="{{ $e->ficha['inscricao_maritima'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">Arqueação</label><input name="ficha[arqueacao]" value="{{ $e->ficha['arqueacao'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">Tonelagem bruta</label><input name="ficha[tonelagem_bruta]" value="{{ $e->ficha['tonelagem_bruta'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div class="sm:col-span-3"><label class="label !text-xs">Inf. bilhete criança</label><input name="ficha[inf_bilhete_crianca]" value="{{ $e->ficha['inf_bilhete_crianca'] ?? '' }}" class="input !min-h-[38px]" placeholder="ex.: Criança 2 a 10 anos paga 70% do valor"></div>
+                    <div><label class="label !text-xs">Representante</label><input name="ficha[nome_representante]" value="{{ $e->ficha['nome_representante'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">CPF do representante</label><input name="ficha[cpf]" value="{{ $e->ficha['cpf'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">Telefone</label><input name="ficha[telefone]" value="{{ $e->ficha['telefone'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div class="sm:col-span-2"><label class="label !text-xs">Endereço</label><input name="ficha[endereco]" value="{{ $e->ficha['endereco'] ?? '' }}" class="input !min-h-[38px]"></div>
+                    <div><label class="label !text-xs">E-mail</label><input name="ficha[email]" value="{{ $e->ficha['email'] ?? '' }}" class="input !min-h-[38px]"></div>
+                  </div>
+                  <div class="border-t pt-2">
+                    <div class="flex items-center justify-between mb-1"><span class="text-xs font-bold text-slate-600 uppercase">🧭 Tripulação (se necessário)</span><button type="button" class="btn btn-ghost btn-sm" @click="trip.push({nome:'',funcao:'',nascimento:'',cir:'',validade_cir:''})">＋ tripulante</button></div>
+                    <div class="space-y-1">
+                      <template x-for="(t,i) in trip" :key="i">
+                        <div class="grid grid-cols-12 gap-1 items-center">
+                          <input :name="`tripulantes[${i}][nome]`" x-model="t.nome" placeholder="Nome" class="input !min-h-[36px] col-span-4 text-sm">
+                          <input :name="`tripulantes[${i}][funcao]`" x-model="t.funcao" placeholder="Função" class="input !min-h-[36px] col-span-2 text-sm">
+                          <input :name="`tripulantes[${i}][nascimento]`" type="date" x-model="t.nascimento" class="input !min-h-[36px] col-span-2 text-xs" title="Nascimento">
+                          <input :name="`tripulantes[${i}][cir]`" x-model="t.cir" placeholder="CIR" class="input !min-h-[36px] col-span-2 text-sm">
+                          <input :name="`tripulantes[${i}][validade_cir]`" type="date" x-model="t.validade_cir" class="input !min-h-[36px] col-span-1 text-xs" title="Validade CIR">
+                          <button type="button" @click="trip.splice(i,1)" class="col-span-1 text-red-500 text-lg">×</button>
+                        </div>
+                      </template>
+                      <p x-show="!trip.length" class="text-[11px] text-slate-400">Nenhum tripulante. Clique em ＋ tripulante pra adicionar (Nome, Função, Nascimento, CIR, Validade).</p>
+                    </div>
+                  </div>
+                  <div class="flex justify-end gap-2 border-t pt-2">
+                    <button type="button" @click="open=false" class="btn btn-ghost btn-sm">Fechar sem salvar</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Salvar embarcação</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </form>
         <form method="post" action="{{ route('admin.cadastros.destroy',['embarcacoes',$e->id]) }}" class="hidden">@csrf @method('DELETE')</form>
