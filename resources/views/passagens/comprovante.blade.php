@@ -72,7 +72,8 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.q
 var MODO=@json($modo ?? null);
 function qrImprimir(){
   try{ document.querySelectorAll('.qrp').forEach(function(el){ new QRCode(el,{text:el.dataset.url,width:130,height:130,correctLevel:QRCode.CorrectLevel.M}); }); }catch(e){}
-  if(MODO==='pdf'){ document.getElementById('pdfbar').style.display='block'; setTimeout(gerarPdf, 500); }
+  var isMobile = /Android|iPhone|iPad|iPod|Mobile|Opera Mini/i.test(navigator.userAgent||'') || (window.matchMedia && window.matchMedia('(max-width:820px)').matches) || ('ontouchstart' in window && Math.min(screen.width,screen.height)<820);
+  if(MODO==='pdf' || isMobile){ document.getElementById('pdfbar').style.display='block'; setTimeout(gerarPdf, 500); }
   else { setTimeout(function(){ window.print(); }, 350); }
 }
 function gerarPdf(){
