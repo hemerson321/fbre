@@ -140,7 +140,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->podeAcerto() && $u->temModulo('passagem')) {
       if (\App\Support\Tenant::empresa()?->config('usa_revendedores')) $g[] = ['r'=>route('admin.acertos', ['aba'=>'agentes']), 'l'=>'Acerto Agentes', 'i'=>'🤝'];
       $g[] = ['r'=>route('admin.acertos', ['aba'=>'operadores']), 'l'=>'Acerto Operadores', 'i'=>'💵'];
-      $g[] = ['r'=>route('admin.acertos', ['aba'=>'transportes']), 'l'=>'Acerto Transportes — Donos', 'i'=>'🚤'];
+      $g[] = ['r'=>route('admin.acertos', ['aba'=>'transportes']), 'l'=>'Acerto Transporte', 'i'=>'🚤'];
   }
   if ($g) $grupos['Caixa'] = $g;
   if ($u->isAdmin() || $u->isSuper()) {
