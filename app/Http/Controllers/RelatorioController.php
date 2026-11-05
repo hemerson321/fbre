@@ -59,6 +59,7 @@ class RelatorioController extends Controller
             $bruto = (float) (clone $passQ)->sum('total');
             $aPassar = (float) (clone $passQ)->sum('acerto_empresa_valor');
             $empAcerto = \App\Support\Tenant::empresa();
+            $acertoApi = $uu->acerto_pix_api_id ? \App\Models\PagamentoApi::find($uu->acerto_pix_api_id) : $empAcerto?->pagamentoApi('passagem');
             $acerto = [
                 'qtd' => (clone $passQ)->count(),
                 'bruto' => $bruto,
@@ -70,7 +71,7 @@ class RelatorioController extends Controller
                 'emp_pix' => $empAcerto?->pix,
                 'emp_nome' => $empAcerto?->nomeExibicao(),
                 'emp_cidade' => $empAcerto?->config('cidade') ?: 'CIDADE',
-                'pode_dinamico' => (bool) ($empAcerto?->pagamentoApi('passagem')),
+                'pode_dinamico' => (bool) $acertoApi,
                 'total_devido' => round((float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)->sum('acerto_empresa_valor'), 2),
             ];
         }

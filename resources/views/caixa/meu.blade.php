@@ -40,14 +40,21 @@
     <div><span class="opacity-70">Vendi:</span> <b>R$ {{ number_format($acerto['bruto'],2,',','.') }}</b></div>
     <div><span class="opacity-70">Minha comissão ({{ $acerto['pct'] }}%):</span> <b class="text-emerald-300">R$ {{ number_format($acerto['comissao'],2,',','.') }}</b></div>
   </div>
+  @php
+    $_pm = $acerto['pix_modo'] ?? 'nenhum';
+    $_podeBotao = ($acerto['total_devido'] ?? 0) > 0 && $_pm !== 'nenhum'
+       && (($_pm === 'dinamico' && ($acerto['pode_dinamico'] ?? false)) || ($_pm === 'estatico' && ! empty($acerto['emp_pix'])));
+  @endphp
   @if(($acerto['total_devido'] ?? 0) > 0)
     <div class="border-t border-white/15 pt-2 mb-2">
       <div class="text-xs opacity-70">Total que devo à empresa (tudo em aberto)</div>
       <div class="text-xl font-extrabold text-amber-300">R$ {{ number_format($acerto['total_devido'],2,',','.') }}</div>
     </div>
+    @if($_podeBotao)
     <button type="button" @click="acertar()" :disabled="carregando" class="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 disabled:opacity-50">
       <span x-text="carregando ? 'Gerando…' : '💠 Acertar com a empresa (PIX)'"></span>
     </button>
+    @endif
   @else
     <div class="text-emerald-300 text-sm font-semibold border-t border-white/15 pt-2">✓ Você está em dia com a empresa.</div>
   @endif

@@ -109,7 +109,8 @@ class UsuarioController extends Controller
             'limite_valor_dia' => 'nullable|numeric|min:0',
             'limite_passagens_viagem' => 'nullable|integer|min:0',
             'limite_valor_viagem' => 'nullable|numeric|min:0',
-            'acerto_pix_modo' => 'nullable|in:estatico,dinamico',
+            'acerto_pix_modo' => 'nullable|in:nenhum,estatico,dinamico',
+            'acerto_pix_api_id' => 'nullable|integer',
             'perm_relatorio' => 'nullable|boolean',
             'relatorio_todos' => 'nullable|boolean',
             'perm_imprimir' => 'nullable|boolean',
@@ -173,7 +174,8 @@ class UsuarioController extends Controller
         $data['revendedor_id'] = ($data['is_revendedor'] ?? false) ? null : (($data['revendedor_id'] ?? null) ?: null);
         if ($data['is_revendedor'] ?? false) $data['pode_desconto'] = false; // agente/revendedor nunca da desconto
         $data['modo_acerto'] = $data['modo_acerto'] ?? 'cheio';
-        $data['acerto_pix_modo'] = $data['acerto_pix_modo'] ?? 'estatico';
+        $data['acerto_pix_modo'] = $data['acerto_pix_modo'] ?? 'nenhum';
+        $data['acerto_pix_api_id'] = ($data['acerto_pix_modo'] === 'dinamico' && ! empty($data['acerto_pix_api_id'])) ? $data['acerto_pix_api_id'] : null;
         $data['comissao_pct'] = (int) ($data['comissao_pct'] ?? 0);
 
         // permissões por módulo e ação (cadastra/baixa/imprimir)

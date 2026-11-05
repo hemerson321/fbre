@@ -146,7 +146,7 @@ class AcertoController extends Controller
         $base = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->where('acerto_empresa', false);
         $valor = round((float) (clone $base)->sum('acerto_empresa_valor'), 2);
         if ($valor <= 0) return response()->json(['ok' => false, 'erro' => 'Você não tem valor pendente pra acertar.']);
-        $api = $empresa->pagamentoApi('passagem');
+        $api = $u->acerto_pix_api_id ? \App\Models\PagamentoApi::find($u->acerto_pix_api_id) : $empresa->pagamentoApi('passagem');
         if (! $api) return response()->json(['ok' => false, 'erro' => 'A empresa não tem Mercado Pago configurado pra PIX automático. Use o PIX estático e mande o comprovante.']);
         $r = $mp->cobrarPix($api, $valor, 'Acerto '.$u->name, ['nome' => $u->name]);
         if (! ($r['ok'] ?? false)) return response()->json(['ok' => false, 'erro' => 'Não consegui gerar o PIX: '.($r['erro'] ?? 'erro')]);

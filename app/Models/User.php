@@ -29,6 +29,7 @@ class User extends Authenticatable
             'limite_valor_dia' => 'decimal:2',
             'limite_passagens_viagem' => 'integer',
             'limite_valor_viagem' => 'decimal:2',
+            'acerto_pix_api_id' => 'integer',
             'admin' => 'boolean',
             'perm_cadastra' => 'boolean',
             'perm_baixa' => 'boolean',
