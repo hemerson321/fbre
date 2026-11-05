@@ -95,13 +95,13 @@
           <div><label class="lbl">Origem</label>
             <select class="field" x-model="origemSel" required @change="onRota()">
               <option value="">—</option>
-              @foreach($cidades as $c)<option value="{{ $c }}">{{ $c }}</option>@endforeach
+              <template x-for="c in origens" :key="c"><option :value="c" x-text="c"></option></template>
             </select>
           </div>
           <div><label class="lbl">Destino</label>
             <select class="field" x-model="destinoSel" required @change="onRota()">
               <option value="">—</option>
-              @foreach($cidades as $c)<option value="{{ $c }}">{{ $c }}</option>@endforeach
+              <template x-for="c in destinos" :key="c"><option :value="c" x-text="c"></option></template>
             </select>
           </div>
         </div>
@@ -464,7 +464,7 @@
         // destino NÃO é lembrado: muda a cada venda, começa sempre em branco
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
-        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); this.resolverLinha(); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
+        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhaAtual){ const n=x=>String(x||'').trim().toLowerCase(); const par=this.linhaAtual.paradas.map(p=>n(p.n)); if(this.origemSel && !par.includes(n(this.origemSel))) this.origemSel=''; if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
         this.addPax();
         this.mudarEmbarcacao();
         this.onRota();
@@ -614,7 +614,7 @@
         this.passageiros.forEach(p=>this.aplicarTipo(p));
         this.precoInfo = this.baseNormal>0 || this.passageiros.some(p=>Number(p.valor_passagem)>0);
       },
-      onRota(){ this.resolverLinha(); this.aplicarPreco(); if(this.usaPoltrona) this.carregarOcupadas(); },
+      onRota(){ const n=x=>String(x||'').trim().toLowerCase(); if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; this.resolverLinha(); this.aplicarPreco(); if(this.usaPoltrona) this.carregarOcupadas(); },
 
       // ---- viagem (igual encomenda) ----
       isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
@@ -644,6 +644,25 @@
         return out;
       },
       escolherDia(iso){ this.viagemData=iso; this.viagemLabel=this.rotulo(iso); this.calAberto=false; },
+      get linhaAtual(){
+        const emb=this.embarcacaoSel?String(this.embarcacaoSel):'';
+        if(!emb) return null;
+        return this.linhas.find(L=>String(L.embarcacao_id||'')===emb) || null;
+      },
+      get origens(){
+        const L=this.linhaAtual;
+        if(!L) return this.cidades;
+        return L.paradas.slice(0,-1).map(p=>p.n);
+      },
+      get destinos(){
+        const L=this.linhaAtual;
+        const n=x=>String(x||'').trim().toLowerCase();
+        if(!L) return this.cidades.filter(c=>n(c)!==n(this.origemSel));
+        if(!this.origemSel) return L.paradas.map(p=>p.n);
+        const io=L.paradas.findIndex(p=>n(p.n)===n(this.origemSel));
+        if(io<0) return L.paradas.map(p=>p.n);
+        return L.paradas.slice(io+1).map(p=>p.n);
+      },
       resolverLinha(){
         this.rotaId=''; this.linhaNome=''; this.paradasInfo=[];
         if(!this.origemSel){ this.viagemDia=null; this.viagemData=''; this.viagemLabel=''; return; }
