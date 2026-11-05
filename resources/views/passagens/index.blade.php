@@ -43,7 +43,7 @@
       <a href="{{ route('passagens.show',$p) }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 row-{{ $p->cor() }}">
         <div class="flex-1 min-w-0">
           <div class="font-semibold">@if($p->tipo==='camarote')🛏️ @endif#{{ $p->numeroFormatado() }} · {{ $p->origem }} → {{ $p->destino }}</div>
-          <div class="text-xs text-slate-500 truncate">{{ $p->qtd_passageiros }} pax · {{ $p->comprador_nome ?: '—' }} · {{ $p->operador?->name }}</div>
+          <div class="text-xs text-slate-500 truncate">{{ $p->qtd_passageiros }} pax · {{ $p->comprador_nome ?: '—' }} · vendeu: {{ $p->operador?->name }}@if($p->embarcou && $p->embarcouPor) · <span class="text-emerald-600 font-semibold">embarque: {{ $p->embarcouPor->name }}</span>@endif</div>
         </div>
         <div class="text-right">
           <div class="font-bold">R$ {{ number_format($p->total,2,',','.') }}</div>

@@ -37,7 +37,7 @@ class PassagemController extends Controller
             ->where('meio', '!=', 'desconto')->selectRaw('meio, SUM(valor) as valor')
             ->groupBy('meio')->pluck('valor', 'meio');
 
-        $passagens = (clone $base)->with(['embarcacao', 'operador'])->orderByDesc('id')->paginate(50)->withQueryString();
+        $passagens = (clone $base)->with(['embarcacao', 'operador', 'embarcouPor'])->orderByDesc('id')->paginate(50)->withQueryString();
 
         return view('passagens.index', [
             'passagens' => $passagens,
