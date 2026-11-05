@@ -69,10 +69,40 @@ class AcertoController extends Controller
                 ];
             })->filter(fn ($l) => $l['qtd'] > 0 || $l['conferido'] > 0)->values();
 
+        // Donos de transporte: a empresa fica com a comissao e paga o resto pro dono.
+        $donos = \App\Models\Embarcacao::whereNotNull('dono_id')
+            ->when($transporteId, fn ($q) => $q->where('id', $transporteId))
+            ->when($opFiltro, fn ($q) => $q->where('dono_id', $opFiltro))
+            ->orderBy('nome')->get()->map(function ($emb) use ($viagemId) {
+                $pct = (int) $emb->comissao_empresa_pct;
+                $base = Passagem::where('embarcacao_id', $emb->id)->where('cancelada', false)->where('transferida', false)
+                    ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
+                $pend = (clone $base)->where('acerto_dono', false);
+                return [
+                    'emb' => $emb,
+                    'pct' => $pct,
+                    'qtd' => (clone $pend)->count(),
+                    'dono' => (float) (clone $pend)->selectRaw('COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->value('v'),
+                    'pago' => (float) (clone $base)->where('acerto_dono', true)->selectRaw('COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->value('v'),
+                ];
+            })->filter(fn ($l) => $l['qtd'] > 0 || $l['pago'] > 0)->values();
+
         return view('acertos.index', compact(
-            'linhas', 'ops', 'inicio', 'fim', 'periodo',
+            'linhas', 'ops', 'donos', 'inicio', 'fim', 'periodo',
             'transportes', 'viagens', 'pessoas', 'transporteId', 'viagemId', 'opFiltro'
         ));
+    }
+
+    /** ADMIN paga o dono do transporte (marca as passagens do transporte como acertadas com o dono). */
+    public function baixaDono(Request $request, \App\Models\Embarcacao $embarcacao)
+    {
+        abort_unless(auth()->user()->podeAcerto(), 403);
+        abort_unless($embarcacao->empresa_id === Tenant::id(), 404);
+        $viagemId = $request->input('viagem_id') ?: null;
+        $n = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id()]);
+        return back()->with('ok', 'Acerto do dono de '.$embarcacao->nome.' pago ('.$n.' passagens).');
     }
 
     public function baixaEmpresa(Request $request, User $revendedor)

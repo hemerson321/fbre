@@ -63,6 +63,37 @@
     @endforelse
   </div>
 
+  {{-- ===== DONOS DE TRANSPORTE ===== --}}
+  @if($donos->count())
+  <div>
+    <div class="flex items-center gap-2 mb-2 flex-wrap">
+      <span class="text-base">⛴️</span>
+      <h2 class="font-bold">Donos de transporte</h2>
+      <span class="text-xs text-slate-400 flex-1 min-w-[140px]">— quanto a empresa deve pagar ao dono de cada lancha</span>
+    </div>
+    @foreach($donos as $l)
+      <div class="card p-4 flex items-center gap-3 mb-2">
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold">{{ $l['emb']->nome }} <span class="text-xs text-slate-400">· {{ $l['emb']->dono?->name }}</span></div>
+          <div class="text-xs text-slate-500">
+            <span class="font-bold {{ $l['dono']>0 ? 'text-amber-600':'text-emerald-600' }}">Pagar ao dono: R$ {{ number_format($l['dono'],2,',','.') }}</span>
+            <span class="ml-1">({{ $l['qtd'] }} passagens · empresa fica {{ $l['pct'] }}%)</span>
+            · já pago R$ {{ number_format($l['pago'],2,',','.') }}
+          </div>
+        </div>
+        @if($l['dono']>0)
+          <form method="post" action="{{ route('admin.acertos.baixa-dono',$l['emb']) }}" onsubmit="return confirm('Marcar como pago ao dono de {{ $l['emb']->nome }}?')">@csrf
+            @foreach($hidden as $hk=>$hv)<input type="hidden" name="{{ $hk }}" value="{{ $hv }}">@endforeach
+            <button class="btn btn-accent btn-sm whitespace-nowrap">Pagar dono</button>
+          </form>
+        @else
+          <span class="text-emerald-600 text-sm font-semibold whitespace-nowrap">✓ em dia</span>
+        @endif
+      </div>
+    @endforeach
+  </div>
+  @endif
+
   {{-- ===== AGENTES EXTERNOS (revendedores) ===== --}}
   @if($usaRev)
   <div>

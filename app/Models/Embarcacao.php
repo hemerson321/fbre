@@ -11,7 +11,9 @@ class Embarcacao extends Model
 
     protected $table = 'embarcacoes';
     protected $guarded = [];
-    protected $casts = ['ativo' => 'boolean', 'usa_poltrona' => 'boolean', 'poltronas_qtd' => 'integer', 'poltronas_colunas' => 'integer', 'cancel_antes_pct' => 'integer', 'cancel_depois_pct' => 'integer'];
+    protected $casts = ['ativo' => 'boolean', 'usa_poltrona' => 'boolean', 'poltronas_qtd' => 'integer', 'poltronas_colunas' => 'integer', 'cancel_antes_pct' => 'integer', 'cancel_depois_pct' => 'integer', 'comissao_empresa_pct' => 'integer'];
+
+    public function dono() { return $this->belongsTo(User::class, 'dono_id'); }
 
     /** % que a empresa retem no cancelamento ANTES da viagem (deste transporte, ou padrao da empresa). */
     public function cancelAntes(): int
