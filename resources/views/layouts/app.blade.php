@@ -122,7 +122,6 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','ver'))   $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if (($u->isAdmin() || $u->isSuper()) && $u->temModulo('passagem')) $g[] = ['r'=>route('admin.rotas'), 'l'=>'Rotas e horários', 'i'=>'🗺️'];
-  if ($u->podeAcerto() && $u->temModulo('passagem')) $g[] = ['r'=>route('admin.acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;
   // Camarote / Suítes (módulo próprio, permissão separada)
   $g = [];
@@ -138,6 +137,11 @@ document.addEventListener('alpine:init', () => {
   $g = [];
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰'];
   if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
+  if ($u->podeAcerto() && $u->temModulo('passagem')) {
+      if (\App\Support\Tenant::empresa()?->config('usa_revendedores')) $g[] = ['r'=>route('admin.acertos', ['aba'=>'agentes']), 'l'=>'Acerto Agentes', 'i'=>'🤝'];
+      $g[] = ['r'=>route('admin.acertos', ['aba'=>'operadores']), 'l'=>'Acerto Operadores', 'i'=>'💵'];
+      $g[] = ['r'=>route('admin.acertos', ['aba'=>'transportes']), 'l'=>'Acerto Transportes — Donos', 'i'=>'🚤'];
+  }
   if ($g) $grupos['Caixa'] = $g;
   if ($u->isAdmin() || $u->isSuper()) {
       $adm = [

@@ -86,8 +86,9 @@ class AcertoController extends Controller
                 ];
             })->filter(fn ($l) => $l['qtd'] > 0 || $l['pago'] > 0)->values();
 
+        $aba = $request->input('aba');
         return view('acertos.index', compact(
-            'linhas', 'ops', 'donos', 'inicio', 'fim', 'periodo',
+            'linhas', 'ops', 'donos', 'inicio', 'fim', 'periodo', 'aba',
             'transportes', 'viagens', 'pessoas', 'transporteId', 'viagemId', 'opFiltro'
         ));
     }
