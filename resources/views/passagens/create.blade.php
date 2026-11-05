@@ -464,7 +464,7 @@
         // destino NÃO é lembrado: muda a cada venda, começa sempre em branco
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
-        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhaAtual){ const n=x=>String(x||'').trim().toLowerCase(); const par=this.linhaAtual.paradas.map(p=>n(p.n)); if(this.origemSel && !par.includes(n(this.origemSel))) this.origemSel=''; if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
+        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhasTransporte.length){ const n=x=>String(x||'').trim().toLowerCase(); if(this.origemSel && !this.origens.some(c=>n(c)===n(this.origemSel))) this.origemSel=''; if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
         this.addPax();
         this.mudarEmbarcacao();
         this.onRota();
@@ -644,24 +644,25 @@
         return out;
       },
       escolherDia(iso){ this.viagemData=iso; this.viagemLabel=this.rotulo(iso); this.calAberto=false; },
-      get linhaAtual(){
+      get linhasTransporte(){
         const emb=this.embarcacaoSel?String(this.embarcacaoSel):'';
-        if(!emb) return null;
-        return this.linhas.find(L=>String(L.embarcacao_id||'')===emb) || null;
+        if(!emb) return [];
+        return this.linhas.filter(L=>String(L.embarcacao_id||'')===emb);
       },
       get origens(){
-        const L=this.linhaAtual;
-        if(!L) return this.cidades;
-        return L.paradas.slice(0,-1).map(p=>p.n);
+        const Ls=this.linhasTransporte;
+        if(!Ls.length) return this.cidades;
+        const set=new Set(); Ls.forEach(L=>L.paradas.slice(0,-1).forEach(p=>set.add(p.n)));
+        return [...set];
       },
       get destinos(){
-        const L=this.linhaAtual;
+        const Ls=this.linhasTransporte;
         const n=x=>String(x||'').trim().toLowerCase();
-        if(!L) return this.cidades.filter(c=>n(c)!==n(this.origemSel));
-        if(!this.origemSel) return L.paradas.map(p=>p.n);
-        const io=L.paradas.findIndex(p=>n(p.n)===n(this.origemSel));
-        if(io<0) return L.paradas.map(p=>p.n);
-        return L.paradas.slice(io+1).map(p=>p.n);
+        if(!Ls.length) return this.cidades.filter(c=>n(c)!==n(this.origemSel));
+        if(!this.origemSel){ const s=new Set(); Ls.forEach(L=>L.paradas.forEach(p=>s.add(p.n))); return [...s]; }
+        const set=new Set();
+        Ls.forEach(L=>{ const io=L.paradas.findIndex(p=>n(p.n)===n(this.origemSel)); if(io>=0) L.paradas.slice(io+1).forEach(p=>set.add(p.n)); });
+        return [...set];
       },
       resolverLinha(){
         this.rotaId=''; this.linhaNome=''; this.paradasInfo=[];

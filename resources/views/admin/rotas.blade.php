@@ -48,4 +48,5 @@
 @endforelse
 </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.3/Sortable.min.js"></script>
 @endsection

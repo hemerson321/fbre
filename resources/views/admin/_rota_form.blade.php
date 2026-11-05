@@ -1,6 +1,6 @@
 @php $edit = (bool) $rota; @endphp
 <form method="post" action="{{ $edit ? route('admin.rotas.update',$rota) : route('admin.rotas.store') }}"
-      x-data="rotaForm({{ $edit ? $rota->paradas->map(fn($p)=>['localidade'=>$p->localidade,'dia_semana'=>$p->dia_semana,'hora'=>$p->hora? substr($p->hora,0,5):''])->toJson() : '[]' }}, @js($trechoPrecosMapa ?? []), @js(($tiposPassageiro ?? collect())->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor','percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,'eh_normal'=>(bool)$t->eh_normal,'pct_sobre'=>$t->pct_sobre ?: 'tarifa'])->values()), @js(['alim'=>($usaAlimentacao ?? true)]))" class="space-y-3">
+      x-data="rotaForm({{ $edit ? $rota->paradas->map(fn($p)=>['localidade'=>$p->localidade,'dia_semana'=>$p->dia_semana,'hora'=>$p->hora? substr($p->hora,0,5):''])->toJson() : '[]' }}, @js($trechoPrecosMapa ?? []), @js(($tiposPassageiro ?? collect())->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor','percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,'eh_normal'=>(bool)$t->eh_normal,'pct_sobre'=>$t->pct_sobre ?: 'tarifa'])->values()), @js(['alim'=>($usaAlimentacao ?? true)]))" x-init="$nextTick(()=>{ if(window.Sortable && $refs.paradasList) Sortable.create($refs.paradasList, { handle:'.drag-handle', animation:150, onEnd:(e)=>{ if(e.oldIndex===e.newIndex) return; const it=paradas.splice(e.oldIndex,1)[0]; paradas.splice(e.newIndex,0,it); } }); })" class="space-y-3">
 @csrf @if($edit) @method('PUT') @endif
 <div class="grid sm:grid-cols-2 gap-3">
   <div><label class="label">Nome da rota</label><input name="nome" class="input" required value="{{ $edit ? $rota->nome : '' }}" placeholder="Ex.: Linha Tefé"></div>
@@ -15,10 +15,10 @@
     <label class="label !mb-0">Paradas (na ordem da viagem)</label>
     <button type="button" class="btn btn-ghost btn-sm" @click="add()">＋ parada</button>
   </div>
-  <div class="space-y-2">
+  <div class="space-y-2" x-ref="paradasList">
     <template x-for="(p,i) in paradas" :key="i">
       <div class="grid grid-cols-12 gap-2 items-center">
-        <span class="col-span-1 text-center text-slate-400 font-bold" x-text="i+1"></span>
+        <span class="col-span-1 text-center text-slate-400 font-bold drag-handle cursor-grab select-none" title="Segure e arraste pra reordenar">⠿<span x-text="i+1"></span></span>
         <input :name="`paradas[${i}][localidade]`" x-model="p.localidade" list="locais" class="input col-span-5" placeholder="Cidade" required>
         <select :name="`paradas[${i}][dia_semana]`" x-model="p.dia_semana" class="input col-span-3">
           <option value="">dia —</option>
