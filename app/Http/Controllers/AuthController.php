@@ -55,7 +55,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($cred, $request->boolean('lembrar'))) {
             $request->session()->regenerate();
-            $resp = redirect()->intended('/');
+            $resp = redirect()->to('/'); // sempre no inicio/bem-vindo, ignora o link que tentou abrir
             $emp = Auth::user()->empresa;
             return $emp ? $resp->cookie('fbre_empresa', $emp->slug, 60 * 24 * 365) : $resp;
         }
