@@ -36,6 +36,7 @@ class PassagemController extends Controller
         ];
         $fCanc = $f; $fCanc['cancelada'] = '1'; unset($fCanc['status_pagamento'], $fCanc['embarcou']);
         $totais['cancelados'] = Passagem::filtrar($fCanc)->count();
+        $totais['cancelados_valor'] = Passagem::filtrar($fCanc)->sum('total');
 
         $ids = (clone $base)->select('id');
         $porMeio = Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $ids)

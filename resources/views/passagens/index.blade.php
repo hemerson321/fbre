@@ -45,6 +45,7 @@
     <a href="{{ request()->fullUrlWithQuery(['cancelada'=> $verCanc ? null : '1']) }}" class="card p-3 transition hover:bg-slate-50 {{ $verCanc ? 'ring-2 ring-slate-400 bg-slate-50' : '' }}">
       <div class="text-xs text-slate-500">❌ Cancelados {{ $verCanc ? '· vendo' : '' }}</div>
       <div class="text-lg font-bold text-slate-500">{{ $totais['cancelados'] }}</div>
+      <div class="text-[11px] text-slate-400">R$ {{ number_format($totais['cancelados_valor'] ?? 0,2,',','.') }}</div>
     </a>
   </div>
   @if($verCanc)
