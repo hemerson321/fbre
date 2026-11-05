@@ -13,10 +13,13 @@
   <div class="card p-4 space-y-3">
     <div class="flex items-center justify-between gap-2">
       <div class="font-bold">{{ $api->rotulo() }} @if(!$api->ativo)<span class="text-xs text-slate-400">(inativa)</span>@endif</div>
+      @if($api->provider !== 'pix_estatico')
       <form method="post" action="{{ route('admin.pagamentos.testar',$api) }}">@csrf
         <button class="btn btn-ghost btn-sm">🔌 Testar conexão</button>
       </form>
+      @endif
     </div>
+    @if($api->provider !== 'pix_estatico')
     <div class="rounded-lg bg-slate-50 border p-2.5 text-xs space-y-1">
       <div class="font-semibold text-slate-600">Webhook do Mercado Pago — cole esta URL no MP (campo “URL de produção”):</div>
       <div class="flex gap-2">
@@ -25,17 +28,29 @@
       </div>
       <div class="text-slate-400">No MP marque o evento <b>Pagamentos</b>. Depois copie a <b>assinatura secreta</b> que o MP gerar e cole aqui embaixo em “Webhook secret”.</div>
     </div>
-    <form method="post" action="{{ route('admin.pagamentos.salvar',$api) }}" class="grid sm:grid-cols-2 gap-3">@csrf
+    @endif
+    <form method="post" action="{{ route('admin.pagamentos.salvar',$api) }}" class="grid sm:grid-cols-2 gap-3" x-data="{prov:'{{ $api->provider }}'}">@csrf
       <div><label class="label">Nome</label><input name="nome" class="input" value="{{ $api->nome }}" required maxlength="80"></div>
-      <div><label class="label">Provedor</label>
-        <select name="provider" class="input">@foreach(\App\Models\PagamentoApi::PROVIDERS as $k=>$l)<option value="{{ $k }}" @selected($api->provider==$k)>{{ $l }}</option>@endforeach</select>
+      <div><label class="label">Tipo</label>
+        <select name="provider" x-model="prov" class="input">@foreach(\App\Models\PagamentoApi::PROVIDERS as $k=>$l)<option value="{{ $k }}" @selected($api->provider==$k)>{{ $l }}</option>@endforeach</select>
       </div>
-      <div class="sm:col-span-2"><label class="label">Access Token (secreto)</label>
-        <input name="access_token" type="password" class="input font-mono text-sm" placeholder="•••• deixe em branco para manter o atual" autocomplete="off">
-        <p class="text-[11px] text-slate-400 mt-0.5">Mercado Pago → Suas integrações → Credenciais de produção → Access Token.</p>
-      </div>
-      <div><label class="label">Public Key (opcional)</label><input name="public_key" class="input font-mono text-sm" value="{{ $api->public_key }}" autocomplete="off"></div>
-      <div><label class="label">Webhook secret (opcional)</label><input name="webhook_secret" class="input font-mono text-sm" value="{{ $api->webhook_secret }}" autocomplete="off"></div>
+      <template x-if="prov==='mercadopago'">
+        <div class="sm:col-span-2 grid sm:grid-cols-2 gap-3">
+          <div class="sm:col-span-2"><label class="label">Access Token (secreto)</label>
+            <input name="access_token" type="password" class="input font-mono text-sm" placeholder="•••• deixe em branco para manter o atual" autocomplete="off">
+            <p class="text-[11px] text-slate-400 mt-0.5">Mercado Pago → Suas integrações → Credenciais de produção → Access Token.</p>
+          </div>
+          <div><label class="label">Public Key (opcional)</label><input name="public_key" class="input font-mono text-sm" value="{{ $api->public_key }}" autocomplete="off"></div>
+          <div><label class="label">Webhook secret (opcional)</label><input name="webhook_secret" class="input font-mono text-sm" value="{{ $api->webhook_secret }}" autocomplete="off"></div>
+        </div>
+      </template>
+      <template x-if="prov==='pix_estatico'">
+        <div class="sm:col-span-2 grid sm:grid-cols-2 gap-3">
+          <div class="sm:col-span-2"><label class="label">Chave PIX</label><input name="pix_chave" class="input" value="{{ $api->pixChave() }}" placeholder="CPF, telefone, e-mail ou aleatória" autocapitalize="none"></div>
+          <div><label class="label">Nome do recebedor</label><input name="pix_recebedor" class="input" value="{{ $api->pixRecebedor() }}" maxlength="25"></div>
+          <div><label class="label">Cidade</label><input name="pix_cidade" class="input" value="{{ $api->pixCidade() }}" maxlength="15"></div>
+        </div>
+      </template>
       <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="ativo" value="1" @checked($api->ativo) class="w-5 h-5 rounded"> Ativa</label>
       <div class="sm:col-span-2 flex gap-2 justify-end border-t pt-3">
         <button class="btn btn-primary btn-sm">Salvar</button>
@@ -50,13 +65,22 @@
   {{-- Nova API --}}
   <div class="card p-4 space-y-3">
     <div class="font-bold text-sm text-slate-600 uppercase">➕ Nova API</div>
-    <form method="post" action="{{ route('admin.pagamentos.salvar') }}" class="grid sm:grid-cols-2 gap-3">@csrf
-      <div><label class="label">Nome</label><input name="nome" class="input" placeholder="Ex.: Mercado Pago - Passagem" required maxlength="80"></div>
-      <div><label class="label">Provedor</label>
-        <select name="provider" class="input">@foreach(\App\Models\PagamentoApi::PROVIDERS as $k=>$l)<option value="{{ $k }}">{{ $l }}</option>@endforeach</select>
+    <form method="post" action="{{ route('admin.pagamentos.salvar') }}" class="grid sm:grid-cols-2 gap-3" x-data="{prov:'mercadopago'}">@csrf
+      <div><label class="label">Nome</label><input name="nome" class="input" placeholder="Ex.: PIX da empresa / Mercado Pago" required maxlength="80"></div>
+      <div><label class="label">Tipo</label>
+        <select name="provider" x-model="prov" class="input">@foreach(\App\Models\PagamentoApi::PROVIDERS as $k=>$l)<option value="{{ $k }}">{{ $l }}</option>@endforeach</select>
       </div>
-      <div class="sm:col-span-2"><label class="label">Access Token (secreto)</label><input name="access_token" type="password" class="input font-mono text-sm" placeholder="APP_USR-..." autocomplete="off"></div>
-      <div class="sm:col-span-2 flex justify-end"><button class="btn btn-accent btn-sm">Criar API</button></div>
+      <template x-if="prov==='mercadopago'">
+        <div class="sm:col-span-2"><label class="label">Access Token (secreto)</label><input name="access_token" type="password" class="input font-mono text-sm" placeholder="APP_USR-..." autocomplete="off"></div>
+      </template>
+      <template x-if="prov==='pix_estatico'">
+        <div class="sm:col-span-2 grid sm:grid-cols-2 gap-3">
+          <div class="sm:col-span-2"><label class="label">Chave PIX</label><input name="pix_chave" class="input" placeholder="CPF, telefone, e-mail ou aleatória" autocapitalize="none"></div>
+          <div><label class="label">Nome do recebedor</label><input name="pix_recebedor" class="input" maxlength="25"></div>
+          <div><label class="label">Cidade</label><input name="pix_cidade" class="input" maxlength="15"></div>
+        </div>
+      </template>
+      <div class="sm:col-span-2 flex justify-end"><button class="btn btn-accent btn-sm">Criar</button></div>
     </form>
   </div>
 

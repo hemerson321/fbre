@@ -174,8 +174,9 @@ class UsuarioController extends Controller
         $data['revendedor_id'] = ($data['is_revendedor'] ?? false) ? null : (($data['revendedor_id'] ?? null) ?: null);
         if ($data['is_revendedor'] ?? false) $data['pode_desconto'] = false; // agente/revendedor nunca da desconto
         $data['modo_acerto'] = $data['modo_acerto'] ?? 'cheio';
-        $data['acerto_pix_modo'] = $data['acerto_pix_modo'] ?? 'nenhum';
-        $data['acerto_pix_api_id'] = ($data['acerto_pix_modo'] === 'dinamico' && ! empty($data['acerto_pix_api_id'])) ? $data['acerto_pix_api_id'] : null;
+        $apiAc = ! empty($data['acerto_pix_api_id']) ? \App\Models\PagamentoApi::find($data['acerto_pix_api_id']) : null;
+        $data['acerto_pix_api_id'] = $apiAc?->id;
+        $data['acerto_pix_modo'] = $apiAc ? ($apiAc->ehEstatico() ? 'estatico' : 'dinamico') : 'nenhum';
         $data['comissao_pct'] = (int) ($data['comissao_pct'] ?? 0);
 
         // permissões por módulo e ação (cadastra/baixa/imprimir)

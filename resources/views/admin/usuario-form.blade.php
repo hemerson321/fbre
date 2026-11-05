@@ -58,29 +58,16 @@
   </div>
   <p class="text-xs text-slate-500">No <b>valor cheio</b> repassa o total e a comissão é tratada à parte. Na <b>comissão</b>, fica com a % e repassa o resto.</p>
   <div x-show="rev" x-cloak class="border-t border-amber-200 pt-2">
-    <label class="label !text-xs">Como ele acerta (paga) a empresa</label>
-    <select name="acerto_pix_modo" x-model="acm" class="input !min-h-[40px]">
-      <option value="nenhum">Não mostrar acerto por PIX (acerto só presencial)</option>
-      <option value="estatico">PIX da empresa + comprovante — empresa confere e dá baixa</option>
-      <option value="dinamico">PIX automático (Mercado Pago) — baixa sozinho ao pagar</option>
+    <label class="label !text-xs">PIX pra onde ele acerta com a empresa</label>
+    <select name="acerto_pix_api_id" class="input !min-h-[40px]">
+      <option value="">— Não mostrar acerto por PIX (presencial) —</option>
+      @foreach($pagamentoApis as $api)<option value="{{ $api->id }}" @selected(old('acerto_pix_api_id',$u->acerto_pix_api_id)==$api->id)>{{ $api->nome }} ({{ ($api->provider ?? '')==='pix_estatico' ? 'estático' : 'automático' }})</option>@endforeach
     </select>
-    <div x-show="acm==='dinamico'" x-cloak class="mt-1">
-      <label class="label !text-xs">Conta Mercado Pago do acerto</label>
-      <select name="acerto_pix_api_id" class="input !min-h-[40px]">
-        <option value="">— usar o PIX padrão da empresa —</option>
-        @foreach($pagamentoApis as $api)<option value="{{ $api->id }}" @selected(old('acerto_pix_api_id',$u->acerto_pix_api_id)==$api->id)>{{ $api->nome }}</option>@endforeach
-      </select>
-      @if($pagamentoApis->isEmpty())<p class="text-[11px] text-red-600 mt-0.5">Nenhuma conta cadastrada. Cadastre em <b>Minha empresa → APIs de pagamento</b>.</p>
-      @else<p class="text-[11px] text-emerald-700 mt-0.5">Ao pagar, o acerto dele baixa sozinho.</p>@endif
-    </div>
-    <div x-show="acm==='estatico'" x-cloak class="mt-1">
-      @if($empresa && $empresa->pix)
-        <p class="text-[11px] text-slate-600">Gera o QR com a chave PIX da empresa: <b>{{ $empresa->pix }}</b>.</p>
-        <p class="text-[11px] text-amber-700">Ao pagar, o agente manda o comprovante e a empresa dá baixa em Acertos.</p>
-      @else
-        <p class="text-[11px] text-red-600">A empresa ainda não tem chave PIX. Cadastre em <b>Minha empresa → Chave PIX</b> pra poder gerar o QR.</p>
-      @endif
-    </div>
+    @if($pagamentoApis->isEmpty())
+      <p class="text-[11px] text-amber-700 mt-0.5">Cadastre os PIX em <b>Minha empresa → Pagamentos</b> (PIX estático ou Mercado Pago).</p>
+    @else
+      <p class="text-[11px] text-slate-500 mt-0.5"><b>Estático</b>: ele paga e manda o comprovante (empresa dá baixa). <b>Automático</b> (Mercado Pago): baixa sozinho ao pagar.</p>
+    @endif
   </div>
 </div>
 @endif

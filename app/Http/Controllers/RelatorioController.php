@@ -59,7 +59,7 @@ class RelatorioController extends Controller
             $bruto = (float) (clone $passQ)->sum('total');
             $aPassar = (float) (clone $passQ)->sum('acerto_empresa_valor');
             $empAcerto = \App\Support\Tenant::empresa();
-            $acertoApi = $uu->acerto_pix_api_id ? \App\Models\PagamentoApi::find($uu->acerto_pix_api_id) : $empAcerto?->pagamentoApi('passagem');
+            $acertoApi = $uu->acerto_pix_api_id ? \App\Models\PagamentoApi::find($uu->acerto_pix_api_id) : null;
             $acerto = [
                 'qtd' => (clone $passQ)->count(),
                 'bruto' => $bruto,
@@ -67,11 +67,11 @@ class RelatorioController extends Controller
                 'comissao' => round($bruto - $aPassar, 2),
                 'pct' => (int) ($uu->comissao_pct ?? 0),
                 'modo' => $uu->modo_acerto ?? 'cheio',
-                'pix_modo' => $uu->acerto_pix_modo ?: 'estatico',
-                'emp_pix' => $empAcerto?->pix,
-                'emp_nome' => $empAcerto?->nomeExibicao(),
-                'emp_cidade' => $empAcerto?->config('cidade') ?: 'CIDADE',
-                'pode_dinamico' => (bool) $acertoApi,
+                'pix_modo' => $acertoApi ? ($acertoApi->ehEstatico() ? 'estatico' : 'dinamico') : 'nenhum',
+                'emp_pix' => ($acertoApi && $acertoApi->ehEstatico()) ? $acertoApi->pixChave() : null,
+                'emp_nome' => (($acertoApi && $acertoApi->ehEstatico()) ? $acertoApi->pixRecebedor() : null) ?: $empAcerto?->nomeExibicao(),
+                'emp_cidade' => (($acertoApi && $acertoApi->ehEstatico()) ? $acertoApi->pixCidade() : null) ?: 'CIDADE',
+                'pode_dinamico' => (bool) ($acertoApi && ! $acertoApi->ehEstatico()),
                 'total_devido' => round((float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)->sum('acerto_empresa_valor'), 2),
             ];
         }

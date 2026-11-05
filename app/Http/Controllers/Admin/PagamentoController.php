@@ -24,25 +24,41 @@ class PagamentoController extends Controller
     {
         $data = $request->validate([
             'nome' => 'required|string|max:80',
-            'provider' => 'required|in:mercadopago',
+            'provider' => 'required|in:mercadopago,pix_estatico',
             'ativo' => 'nullable|boolean',
             'access_token' => 'nullable|string|max:500',
             'public_key' => 'nullable|string|max:255',
             'webhook_secret' => 'nullable|string|max:255',
+            'pix_chave' => 'nullable|string|max:140',
+            'pix_recebedor' => 'nullable|string|max:60',
+            'pix_cidade' => 'nullable|string|max:60',
         ]);
         $data['ativo'] = $request->boolean('ativo', true);
 
+        $estatico = $data['provider'] === 'pix_estatico';
+        if ($estatico) {
+            $data['config'] = [
+                'chave' => trim((string) $request->input('pix_chave')),
+                'recebedor' => trim((string) $request->input('pix_recebedor')),
+                'cidade' => trim((string) $request->input('pix_cidade')),
+            ];
+            $data['access_token'] = null;
+            $data['public_key'] = null;
+            $data['webhook_secret'] = null;
+        }
+        unset($data['pix_chave'], $data['pix_recebedor'], $data['pix_cidade']);
+
         if ($api && $api->exists) {
             abort_unless($api->empresa_id === Tenant::id(), 404);
-            // não apaga o token se vier vazio (campo secreto deixado em branco)
-            if (blank($data['access_token'] ?? null)) {
+            // MP: não apaga o token se vier vazio (campo secreto deixado em branco)
+            if (! $estatico && blank($data['access_token'] ?? null)) {
                 unset($data['access_token']);
             }
             $api->update($data);
-            return back()->with('ok', 'API de pagamento atualizada.');
+            return back()->with('ok', 'Forma de pagamento atualizada.');
         }
         PagamentoApi::create($data);
-        return back()->with('ok', 'API de pagamento criada.');
+        return back()->with('ok', 'Forma de pagamento criada.');
     }
 
     public function excluir(PagamentoApi $api)
