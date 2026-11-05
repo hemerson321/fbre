@@ -46,7 +46,17 @@
       </template>
       <template x-if="prov==='pix_estatico'">
         <div class="sm:col-span-2 grid sm:grid-cols-2 gap-3">
-          <div class="sm:col-span-2"><label class="label">Chave PIX</label><input name="pix_chave" class="input" value="{{ $api->pixChave() }}" placeholder="CPF, telefone, e-mail ou aleatória" autocapitalize="none"></div>
+          <div><label class="label">Tipo de chave</label>
+            <select name="pix_tipo" class="input">
+              <option value="aleatoria" @selected($api->pixTipo()==='aleatoria')>Aleatória (EVP)</option>
+              <option value="celular" @selected($api->pixTipo()==='celular')>Celular</option>
+              <option value="cpf" @selected($api->pixTipo()==='cpf')>CPF</option>
+              <option value="cnpj" @selected($api->pixTipo()==='cnpj')>CNPJ</option>
+              <option value="email" @selected($api->pixTipo()==='email')>E-mail</option>
+            </select>
+          </div>
+          <div><label class="label">Chave PIX</label><input name="pix_chave" class="input" value="{{ $api->pixChave() }}" placeholder="a chave" autocapitalize="none"></div>
+          <div class="sm:col-span-2 text-[11px] text-slate-400 -mt-1">Celular: com DDD (vira +55…). CPF/CNPJ: só números. E-mail: igual ao cadastrado no banco.</div>
           <div><label class="label">Nome do recebedor</label><input name="pix_recebedor" class="input" value="{{ $api->pixRecebedor() }}" maxlength="25"></div>
           <div><label class="label">Cidade</label><input name="pix_cidade" class="input" value="{{ $api->pixCidade() }}" maxlength="15"></div>
         </div>
@@ -75,7 +85,17 @@
       </template>
       <template x-if="prov==='pix_estatico'">
         <div class="sm:col-span-2 grid sm:grid-cols-2 gap-3">
-          <div class="sm:col-span-2"><label class="label">Chave PIX</label><input name="pix_chave" class="input" placeholder="CPF, telefone, e-mail ou aleatória" autocapitalize="none"></div>
+          <div><label class="label">Tipo de chave</label>
+            <select name="pix_tipo" class="input">
+              <option value="aleatoria">Aleatória (EVP)</option>
+              <option value="celular">Celular</option>
+              <option value="cpf">CPF</option>
+              <option value="cnpj">CNPJ</option>
+              <option value="email">E-mail</option>
+            </select>
+          </div>
+          <div><label class="label">Chave PIX</label><input name="pix_chave" class="input" placeholder="a chave" autocapitalize="none"></div>
+          <div class="sm:col-span-2 text-[11px] text-slate-400 -mt-1">Celular: com DDD (vira +55…). CPF/CNPJ: só números. E-mail: igual ao cadastrado no banco.</div>
           <div><label class="label">Nome do recebedor</label><input name="pix_recebedor" class="input" maxlength="25"></div>
           <div><label class="label">Cidade</label><input name="pix_cidade" class="input" maxlength="15"></div>
         </div>

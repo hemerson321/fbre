@@ -29,6 +29,7 @@ class PagamentoApi extends Model
         return $this->provider === 'pix_estatico';
     }
 
+    public function pixTipo(): string       { return $this->config['tipo'] ?? 'aleatoria'; }
     public function pixChave(): ?string     { return $this->config['chave'] ?? null; }
     public function pixRecebedor(): ?string { return $this->config['recebedor'] ?? null; }
     public function pixCidade(): ?string    { return $this->config['cidade'] ?? null; }

@@ -29,6 +29,7 @@ class PagamentoController extends Controller
             'access_token' => 'nullable|string|max:500',
             'public_key' => 'nullable|string|max:255',
             'webhook_secret' => 'nullable|string|max:255',
+            'pix_tipo' => 'nullable|in:aleatoria,celular,cpf,cnpj,email',
             'pix_chave' => 'nullable|string|max:140',
             'pix_recebedor' => 'nullable|string|max:60',
             'pix_cidade' => 'nullable|string|max:60',
@@ -37,8 +38,18 @@ class PagamentoController extends Controller
 
         $estatico = $data['provider'] === 'pix_estatico';
         if ($estatico) {
+            $tipo = $request->input('pix_tipo', 'aleatoria');
+            $raw = trim((string) $request->input('pix_chave'));
+            $dig = preg_replace('/\\D/', '', $raw);
+            $chave = match ($tipo) {
+                'celular' => '+'.(strlen($dig) <= 11 ? '55'.$dig : $dig),
+                'cpf', 'cnpj' => $dig,
+                'email' => mb_strtolower($raw),
+                default => $raw,
+            };
             $data['config'] = [
-                'chave' => trim((string) $request->input('pix_chave')),
+                'tipo' => $tipo,
+                'chave' => $chave,
                 'recebedor' => trim((string) $request->input('pix_recebedor')),
                 'cidade' => trim((string) $request->input('pix_cidade')),
             ];
@@ -46,7 +57,7 @@ class PagamentoController extends Controller
             $data['public_key'] = null;
             $data['webhook_secret'] = null;
         }
-        unset($data['pix_chave'], $data['pix_recebedor'], $data['pix_cidade']);
+        unset($data['pix_chave'], $data['pix_recebedor'], $data['pix_cidade'], $data['pix_tipo']);
 
         if ($api && $api->exists) {
             abort_unless($api->empresa_id === Tenant::id(), 404);
