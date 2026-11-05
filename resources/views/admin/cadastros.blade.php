@@ -213,14 +213,15 @@ function taxasEditor(taxas){ return { taxas: (taxas&&taxas.length)?taxas:[{orige
 
 @if(auth()->user()->podeZerar())
 <div class="card p-4 md:col-span-2 border border-amber-200 bg-amber-50" x-data="{ txt:'' }">
-  <h2 class="font-bold text-sm text-amber-700 uppercase">Excluir vendas (por módulo / operador)</h2>
-  <p class="text-xs text-amber-600 mt-1">Apaga as vendas de um módulo (de todos ou de um operador) e os pagamentos ligados. <b>Não dá para desfazer.</b></p>
+  <h2 class="font-bold text-sm text-amber-700 uppercase">Excluir vendas / lançamentos (por módulo / operador)</h2>
+  <p class="text-xs text-amber-600 mt-1">Apaga as vendas de um módulo — ou as entradas/saídas do caixa — de todos ou de um operador, com os pagamentos ligados. <b>Não dá para desfazer.</b></p>
   <form method="post" action="{{ route('admin.excluir-vendas') }}" class="grid sm:grid-cols-2 gap-2 mt-2" onsubmit="return confirm('Apagar essas vendas? Não tem volta.')">@csrf
     <div><label class="label !text-xs">Módulo</label>
       <select name="modulo" class="input !min-h-[40px]" required>
-        <option value="passagem">Passagens</option>
-        <option value="encomenda">Encomendas</option>
-        <option value="frete">Fretes</option>
+        @if($empTem('passagem'))<option value="passagem">Passagens</option>@endif
+        @if($empTem('encomenda'))<option value="encomenda">Encomendas</option>@endif
+        @if($empTem('frete'))<option value="frete">Fretes</option>@endif
+        <option value="avulso">Entradas / Saídas do caixa</option>
       </select></div>
     <div><label class="label !text-xs">Operador</label>
       <select name="user_id" class="input !min-h-[40px]"><option value="">Todos</option>

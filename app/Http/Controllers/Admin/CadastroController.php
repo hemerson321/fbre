@@ -274,7 +274,7 @@ class CadastroController extends Controller
     {
         abort_unless($request->user()->podeZerar(), 403, 'Sem permissão.');
         $data = $request->validate([
-            'modulo' => 'required|in:passagem,encomenda,frete',
+            'modulo' => 'required|in:passagem,encomenda,frete,avulso',
             'user_id' => 'nullable|integer',
             'confirmacao' => 'required|in:EXCLUIR',
         ]);
@@ -294,14 +294,19 @@ class CadastroController extends Controller
                 Pagamento::whereIn('encomenda_id', $ids)->delete();
                 Evento::whereIn('encomenda_id', $ids)->delete();
                 $n = $q->delete();
-            } else {
+            } elseif ($data['modulo'] === 'frete') {
                 $q = \App\Models\Frete::query()->when($uid, fn ($x) => $x->where('user_id', $uid));
                 $ids = (clone $q)->pluck('id');
                 Pagamento::where('modulo', 'frete')->whereIn('origem_id', $ids)->delete();
                 $n = $q->delete();
+            } else { // avulso: entradas/saidas manuais do caixa
+                $n = Pagamento::where('modulo', 'avulso')
+                    ->when($uid, fn ($x) => $x->where('user_id', $uid))
+                    ->delete();
             }
         });
-        return back()->with('ok', 'Excluídas '.$n.' venda(s) de '.$data['modulo'].($uid ? ' do operador selecionado' : '').'.');
+        $rotulo = $data['modulo'] === 'avulso' ? 'lançamento(s) de caixa (entradas/saídas)' : 'venda(s) de '.$data['modulo'];
+        return back()->with('ok', 'Excluídas '.$n.' '.$rotulo.($uid ? ' do operador selecionado' : '').'.');
     }
 
     /** Salva a tabela de Taxa de Embarque (Embarque → Destino → R$). */
