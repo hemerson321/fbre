@@ -92,6 +92,8 @@ class CadastroController extends Controller
         $m = $this->tipos[$tipo];
         if ($tipo === 'produtos') {
             Produto::create(['nome' => $data['nome'], 'valor_padrao' => $data['valor_padrao'] ?? 0, 'modulo' => $data['modulo'] ?? 'encomenda', 'ativo' => true]);
+        } elseif ($tipo === 'embarcacoes') {
+            $m::create(['nome' => $data['nome'], 'comissao_empresa_pct' => 10]);
         } else {
             $m::create(['nome' => $data['nome']]);
         }
