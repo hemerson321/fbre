@@ -63,10 +63,12 @@
 <div class="rounded-xl bg-sky-50 border border-sky-200 p-3 space-y-2" x-data="{pm:'{{ old('pix_modo',$u->pix_modo ?: 'empresa') }}'}">
   <div class="font-semibold text-sm">💠 Recebimento PIX deste operador</div>
   <select name="pix_modo" x-model="pm" class="input !min-h-[40px]">
-    <option value="empresa">Usa o PIX da empresa (padrão)</option>
-    <option value="api">Conta própria (Mercado Pago) — PIX dinâmico, confirma sozinho</option>
-    <option value="estatico">PIX estático (chave própria) — gera QR na venda</option>
+    <option value="empresa">PIX da empresa — acerto automático (cai direto na empresa)</option>
+    <option value="api">Conta própria (Mercado Pago) — confirma sozinho, fica com ele</option>
+    <option value="estatico">PIX estático (chave dele) — fica com ele, acerto manual</option>
   </select>
+  <p class="text-[11px] text-emerald-700" x-show="pm==='empresa'">✅ O cliente paga no <b>PIX da empresa</b> — <b>acerto automático</b>: o agente não fica devendo essa venda.</p>
+  <p class="text-[11px] text-amber-700" x-show="pm!=='empresa'" x-cloak>⚠️ O PIX cai pra ele — entra no <b>acerto manual</b> (ele repassa depois pra empresa).</p>
   <div x-show="pm==='api'" x-cloak>
     <label class="label !text-xs">Conta de pagamento (API)</label>
     <select name="pix_api_id" class="input !min-h-[40px]">
