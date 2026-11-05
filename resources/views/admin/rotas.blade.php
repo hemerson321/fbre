@@ -21,9 +21,16 @@
   <div class="card p-4 {{ $r->ativo?'':'opacity-60' }}">
     <div class="flex items-start justify-between gap-2">
       <div>
-        <div class="font-bold text-lg">{{ $r->nome }} @if(!$r->ativo)<span class="chip st-cinza">inativa</span>@endif</div>
+        @if($r->embarcacao)
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="inline-flex items-center gap-1 bg-slate-800 text-white rounded-lg px-2.5 py-1 font-bold text-base">🚤 {{ $r->embarcacao->nome }}</span>
+            @if(!$r->ativo)<span class="chip st-cinza">inativa</span>@endif
+          </div>
+          <div class="font-semibold text-slate-700 mt-1">{{ $r->nome }}</div>
+        @else
+          <div class="font-bold text-lg">{{ $r->nome }} @if(!$r->ativo)<span class="chip st-cinza">inativa</span>@endif</div>
+        @endif
         <div class="text-sm text-slate-600 mt-1">{{ $r->resumoCalendario() }}</div>
-        @if($r->embarcacao)<div class="text-xs text-slate-500 mt-1">Embarcação: <span class="font-bold text-slate-800 bg-slate-100 rounded px-1.5 py-0.5">🚤 {{ $r->embarcacao->nome }}</span></div>@endif
       </div>
       <div class="flex gap-2 shrink-0">
         <button class="btn btn-ghost btn-sm" @click="editando = editando==={{ $r->id }} ? null : {{ $r->id }}">Editar</button>
