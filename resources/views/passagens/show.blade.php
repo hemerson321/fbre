@@ -81,6 +81,9 @@
     @if(!$p->cancelada && !$p->transferida && ($empP?->config('usa_cancel_transporte')) && ($u->isAdmin()||$u->isSuper()))
     <button type="button" class="btn btn-ghost" style="border:1px solid #6366f1;color:#4f46e5" x-data @click="$refs.transf.classList.toggle('hidden')">↪ Transferir</button>
     @endif
+    @if(!$p->cancelada && !$p->transferida && ($u->isAdmin()||$u->isSuper()))
+    <button type="button" class="btn btn-ghost" style="border:1px solid #06b6d4;color:#0891b2" x-data @click="$refs.troca.classList.toggle('hidden')">📅 Trocar viagem</button>
+    @endif
   </div>
   @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
   <form method="post" action="{{ route('passagens.cancelar',$p) }}" class="card p-4 hidden" x-ref="cancel">@csrf
@@ -117,6 +120,27 @@
     <input name="motivo" class="input mb-2" maxlength="300" placeholder="ex.: cliente perdeu a lancha 1">
     <button class="btn w-full text-white" style="background:#4f46e5">Confirmar transferência</button>
     <p class="text-[11px] text-slate-400 mt-1">Cria uma passagem nova (paga) no transporte destino e lança a despesa de transferência aqui.</p>
+  </form>
+  @endif
+  @if(!$p->cancelada && !$p->transferida && ($u->isAdmin()||$u->isSuper()))
+  <form method="post" action="{{ route('passagens.trocar-viagem',$p) }}" class="card p-4 hidden" x-ref="troca" x-data="trocaCal(@js($linhasShow ?? []), @js($p->origem), @js((string)$p->embarcacao_id))">@csrf
+    <div class="font-bold text-sm">📅 Trocar a data da viagem (remarcar)</div>
+    <p class="text-[12px] text-slate-500 mb-2">Mantém <b>a mesma passagem</b> e <b>o mesmo transporte</b> — só muda o <b>dia da viagem</b>. Use quando o passageiro remarca pra outra data. <b>Não mexe no dinheiro</b> (diferente do cancelamento e da transferência).</p>
+    <label class="label">Nova data da viagem</label>
+    <button type="button" @click="abrir()" class="input mb-2 w-full text-left font-semibold">📅 <span x-text="viagemData ? rotulo(viagemData) : (viagemDia===null ? 'transporte sem rota — remarque manual' : 'escolher')"></span></button>
+    <input type="hidden" name="data_viagem" :value="viagemData">
+    <div x-show="calAberto" x-cloak @click="calAberto=false" class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div @click.stop class="bg-white rounded-2xl border shadow-2xl p-3 w-72 max-w-full text-slate-700">
+        <div class="text-center mb-2"><span x-show="linhaNome" class="block text-[11px] font-semibold text-slate-400" x-text="linhaNome"></span><span class="text-sm font-bold" style="color:var(--cor1)" x-text="rotulo(viagemData)"></span></div>
+        <div class="flex items-center justify-between mb-1"><button type="button" @click="mudarMes(-1)" class="w-8 h-8 rounded hover:bg-slate-100 text-lg leading-none">‹</button><div class="text-sm font-bold capitalize" x-text="nomeMes"></div><button type="button" @click="mudarMes(1)" class="w-8 h-8 rounded hover:bg-slate-100 text-lg leading-none">›</button></div>
+        <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 mb-1"><template x-for="(d,i) in ['D','S','T','Q','Q','S','S']" :key="i"><div x-text="d"></div></template></div>
+        <div class="grid grid-cols-7 gap-0.5"><template x-for="c in calDias" :key="c.iso"><button type="button" :disabled="!c.valido" @click="c.valido && escolher(c.iso)" class="h-9 rounded text-sm transition" :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed'))" :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : '')" x-text="c.dia"></button></template></div>
+        <div class="text-[10px] text-slate-400 mt-2 text-center">Só os dias de viagem da linha ficam disponíveis.</div>
+      </div>
+    </div>
+    <label class="label">Motivo (opcional)</label>
+    <input name="motivo" class="input mb-2" maxlength="300" placeholder="ex.: passageiro remarcou">
+    <button class="btn w-full text-white" style="background:#0891b2">Confirmar troca de data</button>
   </form>
   @endif
   @if($p->transferida)<div class="card p-3 text-center text-indigo-600 text-sm font-semibold">↪ Transferida @if($p->transferida_para_id)para <a href="{{ route('passagens.show',$p->transferida_para_id) }}" class="underline">nova passagem</a>@endif · {{ $p->motivo_cancelamento }}</div>
@@ -178,6 +202,12 @@ function transfCal(linhas, origem){
     },
     escolher(iso){ this.viagemData=iso; this.calAberto=false; }
   };
+}
+function trocaCal(linhas, origem, embId){
+  const c = transfCal(linhas, origem);
+  c.embSel = embId || '';
+  c.init = function(){ this.resolver(); };
+  return c;
 }
 </script>
 @endpush

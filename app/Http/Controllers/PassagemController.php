@@ -821,4 +821,24 @@ class PassagemController extends Controller
 
         return redirect()->route('passagens.show', $nova)->with('ok', 'Transferida. Nova passagem: '.$nova->numeroFormatado());
     }
+
+    /** Troca a DATA da viagem (remarca) no mesmo transporte. Nao mexe no dinheiro. */
+    public function trocarViagem(Request $request, Passagem $passagem)
+    {
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+        abort_if($passagem->cancelada || $passagem->transferida, 422, 'Passagem cancelada ou transferida.');
+        $data = $request->validate([
+            'data_viagem' => 'required|date',
+            'motivo' => 'nullable|string|max:300',
+        ]);
+        $antiga = $passagem->data_viagem ? \Carbon\Carbon::parse($passagem->data_viagem)->format('d/m/Y') : '—';
+        $nova = \Carbon\Carbon::parse($data['data_viagem']);
+        $viagemId = $passagem->viagem_id;
+        if ($passagem->rota_id && ($rota = \App\Models\Rota::find($passagem->rota_id))) {
+            $viagemId = $rota->viagemPara($nova)->id;
+        }
+        $obs = trim(($passagem->observacao ? $passagem->observacao."\n" : '').'Viagem remarcada de '.$antiga.' para '.$nova->format('d/m/Y').($data['motivo'] ? ' ('.$data['motivo'].')' : ''));
+        $passagem->forceFill(['data_viagem' => $nova->toDateString(), 'viagem_id' => $viagemId, 'observacao' => $obs])->save();
+        return redirect()->route('passagens.show', $passagem)->with('ok', 'Viagem remarcada para '.$nova->format('d/m/Y').'.');
+    }
 }

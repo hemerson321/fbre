@@ -139,6 +139,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:passagem.baixa');
     Route::post('/passagens/{passagem}/cancelar', [\App\Http\Controllers\PassagemController::class, 'cancelar'])->name('passagens.cancelar')->middleware('perm:admin');
     Route::post('/passagens/{passagem}/transferir', [\App\Http\Controllers\PassagemController::class, 'transferir'])->name('passagens.transferir')->middleware('perm:admin');
+    Route::post('/passagens/{passagem}/trocar-viagem', [\App\Http\Controllers\PassagemController::class, 'trocarViagem'])->name('passagens.trocar-viagem')->middleware('perm:admin');
 
     // ---------- FRETE ----------
     Route::get('/fretes', [\App\Http\Controllers\FreteController::class, 'index'])->name('fretes.index')->middleware('perm:frete.ver');
