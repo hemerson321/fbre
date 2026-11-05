@@ -22,6 +22,9 @@ class PassagemController extends Controller
     public function index(Request $request)
     {
         $f = $this->filtros($request);
+        $verTodos = auth()->user()->relatorioTodos() || auth()->user()->caixaTodos() || auth()->user()->isAdmin();
+        $escopo = $request->input('escopo', $verTodos ? 'todos' : 'meu');
+        if (! $verTodos || $escopo === 'meu') { $f['user_id'] = auth()->id(); $escopo = 'meu'; }
         $base = Passagem::filtrar($f);
 
         $totais = [
@@ -47,6 +50,8 @@ class PassagemController extends Controller
             'localidades' => TabelaPreco::select('origem')->distinct()->pluck('origem')
                 ->merge(Rota::todasLocalidades())->unique()->sort()->values(),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
+            'verTodos' => $verTodos,
+            'escopo' => $escopo,
         ]);
     }
 

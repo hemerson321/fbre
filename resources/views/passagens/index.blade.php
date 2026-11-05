@@ -26,6 +26,12 @@
       <option value="1" @selected(($f['embarcou'] ?? '')==='1')>Embarcou</option>
       <option value="0" @selected(($f['embarcou'] ?? '')==='0')>Não embarcou</option>
     </select>
+    @if($verTodos)
+    <select name="escopo" class="input">
+      <option value="todos" @selected(($escopo ?? 'todos')==='todos')>Ver: todos</option>
+      <option value="meu" @selected(($escopo ?? '')==='meu')>Ver: só os meus</option>
+    </select>
+    @endif
     <button class="btn text-white col-span-2 sm:col-span-1" style="background:{{ $cor }}">Filtrar</button>
   </form>
 

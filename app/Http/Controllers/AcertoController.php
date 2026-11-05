@@ -17,6 +17,7 @@ class AcertoController extends Controller
     // ---------- ADMIN: acerto da empresa com os revendedores ----------
     public function index(Request $request)
     {
+        abort_unless(auth()->user()->podeAcerto(), 403);
         [$inicio, $fim, $periodo] = CaixaController::periodo($request);
 
         // Agentes externos (revendedores): devem repassar das passagens vendidas (nao depende do periodo).
@@ -54,6 +55,7 @@ class AcertoController extends Controller
     /** ADMIN confere/valida o caixa de um operador de balcao no periodo mostrado. */
     public function baixaOperador(Request $request, User $operador)
     {
+        abort_unless(auth()->user()->podeAcerto(), 403);
         abort_unless($operador->empresa_id === Tenant::id(), 404);
         [$inicio, $fim] = CaixaController::periodo($request);
         $n = Pagamento::where('user_id', $operador->id)->where('estornado', false)
@@ -66,7 +68,7 @@ class AcertoController extends Controller
     /** ADMIN confere o caixa de TODOS os operadores de balcao no periodo mostrado. */
     public function baixaOperadoresTodos(Request $request)
     {
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+        abort_unless(auth()->user()->podeAcerto(), 403);
         [$inicio, $fim] = CaixaController::periodo($request);
         $opIds = User::where('empresa_id', Tenant::id())->where('is_revendedor', false)->select('id');
         $n = Pagamento::where('estornado', false)->where('tipo_mov', '!=', 'saida')->where('conferido', false)
@@ -78,7 +80,7 @@ class AcertoController extends Controller
     /** ADMIN da baixa no acerto de TODOS os agentes externos (revendedores) de uma vez. */
     public function baixaAgentesTodos(Request $request)
     {
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+        abort_unless(auth()->user()->podeAcerto(), 403);
         $revIds = User::where('empresa_id', Tenant::id())->where('is_revendedor', true)->pluck('id');
         $n = Passagem::whereIn('revendedor_id', $revIds)->where('cancelada', false)->where('acerto_empresa', false)
             ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);
@@ -87,6 +89,7 @@ class AcertoController extends Controller
 
     public function baixaEmpresa(Request $request, User $revendedor)
     {
+        abort_unless(auth()->user()->podeAcerto(), 403);
         abort_unless($revendedor->empresa_id === Tenant::id(), 404);
         Passagem::where('revendedor_id', $revendedor->id)->where('cancelada', false)->where('acerto_empresa', false)
             ->update(['acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id()]);

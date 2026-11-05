@@ -130,6 +130,7 @@
         'perm_avulso'    => ['Lançar entrada/saída', 'Registrar entrada e saída avulsa no caixa'],
         'perm_relatorio' => ['Meu relatório', 'Relatório só do que ele mesmo fez'],
         'perm_transporte' => ['Filtrar por transporte', 'Pode filtrar o caixa e o relatório por embarcação/transporte'],
+        'perm_acerto' => ['Acertos (dar baixa)', 'Pode abrir Acertos e conferir/dar baixa em operadores e agentes'],
       ]; @endphp
       @foreach($caixaPerms as $k=>[$l,$d])
         <label class="flex items-start gap-2 py-1 cursor-pointer">
