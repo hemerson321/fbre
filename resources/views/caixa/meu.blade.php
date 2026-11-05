@@ -16,6 +16,11 @@
   <div><label class="label">Forma</label>
     <select name="canal" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as formas</option>
       @foreach(\App\Models\Pagamento::CANAIS as $ck=>$cv)<option value="{{ $ck }}" @selected(($canal ?? '')===$ck)>{{ $cv }}</option>@endforeach</select></div>
+  @if($podeTransporte)
+  <div><label class="label">Transporte</label>
+    <select name="transporte_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
+      @foreach($transportes as $t)<option value="{{ $t->id }}" @selected((string)$transporteId===(string)$t->id)>{{ $t->nome }}</option>@endforeach</select></div>
+  @endif
 </x-periodo>
 
 <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">

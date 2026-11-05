@@ -20,16 +20,20 @@ class RelatorioController extends Controller
         $uid = auth()->id();
         $todos = auth()->user()->relatorioTodos();   // vê de todos ou só o próprio
         $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
+        $podeTransporte = auth()->user()->podeFiltrarTransporte();
+        $transporteId = $podeTransporte ? $request->input('transporte_id') : null;
+        $transportes = \App\Models\Embarcacao::orderBy('nome')->get();
 
         // período longo (> 31 dias) abre resumido por padrão pra não travar
         $longo = $inicio->diffInDays($fim) > 31;
         $pedido = $request->input('modo');
         $modo = $pedido === 'resumido' ? 'resumido' : ($pedido === 'analitico' ? 'analitico' : ($longo ? 'resumido' : 'analitico'));
 
-        $encQ = Encomenda::when(! $todos, fn ($q) => $q->where('user_id', $uid))->whereBetween('created_at', [$inicio, $fim]);
+        $encQ = Encomenda::when(! $todos, fn ($q) => $q->where('user_id', $uid))->whereBetween('created_at', [$inicio, $fim])->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId));
         $pagQ = Pagamento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('estornado', false)
-            ->when($canal, fn ($q) => $q->canal($canal))->whereBetween('created_at', [$inicio, $fim]);
-        $evQ = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')->whereBetween('created_at', [$inicio, $fim]);
+            ->when($canal, fn ($q) => $q->canal($canal))->whereBetween('created_at', [$inicio, $fim])
+            ->when($transporteId, fn ($q) => $q->where(function ($w) use ($transporteId) { $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('embarcacao_id', $transporteId)->select('id')))->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id'))); }));
+        $evQ = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')->whereBetween('created_at', [$inicio, $fim])->when($transporteId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id')));
 
         // Totais somados NO BANCO (rápido mesmo com milhões de linhas)
         $totais = [
@@ -65,7 +69,7 @@ class RelatorioController extends Controller
         }
 
         $temEncomenda = $uu->temModulo('encomenda');
-        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite'))
+        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite', 'transportes', 'transporteId', 'podeTransporte'))
             ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'temEncomenda' => $temEncomenda]);
     }
 

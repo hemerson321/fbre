@@ -23,6 +23,7 @@ class User extends Authenticatable
             'pode_desconto' => 'boolean',
             'password' => 'hashed',
             'super_admin' => 'boolean',
+            'perm_transporte' => 'boolean',
             'admin' => 'boolean',
             'perm_cadastra' => 'boolean',
             'perm_baixa' => 'boolean',
@@ -114,6 +115,7 @@ class User extends Authenticatable
     public function podePixDinamico(): bool  { return $this->admin || ($this->perm_pix_dinamico ?? true); }
     public function podeVerCaixa(): bool  { return ! $this->is_revendedor && ($this->admin || $this->perm_caixa || $this->financeiro()); }
     public function podeFiltrar(): bool   { return $this->admin || $this->perm_filtro; }
+    public function podeFiltrarTransporte(): bool { return $this->super_admin || $this->admin || $this->gerente() || $this->financeiro() || (bool) $this->perm_transporte; }
     public function podeRelatorio(): bool { return $this->admin || $this->perm_relatorio || $this->financeiro(); }
     public function podeImprimir(): bool  { return $this->permite('encomenda', 'imprimir'); }
     public function isAdmin(): bool       { return $this->admin; }

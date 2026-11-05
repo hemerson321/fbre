@@ -22,6 +22,13 @@ class CaixaController extends Controller
         $viagemId = $request->input('viagem_id');
         $modulo = $request->input('modulo');
         $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
+        $podeTransporte = auth()->user()->podeFiltrarTransporte();
+        $transporteId = $podeTransporte ? $request->input('transporte_id') : null;
+        $transportes = \App\Models\Embarcacao::orderBy('nome')->get();
+        $filtraTransp = fn ($q) => $q->where(function ($w) use ($transporteId) {
+            $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('embarcacao_id', $transporteId)->select('id')))
+              ->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id')));
+        });
         $viagens = \App\Support\Tenant::empresa()->temRecurso('viagens')
             ? Viagem::orderByDesc('data_partida')->limit(60)->get() : collect();
         // quando filtra por viagem, ignora o período (viagem é o recorte)
@@ -34,6 +41,7 @@ class CaixaController extends Controller
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($modulo, fn ($q) => $q->where('modulo', $modulo))
             ->when($canal, fn ($q) => $this->filtrarCanal($q, $canal))
+            ->when($transporteId, $filtraTransp)
             ->where('tipo_mov', '!=', 'saida');
 
         $canalSql = Pagamento::canalSql();
@@ -50,28 +58,30 @@ class CaixaController extends Controller
         $descontos = Pagamento::where('estornado', false)->where('meio', 'desconto')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
-            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->sum('valor');
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->sum('valor');
 
         $entregas = Evento::where('tipo', 'entrega')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
+            ->when($transporteId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id')))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))->count();
         $cadastros = Encomenda::when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))->count();
 
         $saidas = Pagamento::where('estornado', false)->where('tipo_mov', 'saida')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('origem_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
-            ->when($modulo, fn ($q) => $q->where('modulo', $modulo))->sum('valor');
+            ->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->sum('valor');
 
         $categorias = AvulsoCategoria::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
         $podeAvulso = auth()->user()->podeModulo('avulso');
 
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'transporteId', 'podeTransporte'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas]);
     }
 
