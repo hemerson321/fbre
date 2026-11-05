@@ -143,6 +143,7 @@ document.addEventListener('alpine:init', () => {
       $adm = [
           ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'],
           ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
+          ['r'=>route('admin.transportes'), 'l'=>'Transportes', 'i'=>'⛴️'],
           ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
       ];
       if ($modOn('camarote')) $adm[] = ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'];

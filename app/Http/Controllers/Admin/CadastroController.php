@@ -36,6 +36,11 @@ class CadastroController extends Controller
         'tipos_passageiro' => TipoPassageiro::class,
     ];
 
+    public function transportes()
+    {
+        return view('admin.transportes', ['embarcacoes' => Embarcacao::orderBy('nome')->get()]);
+    }
+
     public function index()
     {
         return view('admin.cadastros', [
