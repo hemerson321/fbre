@@ -623,7 +623,8 @@
       proximaViagem(dia){ const d=new Date(); d.setHours(0,0,0,0); while(d.getDay()!==dia) d.setDate(d.getDate()+1); return this.isoLocal(d); },
       rotulo(iso){ if(!iso) return ''; const [y,m,day]=iso.split('-').map(Number); const d=new Date(y,m-1,day); const tag=iso<this.hojeISO?' · anterior':(iso===this.hojeISO?' · hoje':''); return this.diasCurto[d.getDay()]+' '+this.fmtBr(d)+(this.viagemHora?' '+this.viagemHora:'')+tag; },
       recalcularDatas(){
-        let p=this.paradasInfo.find(x=>x.n===this.origemSel)||this.paradasInfo[0];
+        const _n=x=>String(x||'').trim().toLowerCase();
+        let p=this.paradasInfo.find(x=>_n(x.n)===_n(this.origemSel))||this.paradasInfo[0];
         if(!p || p.d===null||p.d===undefined||p.d===''){ this.viagemDia=null; this.viagemData=''; this.viagemLabel=''; return; }
         this.viagemDia=Number(p.d); this.viagemHora=p.h||'';
         this.viagemData=this.proximaViagem(this.viagemDia);
@@ -646,7 +647,8 @@
       resolverLinha(){
         this.rotaId=''; this.linhaNome=''; this.paradasInfo=[];
         if(!this.origemSel){ this.viagemDia=null; this.viagemData=''; this.viagemLabel=''; return; }
-        const idx=(L,c)=>L.paradas.findIndex(p=>p.n===c);
+        const norm=x=>String(x||'').trim().toLowerCase();
+        const idx=(L,c)=>L.paradas.findIndex(p=>norm(p.n)===norm(c));
         const pick=arr =>
              arr.find(L=>{ const io=idx(L,this.origemSel), id=idx(L,this.destinoSel); return io>=0 && this.destinoSel && id>=0 && io<id; })
           || arr.find(L=>idx(L,this.origemSel)>=0 && (!this.destinoSel || idx(L,this.destinoSel)>=0))
