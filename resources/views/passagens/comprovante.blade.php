@@ -67,29 +67,47 @@ table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.q
   @endforeach
 @endif
 
-<div id="pdfbar" class="c" style="display:none"><br><button onclick="gerarPdf()" style="padding:8px 14px;font-size:13px;border:1px solid #000;border-radius:8px;background:#fff">📄 Baixar / Compartilhar PDF</button></div>
+<div id="pdfbar" style="display:none;padding:10px 6px 22px">
+  <button id="btEnviar" onclick="enviarPdf()" style="width:100%;max-width:300px;margin:0 auto;display:block;padding:13px 16px;font-size:15px;font-weight:bold;border:0;border-radius:12px;background:#22c55e;color:#fff">📲 Enviar / Compartilhar PDF</button>
+  <div id="pdfStatus" style="text-align:center;font-size:11px;color:#666;margin-top:7px">preparando o PDF…</div>
+</div>
 <script>
 var MODO=@json($modo ?? null);
+var _pdfBlob=null,_pdfFile=null,_pdfName='passagem-{{ $p->numeroFormatado() }}.pdf';
 function qrImprimir(){
   try{ document.querySelectorAll('.qrp').forEach(function(el){ new QRCode(el,{text:el.dataset.url,width:130,height:130,correctLevel:QRCode.CorrectLevel.M}); }); }catch(e){}
   var isMobile = /Android|iPhone|iPad|iPod|Mobile|Opera Mini/i.test(navigator.userAgent||'') || (window.matchMedia && window.matchMedia('(max-width:820px)').matches) || ('ontouchstart' in window && Math.min(screen.width,screen.height)<820);
-  if(MODO==='pdf' || isMobile){ document.getElementById('pdfbar').style.display='block'; setTimeout(gerarPdf, 500); }
-  else { setTimeout(function(){ window.print(); }, 350); }
+  if(MODO==='pdf' || isMobile){
+    document.getElementById('pdfbar').style.display='block';
+    setTimeout(function(){ prepararPdf(function(){ var st=document.getElementById('pdfStatus'); if(st) st.textContent='Pronto! Toque em Enviar pra mandar no WhatsApp.'; }); }, 400);
+  } else {
+    setTimeout(function(){ window.print(); }, 350);
+  }
 }
-function gerarPdf(){
-  var bar=document.getElementById('pdfbar'); if(bar) bar.style.display='none';
-  // altura da pagina = maior bilhete (px->mm) + folga, pra nao sobrar espaco vazio no PDF
+function prepararPdf(cb){
   var _h=0; document.querySelectorAll('.ticket').forEach(function(el){ if(el.offsetHeight>_h) _h=el.offsetHeight; });
   var _mm=Math.ceil(_h/96*25.4)+8; if(_mm<70) _mm=70;
-  var opt={ margin:0, filename:'passagem-{{ $p->numeroFormatado() }}.pdf', image:{type:'jpeg',quality:0.95}, html2canvas:{scale:2,useCORS:true}, jsPDF:{unit:'mm',format:[80,_mm],orientation:'portrait'}, pagebreak:{mode:['css']} };
-  html2pdf().set(opt).from(document.body).toPdf().output('blob').then(async function(blob){
-    if(bar) bar.style.display='block';
-    try{
-      var file=new File([blob],opt.filename,{type:'application/pdf'});
-      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Passagem {{ $p->numeroFormatado() }}'}); return; }
-    }catch(e){}
-    var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download=opt.filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  }).catch(function(e){ alert('Erro ao gerar PDF: '+e.message); });
+  var opt={ margin:0, filename:_pdfName, image:{type:'jpeg',quality:0.95}, html2canvas:{scale:2,useCORS:true}, jsPDF:{unit:'mm',format:[80,_mm],orientation:'portrait'}, pagebreak:{mode:['css']} };
+  html2pdf().set(opt).from(document.body).toPdf().output('blob').then(function(blob){
+    _pdfBlob=blob;
+    try{ _pdfFile=new File([blob],_pdfName,{type:'application/pdf'}); }catch(e){ _pdfFile=null; }
+    if(cb) cb();
+  }).catch(function(e){ var st=document.getElementById('pdfStatus'); if(st) st.textContent='Erro ao gerar PDF: '+e.message; });
+}
+function enviarPdf(){
+  // precisa rodar DENTRO do toque do usuario pra o compartilhamento (WhatsApp) funcionar
+  try{
+    if(_pdfFile && navigator.canShare && navigator.canShare({files:[_pdfFile]})){
+      navigator.share({files:[_pdfFile], title:'Passagem {{ $p->numeroFormatado() }}', text:'Sua passagem 🎫'}).catch(function(){});
+      return;
+    }
+  }catch(e){}
+  if(_pdfBlob){
+    var url=URL.createObjectURL(_pdfBlob); var a=document.createElement('a'); a.href=url; a.download=_pdfName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},1500);
+    return;
+  }
+  var st=document.getElementById('pdfStatus'); if(st) st.textContent='Ainda gerando… toque de novo em 1 segundo.';
+  prepararPdf(function(){ var s2=document.getElementById('pdfStatus'); if(s2) s2.textContent='Pronto! Toque em Enviar.'; });
 }
 </script>
 </body></html>

@@ -74,7 +74,7 @@
   <button type="button" onclick="imprimirDiretoPassagem(this)" class="btn btn-ghost w-full">⚡ Imprimir direto (1 por passageiro)</button>
   <div class="flex gap-2">
     <button onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost flex-1">🖨 Comprovante</button>
-    <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost flex-1">📄 PDF / Enviar</button>
+    <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost flex-1">📲 Enviar PDF (WhatsApp)</button>
     @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
     <button type="button" class="btn btn-danger" x-data @click="$refs.cancel.classList.toggle('hidden')">Cancelar</button>
     @endif
