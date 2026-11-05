@@ -35,6 +35,37 @@ class PassagemService
             }
         }
 
+        // Limites de venda do operador/agente (por dia e por viagem) — trava antes de criar.
+        $op = \App\Models\User::find($userId);
+        if ($op) {
+            $novos = count($data['passageiros'] ?? []);
+            $saleTotal = round(array_sum(array_map(fn ($px) => (float) ($px['valor_integral'] ?? (($px['valor_passagem'] ?? 0) + ($px['valor_taxa'] ?? 0) + ($px['valor_alimentacao'] ?? 0))), $data['passageiros'] ?? [])) - (float) ($data['desconto'] ?? 0), 2);
+            if ($op->limite_passagens_dia) {
+                $qd = (int) Passagem::where('user_id', $userId)->where('cancelada', false)->whereDate('created_at', today())->sum('qtd_passageiros');
+                if ($qd + $novos > $op->limite_passagens_dia) {
+                    throw new \RuntimeException('Limite diário de passagens atingido ('.$op->limite_passagens_dia.'/dia). Já vendidas hoje: '.$qd.'.');
+                }
+            }
+            if ($op->limite_valor_dia) {
+                $vd = (float) Passagem::where('user_id', $userId)->where('cancelada', false)->whereDate('created_at', today())->sum('total');
+                if ($vd + $saleTotal > (float) $op->limite_valor_dia + 0.009) {
+                    throw new \RuntimeException('Limite diário de valor atingido (R$ '.number_format((float) $op->limite_valor_dia, 2, ',', '.').'/dia).');
+                }
+            }
+            if ($viagemId && $op->limite_passagens_viagem) {
+                $qv = (int) Passagem::where('user_id', $userId)->where('cancelada', false)->where('viagem_id', $viagemId)->sum('qtd_passageiros');
+                if ($qv + $novos > $op->limite_passagens_viagem) {
+                    throw new \RuntimeException('Limite de passagens por viagem atingido ('.$op->limite_passagens_viagem.'/viagem). Já nesta viagem: '.$qv.'.');
+                }
+            }
+            if ($viagemId && $op->limite_valor_viagem) {
+                $vv = (float) Passagem::where('user_id', $userId)->where('cancelada', false)->where('viagem_id', $viagemId)->sum('total');
+                if ($vv + $saleTotal > (float) $op->limite_valor_viagem + 0.009) {
+                    throw new \RuntimeException('Limite de valor por viagem atingido (R$ '.number_format((float) $op->limite_valor_viagem, 2, ',', '.').'/viagem).');
+                }
+            }
+        }
+
         // número oficial do aparelho (PREFIXO-0001); fallback no servidor
         $numeroCompleto = trim((string) ($data['numero_completo'] ?? ''));
         $seq = (int) ($data['numero_seq'] ?? 0);

@@ -228,6 +228,17 @@
       <label class="inline-flex items-center gap-1.5 mr-3 mb-1 text-sm"><input type="checkbox" name="transportes_permitidos[]" value="{{ $b->id }}" class="w-4 h-4 rounded" @checked(in_array((string)$b->id,$transpSel))> {{ $b->nome }}</label>
     @empty <span class="text-xs text-slate-400">Nenhum transporte.</span> @endforelse
   </div>
+
+  <div class="border-t border-slate-200 pt-3">
+    <div class="text-xs font-bold text-slate-600 uppercase mb-1">Limites de venda (passagem)</div>
+    <p class="text-xs text-slate-500 mb-2">Vazio = sem limite. Trava a venda quando passar.</p>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="label !text-xs">Máx. passagens / dia</label><input type="number" min="0" name="limite_passagens_dia" value="{{ old('limite_passagens_dia',$u->limite_passagens_dia) }}" class="input !min-h-[38px]" placeholder="sem limite"></div>
+      <div><label class="label !text-xs">Máx. valor / dia (R$)</label><input type="number" min="0" step="0.01" name="limite_valor_dia" value="{{ old('limite_valor_dia',$u->limite_valor_dia) }}" class="input !min-h-[38px]" placeholder="sem limite"></div>
+      <div><label class="label !text-xs">Máx. passagens / viagem</label><input type="number" min="0" name="limite_passagens_viagem" value="{{ old('limite_passagens_viagem',$u->limite_passagens_viagem) }}" class="input !min-h-[38px]" placeholder="sem limite"></div>
+      <div><label class="label !text-xs">Máx. valor / viagem (R$)</label><input type="number" min="0" step="0.01" name="limite_valor_viagem" value="{{ old('limite_valor_viagem',$u->limite_valor_viagem) }}" class="input !min-h-[38px]" placeholder="sem limite"></div>
+    </div>
+  </div>
 </div>
 
 <div class="flex gap-2"><a href="{{ route('admin.usuarios.index') }}" class="btn btn-ghost flex-1">Cancelar</a><button class="btn btn-accent flex-1">Salvar</button></div>

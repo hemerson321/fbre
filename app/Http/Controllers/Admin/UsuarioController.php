@@ -105,6 +105,10 @@ class UsuarioController extends Controller
             'perm_filtro' => 'nullable|boolean',
             'perm_transporte' => 'nullable|boolean',
             'perm_acerto' => 'nullable|boolean',
+            'limite_passagens_dia' => 'nullable|integer|min:0',
+            'limite_valor_dia' => 'nullable|numeric|min:0',
+            'limite_passagens_viagem' => 'nullable|integer|min:0',
+            'limite_valor_viagem' => 'nullable|numeric|min:0',
             'perm_relatorio' => 'nullable|boolean',
             'relatorio_todos' => 'nullable|boolean',
             'perm_imprimir' => 'nullable|boolean',
@@ -157,6 +161,9 @@ class UsuarioController extends Controller
         // listas vazias viram null (= tudo liberado)
         foreach (['loc_permitidas', 'setores_permitidos', 'transportes_permitidos'] as $lista) {
             $data[$lista] = ! empty($data[$lista]) ? array_values($data[$lista]) : null;
+        }
+        foreach (['limite_passagens_dia', 'limite_valor_dia', 'limite_passagens_viagem', 'limite_valor_viagem'] as $lim) {
+            $data[$lim] = (isset($data[$lim]) && (float) $data[$lim] > 0) ? $data[$lim] : null;
         }
         $data['embarcacao_principal_id'] = $data['embarcacao_principal_id'] ?? null;
         $data['estacao_id'] = ($data['estacao_id'] ?? null) ?: null;

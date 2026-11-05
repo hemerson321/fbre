@@ -133,7 +133,11 @@ class PassagemController extends Controller
         $data = $this->validar($request);
         if (auth()->user()->revendedorDono() !== null) { $data['forma'] = 'avista'; }
         $this->checarPoltronas($data);
-        $p = app(\App\Services\PassagemService::class)->criar($data, auth()->id(), $request->input('uuid'));
+        try {
+            $p = app(\App\Services\PassagemService::class)->criar($data, auth()->id(), $request->input('uuid'));
+        } catch (\RuntimeException $e) {
+            abort(422, $e->getMessage());
+        }
         session(['ultima_origem_pass' => $data['origem']]);
 
         $imprimir = $request->input('imprimir', 'navegador');

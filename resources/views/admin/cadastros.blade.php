@@ -57,7 +57,13 @@
       @empty <div class="text-slate-400 text-sm">Nenhuma embarcação.</div> @endforelse
     </div>
   </div>
-@foreach([['setores','Setores',$setores],['produtos','Produtos (catálogo)',$produtos]] as [$tipo,$titulo,$lista])
+@php
+  $__ma = \App\Support\Tenant::empresa()?->config('modulos_ativos');
+  $empTem = fn ($m) => empty($__ma) || in_array($m, (array) $__ma, true);
+  $__blocos = [['setores','Setores',$setores]];
+  if ($empTem('encomenda')) $__blocos[] = ['produtos','Produtos (catálogo)',$produtos];
+@endphp
+@foreach($__blocos as [$tipo,$titulo,$lista])
   <div class="card p-4 space-y-2">
     <h2 class="font-bold text-sm text-slate-500 uppercase">{{ $titulo }}</h2>
     <form method="post" action="{{ route('admin.cadastros.store',$tipo) }}" class="flex gap-2">@csrf
@@ -77,6 +83,7 @@
   </div>
 @endforeach
 
+@if($empTem('frete'))
 {{-- catálogo do FRETE (separado do de encomenda) --}}
 <div class="card p-4 space-y-2">
   <h2 class="font-bold text-sm text-slate-500 uppercase">Produtos do frete (catálogo)</h2>
@@ -95,6 +102,7 @@
     @empty <div class="py-3 text-slate-400">Nenhum. Adicione os produtos que viajam por frete.</div> @endforelse
   </div>
 </div>
+@endif
 
 <div class="card p-4 space-y-2 md:col-span-2" x-data="tiposEditor(@js($tiposPassageiro->map(fn($t)=>[
      'id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor',
