@@ -18,6 +18,7 @@ class Passagem extends Model
     protected $casts = [
         'embarcou' => 'boolean',
         'cancelada' => 'boolean',
+        'transferida' => 'boolean',
         'origem_offline' => 'boolean',
         'data_viagem' => 'date',
         'embarcou_em' => 'datetime',

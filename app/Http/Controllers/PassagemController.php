@@ -745,4 +745,73 @@ class PassagemController extends Controller
         $passagem->recalcular();
         return redirect()->route('passagens.show', $passagem)->with('ok', 'Passagem cancelada.');
     }
+
+    /** Transfere a passagem pra outro transporte: cria nova (paga) no destino e lanca a despesa no transporte de origem. */
+    public function transferir(Request $request, Passagem $passagem)
+    {
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+        abort_if($passagem->cancelada || $passagem->transferida, 422, 'Passagem já cancelada ou transferida.');
+        $empresa = \App\Support\Tenant::empresa();
+        abort_unless($empresa && $empresa->config('usa_cancel_transporte'), 422, 'Transferência de transporte não está habilitada.');
+        $data = $request->validate([
+            'embarcacao_id' => 'required|integer|exists:embarcacoes,id',
+            'data_viagem' => 'nullable|date',
+            'motivo' => 'nullable|string|max:300',
+        ]);
+        $op = auth()->user();
+        $valor = (float) $passagem->pago;
+
+        $nova = \Illuminate\Support\Facades\DB::transaction(function () use ($passagem, $data, $empresa, $op, $valor) {
+            $seq = $op->proximoSeq();
+            $pref = $op->prefixo ?: ('OP'.$op->id);
+            $nova = $passagem->replicate([
+                'uuid', 'numero', 'numero_completo', 'embarcou', 'embarcou_em', 'embarcou_por',
+                'cancelada', 'transferida', 'transferida_para_id', 'motivo_cancelamento',
+                'acerto_empresa', 'acerto_empresa_em', 'acerto_empresa_por',
+                'cancel_retido', 'cancel_reembolso', 'cancel_fase',
+            ]);
+            $nova->fill([
+                'embarcacao_id' => $data['embarcacao_id'],
+                'data_viagem' => $data['data_viagem'] ?? $passagem->data_viagem,
+                'numero' => $seq,
+                'numero_completo' => $pref.'-'.str_pad((string) $seq, 4, '0', STR_PAD_LEFT),
+                'user_id' => $op->id,
+                'origem_transferencia_id' => $passagem->id,
+            ]);
+            $nova->save();
+
+            foreach ($passagem->passageiros as $pax) {
+                $np = $pax->replicate(['checkin', 'embarcou']);
+                $np->passagem_id = $nova->id;
+                $np->checkin = false;
+                $np->save();
+            }
+            $nova->recalcular();
+
+            // entrada (transferencia recebida) no transporte destino
+            \App\Models\Pagamento::create([
+                'empresa_id' => $empresa->id, 'modulo' => 'passagem', 'origem_id' => $nova->id, 'encomenda_id' => null,
+                'meio' => 'dinheiro', 'valor' => $valor, 'user_id' => $op->id, 'momento' => 'baixa', 'tipo_mov' => 'entrada',
+                'categoria' => 'Transferência recebida', 'descricao' => 'Transferido da passagem '.$passagem->numeroFormatado(),
+            ]);
+            $nova->recalcular();
+
+            // despesa de transferencia no transporte de origem (fecha o valor)
+            \App\Models\Pagamento::create([
+                'empresa_id' => $empresa->id, 'modulo' => 'passagem', 'origem_id' => $passagem->id, 'encomenda_id' => null,
+                'meio' => 'dinheiro', 'valor' => $valor, 'user_id' => $op->id, 'momento' => 'baixa', 'tipo_mov' => 'saida',
+                'categoria' => 'Transferência de transporte', 'descricao' => 'Transferido para a passagem '.$nova->numeroFormatado(),
+            ]);
+
+            // marca a original como transferida (sai das listas; dinheiro equilibrado)
+            $passagem->forceFill([
+                'cancelada' => true, 'transferida' => true, 'transferida_para_id' => $nova->id,
+                'motivo_cancelamento' => $data['motivo'] ?? 'Transferência de transporte',
+            ])->save();
+
+            return $nova;
+        });
+
+        return redirect()->route('passagens.show', $nova)->with('ok', 'Transferida. Nova passagem: '.$nova->numeroFormatado());
+    }
 }

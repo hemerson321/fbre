@@ -78,6 +78,9 @@
     @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
     <button type="button" class="btn btn-danger" x-data @click="$refs.cancel.classList.toggle('hidden')">Cancelar</button>
     @endif
+    @if(!$p->cancelada && !$p->transferida && ($empP?->config('usa_cancel_transporte')) && ($u->isAdmin()||$u->isSuper()))
+    <button type="button" class="btn btn-ghost" style="border:1px solid #6366f1;color:#4f46e5" x-data @click="$refs.transf.classList.toggle('hidden')">↪ Transferir</button>
+    @endif
   </div>
   @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
   <form method="post" action="{{ route('passagens.cancelar',$p) }}" class="card p-4 hidden" x-ref="cancel">@csrf
@@ -86,7 +89,25 @@
     <button class="btn btn-danger w-full">Confirmar cancelamento</button>
   </form>
   @endif
-  @if($p->cancelada)<div class="card p-3 text-center text-slate-500 text-sm">Cancelada: {{ $p->motivo_cancelamento }}</div>@endif
+  @if(!$p->cancelada && !$p->transferida && ($empP?->config('usa_cancel_transporte')) && ($u->isAdmin()||$u->isSuper()))
+  <form method="post" action="{{ route('passagens.transferir',$p) }}" class="card p-4 hidden" x-ref="transf">@csrf
+    <div class="font-bold text-sm mb-2">↪ Transferir pra outro transporte</div>
+    <label class="label">Transporte destino</label>
+    <select name="embarcacao_id" class="input mb-2" required>
+      <option value="">— escolher —</option>
+      @foreach(\App\Models\Embarcacao::where('ativo',true)->orderBy('nome')->get() as $b)@if($b->id !== $p->embarcacao_id)<option value="{{ $b->id }}">{{ $b->nome }}</option>@endif @endforeach
+    </select>
+    <label class="label">Data da viagem (opcional)</label>
+    <input type="date" name="data_viagem" class="input mb-2" value="{{ $p->data_viagem?->toDateString() }}">
+    <label class="label">Motivo (opcional)</label>
+    <input name="motivo" class="input mb-2" maxlength="300" placeholder="ex.: cliente perdeu a lancha 1">
+    <button class="btn w-full text-white" style="background:#4f46e5">Confirmar transferência</button>
+    <p class="text-[11px] text-slate-400 mt-1">Cria uma passagem nova (paga) no transporte destino e lança a despesa de transferência aqui.</p>
+  </form>
+  @endif
+  @if($p->transferida)<div class="card p-3 text-center text-indigo-600 text-sm font-semibold">↪ Transferida @if($p->transferida_para_id)para <a href="{{ route('passagens.show',$p->transferida_para_id) }}" class="underline">nova passagem</a>@endif · {{ $p->motivo_cancelamento }}</div>
+  @elseif($p->cancelada)<div class="card p-3 text-center text-slate-500 text-sm">Cancelada: {{ $p->motivo_cancelamento }}</div>@endif
+  @if($p->origem_transferencia_id)<div class="card p-3 text-center text-indigo-600 text-sm">↪ Esta passagem veio de uma <a href="{{ route('passagens.show',$p->origem_transferencia_id) }}" class="underline">transferência</a>.</div>@endif
 </div>
 @endsection
 @push('scripts')
