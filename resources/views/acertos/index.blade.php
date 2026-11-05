@@ -19,7 +19,39 @@
   </div>
 
   {{-- período (afeta o conferir dos operadores) --}}
-  <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim"></x-periodo>
+  <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
+    <input type="hidden" name="aba" value="{{ $aba }}">
+    <input type="hidden" name="transporte_id" value="{{ $transporteId }}">
+    <input type="hidden" name="viagem_id" value="{{ $viagemId }}">
+  </x-periodo>
+
+  {{-- filtro por transporte e data da viagem --}}
+  <form method="get" class="card p-3 flex flex-wrap items-end gap-2 text-sm">
+    <input type="hidden" name="aba" value="{{ $aba }}">
+    <input type="hidden" name="periodo" value="{{ request('periodo', $periodo) }}">
+    <input type="hidden" name="inicio" value="{{ request('inicio') }}">
+    <input type="hidden" name="fim" value="{{ request('fim') }}">
+    <input type="hidden" name="hora_inicio" value="{{ request('hora_inicio') }}">
+    <input type="hidden" name="hora_fim" value="{{ request('hora_fim') }}">
+    <div class="flex-1 min-w-[180px]">
+      <label class="label !text-xs">🚤 Transporte</label>
+      <select name="transporte_id" class="input !min-h-[38px]" onchange="this.form.submit()">
+        <option value="">Todos os transportes</option>
+        @foreach($transportes as $t)<option value="{{ $t->id }}" @selected((string)($transporteId ?? '')===(string)$t->id)>{{ $t->nome }}</option>@endforeach
+      </select>
+    </div>
+    @if($transporteId)
+      <div class="flex-1 min-w-[180px]">
+        <label class="label !text-xs">📅 Data da viagem</label>
+        <select name="viagem_id" class="input !min-h-[38px]" onchange="this.form.submit()">
+          <option value="">Todas as datas</option>
+          @foreach($viagens as $v)<option value="{{ $v->id }}" @selected((string)($viagemId ?? '')===(string)$v->id)>{{ $v->data_partida?->format('d/m/Y') }}@if($v->rota) · {{ $v->rota->nome }}@endif</option>@endforeach
+        </select>
+      </div>
+      @if($viagemId)<a href="{{ request()->fullUrlWithQuery(['viagem_id'=>null]) }}" class="btn btn-ghost btn-sm">limpar data</a>@endif
+      <a href="{{ request()->fullUrlWithQuery(['transporte_id'=>null,'viagem_id'=>null]) }}" class="btn btn-ghost btn-sm">todos</a>
+    @endif
+  </form>
 
   {{-- ===== OPERADORES DE BALCÃO ===== --}}
   @if(!$aba || $aba==='operadores')
