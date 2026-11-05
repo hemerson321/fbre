@@ -50,18 +50,20 @@
     $_podeBotao = ($acerto['total_devido'] ?? 0) > 0 && $_pm !== 'nenhum'
        && (($_pm === 'dinamico' && ($acerto['pode_dinamico'] ?? false)) || ($_pm === 'estatico' && ! empty($acerto['emp_pix'])));
   @endphp
+  <div class="border-t border-white/15 pt-2 mb-2 space-y-1">
+    @if(($acerto['acertado_hoje'] ?? 0) > 0)
+      <div class="flex justify-between text-sm"><span class="opacity-70">Acertado hoje</span><b class="text-emerald-300">R$ {{ number_format($acerto['acertado_hoje'],2,',','.') }}</b></div>
+    @endif
+    <div class="flex justify-between text-sm"><span class="opacity-70">Falta acertar (tudo em aberto)</span><b class="{{ ($acerto['total_devido'] ?? 0) > 0 ? 'text-amber-300':'text-emerald-300' }}">R$ {{ number_format($acerto['total_devido'] ?? 0,2,',','.') }}</b></div>
+  </div>
   @if(($acerto['total_devido'] ?? 0) > 0)
-    <div class="border-t border-white/15 pt-2 mb-2">
-      <div class="text-xs opacity-70">Total que devo à empresa (tudo em aberto)</div>
-      <div class="text-xl font-extrabold text-amber-300">R$ {{ number_format($acerto['total_devido'],2,',','.') }}</div>
-    </div>
     @if($_podeBotao)
     <button type="button" @click="acertar()" :disabled="carregando" class="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 disabled:opacity-50">
       <span x-text="carregando ? 'Gerando…' : '💠 Acertar com a empresa (PIX)'"></span>
     </button>
     @endif
   @else
-    <div class="text-emerald-300 text-sm font-semibold border-t border-white/15 pt-2">✓ Você está em dia com a empresa.</div>
+    <div class="text-emerald-300 text-sm font-semibold">✓ Você está em dia com a empresa.</div>
   @endif
 
   <div x-show="modal" x-cloak class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" @click="fechar()">

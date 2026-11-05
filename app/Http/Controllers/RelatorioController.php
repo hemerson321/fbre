@@ -74,6 +74,7 @@ class RelatorioController extends Controller
                 'emp_cidade' => (($acertoApi && $acertoApi->ehEstatico()) ? $acertoApi->pixCidade() : null) ?: 'CIDADE',
                 'pode_dinamico' => (bool) ($acertoApi && ! $acertoApi->ehEstatico()),
                 'total_devido' => round((float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)->sum('acerto_empresa_valor'), 2),
+                'acertado_hoje' => round((float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', true)->whereDate('acerto_empresa_em', today())->sum('acerto_empresa_valor'), 2),
             ];
         }
 
