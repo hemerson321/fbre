@@ -225,24 +225,14 @@
         @endif
         <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
-            <div x-show="m.k!=='pix' || pixManual">
-              <label class="lbl" x-text="m.l"></label>
+            <div x-show="m.k!=='pix' || pixManual || pixEstatico || pixDinamico">
+              <label class="lbl" x-text="m.k==='pix' ? (pixEstatico ? 'PIX Estático' : (pixDinamico ? 'PIX Dinâmico' : 'PIX Manual')) : m.l"></label>
               <div class="flex gap-1">
                 <input class="field text-right font-semibold w-full" x-money="pag[m.k]">
-                <button type="button" @click="preencher(m.k)" title="Lancar o valor total nesta forma" class="shrink-0 rounded-xl border-2 w-12 flex items-center justify-center font-extrabold text-lg transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">=</button>
+                <button type="button" @click="botaoMeio(m.k)" :title="(m.k==='pix' && (pixEstatico||pixDinamico)) ? 'Gerar QR PIX e lançar o valor' : 'Lançar o valor total nesta forma'" class="shrink-0 rounded-xl border-2 w-12 flex items-center justify-center font-extrabold text-lg transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''"><span x-text="(m.k==='pix' && (pixEstatico||pixDinamico)) ? '💠' : '='"></span></button>
               </div>
             </div>
           </template>
-          {{-- PIX Automático: gera o QR e aguarda o pagamento --}}
-          <div x-show="pixDinamico">
-            <label class="lbl">PIX Automático</label>
-            <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
-          </div>
-          {{-- PIX estatico do operador: gera QR com a chave dele --}}
-          <div x-show="pixEstatico">
-            <label class="lbl">PIX (meu QR)</label>
-            <button type="button" @click="gerarPixEstatico()" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 Gerar QR PIX</button>
-          </div>
           @if(auth()->user()?->podeDesconto())
           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           @endif
@@ -483,6 +473,7 @@
       },
       ajustarAvista(){ /* desativado: operador escolhe o meio de pagamento, nao preenche dinheiro automatico */ },
       preencher(meio){ this.meios.forEach(m=>{ if(m.k!==meio) this.pag[m.k]=null; }); this.pag[meio]=+Math.max(this.total,0).toFixed(2); },
+      botaoMeio(k){ this.preencher(k); if(k==='pix'){ if(this.pixEstatico){ this.gerarPixEstatico(); } else if(this.pixDinamico){ this.gerarPixDinamico(); } } },
 
       // ---- passageiros ----
       novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
