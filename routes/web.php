@@ -201,10 +201,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/estacoes', [CadastroController::class, 'novaEstacao'])->name('estacoes.store');
         Route::post('/estacoes/{estacao}/renomear', [CadastroController::class, 'renomearEstacao'])->name('estacoes.renomear');
         Route::post('/zerar', [CadastroController::class, 'zerar'])->name('zerar');
+        Route::post('/excluir-vendas', [CadastroController::class, 'excluirVendas'])->name('excluir-vendas');
         Route::get('/rotas', [RotaController::class, 'index'])->name('rotas');
         Route::post('/rotas', [RotaController::class, 'store'])->name('rotas.store');
         Route::put('/rotas/{rota}', [RotaController::class, 'update'])->name('rotas.update');
         Route::post('/rotas/{rota}/toggle', [RotaController::class, 'toggle'])->name('rotas.toggle');
+        Route::delete('/rotas/{rota}', [RotaController::class, 'excluir'])->name('rotas.excluir');
         Route::post('/rotas/{rota}/duplicar', [RotaController::class, 'duplicar'])->name('rotas.duplicar');
         // Suítes / Camarotes (catálogo + preços por trecho)
         Route::get('/camarotes', [CamaroteController::class, 'index'])->name('camarotes');

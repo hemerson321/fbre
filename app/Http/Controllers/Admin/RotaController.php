@@ -58,6 +58,22 @@ class RotaController extends Controller
         return back()->with('ok', $rota->ativo ? 'Rota ativada.' : 'Rota desativada.');
     }
 
+    public function excluir(Rota $rota)
+    {
+        abort_unless($rota->empresa_id === Tenant::id(), 404);
+        $viagemIds = $rota->viagens()->pluck('id');
+        $temUso = \App\Models\Passagem::where('rota_id', $rota->id)->exists()
+            || ($viagemIds->isNotEmpty() && (\App\Models\Passagem::whereIn('viagem_id', $viagemIds)->exists() || \App\Models\Encomenda::whereIn('viagem_id', $viagemIds)->exists()));
+        if ($temUso) {
+            $rota->update(['ativo' => false]);
+            return back()->with('erro', 'Rota com passagens/encomendas registradas — nao pode ser excluida, foi desativada.');
+        }
+        $rota->paradas()->delete();
+        $rota->viagens()->delete();
+        $rota->delete();
+        return back()->with('ok', 'Rota excluida.');
+    }
+
     /** Duplica uma rota (paradas) para cadastrar outro transporte sem refazer tudo. */
     public function duplicar(Rota $rota)
     {

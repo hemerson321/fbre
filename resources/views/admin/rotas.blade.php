@@ -23,12 +23,13 @@
       <div>
         <div class="font-bold text-lg">{{ $r->nome }} @if(!$r->ativo)<span class="chip st-cinza">inativa</span>@endif</div>
         <div class="text-sm text-slate-600 mt-1">{{ $r->resumoCalendario() }}</div>
-        @if($r->embarcacao)<div class="text-xs text-slate-400 mt-1">Embarcação: {{ $r->embarcacao->nome }}</div>@endif
+        @if($r->embarcacao)<div class="text-xs text-slate-500 mt-1">Embarcação: <span class="font-bold text-slate-800 bg-slate-100 rounded px-1.5 py-0.5">🚤 {{ $r->embarcacao->nome }}</span></div>@endif
       </div>
       <div class="flex gap-2 shrink-0">
         <button class="btn btn-ghost btn-sm" @click="editando = editando==={{ $r->id }} ? null : {{ $r->id }}">Editar</button>
         <form method="post" action="{{ route('admin.rotas.duplicar',$r) }}">@csrf<button class="btn btn-ghost btn-sm" title="Criar uma copia desta rota">⧉ Copiar</button></form>
         <form method="post" action="{{ route('admin.rotas.toggle',$r) }}">@csrf<button class="btn btn-sm {{ $r->ativo?'btn-ghost':'btn-primary' }}">{{ $r->ativo?'Desativar':'Ativar' }}</button></form>
+        <form method="post" action="{{ route('admin.rotas.excluir',$r) }}" onsubmit="return confirm('Excluir a rota {{ $r->nome }}? Se tiver passagens, sera apenas desativada.')">@csrf @method('DELETE')<button class="btn btn-sm" style="color:#dc2626">Excluir</button></form>
       </div>
     </div>
     <div x-show="editando==={{ $r->id }}" x-cloak class="mt-4 pt-4 border-t">

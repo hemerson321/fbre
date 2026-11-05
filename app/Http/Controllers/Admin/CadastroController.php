@@ -260,6 +260,41 @@ class CadastroController extends Controller
         return back()->with('ok', 'Sistema zerado. As encomendas começam do 000001.');
     }
 
+    /** Exclui vendas de um modulo (passagem/encomenda/frete), de todos ou de um operador. */
+    public function excluirVendas(Request $request)
+    {
+        abort_unless($request->user()->podeZerar(), 403, 'Sem permissão.');
+        $data = $request->validate([
+            'modulo' => 'required|in:passagem,encomenda,frete',
+            'user_id' => 'nullable|integer',
+            'confirmacao' => 'required|in:EXCLUIR',
+        ]);
+        $uid = $data['user_id'] ?: null;
+        $n = 0;
+        DB::transaction(function () use ($data, $uid, &$n) {
+            if ($data['modulo'] === 'passagem') {
+                $q = \App\Models\Passagem::query()->when($uid, fn ($x) => $x->where('user_id', $uid));
+                $ids = (clone $q)->pluck('id');
+                \App\Models\PassagemPassageiro::whereIn('passagem_id', $ids)->delete();
+                Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $ids)->delete();
+                $n = $q->delete();
+            } elseif ($data['modulo'] === 'encomenda') {
+                $q = Encomenda::query()->when($uid, fn ($x) => $x->where('user_id', $uid));
+                $ids = (clone $q)->pluck('id');
+                EncomendaItem::whereIn('encomenda_id', $ids)->delete();
+                Pagamento::whereIn('encomenda_id', $ids)->delete();
+                Evento::whereIn('encomenda_id', $ids)->delete();
+                $n = $q->delete();
+            } else {
+                $q = \App\Models\Frete::query()->when($uid, fn ($x) => $x->where('user_id', $uid));
+                $ids = (clone $q)->pluck('id');
+                Pagamento::where('modulo', 'frete')->whereIn('origem_id', $ids)->delete();
+                $n = $q->delete();
+            }
+        });
+        return back()->with('ok', 'Excluídas '.$n.' venda(s) de '.$data['modulo'].($uid ? ' do operador selecionado' : '').'.');
+    }
+
     /** Salva a tabela de Taxa de Embarque (Embarque → Destino → R$). */
     public function salvarTaxasEmbarque(Request $request)
     {

@@ -212,6 +212,27 @@ function taxasEditor(taxas){ return { taxas: (taxas&&taxas.length)?taxas:[{orige
 {{-- Rotas e horários agora ficam no menu Passagens (RotaController@index → admin.rotas) --}}
 
 @if(auth()->user()->podeZerar())
+<div class="card p-4 md:col-span-2 border border-amber-200 bg-amber-50" x-data="{ txt:'' }">
+  <h2 class="font-bold text-sm text-amber-700 uppercase">Excluir vendas (por módulo / operador)</h2>
+  <p class="text-xs text-amber-600 mt-1">Apaga as vendas de um módulo (de todos ou de um operador) e os pagamentos ligados. <b>Não dá para desfazer.</b></p>
+  <form method="post" action="{{ route('admin.excluir-vendas') }}" class="grid sm:grid-cols-2 gap-2 mt-2" onsubmit="return confirm('Apagar essas vendas? Não tem volta.')">@csrf
+    <div><label class="label !text-xs">Módulo</label>
+      <select name="modulo" class="input !min-h-[40px]" required>
+        <option value="passagem">Passagens</option>
+        <option value="encomenda">Encomendas</option>
+        <option value="frete">Fretes</option>
+      </select></div>
+    <div><label class="label !text-xs">Operador</label>
+      <select name="user_id" class="input !min-h-[40px]"><option value="">Todos</option>
+        @foreach(\App\Models\User::orderBy('name')->get() as $us)<option value="{{ $us->id }}">{{ $us->name }}</option>@endforeach
+      </select></div>
+    <div class="sm:col-span-2 flex gap-2 items-end">
+      <div class="flex-1"><label class="label !text-xs">Digite EXCLUIR pra confirmar</label><input x-model="txt" name="confirmacao" class="input !min-h-[40px]" placeholder="EXCLUIR" autocomplete="off"></div>
+      <button class="btn btn-sm" style="background:#d97706;color:#fff" :disabled="txt!=='EXCLUIR'" :class="txt!=='EXCLUIR' ? 'opacity-40' : ''">Excluir vendas</button>
+    </div>
+  </form>
+</div>
+
 <div class="card p-4 md:col-span-2 border border-red-200 bg-red-50" x-data="{ open:false, txt:'' }">
   <h2 class="font-bold text-sm text-red-600 uppercase">Zona de perigo — Começar do zero</h2>
   <p class="text-xs text-red-500 mt-1">Apaga <b>todas as encomendas, pagamentos, caixa, impressões e pré-cadastros</b>, e a numeração volta para <b>000001</b>. Os cadastros (barcos, setores, produtos, rotas, usuários, estações) são mantidos. <b>Não dá para desfazer.</b></p>
