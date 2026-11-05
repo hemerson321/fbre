@@ -103,9 +103,22 @@ class CadastroController extends Controller
         abort_unless(isset($this->tipos[$tipo]) || $tipo === 'estacoes', 404);
         $m = $tipo === 'estacoes' ? Estacao::class : $this->tipos[$tipo];
         $reg = $m::findOrFail($id);
-        if (in_array($tipo, ['setores', 'estacoes', 'categorias', 'tipos_passageiro'])) { $reg->delete(); }
-        else { $reg->update(['ativo' => false]); }
-        return back()->with('ok', 'Removido.');
+        if (in_array($tipo, ['setores', 'estacoes', 'categorias', 'tipos_passageiro'])) {
+            $reg->delete();
+            return back()->with('ok', 'Removido.');
+        }
+        // Embarcacoes: so bloqueia a exclusao se tiver historico (passagens/encomendas/fretes).
+        if ($tipo === 'embarcacoes') {
+            $temUso = \App\Models\Passagem::where('embarcacao_id', $id)->exists()
+                || \App\Models\Encomenda::where('embarcacao_id', $id)->exists()
+                || \App\Models\Frete::where('embarcacao_id', $id)->exists();
+            if ($temUso) {
+                $reg->update(['ativo' => false]);
+                return back()->with('erro', 'Este transporte tem passagens/encomendas registradas — nao pode ser excluido (o historico quebraria). Foi desativado.');
+            }
+        }
+        $reg->delete();
+        return back()->with('ok', 'Excluido.');
     }
 
     /** Cria ou edita um tipo de passageiro (porcentagem ou valor fixo). */
