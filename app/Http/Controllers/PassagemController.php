@@ -101,6 +101,7 @@ class PassagemController extends Controller
         $linhas = $rotas->map(fn ($r) => [
             'id' => $r->id,
             'nome' => $r->nome,
+            'embarcacao_id' => $r->embarcacao_id,
             'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
         ])->values();
 

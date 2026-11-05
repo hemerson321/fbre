@@ -53,20 +53,6 @@
     <section class="sec shrink-0">
       <div class="sec-h"><span class="n">1</span><span class="ic">🗺️</span><span class="t">Rota</span></div>
       <div class="sec-b">
-        <div class="grid grid-cols-2 gap-2">
-          <div><label class="lbl">Origem</label>
-            <select class="field" x-model="origemSel" required @change="onRota()">
-              <option value="">—</option>
-              @foreach($cidades as $c)<option value="{{ $c }}">{{ $c }}</option>@endforeach
-            </select>
-          </div>
-          <div><label class="lbl">Destino</label>
-            <select class="field" x-model="destinoSel" required @change="onRota()">
-              <option value="">—</option>
-              @foreach($cidades as $c)<option value="{{ $c }}">{{ $c }}</option>@endforeach
-            </select>
-          </div>
-        </div>
         <div class="grid grid-cols-2 gap-2 items-start">
           <div><label class="lbl">Transporte</label>
             <select class="field" x-model="embarcacaoSel"><option value="">—</option>
@@ -104,6 +90,20 @@
             </div>
           </div>
         </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="lbl">Origem</label>
+            <select class="field" x-model="origemSel" required @change="onRota()">
+              <option value="">—</option>
+              @foreach($cidades as $c)<option value="{{ $c }}">{{ $c }}</option>@endforeach
+            </select>
+          </div>
+          <div><label class="lbl">Destino</label>
+            <select class="field" x-model="destinoSel" required @change="onRota()">
+              <option value="">—</option>
+              @foreach($cidades as $c)<option value="{{ $c }}">{{ $c }}</option>@endforeach
+            </select>
+          </div>
         </div>
         <div x-show="precoInfo" class="text-[11px] font-semibold" style="color:var(--cor1)" x-cloak>
           💲 Preço do trecho carregado
@@ -464,7 +464,7 @@
         // destino NÃO é lembrado: muda a cada venda, começa sempre em branco
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
-        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
+        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); this.resolverLinha(); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
         this.addPax();
         this.mudarEmbarcacao();
         this.onRota();
@@ -647,10 +647,13 @@
         this.rotaId=''; this.linhaNome=''; this.paradasInfo=[];
         if(!this.origemSel){ this.viagemDia=null; this.viagemData=''; this.viagemLabel=''; return; }
         const idx=(L,c)=>L.paradas.findIndex(p=>p.n===c);
-        const linha =
-             this.linhas.find(L=>{ const io=idx(L,this.origemSel), id=idx(L,this.destinoSel); return io>=0 && this.destinoSel && id>=0 && io<id; })
-          || this.linhas.find(L=>idx(L,this.origemSel)>=0 && (!this.destinoSel || idx(L,this.destinoSel)>=0))
-          || this.linhas.find(L=>idx(L,this.origemSel)>=0);
+        const pick=arr =>
+             arr.find(L=>{ const io=idx(L,this.origemSel), id=idx(L,this.destinoSel); return io>=0 && this.destinoSel && id>=0 && io<id; })
+          || arr.find(L=>idx(L,this.origemSel)>=0 && (!this.destinoSel || idx(L,this.destinoSel)>=0))
+          || arr.find(L=>idx(L,this.origemSel)>=0);
+        const emb=this.embarcacaoSel?String(this.embarcacaoSel):'';
+        let linha = emb ? pick(this.linhas.filter(L=>String(L.embarcacao_id||'')===emb)) : null;
+        if(!linha) linha = pick(this.linhas);
         if(!linha){ this.viagemDia=null; this.viagemData=''; this.viagemLabel=''; return; }
         this.rotaId=String(linha.id); this.linhaNome=linha.nome; this.paradasInfo=linha.paradas;
         this.recalcularDatas();
