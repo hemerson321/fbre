@@ -91,8 +91,10 @@
   <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Módulos e ações</div>
   <p class="text-xs text-slate-400 mb-2">Marque o módulo e, dentro dele, o que o operador pode fazer (cadastrar, dar baixa, imprimir).</p>
   <div class="space-y-1.5 mb-3">
+    @php $modAtivosEmp = \App\Support\Tenant::empresa()?->config('modulos_ativos'); @endphp
     @foreach(\App\Support\Modulos::LISTA as $mk => [$mrot,$mic,$mcor,$mhex])
       @continue($mk === 'avulso')
+      @continue(!empty($modAtivosEmp) && !in_array($mk, (array) $modAtivosEmp, true))
       @php $algum = $u->exists && $u->temModulo($mk); @endphp
       <div x-data="{ open: {{ $algum ? 'true':'false' }} }" class="border border-slate-200 rounded-xl overflow-hidden">
         <button type="button" @click="open=!open" class="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50">

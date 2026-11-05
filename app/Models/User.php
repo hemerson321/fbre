@@ -54,7 +54,7 @@ class User extends Authenticatable
     }
 
     public const PAPEIS = [
-        'operador_barco' => 'Operador do Barco',
+        'operador_barco' => 'Operador de Balcão',
         'agencia_externa' => 'Agência Externa',
         'gerente' => 'Gerente',
     ];

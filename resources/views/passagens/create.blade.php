@@ -238,6 +238,11 @@
             <label class="lbl">PIX Automático</label>
             <button type="button" @click="gerarPixDinamico()" :disabled="pixPagando" title="Gerar QR de PIX e aguardar o pagamento" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 disabled:opacity-50 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 <span x-text="pixPagando ? 'Gerando…' : 'Gerar QR'"></span></button>
           </div>
+          {{-- PIX estatico do operador: gera QR com a chave dele --}}
+          <div x-show="pixEstatico">
+            <label class="lbl">PIX (meu QR)</label>
+            <button type="button" @click="gerarPixEstatico()" class="w-full rounded-xl border-2 font-bold text-[13px] py-2 hover:text-white transition flex items-center justify-center gap-1" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''">💠 Gerar QR PIX</button>
+          </div>
           @if(auth()->user()?->podeDesconto())
           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           @endif
@@ -383,6 +388,17 @@
     </div>
   </div>
 
+  <div x-show="pixEstModal" x-cloak class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" @click="pixEstModal=false">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full text-center" @click.stop>
+      <div class="font-bold text-lg">💠 PIX — meu QR</div>
+      <div class="text-xs text-slate-500 mb-3">Mostre pro cliente pagar. O valor cai direto na sua chave. Confira o recebimento no seu banco.</div>
+      <div id="qr-pix-est" class="inline-block p-2 bg-white rounded-xl border mx-auto"></div>
+      <div class="font-extrabold text-xl my-2">R$ <span x-text="fmtPix(pixValor)"></span></div>
+      <button type="button" @click="copiarPixEst()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
+      <button type="button" @click="pixEstModal=false" class="btn btn-ghost btn-sm w-full text-slate-500">Fechar</button>
+    </div>
+  </div>
+
   {{-- BARRA FIXA (celular): resumo + confirmar, sempre visível --}}
   <div class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-4 pt-2.5 shadow-[0_-10px_30px_-12px_rgba(15,23,42,.3)]" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
     <div class="flex items-end justify-between mb-2">
@@ -420,6 +436,9 @@
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
       pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
+      pixEstatico: {{ (auth()->user()->pix_modo === 'estatico' && auth()->user()->pix_chave) ? 'true':'false' }},
+      pixEstDados: @js(['chave'=>auth()->user()->pix_chave, 'nome'=>auth()->user()->pix_recebedor, 'cidade'=>auth()->user()->pix_cidade]),
+      pixEstModal:false, pixEstCopia:'',
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4),'layout'=>(string)($e->poltronas_lista ?? '')])->values()),
       podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
@@ -698,6 +717,11 @@
       get devido(){ return Math.max(this.total-this.pago,0); },
 
       fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+      emvF(id,v){ v=String(v); return id+String(v.length).padStart(2,'0')+v; },
+      crc16Pix(p){ let c=0xFFFF; for(let i=0;i<p.length;i++){ c^=p.charCodeAt(i)<<8; for(let j=0;j<8;j++){ c=(c&0x8000)?((c<<1)^0x1021):(c<<1); c&=0xFFFF; } } return c.toString(16).toUpperCase().padStart(4,'0'); },
+      pixEstPayload(valor){ const d=this.pixEstDados||{}; const limpa=s=>(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9 ]/g,'').toUpperCase().trim(); const chave=(d.chave||'').trim(); const nome=(limpa(d.nome)||'RECEBEDOR').slice(0,25); const cidade=(limpa(d.cidade)||'CIDADE').slice(0,15); const mai=this.emvF('00','BR.GOV.BCB.PIX')+this.emvF('01',chave); let p=this.emvF('00','01')+this.emvF('26',mai)+this.emvF('52','0000')+this.emvF('53','986'); if(valor>0) p+=this.emvF('54',Number(valor).toFixed(2)); p+=this.emvF('58','BR')+this.emvF('59',nome)+this.emvF('60',cidade)+this.emvF('62',this.emvF('05','***'))+'6304'; return p+this.crc16Pix(p); },
+      gerarPixEstatico(){ const valor=Math.max(Number(this.total)||0,0); this.pixValor=valor; this.pixEstCopia=this.pixEstPayload(valor); this.pixEstModal=true; this.$nextTick(()=>{ const el=document.getElementById('qr-pix-est'); if(el){ el.innerHTML=''; try{ new QRCode(el,{text:this.pixEstCopia,width:220,height:220}); }catch(e){} } }); },
+      copiarPixEst(){ try{ navigator.clipboard.writeText(this.pixEstCopia); }catch(e){} },
       gerarPixDinamico(){
         if(this.pixPagando) return;
         if(!this.origemSel || !this.destinoSel){ alert('Escolha a origem e o destino antes de gerar o PIX.'); return; }
