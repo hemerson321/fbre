@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Pagamento;
 use App\Models\Passagem;
 use App\Models\User;
 use App\Support\Tenant;
@@ -14,8 +15,11 @@ use Illuminate\Support\Facades\Hash;
 class AcertoController extends Controller
 {
     // ---------- ADMIN: acerto da empresa com os revendedores ----------
-    public function index()
+    public function index(Request $request)
     {
+        [$inicio, $fim, $periodo] = CaixaController::periodo($request);
+
+        // Agentes externos (revendedores): devem repassar das passagens vendidas (nao depende do periodo).
         $linhas = User::where('is_revendedor', true)->orderBy('name')->get()->map(function ($r) {
             $base = Passagem::where('revendedor_id', $r->id)->where('cancelada', false);
             $pend = (clone $base)->where('acerto_empresa', false);
@@ -26,7 +30,37 @@ class AcertoController extends Controller
                 'acertado' => (float) (clone $base)->where('acerto_empresa', true)->sum('acerto_empresa_valor'),
             ];
         });
-        return view('acertos.index', ['linhas' => $linhas]);
+
+        // Operadores de balcao (nao revendedores): conferir/validar o caixa do periodo.
+        $ops = User::where('empresa_id', Tenant::id())->where('is_revendedor', false)->orderBy('name')->get()
+            ->map(function ($o) use ($inicio, $fim) {
+                $base = Pagamento::where('user_id', $o->id)->where('estornado', false)
+                    ->where('tipo_mov', '!=', 'saida')->where('meio', '!=', 'desconto')
+                    ->whereBetween('created_at', [$inicio, $fim]);
+                $pend = (clone $base)->where('conferido', false);
+                return [
+                    'op' => $o,
+                    'qtd' => (clone $pend)->count(),
+                    'dinheiro' => (float) (clone $pend)->where('meio', 'dinheiro')->sum('valor'),
+                    'pix' => (float) (clone $pend)->where('meio', 'pix')->sum('valor'),
+                    'total' => (float) (clone $pend)->sum('valor'),
+                    'conferido' => (float) (clone $base)->where('conferido', true)->sum('valor'),
+                ];
+            })->filter(fn ($l) => $l['qtd'] > 0 || $l['conferido'] > 0)->values();
+
+        return view('acertos.index', compact('linhas', 'ops', 'inicio', 'fim', 'periodo'));
+    }
+
+    /** ADMIN confere/valida o caixa de um operador de balcao no periodo mostrado. */
+    public function baixaOperador(Request $request, User $operador)
+    {
+        abort_unless($operador->empresa_id === Tenant::id(), 404);
+        [$inicio, $fim] = CaixaController::periodo($request);
+        $n = Pagamento::where('user_id', $operador->id)->where('estornado', false)
+            ->where('tipo_mov', '!=', 'saida')->where('conferido', false)
+            ->whereBetween('created_at', [$inicio, $fim])
+            ->update(['conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id()]);
+        return back()->with('ok', 'Caixa de '.$operador->name.' conferido ('.$n.' lançamentos).');
     }
 
     public function baixaEmpresa(Request $request, User $revendedor)

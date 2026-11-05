@@ -210,6 +210,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/camarotes/{camarote}/precos', [CamaroteController::class, 'salvarPrecos'])->name('camarotes.precos');
         Route::get('/acertos', [AcertoController::class, 'index'])->name('acertos');
         Route::post('/acertos/{revendedor}/baixa', [AcertoController::class, 'baixaEmpresa'])->name('acertos.baixa');
+        Route::post('/acertos/operador/{operador}/baixa', [AcertoController::class, 'baixaOperador'])->name('acertos.baixa-operador');
         // WhatsApp (conexoes oficiais e nao oficiais)
         Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp');
         Route::post('/whatsapp-servidor', [WhatsappController::class, 'servidor'])->name('whatsapp.servidor');

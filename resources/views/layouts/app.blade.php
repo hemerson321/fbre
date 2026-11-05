@@ -152,7 +152,7 @@ document.addEventListener('alpine:init', () => {
       $adm[] = ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'];
       $grupos['Administração'] = $adm;
   }
-  if (($u->isAdmin() || $u->isSuper()) && $empresa?->config('usa_revendedores')) $grupos['Administração'][] = ['r'=>route('admin.acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
+  if ($u->isAdmin() || $u->isSuper()) $grupos['Administração'][] = ['r'=>route('admin.acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
   if ($u->ehRevendedor()) $grupos['Revendedor'] = [['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝']];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
   // cor e ícone de cada grupo do menu (identidade visual por módulo)
