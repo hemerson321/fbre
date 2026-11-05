@@ -34,6 +34,8 @@ class PassagemController extends Controller
             'recebido'  => (clone $base)->sum('pago'),
             'a_receber' => (clone $base)->sum('devido'),
         ];
+        $fCanc = $f; $fCanc['cancelada'] = '1'; unset($fCanc['status_pagamento'], $fCanc['embarcou']);
+        $totais['cancelados'] = Passagem::filtrar($fCanc)->count();
 
         $ids = (clone $base)->select('id');
         $porMeio = Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $ids)
@@ -57,7 +59,7 @@ class PassagemController extends Controller
 
     protected function filtros(Request $request): array
     {
-        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'viagem_id', 'status_pagamento', 'embarcou', 'forma', 'busca', 'user_id']);
+        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'viagem_id', 'status_pagamento', 'embarcou', 'forma', 'busca', 'user_id', 'cancelada']);
         if (! $request->has('inicio') && ! $request->filled('busca')) {
             $f['inicio'] = now()->subDays(7)->toDateString();
             $f['fim'] = now()->toDateString();

@@ -127,6 +127,6 @@ class Passagem extends Model
                     if (ctype_digit($v)) $q->orWhere('numero', (int) $v);
                 });
             })
-            ->where('cancelada', false);
+            ->when(($f['cancelada'] ?? '') === '1', fn ($q) => $q->where('cancelada', true), fn ($q) => $q->where('cancelada', false));
     }
 }

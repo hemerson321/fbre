@@ -36,12 +36,20 @@
   </form>
 
   {{-- totais --}}
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+  @php $verCanc = ($f['cancelada'] ?? '')==='1'; @endphp
+  <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
     <div class="card p-3"><div class="text-xs text-slate-500">Passagens</div><div class="text-lg font-bold">{{ $totais['qtd'] }}</div></div>
     <div class="card p-3"><div class="text-xs text-slate-500">Passageiros</div><div class="text-lg font-bold">{{ $totais['passageiros'] }}</div></div>
     <div class="card p-3"><div class="text-xs text-slate-500">Recebido</div><div class="text-lg font-bold text-emerald-600">R$ {{ number_format($totais['recebido'],2,',','.') }}</div></div>
     <div class="card p-3"><div class="text-xs text-slate-500">A receber</div><div class="text-lg font-bold text-red-600">R$ {{ number_format($totais['a_receber'],2,',','.') }}</div></div>
+    <a href="{{ request()->fullUrlWithQuery(['cancelada'=> $verCanc ? null : '1']) }}" class="card p-3 transition hover:bg-slate-50 {{ $verCanc ? 'ring-2 ring-slate-400 bg-slate-50' : '' }}">
+      <div class="text-xs text-slate-500">❌ Cancelados {{ $verCanc ? '· vendo' : '' }}</div>
+      <div class="text-lg font-bold text-slate-500">{{ $totais['cancelados'] }}</div>
+    </a>
   </div>
+  @if($verCanc)
+  <div class="text-xs text-amber-600 -mt-2">Mostrando só as passagens <b>canceladas</b> do período. <a href="{{ request()->fullUrlWithQuery(['cancelada'=>null]) }}" class="underline">voltar pras ativas</a></div>
+  @endif
 
   {{-- lista --}}
   <div class="card divide-y">
