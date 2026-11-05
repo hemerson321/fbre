@@ -257,6 +257,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/acertos/operadores/baixa-todos', [AcertoController::class, 'baixaOperadoresTodos'])->name('acertos.operadores.baixa-todos');
         Route::post('/acertos/agentes/baixa-todos', [AcertoController::class, 'baixaAgentesTodos'])->name('acertos.agentes.baixa-todos');
         Route::post('/acertos/dono/{embarcacao}/baixa', [AcertoController::class, 'baixaDono'])->name('acertos.baixa-dono');
+        Route::get('/acertos/dono/{embarcacao}/relatorio', [AcertoController::class, 'donoRelatorio'])->name('acertos.dono-relatorio');
     });
 
     Route::prefix('super')->middleware('perm:super')->name('super.')->group(function () {

@@ -70,9 +70,8 @@ class AcertoController extends Controller
             })->filter(fn ($l) => $l['qtd'] > 0 || $l['conferido'] > 0)->values();
 
         // Donos de transporte: a empresa fica com a comissao e paga o resto pro dono.
-        $donos = \App\Models\Embarcacao::whereNotNull('dono_id')
+        $donos = \App\Models\Embarcacao::whereNotNull('dono_nome')->where('dono_nome', '!=', '')
             ->when($transporteId, fn ($q) => $q->where('id', $transporteId))
-            ->when($opFiltro, fn ($q) => $q->where('dono_id', $opFiltro))
             ->orderBy('nome')->get()->map(function ($emb) use ($viagemId) {
                 $pct = (int) $emb->comissao_empresa_pct;
                 $base = Passagem::where('embarcacao_id', $emb->id)->where('cancelada', false)->where('transferida', false)
@@ -103,6 +102,22 @@ class AcertoController extends Controller
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
             ->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id()]);
         return back()->with('ok', 'Acerto do dono de '.$embarcacao->nome.' pago ('.$n.' passagens).');
+    }
+
+    /** Relatorio do acerto de um transporte pra mandar pro dono (admin compartilha no WhatsApp). */
+    public function donoRelatorio(Request $request, \App\Models\Embarcacao $embarcacao)
+    {
+        abort_unless(auth()->user()->podeAcerto(), 403);
+        abort_unless($embarcacao->empresa_id === Tenant::id(), 404);
+        $viagemId = $request->input('viagem_id') ?: null;
+        $pct = (int) $embarcacao->comissao_empresa_pct;
+        $base = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
+        $passagens = (clone $base)->orderByDesc('id')->limit(500)->get();
+        $bruto = (float) (clone $base)->sum('total');
+        $dono = round($bruto * (100 - $pct) / 100, 2);
+        $comissao = round($bruto - $dono, 2);
+        return view('acertos.dono', compact('embarcacao', 'passagens', 'bruto', 'dono', 'comissao', 'pct', 'viagemId'));
     }
 
     public function baixaEmpresa(Request $request, User $revendedor)

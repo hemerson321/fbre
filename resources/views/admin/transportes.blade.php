@@ -54,10 +54,8 @@
               <div><label class="label !text-xs">Cancel. depois da viagem %</label><input name="cancel_depois_pct" type="number" min="0" max="100" value="{{ $e->cancel_depois_pct }}" class="input !min-h-[40px]" placeholder="padrão empresa"></div>
             </div>
             <div class="grid grid-cols-2 gap-2 mt-2">
-              <div><label class="label !text-xs">Dono do transporte</label>
-                <select name="dono_id" class="input !min-h-[40px]"><option value="">— nenhum —</option>
-                  @foreach(\App\Models\User::orderBy('name')->get() as $us)<option value="{{ $us->id }}" @selected($e->dono_id==$us->id)>{{ $us->name }}</option>@endforeach
-                </select></div>
+              <div><label class="label !text-xs">Dono do transporte (nome)</label>
+                <input name="dono_nome" class="input !min-h-[40px]" value="{{ $e->dono_nome }}" placeholder="nome do dono da lancha" maxlength="120"></div>
               <div><label class="label !text-xs">Comissão da empresa %</label><input name="comissao_empresa_pct" type="number" min="0" max="100" value="{{ $e->comissao_empresa_pct }}" class="input !min-h-[40px]" placeholder="0"></div>
             </div>
             <p class="text-[11px] text-slate-400">A empresa fica com essa % de cada passagem deste transporte; o dono recebe o resto (acerto em Acertos).</p>
