@@ -212,13 +212,13 @@ function acertoPix(ac){
           <div class="font-semibold truncate">#{{ $pd->numero_completo ?: $pd->numero }} · {{ $pd->origem }} → {{ $pd->destino }}</div>
           <div class="text-xs text-slate-400">{{ $pd->created_at?->format('d/m/Y H:i') }}</div>
         </div>
-        <b class="text-amber-600 whitespace-nowrap">R$ {{ number_format((float)$pd->acerto_empresa_valor,2,',','.') }}</b>
+        <b class="text-amber-600 whitespace-nowrap">R$ {{ number_format((float)($pd->valor_aberto ?? 0),2,',','.') }}</b>
       </div>
       @endforeach
     </div>
     <div class="flex items-center justify-between p-3 border-t bg-amber-50 font-bold text-sm">
       <span>Total a repassar pra empresa</span>
-      <span class="text-amber-700">R$ {{ number_format((float)$pendentes->sum('acerto_empresa_valor'),2,',','.') }}</span>
+      <span class="text-amber-700">R$ {{ number_format((float)$pendentes->sum('valor_aberto'),2,',','.') }}</span>
     </div>
   </div>
   @endif

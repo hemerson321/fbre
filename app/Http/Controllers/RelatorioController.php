@@ -20,7 +20,7 @@ class RelatorioController extends Controller
         $uid = auth()->id();
         $todos = auth()->user()->relatorioTodos();   // vê de todos ou só o próprio
         $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
-        $podeTransporte = auth()->user()->podeFiltrarTransporte();
+        $podeTransporte = auth()->user()->podeFiltrarTransporte() || auth()->user()->is_revendedor;
         $transporteId = $podeTransporte ? $request->input('transporte_id') : null;
         $transportes = \App\Models\Embarcacao::orderBy('nome')->get();
         $viagemId = $request->input('viagem_id') ?: null;
@@ -70,7 +70,10 @@ class RelatorioController extends Controller
             $aPassar = (float) (clone $passQ)->where('acerto_empresa', false)->sum('acerto_empresa_valor');
             $empAcerto = \App\Support\Tenant::empresa();
             $acertoApi = $uu->acerto_pix_api_id ? \App\Models\PagamentoApi::find($uu->acerto_pix_api_id) : null;
-            $repassePend = (float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)->sum('acerto_empresa_valor');
+            $_pct = max(0, min(100, (int) ($uu->comissao_pct ?? 0)));
+            $repasseExpr = (($uu->modo_acerto ?? 'cheio') === 'comissao') ? 'ROUND(total * (100 - '.$_pct.') / 100, 2)' : 'total';
+            $repassePend = (float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)
+                ->selectRaw('COALESCE(SUM(COALESCE(acerto_empresa_valor, '.$repasseExpr.')),0) as v')->value('v');
             $avEnt = (float) Pagamento::where('user_id', $uu->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'entrada')->where('conferido', false)->where('acerto_conta', true)->selectRaw('COALESCE(SUM(valor * (100 - COALESCE(acerto_pct,0)) / 100),0) as v')->value('v');
             $avSai = (float) Pagamento::where('user_id', $uu->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'saida')->where('conferido', false)->where('acerto_conta', true)->sum('valor');
             $acerto = [
@@ -94,7 +97,8 @@ class RelatorioController extends Controller
             // débitos em aberto (não acertados) — TODAS as datas, independe do período
             $pendentes = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)
                 ->orderByDesc('id')->limit(200)
-                ->get(['id', 'numero', 'numero_completo', 'created_at', 'origem', 'destino', 'acerto_empresa_valor']);
+                ->selectRaw('id, numero, numero_completo, created_at, origem, destino, COALESCE(acerto_empresa_valor, '.$repasseExpr.') as valor_aberto')
+                ->get();
         }
 
         $temEncomenda = $uu->temModulo('encomenda');
