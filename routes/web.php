@@ -207,6 +207,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/rotas', [RotaController::class, 'store'])->name('rotas.store');
         Route::post('/rotas/reordenar', [RotaController::class, 'reordenar'])->name('rotas.reordenar');
         Route::post('/rotas/importar', [RotaController::class, 'importar'])->name('rotas.importar');
+        Route::get('/rotas/modelo-csv', [RotaController::class, 'modeloCsv'])->name('rotas.modelo-csv');
         Route::put('/rotas/{rota}', [RotaController::class, 'update'])->name('rotas.update');
         Route::post('/rotas/{rota}/toggle', [RotaController::class, 'toggle'])->name('rotas.toggle');
         Route::delete('/rotas/{rota}', [RotaController::class, 'excluir'])->name('rotas.excluir');

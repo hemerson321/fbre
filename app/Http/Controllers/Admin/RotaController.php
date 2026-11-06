@@ -42,6 +42,22 @@ class RotaController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function modeloCsv()
+    {
+        $csv = "embarcacao,rota,ordem,localidade,hora,dia_offset\n"
+             . "Lancha Exemplo,Manaus/Tefe,1,Manaus,06:00,0\n"
+             . "Lancha Exemplo,Manaus/Tefe,2,Codajas,11:30,0\n"
+             . "Lancha Exemplo,Manaus/Tefe,3,Coari,14:30,0\n"
+             . "Lancha Exemplo,Manaus/Tefe,4,Tefe,,\n"
+             . "Lancha Exemplo,Tefe/Manaus,1,Tefe,05:30,0\n"
+             . "Lancha Exemplo,Tefe/Manaus,2,Coari,09:30,0\n"
+             . "Lancha Exemplo,Tefe/Manaus,3,Manaus,,\n";
+        return response("\xEF\xBB\xBF".$csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="modelo-rotas.csv"',
+        ]);
+    }
+
     public function importar(Request $request)
     {
         abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
