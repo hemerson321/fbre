@@ -28,7 +28,8 @@ class AcertoController extends Controller
         $transportes = \App\Models\Embarcacao::orderBy('nome')->get();
         $viagens = Tenant::empresa()?->temRecurso('viagens')
             ? \App\Models\Viagem::with('rota')->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
-                ->orderByDesc('data_partida')->limit(120)->get() : collect();
+                ->where(fn ($q) => $q->whereBetween('data_partida', [now()->subMonthsNoOverflow(3)->startOfDay(), now()->addMonthsNoOverflow(3)->endOfDay()])->orWhereNull('data_partida'))
+                ->orderByDesc('data_partida')->limit(300)->get() : collect();
         $pessoas = User::where('empresa_id', Tenant::id())->orderBy('name')->get();
 
         $ft = $this->filtraTransp($transporteId);

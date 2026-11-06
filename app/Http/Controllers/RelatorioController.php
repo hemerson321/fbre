@@ -26,7 +26,8 @@ class RelatorioController extends Controller
         $viagemId = $request->input('viagem_id') ?: null;
         $viagens = \App\Support\Tenant::empresa()?->temRecurso('viagens')
             ? \App\Models\Viagem::with('rota')->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
-                ->orderByDesc('data_partida')->limit(120)->get() : collect();
+                ->where(fn ($q) => $q->whereBetween('data_partida', [now()->subMonthsNoOverflow(3)->startOfDay(), now()->addMonthsNoOverflow(3)->endOfDay()])->orWhereNull('data_partida'))
+                ->orderByDesc('data_partida')->limit(300)->get() : collect();
         $fViagemPag = fn ($q) => $q->where(function ($w) use ($viagemId) {
             $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('viagem_id', $viagemId)->select('id')))
               ->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('viagem_id', $viagemId)->select('id')));
