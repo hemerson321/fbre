@@ -17,7 +17,7 @@
 <body class="font-sans text-slate-800 min-h-screen flex items-center">
 <div class="max-w-md mx-auto p-5 w-full">
   <div class="rounded-3xl p-7 text-white shadow-xl text-center" style="background:linear-gradient(140deg,var(--cor1),color-mix(in srgb,var(--cor1) 65%,var(--cor2)))">
-    @if($empresa->logo)<img src="/{{ $empresa->logo }}" class="h-14 w-14 rounded-xl object-cover bg-white/90 p-1 mx-auto mb-3">@endif
+    @if($empresa->logo)<img src="/{{ $empresa->logo }}" class="h-14 w-14 rounded-xl object-cover bg-white p-1 mx-auto mb-3">@endif
     <div class="text-sm opacity-85">Pronto, {{ \Illuminate\Support\Str::of($pre->remetente_nome)->explode(' ')->first() }}! Mostre este código no balcão:</div>
     <div class="my-4 rounded-2xl bg-white/15 py-5">
       <div class="text-5xl font-black tracking-[0.2em]">{{ $pre->codigo }}</div>

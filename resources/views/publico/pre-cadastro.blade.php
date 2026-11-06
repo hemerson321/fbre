@@ -29,7 +29,7 @@
   {{-- topo --}}
   <div class="rounded-2xl p-5 text-white shadow-md mb-4" style="background:linear-gradient(120deg,var(--cor1),color-mix(in srgb,var(--cor1) 65%,var(--cor2)))">
     <div class="flex items-center gap-3">
-      @if($empresa->logo)<img src="/{{ $empresa->logo }}" class="h-12 w-12 rounded-xl object-cover bg-white/90 p-1">@endif
+      @if($empresa->logo)<img src="/{{ $empresa->logo }}" class="h-12 w-12 rounded-xl object-cover bg-white p-1">@endif
       <div>
         <div class="font-extrabold text-lg leading-tight">{{ $empresa->nomeExibicao() }}</div>
         <div class="text-sm opacity-85">Pré-cadastro de encomenda</div>
