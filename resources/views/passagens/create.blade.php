@@ -163,6 +163,7 @@
                   </template>
                 </div>
               </div>
+              <button type="button" class="w-9 h-9 rounded-lg border-2 shrink-0 text-base leading-none flex items-center justify-center" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirCam(i)" title="Foto do documento">📷</button>
               <img :src="'/'+(p.foto||p.foto_rg)" x-show="p.foto||p.foto_rg" x-cloak class="h-9 w-9 object-cover rounded-lg border shrink-0 cursor-pointer" @click="window.open('/'+(p.foto_rg||p.foto),'_blank')" title="Foto (clique p/ ver o documento)">
               <button type="button" class="w-8 h-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none shrink-0" @click="rmPax(i)" x-show="passageiros.length>1" title="Remover">×</button>
             </div>
@@ -188,7 +189,6 @@
             <div class="flex items-center justify-between gap-2 mt-2 pt-1.5 border-t border-slate-100">
               <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
               <div class="flex items-center gap-3">
-                <button type="button" class="text-[12px] font-semibold flex items-center gap-1" style="color:var(--cor1)" @click="abrirCam(i)">📷 Foto</button>
                 <label class="text-[12px] font-semibold flex items-center gap-1 cursor-pointer" style="color:var(--cor1)">📎 Docs<input type="file" accept="image/*" multiple capture="environment" class="hidden" @change="anexarDocs(i,$event)"></label>
               </div>
             </div>
