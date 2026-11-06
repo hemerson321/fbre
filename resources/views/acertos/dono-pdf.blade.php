@@ -57,50 +57,48 @@
   {{-- BALCÃO --}}
   <h2><span>🏬 Vendas de balcão (empresa) — {{ $balcao->count() }}</span><span>Dono: R$ {{ $moeda($donoBalcao) }}</span></h2>
   <table>
-    <thead><tr><th>Nº</th><th>Passagem</th><th>Trecho</th><th>Comprador</th><th>Data</th><th>Operador</th><th class="r">Valor</th><th class="r">Dono</th></tr></thead>
+    <thead><tr><th>Nº</th><th>Passagem</th><th>Trecho</th><th>Data</th><th>Operador</th><th class="r">Valor</th><th class="r">Dono</th></tr></thead>
     <tbody>
       @forelse($balcao as $i => $p)
       <tr>
         <td>{{ $i+1 }}</td>
         <td>#{{ $p->numeroFormatado() }}</td>
         <td>{{ $p->origem }} → {{ $p->destino }}</td>
-        <td>{{ $p->comprador_nome ?: '—' }}</td>
         <td>{{ $p->created_at->format('d/m/Y') }}</td>
         <td>{{ $p->operador?->name ?: '—' }}</td>
         <td class="r">R$ {{ $moeda($p->total) }}</td>
         <td class="r dono">R$ {{ $moeda($p->dono_valor) }}</td>
       </tr>
       @empty
-      <tr><td colspan="8" style="text-align:center;color:#999">Sem vendas de balcão.</td></tr>
+      <tr><td colspan="7" style="text-align:center;color:#999">Sem vendas de balcão.</td></tr>
       @endforelse
     </tbody>
     @if($balcao->isNotEmpty())
-    <tfoot><tr><td colspan="6">Subtotal balcão</td><td class="r">R$ {{ $moeda($brutoBalcao) }}</td><td class="r dono">R$ {{ $moeda($donoBalcao) }}</td></tr></tfoot>
+    <tfoot><tr><td colspan="5">Subtotal balcão</td><td class="r">R$ {{ $moeda($brutoBalcao) }}</td><td class="r dono">R$ {{ $moeda($donoBalcao) }}</td></tr></tfoot>
     @endif
   </table>
 
   {{-- AGENTES --}}
   <h2><span>🤝 Vendas de agentes (repasse) — {{ $agentes->count() }}</span><span>Dono: R$ {{ $moeda($donoAgentes) }}</span></h2>
   <table>
-    <thead><tr><th>Nº</th><th>Passagem</th><th>Trecho</th><th>Comprador</th><th>Data</th><th>Agente</th><th class="r">Valor</th><th class="r">Dono</th></tr></thead>
+    <thead><tr><th>Nº</th><th>Passagem</th><th>Trecho</th><th>Data</th><th>Agente</th><th class="r">Valor</th><th class="r">Dono</th></tr></thead>
     <tbody>
       @forelse($agentes as $i => $p)
       <tr>
         <td>{{ $i+1 }}</td>
         <td>#{{ $p->numeroFormatado() }}</td>
         <td>{{ $p->origem }} → {{ $p->destino }}</td>
-        <td>{{ $p->comprador_nome ?: '—' }}</td>
         <td>{{ $p->created_at->format('d/m/Y') }}</td>
         <td>{{ $p->operador?->name ?: '—' }}</td>
         <td class="r">R$ {{ $moeda($p->total) }}</td>
         <td class="r dono">R$ {{ $moeda($p->dono_valor) }}</td>
       </tr>
       @empty
-      <tr><td colspan="8" style="text-align:center;color:#999">Sem vendas de agentes.</td></tr>
+      <tr><td colspan="7" style="text-align:center;color:#999">Sem vendas de agentes.</td></tr>
       @endforelse
     </tbody>
     @if($agentes->isNotEmpty())
-    <tfoot><tr><td colspan="6">Subtotal agentes</td><td class="r">R$ {{ $moeda($brutoAgentes) }}</td><td class="r dono">R$ {{ $moeda($donoAgentes) }}</td></tr></tfoot>
+    <tfoot><tr><td colspan="5">Subtotal agentes</td><td class="r">R$ {{ $moeda($brutoAgentes) }}</td><td class="r dono">R$ {{ $moeda($donoAgentes) }}</td></tr></tfoot>
     @endif
   </table>
 
