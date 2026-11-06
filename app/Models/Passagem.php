@@ -114,6 +114,7 @@ class Passagem extends Model
             ->when($f['destino'] ?? null, fn ($q, $v) => $q->where('destino', $v))
             ->when($f['embarcacao_id'] ?? null, fn ($q, $v) => $q->where('embarcacao_id', $v))
             ->when($f['viagem_id'] ?? null, fn ($q, $v) => $q->where('viagem_id', $v))
+            ->when($f['data_viagem'] ?? null, fn ($q, $v) => $q->whereDate('data_viagem', $v))
             ->when($f['status_pagamento'] ?? null, fn ($q, $v) => $q->where('status_pagamento', $v))
             ->when(isset($f['embarcou']) && $f['embarcou'] !== '', fn ($q) => $q->where('embarcou', (bool) $f['embarcou']))
             ->when($f['forma'] ?? null, fn ($q, $v) => $q->where('forma', $v))

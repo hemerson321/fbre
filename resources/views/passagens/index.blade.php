@@ -26,6 +26,16 @@
       <option value="1" @selected(($f['embarcou'] ?? '')==='1')>Embarcou</option>
       <option value="0" @selected(($f['embarcou'] ?? '')==='0')>Não embarcou</option>
     </select>
+    <select name="embarcacao_id" class="input" onchange="this.form.submit()">
+      <option value="">Transporte: todos</option>
+      @foreach($embarcacoes as $e)<option value="{{ $e->id }}" @selected((string)($f['embarcacao_id'] ?? '')===(string)$e->id)>🚤 {{ $e->nome }}</option>@endforeach
+    </select>
+    @if(($datasViagem ?? collect())->count())
+    <select name="data_viagem" class="input" onchange="this.form.submit()">
+      <option value="">Viagem: todas as datas</option>
+      @foreach($datasViagem as $dv)@php $dvs=\Illuminate\Support\Carbon::parse($dv)->toDateString(); @endphp<option value="{{ $dvs }}" @selected((string)($f['data_viagem'] ?? '')===$dvs)>📅 {{ \Illuminate\Support\Carbon::parse($dv)->format('d/m/Y') }}</option>@endforeach
+    </select>
+    @endif
     @if($verTodos)
     <select name="escopo" class="input">
       <option value="todos" @selected(($escopo ?? 'todos')==='todos')>Ver: todos</option>
@@ -58,6 +68,7 @@
       <a href="{{ route('passagens.show',$p) }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 row-{{ $p->cor() }}">
         <div class="flex-1 min-w-0">
           <div class="font-semibold">@if($p->tipo==='camarote')🛏️ @endif#{{ $p->numeroFormatado() }} · {{ $p->origem }} → {{ $p->destino }}</div>
+          <div class="text-[11px] text-slate-400 truncate">🚤 {{ $p->embarcacao?->nome ?? '—' }}@if($p->data_viagem) · 📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</div>
           <div class="text-xs text-slate-500 truncate">{{ $p->qtd_passageiros }} pax · {{ $p->comprador_nome ?: '—' }} · vendeu: {{ $p->operador?->name }}@if($p->embarcou) · <span class="text-emerald-600 font-semibold">✅ check-in{{ $p->embarcouPor ? ': '.$p->embarcouPor->name : '' }}</span>@elseif(!$p->cancelada) · <span class="text-amber-600 font-semibold">⏳ sem check-in</span>@endif</div>
         </div>
         <div class="text-right">

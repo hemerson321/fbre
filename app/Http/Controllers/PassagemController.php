@@ -53,6 +53,10 @@ class PassagemController extends Controller
             'localidades' => TabelaPreco::select('origem')->distinct()->pluck('origem')
                 ->merge(Rota::todasLocalidades())->unique()->sort()->values(),
             'embarcacoes' => Embarcacao::where('ativo', true)->orderBy('nome')->get(),
+            'datasViagem' => Passagem::where('cancelada', false)->whereNotNull('data_viagem')
+                ->when($f['embarcacao_id'] ?? null, fn ($q, $v) => $q->where('embarcacao_id', $v))
+                ->whereBetween('data_viagem', [now()->subMonthsNoOverflow(3)->toDateString(), now()->addMonthsNoOverflow(3)->toDateString()])
+                ->select('data_viagem')->distinct()->orderByDesc('data_viagem')->pluck('data_viagem'),
             'verTodos' => $verTodos,
             'escopo' => $escopo,
         ]);
@@ -60,7 +64,7 @@ class PassagemController extends Controller
 
     protected function filtros(Request $request): array
     {
-        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'viagem_id', 'status_pagamento', 'embarcou', 'forma', 'busca', 'user_id', 'cancelada']);
+        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'viagem_id', 'data_viagem', 'status_pagamento', 'embarcou', 'forma', 'busca', 'user_id', 'cancelada']);
         if (! $request->has('inicio') && ! $request->filled('busca')) {
             $f['inicio'] = now()->subDays(7)->toDateString();
             $f['fim'] = now()->toDateString();
