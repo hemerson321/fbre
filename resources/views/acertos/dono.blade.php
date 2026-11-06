@@ -82,6 +82,7 @@
           </div>
           <div class="text-right whitespace-nowrap">
             <b>{{ $moeda($p->total) }}</b>
+            <div class="text-[11px] text-slate-400">comissão {{ $moeda($p->total - $p->dono_valor) }}</div>
             <div class="text-xs text-emerald-600">dono {{ $moeda($p->dono_valor) }}</div>
           </div>
         </div>
@@ -105,6 +106,7 @@
           </div>
           <div class="text-right whitespace-nowrap">
             <b>{{ $moeda($p->total) }}</b>
+            <div class="text-[11px] text-slate-400">comissão {{ $moeda($p->total - $p->dono_valor) }}</div>
             <div class="text-xs text-emerald-600">dono {{ $moeda($p->dono_valor) }}</div>
           </div>
         </div>
