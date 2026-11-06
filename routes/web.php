@@ -196,6 +196,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/cadastros/{tipo}', [CadastroController::class, 'store'])->name('cadastros.store');
         Route::delete('/cadastros/{tipo}/{id}', [CadastroController::class, 'destroy'])->name('cadastros.destroy');
         Route::get('/transportes', [CadastroController::class, 'transportes'])->name('transportes');
+        Route::post('/transportes/importar', [CadastroController::class, 'importarTransportes'])->name('transportes.importar');
         Route::post('/embarcacoes/{embarcacao}', [CadastroController::class, 'salvarEmbarcacao'])->name('embarcacoes.salvar');
         Route::post('/tipos-passageiro', [CadastroController::class, 'salvarTiposPassageiro'])->name('tipos-passageiro.salvar');
         Route::post('/taxas-embarque', [CadastroController::class, 'salvarTaxasEmbarque'])->name('taxas-embarque.salvar');

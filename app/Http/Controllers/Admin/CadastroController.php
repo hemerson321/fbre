@@ -187,6 +187,28 @@ class CadastroController extends Controller
     }
 
     /** Configura poltrona de uma embarcação (usa/qtd/colunas). */
+    public function importarTransportes(Request $request)
+    {
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+        $request->validate(['arquivo' => 'required|file|max:8192']);
+        $linhas = file($request->file('arquivo')->getRealPath(), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        if (! $linhas) return back()->with('erro', 'Arquivo vazio.');
+        if (stripos($linhas[0], 'embarcacao') !== false) array_shift($linhas);
+
+        $nomes = [];
+        foreach ($linhas as $l) {
+            $c = str_getcsv($l);
+            $nome = trim((string) ($c[0] ?? $l));
+            if ($nome !== '') $nomes[mb_strtolower($nome)] = $nome;
+        }
+        $n = 0;
+        foreach ($nomes as $nome) {
+            $e = Embarcacao::firstOrCreate(['nome' => $nome], ['ativo' => true, 'comissao_empresa_pct' => 10]);
+            if ($e->wasRecentlyCreated) $n++;
+        }
+        return back()->with('ok', "Criados {$n} transporte(s) novo(s) (de ".count($nomes)." no arquivo). Só os barcos, sem itinerário.");
+    }
+
     public function salvarEmbarcacao(Request $request, Embarcacao $embarcacao)
     {
         $data = $request->validate([

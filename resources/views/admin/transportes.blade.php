@@ -13,6 +13,12 @@
       <input name="nome" class="input !min-h-[42px]" placeholder="Nome do barco/lancha" required>
       <button class="btn btn-accent btn-sm">+ Adicionar</button>
     </form>
+    <form method="post" action="{{ route('admin.transportes.importar') }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2 border-t pt-2 text-sm" onsubmit="return confirm('Importar só os transportes (barcos) do arquivo? Não cria rotas/itinerário.')">@csrf
+      <span class="font-semibold">📥 Importar transportes (CSV)</span>
+      <input type="file" name="arquivo" accept=".csv,.txt" class="input !min-h-[36px] text-xs flex-1 min-w-[160px]" required>
+      <button class="btn btn-ghost btn-sm">Importar</button>
+      <p class="text-[11px] text-slate-400 w-full">Cria <b>só os barcos</b> (1ª coluna / 1 nome por linha), <b>sem</b> rotas nem itinerário.</p>
+    </form>
     <div class="space-y-2" x-data="{ todos:false }">
       @if($embarcacoes->count())<div class="flex justify-end"><button type="button" @click="todos=!todos" class="btn btn-ghost btn-sm" x-text="todos ? '▲ Fechar todos' : '▼ Abrir todos'"></button></div>@endif
       @forelse($embarcacoes as $e)
