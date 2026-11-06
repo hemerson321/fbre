@@ -14,6 +14,7 @@ class PassagemPassageiro extends Model
         'valor_taxa' => 'decimal:2',
         'valor_integral' => 'decimal:2',
         'valor_total' => 'decimal:2',
+        'documentos' => 'array',
     ];
 
     /** Nascimento tolerante: nunca estoura com valor vazio ou 0000-00-00. */

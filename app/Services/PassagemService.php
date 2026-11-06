@@ -105,6 +105,12 @@ class PassagemService
                 $vt = round((float) ($pax['valor_taxa'] ?? 0), 2);
                 $va = round((float) ($pax['valor_alimentacao'] ?? 0), 2);
                 $vi = round((float) ($pax['valor_integral'] ?? ($vp + $vt + $va)), 2);
+                $docs = [];
+                foreach ((array) ($pax['documentos'] ?? []) as $d) {
+                    if (! is_string($d) || $d === '') continue;
+                    $docs[] = str_starts_with($d, 'data:') ? ($this->salvarDataUrl($d) ?? null) : $d;
+                }
+                $docs = array_values(array_filter($docs));
                 $p->passageiros()->create([
                     'nome' => $pax['nome'],
                     'tipo' => $pax['tipo'] ?? 'Adulto',
@@ -118,6 +124,7 @@ class PassagemService
                     'checkin' => (bool) ($pax['checkin'] ?? true),
                     'foto_rg' => $pax['foto_rg'] ?? null,
                     'foto' => $pax['foto'] ?? null,
+                    'documentos' => $docs ?: null,
                     'poltrona' => $pax['poltrona'] ?? null,
                     'valor_passagem' => $vp,
                     'valor_taxa' => $vt,
@@ -201,6 +208,18 @@ class PassagemService
             'acerto_empresa_valor' => $rev ? $rev->repasseDe($total) : $total,
             'acerto_revendedor_valor' => $seller->revendedor_id ? $seller->repasseDe($total) : 0,
         ])->save();
+    }
+
+    /** Salva uma imagem data-URL (base64) no storage publico e devolve o caminho relativo. */
+    protected function salvarDataUrl(string $dataUrl): ?string
+    {
+        if (! preg_match('/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/', $dataUrl, $m)) return null;
+        $ext = strtolower($m[1]) === 'jpeg' ? 'jpg' : strtolower($m[1]);
+        $bin = base64_decode($m[2], true);
+        if ($bin === false || strlen($bin) < 32) return null;
+        $nome = 'documentos/'.date('Y/m/d').'/'.\Illuminate\Support\Str::random(28).'.'.$ext;
+        \Illuminate\Support\Facades\Storage::disk('public')->put($nome, $bin);
+        return 'storage/'.$nome;
     }
 
     protected function lembrarPessoa(string $nome, ?string $tel, ?string $doc): void

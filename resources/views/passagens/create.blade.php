@@ -189,7 +189,16 @@
               <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
               <div class="flex items-center gap-3">
                 <button type="button" class="text-[12px] font-semibold flex items-center gap-1" style="color:var(--cor1)" @click="abrirCam(i)">📷 Foto</button>
+                <label class="text-[12px] font-semibold flex items-center gap-1 cursor-pointer" style="color:var(--cor1)">📎 Docs<input type="file" accept="image/*" multiple capture="environment" class="hidden" @change="anexarDocs(i,$event)"></label>
               </div>
+            </div>
+            <div x-show="p.documentos && p.documentos.length" x-cloak class="flex flex-wrap gap-1.5 mt-1.5">
+              <template x-for="(d,j) in p.documentos" :key="j">
+                <div class="relative">
+                  <img :src="d" class="h-12 w-12 object-cover rounded-lg border cursor-pointer" @click="window.open(d,'_blank')" title="documento anexado">
+                  <button type="button" @click="removerDoc(i,j)" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 text-[11px] leading-none flex items-center justify-center">×</button>
+                </div>
+              </template>
             </div>
             {{-- linha 5: dados extras (sempre visíveis) --}}
             <div class="grid grid-cols-2 gap-2 mt-1.5">
@@ -476,7 +485,10 @@
       botaoMeio(k){ this.preencher(k); if(k==='pix'){ if(this.pixEstatico){ this.gerarPixEstatico(); } else if(this.pixDinamico){ this.gerarPixDinamico(); } } },
 
       // ---- passageiros ----
-      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
+      anexarDocs(i, ev){ const files=Array.from(ev.target.files||[]); const run=async()=>{ for(const fl of files){ try{ const d=await this._imgToDataUrl(fl); if(d && (this.passageiros[i].documentos=this.passageiros[i].documentos||[]).length<12) this.passageiros[i].documentos.push(d); }catch(e){} } }; run(); ev.target.value=''; },
+      removerDoc(i,j){ this.passageiros[i].documentos.splice(j,1); },
+      _imgToDataUrl(file){ return new Promise((res,rej)=>{ const img=new Image(); const u=URL.createObjectURL(file); img.onload=()=>{ URL.revokeObjectURL(u); const max=1280; let w=img.width,h=img.height; if(w>max||h>max){ const r=Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r); } const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); try{ res(c.toDataURL('image/jpeg',0.8)); }catch(e){ rej(e); } }; img.onerror=rej; img.src=u; }); },
+      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', documentos:[], checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       paxTotal(p){ return Math.round(((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))*100)/100; },
       setPaxTotal(p,v){ const total=Math.max(Number(v)||0,0); const fixo=(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0); p.valor_passagem=Math.round(Math.max(total-fixo,0)*100)/100; },
@@ -805,7 +817,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:(p.documentos||[]), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
       },

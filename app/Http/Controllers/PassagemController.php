@@ -410,6 +410,8 @@ class PassagemController extends Controller
             'passageiros.*.nacionalidade' => 'nullable|string|max:40',
             'passageiros.*.foto_rg' => 'nullable|string|max:255',
             'passageiros.*.foto' => 'nullable|string|max:255',
+            'passageiros.*.documentos' => 'nullable|array|max:12',
+            'passageiros.*.documentos.*' => 'nullable|string',
             'passageiros.*.checkin' => 'nullable|boolean',
             'passageiros.*.observacao' => 'nullable|string|max:200',
             'pagamentos' => 'nullable|array',
