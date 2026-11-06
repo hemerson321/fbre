@@ -39,6 +39,23 @@ class CaixaController extends Controller
             $q->where(fn ($w) => $w->where('modulo', '!=', 'passagem')->orWhereNotIn('origem_id', $revendaIds));
         };
 
+        // ===== Escopo do DONO: se o usuario e dono de transporte (ex.: Cris admin+dona),
+        // o caixa so mostra as vendas do(s) transporte(s) dele. Para ver tudo, usa o Relatorio. =====
+        $meusBarcos = auth()->user()->ehDonoTransporte()
+            ? \App\Models\Embarcacao::where('dono_id', auth()->id())->pluck('id')->map(fn ($i) => (int) $i)->all()
+            : null;
+        if ($meusBarcos !== null) {
+            $transportes = \App\Models\Embarcacao::whereIn('id', $meusBarcos)->orderBy('nome')->get();
+            if ($transporteId && ! in_array((int) $transporteId, $meusBarcos, true)) $transporteId = null;
+        }
+        $escopoBarcos = ($meusBarcos !== null && ! $transporteId) ? $meusBarcos : null;
+        $filtraBarcos = function ($q) use ($escopoBarcos) {
+            $q->where(function ($w) use ($escopoBarcos) {
+                $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::whereIn('embarcacao_id', $escopoBarcos)->select('id')))
+                  ->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::whereIn('embarcacao_id', $escopoBarcos)->select('id')));
+            });
+        };
+
         $base = Pagamento::where('estornado', false)
             ->where('meio', '!=', 'desconto')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
@@ -47,6 +64,7 @@ class CaixaController extends Controller
             ->when($modulo, fn ($q) => $q->where('modulo', $modulo))
             ->when($canal, fn ($q) => $this->filtrarCanal($q, $canal))
             ->when($transporteId, $filtraTransp)
+            ->when($escopoBarcos, $filtraBarcos)
             ->where('tipo_mov', '!=', 'saida')
             ->where($semRevenda);
 
@@ -64,23 +82,25 @@ class CaixaController extends Controller
         $descontos = Pagamento::where('estornado', false)->where('meio', 'desconto')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
-            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->where($semRevenda)->sum('valor');
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->when($escopoBarcos, $filtraBarcos)->where($semRevenda)->sum('valor');
 
         $entregas = Evento::where('tipo', 'entrega')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
             ->when($transporteId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id')))
+            ->when($escopoBarcos, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::whereIn('embarcacao_id', $escopoBarcos)->select('id')))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))->count();
         $cadastros = Encomenda::when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->when($escopoBarcos, fn ($q) => $q->whereIn('embarcacao_id', $escopoBarcos))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))->count();
 
         $saidas = Pagamento::where('estornado', false)->where('tipo_mov', 'saida')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('origem_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
-            ->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->sum('valor');
+            ->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->when($escopoBarcos, $filtraBarcos)->sum('valor');
 
         $categorias = AvulsoCategoria::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
         $podeAvulso = auth()->user()->podeModulo('avulso');
@@ -88,16 +108,18 @@ class CaixaController extends Controller
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
 
         // VENDAS (BRUTO): valor total vendido no filtro, independente de ter entrado no caixa (ex.: venda de agente ainda nao repassada)
-        $filtroData = function ($q) use ($inicio, $fim, $userId, $transporteId) {
+        $filtroData = function ($q) use ($inicio, $fim, $userId, $transporteId, $escopoBarcos) {
             return $q->whereBetween('created_at', [$inicio, $fim])
                 ->when($userId, fn ($x) => $x->where('user_id', $userId))
-                ->when($transporteId, fn ($x) => $x->where('embarcacao_id', $transporteId));
+                ->when($transporteId, fn ($x) => $x->where('embarcacao_id', $transporteId))
+                ->when($escopoBarcos, fn ($x) => $x->whereIn('embarcacao_id', $escopoBarcos));
         };
-        $aplicaVB = function ($q) use ($viagemId, $userId, $transporteId, $filtroData) {
+        $aplicaVB = function ($q) use ($viagemId, $userId, $transporteId, $filtroData, $escopoBarcos) {
             if ($viagemId) {
                 return $q->where('viagem_id', $viagemId)
                     ->when($userId, fn ($x) => $x->where('user_id', $userId))
-                    ->when($transporteId, fn ($x) => $x->where('embarcacao_id', $transporteId));
+                    ->when($transporteId, fn ($x) => $x->where('embarcacao_id', $transporteId))
+                    ->when($escopoBarcos, fn ($x) => $x->whereIn('embarcacao_id', $escopoBarcos));
             }
             return $filtroData($q);
         };

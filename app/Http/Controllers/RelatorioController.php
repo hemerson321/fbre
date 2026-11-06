@@ -63,6 +63,7 @@ class RelatorioController extends Controller
         // Acerto do agente externo (revendedor): quanto vendeu, comissao dele e quanto passar pra empresa
         $acerto = null;
         $pendentes = collect();
+        $debitosDono = collect();
         $uu = auth()->user();
         if ($uu->is_revendedor) {
             $passQ = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->whereBetween('created_at', [$inicio, $fim])->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
@@ -100,13 +101,28 @@ class RelatorioController extends Controller
                 ->orderByDesc('id')->limit(200)
                 ->selectRaw('id, numero, numero_completo, created_at, origem, destino, COALESCE(acerto_empresa_valor, '.$repasseExpr.') as valor_aberto')
                 ->get();
+            // Debito com os DONOS das lanchas (barcos com dono_id): o agente paga direto o dono.
+            $debitosDono = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+                ->whereIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'))
+                ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+                ->selectRaw('embarcacao_id, COUNT(*) as qtd, COALESCE(SUM(acerto_empresa_valor),0) as valor')
+                ->groupBy('embarcacao_id')->get()
+                ->map(function ($r) {
+                    $emb = \App\Models\Embarcacao::find($r->embarcacao_id);
+                    return (object) [
+                        'nome' => $emb?->nome ?? ('Barco #'.$r->embarcacao_id),
+                        'dono' => optional($emb?->dono)->name ?? $emb?->dono_nome,
+                        'qtd' => (int) $r->qtd,
+                        'valor' => (float) $r->valor,
+                    ];
+                })->filter(fn ($x) => $x->valor > 0)->sortByDesc('valor')->values();
         }
 
         $temEncomenda = $uu->temModulo('encomenda');
         $podeAvulso = $uu->podeModulo('avulso');
         $categorias = \App\Models\AvulsoCategoria::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
         return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite', 'transportes', 'transporteId', 'podeTransporte', 'viagens', 'viagemId'))
-            ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'pendentes' => $pendentes, 'temEncomenda' => $temEncomenda, 'podeAvulso' => $podeAvulso, 'categorias' => $categorias]);
+            ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'pendentes' => $pendentes, 'debitosDono' => $debitosDono, 'temEncomenda' => $temEncomenda, 'podeAvulso' => $podeAvulso, 'categorias' => $categorias]);
     }
 
     /** Exporta os recebimentos do período (e filtro de forma) em CSV — sem travar a tela. */

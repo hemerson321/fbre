@@ -223,6 +223,30 @@ function acertoPix(ac){
   </div>
   @endif
 
+  @if($debitosDono->isNotEmpty())
+  <div class="card overflow-hidden border border-sky-200">
+    <div class="p-3 border-b bg-sky-50 flex items-center justify-between">
+      <div class="font-bold text-sm text-sky-700">🚤 Débito com os donos das lanchas</div>
+      <div class="text-[11px] text-sky-600">você paga direto o dono</div>
+    </div>
+    <div class="divide-y text-sm">
+      @foreach($debitosDono as $d)
+      <div class="flex items-center justify-between p-3">
+        <div class="min-w-0">
+          <div class="font-semibold truncate">{{ $d->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· dono {{ $d->dono }}</span>@endif</div>
+          <div class="text-xs text-slate-400">{{ $d->qtd }} passagem(ns) · de qualquer data</div>
+        </div>
+        <b class="text-sky-700 whitespace-nowrap">R$ {{ number_format($d->valor,2,',','.') }}</b>
+      </div>
+      @endforeach
+    </div>
+    <div class="flex items-center justify-between p-3 border-t bg-sky-50 font-bold text-sm">
+      <span>Total a pagar aos donos</span>
+      <span class="text-sky-700">R$ {{ number_format((float)$debitosDono->sum('valor'),2,',','.') }}</span>
+    </div>
+  </div>
+  @endif
+
   <div class="space-y-4">
     <div class="card overflow-hidden">
       <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Recebimentos ({{ $totais['recebido_qtd'] }})</div>
