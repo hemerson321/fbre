@@ -130,6 +130,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/meu-transporte/{embarcacao}/baixa-balcao', [\App\Http\Controllers\MeuTransporteController::class, 'baixaBalcao'])->name('meu-transporte.baixa-balcao');
     Route::post('/meu-transporte/{embarcacao}/baixa-agente/{agente}', [\App\Http\Controllers\MeuTransporteController::class, 'baixaAgente'])->name('meu-transporte.baixa-agente');
     Route::get('/meu-transporte/{embarcacao}/relatorio', [\App\Http\Controllers\MeuTransporteController::class, 'relatorio'])->name('meu-transporte.relatorio');
+    // Acertos do agente externo (deve a empresa + deve aos donos)
+    Route::get('/meus-acertos', [AcertoController::class, 'meuAgente'])->name('meus-acertos');
     Route::get('/passagens/{passagem}/comprovante', [\App\Http\Controllers\PassagemController::class, 'comprovante'])->name('passagens.comprovante')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/imprimir-direto', [\App\Http\Controllers\PassagemController::class, 'imprimirDireto'])->name('passagens.imprimir-direto')->middleware('perm:passagem.ver');
     Route::get('/passagens/{passagem}', [\App\Http\Controllers\PassagemController::class, 'show'])->name('passagens.show')->middleware('perm:passagem.ver');

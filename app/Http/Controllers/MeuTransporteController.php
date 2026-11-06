@@ -91,11 +91,17 @@ class MeuTransporteController extends Controller
         $vendasDono  = (float) (clone $vend)->selectRaw('COALESCE(SUM('.$donoExpr.'),0) as v')->value('v');
         $vendasComissao = round($vendasBruto - $vendasDono, 2);
 
+        $aba = $request->input('aba') === 'vendas' ? 'vendas' : 'acertos';
+        $vendas = Passagem::where('embarcacao_id', $emb->id)->where('cancelada', false)
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+            ->with(['operador', 'revendedor'])->orderByDesc('id')->limit(300)->get();
+
         return view('meu-transporte.index', compact(
             'meus', 'emb', 'transporteId', 'pct', 'dataViagem', 'viagemId',
             'temViagens', 'viagens', 'datasViagem',
             'balcaoQtd', 'balcaoBruto', 'balcaoDono', 'agentesList', 'agentesDono', 'agentesQtd',
-            'aReceber', 'recebido', 'recebidoQtd',
+            'aba', 'vendas', 'aReceber', 'recebido', 'recebidoQtd',
             'vendasBruto', 'vendasQtd', 'vendasDono', 'vendasComissao'
         ));
     }

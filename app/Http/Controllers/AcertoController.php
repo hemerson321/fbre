@@ -288,6 +288,79 @@ class AcertoController extends Controller
     }
 
     /** Pagamento (passagem/encomenda) ligado a uma embarcação. */
+    /** Area de ACERTOS do agente externo: o que ele deve a empresa (barcos sem dono) e aos donos. */
+    public function meuAgente(Request $request)
+    {
+        $u = auth()->user();
+        abort_unless($u->ehRevendedor(), 403);
+        $viagemId = $request->input('viagem_id') ?: null;
+        $dataViagem = $request->input('data_viagem') ?: null;
+
+        $semDono = fn ($q) => $q->whereNotIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'));
+        $fViagem = fn ($q) => $q->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
+
+        // base das vendas do agente (para bruto/comissao) com filtro de viagem
+        $passQ = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->tap($fViagem);
+        $bruto = (float) (clone $passQ)->sum('total');
+        $repasseTotal = (float) (clone $passQ)->tap($semDono)->sum('acerto_empresa_valor');
+
+        $empAcerto = Tenant::empresa();
+        $acertoApi = $u->acerto_pix_api_id ? \App\Models\PagamentoApi::find($u->acerto_pix_api_id) : null;
+        $_pct = max(0, min(100, (int) ($u->comissao_pct ?? 0)));
+        $repasseExpr = (($u->modo_acerto ?? 'cheio') === 'comissao') ? 'ROUND(total * (100 - '.$_pct.') / 100, 2)' : 'total';
+
+        // deve a EMPRESA (barcos SEM dono)
+        $repassePend = (float) Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->where('acerto_empresa', false)
+            ->tap($semDono)->tap($fViagem)
+            ->selectRaw('COALESCE(SUM(COALESCE(acerto_empresa_valor, '.$repasseExpr.')),0) as v')->value('v');
+        $avEnt = (float) Pagamento::where('user_id', $u->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'entrada')->where('conferido', false)->where('acerto_conta', true)->selectRaw('COALESCE(SUM(valor * (100 - COALESCE(acerto_pct,0)) / 100),0) as v')->value('v');
+        $avSai = (float) Pagamento::where('user_id', $u->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'saida')->where('conferido', false)->where('acerto_conta', true)->sum('valor');
+
+        $acerto = [
+            'qtd' => (int) (clone $passQ)->count(),
+            'bruto' => $bruto,
+            'a_passar' => round($repasseTotal, 2),
+            'comissao' => round($bruto - $repasseTotal, 2),
+            'pct' => (int) ($u->comissao_pct ?? 0),
+            'modo' => $u->modo_acerto ?? 'cheio',
+            'pix_modo' => $acertoApi ? ($acertoApi->ehEstatico() ? 'estatico' : 'dinamico') : 'nenhum',
+            'emp_pix' => ($acertoApi && $acertoApi->ehEstatico()) ? $acertoApi->pixChave() : null,
+            'emp_nome' => (($acertoApi && $acertoApi->ehEstatico()) ? $acertoApi->pixRecebedor() : null) ?: $empAcerto?->nomeExibicao(),
+            'emp_cidade' => (($acertoApi && $acertoApi->ehEstatico()) ? $acertoApi->pixCidade() : null) ?: 'CIDADE',
+            'pode_dinamico' => (bool) ($acertoApi && ! $acertoApi->ehEstatico()),
+            'repasse_passagem' => round($repassePend, 2),
+            'av_entrada' => round($avEnt, 2),
+            'av_saida' => round($avSai, 2),
+            'total_devido' => round($repassePend + $avEnt - $avSai, 2),
+            'acertado_hoje' => round((float) Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->tap($semDono)->where('acerto_empresa', true)->whereDate('acerto_empresa_em', today())->sum('acerto_empresa_valor'), 2),
+        ];
+        $pendentes = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->where('acerto_empresa', false)
+            ->tap($semDono)->tap($fViagem)->orderByDesc('id')->limit(200)
+            ->selectRaw('id, numero, numero_completo, created_at, origem, destino, COALESCE(acerto_empresa_valor, '.$repasseExpr.') as valor_aberto')
+            ->get();
+
+        // deve aos DONOS (barcos com dono_id): paga direto o dono
+        $debitosDono = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+            ->whereIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'))
+            ->tap($fViagem)
+            ->selectRaw('embarcacao_id, COUNT(*) as qtd, COALESCE(SUM(acerto_empresa_valor),0) as valor')
+            ->groupBy('embarcacao_id')->get()
+            ->map(function ($r) {
+                $emb = \App\Models\Embarcacao::find($r->embarcacao_id);
+                return (object) ['nome' => $emb?->nome ?? ('Barco #'.$r->embarcacao_id), 'dono' => optional($emb?->dono)->name ?? $emb?->dono_nome, 'qtd' => (int) $r->qtd, 'valor' => (float) $r->valor];
+            })->filter(fn ($x) => $x->valor > 0)->sortByDesc('valor')->values();
+
+        $temViagens = (bool) Tenant::empresa()?->temRecurso('viagens');
+        $viagens = $temViagens
+            ? \App\Models\Viagem::with('rota')->where(fn ($q) => $q->whereBetween('data_partida', [now()->subMonthsNoOverflow(3)->startOfDay(), now()->addMonthsNoOverflow(3)->endOfDay()])->orWhereNull('data_partida'))->orderByDesc('data_partida')->limit(300)->get()
+            : collect();
+        $datasViagem = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->whereNotNull('data_viagem')
+            ->whereBetween('data_viagem', [now()->subMonthsNoOverflow(3)->toDateString(), now()->addMonthsNoOverflow(3)->toDateString()])
+            ->select('data_viagem')->distinct()->orderByDesc('data_viagem')->pluck('data_viagem');
+
+        return view('acertos.meu-agente', compact('acerto', 'pendentes', 'debitosDono', 'viagemId', 'dataViagem', 'temViagens', 'viagens', 'datasViagem'));
+    }
+
     protected function filtraTransp(?int $t): \Closure
     {
         return function ($q) use ($t) {

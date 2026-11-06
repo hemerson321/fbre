@@ -23,17 +23,11 @@
     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">A receber</div><div class="text-xl font-extrabold text-amber-600">R$ {{ number_format($totais['devido'],2,',','.') }}</div></div>
   </div>
 
-  @if($acerto)
-  <div class="card p-4 flex flex-wrap items-center justify-between gap-3 bg-cyan-50 border-cyan-200">
-    <div>
-      <div class="text-[11px] font-semibold text-cyan-700 uppercase">{{ $acerto['titulo'] }}</div>
-      <div class="text-sm text-slate-600">Já acertado: <b>R$ {{ number_format($acerto['acertado'],2,',','.') }}</b></div>
-    </div>
-    <div class="text-right">
-      <div class="text-[11px] font-semibold text-slate-500 uppercase">Falta acertar</div>
-      <div class="text-2xl font-extrabold text-cyan-700">R$ {{ number_format($acerto['pendente'],2,',','.') }}</div>
-    </div>
-  </div>
+  @if(auth()->user()->ehRevendedor())
+  <a href="{{ route('meus-acertos') }}" class="card p-3 flex items-center justify-between gap-2 bg-cyan-50 border-cyan-200 hover:bg-cyan-100 transition">
+    <span class="text-sm font-semibold text-cyan-800">🤝 Ver meus acertos (empresa e donos das lanchas)</span>
+    <span class="text-cyan-700 font-bold">→</span>
+  </a>
   @endif
 
   @if($totais['qtd'] > $limite)

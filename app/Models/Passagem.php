@@ -48,6 +48,7 @@ class Passagem extends Model
     public function rota(): BelongsTo { return $this->belongsTo(Rota::class); }
     public function camarote(): BelongsTo { return $this->belongsTo(Camarote::class); }
     public function operador(): BelongsTo { return $this->belongsTo(User::class, 'user_id'); }
+    public function revendedor(): BelongsTo { return $this->belongsTo(User::class, 'revendedor_id'); }
     public function embarcouPor(): BelongsTo { return $this->belongsTo(User::class, 'embarcou_por'); }
 
     // ---------------- status ----------------

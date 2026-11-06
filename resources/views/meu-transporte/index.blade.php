@@ -52,6 +52,15 @@
     @if($dataViagem || $viagemId)<a href="{{ route('meu-transporte', ['transporte_id'=>$transporteId]) }}" class="btn btn-ghost btn-sm">limpar</a>@endif
   </form>
 
+  {{-- ABAS --}}
+  @php $qsBase = array_filter(['transporte_id'=>$transporteId, 'data_viagem'=>$dataViagem, 'viagem_id'=>$viagemId]); @endphp
+  <div class="flex gap-2">
+    <a href="{{ route('meu-transporte', $qsBase + ['aba'=>'acertos']) }}" class="btn btn-sm {{ $aba==='acertos' ? 'text-white' : 'btn-ghost' }}" @if($aba==='acertos') style="background:var(--cor1)" @endif>💰 Acertos</a>
+    <a href="{{ route('meu-transporte', $qsBase + ['aba'=>'vendas']) }}" class="btn btn-sm {{ $aba==='vendas' ? 'text-white' : 'btn-ghost' }}" @if($aba==='vendas') style="background:var(--cor1)" @endif>📊 Relatório de vendas</a>
+  </div>
+
+  {{-- ABA: ACERTOS --}}
+  @if($aba==='acertos')
   {{-- RESUMO DO PERIODO --}}
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
     <div class="card p-3">
@@ -133,6 +142,30 @@
 
     <p class="text-[11px] text-slate-400">O balcão é pago pela empresa (sai do caixa dela). O agente paga direto a você — a baixa aqui só confirma o recebimento, não mexe no caixa da empresa.</p>
   </div>
+  @endif
+
+  {{-- ABA: RELATORIO DE VENDAS --}}
+  @if($aba==='vendas')
+  <div class="card overflow-hidden">
+    <div class="p-3 border-b font-bold text-sm text-slate-500 uppercase">Vendas da lancha ({{ $vendas->count() }})</div>
+    <div class="divide-y text-sm">
+      @forelse($vendas as $p)
+      <div class="flex items-center justify-between gap-3 p-3">
+        <div class="min-w-0">
+          <div class="font-semibold truncate">#{{ $p->numeroFormatado() }} · {{ $p->origem }} → {{ $p->destino }}</div>
+          <div class="text-xs text-slate-400 truncate">{{ $p->revendedor_id ? '🤝 '.($p->revendedor?->name ?? 'agente') : '🏬 balcão' }} · vendeu: {{ $p->operador?->name ?? '—' }}@if($p->data_viagem) · 📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</div>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="font-bold">R$ {{ number_format((float)$p->total,2,',','.') }}</div>
+          @if($p->acerto_dono)<span class="text-[11px] text-emerald-600 font-semibold">✓ acertado</span>@else<span class="text-[11px] text-amber-600 font-semibold">em aberto</span>@endif
+        </div>
+      </div>
+      @empty
+      <div class="p-6 text-center text-slate-400">Nenhuma venda no filtro.</div>
+      @endforelse
+    </div>
+  </div>
+  @endif
 
 </div>
 @endsection
