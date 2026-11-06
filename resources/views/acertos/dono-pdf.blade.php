@@ -45,7 +45,10 @@
         Emitido em {{ now()->format('d/m/Y H:i') }}@if($empresa) · {{ $empresa->nomeExibicao() }}@endif
       </div>
     </div>
-    @if($empresa?->logo)<img class="logo" src="/{{ $empresa->logo }}" alt="">@endif
+    <div style="display:flex;gap:10px;align-items:center">
+      @if($embarcacao->logo)<img class="logo" src="/{{ $embarcacao->logo }}" alt="">@endif
+      @if($empresa?->logo)<img class="logo" src="/{{ $empresa->logo }}" alt="">@endif
+    </div>
   </div>
 
   <div class="resumo">

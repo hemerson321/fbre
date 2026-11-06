@@ -202,6 +202,7 @@ class CadastroController extends Controller
             'comissao_empresa_pct' => 'nullable|integer|min:0|max:100',
             'ficha' => 'nullable|array',
             'tripulantes' => 'nullable|array',
+            'logo' => 'nullable|image|max:2048',
         ]);
         $ficha = collect($request->input('ficha', []))->map(fn ($v) => is_string($v) ? trim($v) : $v)->filter(fn ($v) => $v !== null && $v !== '')->all();
         $trip = collect($request->input('tripulantes', []))->filter(fn ($t) => trim($t['nome'] ?? '') !== '')->map(fn ($t) => [
@@ -222,6 +223,10 @@ class CadastroController extends Controller
             'ficha' => $ficha ?: null,
             'tripulantes' => $trip ?: null,
         ]);
+        if ($request->hasFile('logo')) {
+            $embarcacao->logo = 'storage/'.$request->file('logo')->store('logos', 'public');
+            $embarcacao->save();
+        }
         return back()->with('ok', 'Embarcação atualizada.');
     }
 
