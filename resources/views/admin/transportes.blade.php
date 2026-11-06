@@ -13,9 +13,15 @@
       <input name="nome" class="input !min-h-[42px]" placeholder="Nome do barco/lancha" required>
       <button class="btn btn-accent btn-sm">+ Adicionar</button>
     </form>
-    <div class="space-y-2">
+    <div class="space-y-2" x-data="{ todos:false }">
+      @if($embarcacoes->count())<div class="flex justify-end"><button type="button" @click="todos=!todos" class="btn btn-ghost btn-sm" x-text="todos ? '▲ Fechar todos' : '▼ Abrir todos'"></button></div>@endif
       @forelse($embarcacoes as $e)
-        <form method="post" action="{{ route('admin.embarcacoes.salvar',$e) }}" enctype="multipart/form-data" class="rounded-xl border border-slate-200 p-3 {{ $e->ativo?'':'opacity-50' }}" x-data="{ pol: {{ $e->usa_poltrona?'true':'false' }}, qtd: {{ $e->poltronas_qtd ?: 0 }}, colunas: {{ $e->poltronas_colunas ?: 4 }}, avancado: {{ trim((string)($e->poltronas_lista ?? '')) !== '' ? 'true':'false' }}, layout: {{ \Illuminate\Support\Js::from($e->poltronas_lista ?? '') }}, nomes: [], init(){ if(String(this.layout).trim()){ this.nomes=String(this.layout).split(/[\s|]+/).map(s=>s.trim()).filter(s=>s!==''); this.qtd=this.nomes.length; } else { this.sincronizar(); } }, sincronizar(){ const n=Math.max(0,Math.min(500,parseInt(this.qtd)||0)); const nv=[]; for(let i=0;i<n;i++){ nv.push((this.nomes[i]!==undefined&&String(this.nomes[i]).trim()!=='')?this.nomes[i]:String(i+1)); } this.nomes=nv; }, get esq(){ return Math.ceil(this.colunas/2); }, montar(){ if(this.avancado&&String(this.layout).trim()) return this.layout; let L=[]; for(let i=0;i<this.nomes.length;i+=this.colunas){ const f=this.nomes.slice(i,i+this.colunas); const e=f.slice(0,this.esq).join(' '); const d=f.slice(this.esq).join(' '); L.push(d?(e+' | '+d):e); } return L.join('\n'); } }">@csrf
+        <form method="post" action="{{ route('admin.embarcacoes.salvar',$e) }}" enctype="multipart/form-data" class="rounded-xl border border-slate-200 p-3 {{ $e->ativo?'':'opacity-50' }}" x-data="{ aberto:false, pol: {{ $e->usa_poltrona?'true':'false' }}, qtd: {{ $e->poltronas_qtd ?: 0 }}, colunas: {{ $e->poltronas_colunas ?: 4 }}, avancado: {{ trim((string)($e->poltronas_lista ?? '')) !== '' ? 'true':'false' }}, layout: {{ \Illuminate\Support\Js::from($e->poltronas_lista ?? '') }}, nomes: [], init(){ if(String(this.layout).trim()){ this.nomes=String(this.layout).split(/[\s|]+/).map(s=>s.trim()).filter(s=>s!==''); this.qtd=this.nomes.length; } else { this.sincronizar(); } }, sincronizar(){ const n=Math.max(0,Math.min(500,parseInt(this.qtd)||0)); const nv=[]; for(let i=0;i<n;i++){ nv.push((this.nomes[i]!==undefined&&String(this.nomes[i]).trim()!=='')?this.nomes[i]:String(i+1)); } this.nomes=nv; }, get esq(){ return Math.ceil(this.colunas/2); }, montar(){ if(this.avancado&&String(this.layout).trim()) return this.layout; let L=[]; for(let i=0;i<this.nomes.length;i+=this.colunas){ const f=this.nomes.slice(i,i+this.colunas); const e=f.slice(0,this.esq).join(' '); const d=f.slice(this.esq).join(' '); L.push(d?(e+' | '+d):e); } return L.join('\n'); } }">@csrf
+          <div class="flex items-center justify-between cursor-pointer gap-2" @click="aberto=!aberto">
+            <div class="font-bold text-slate-700">🚤 {{ $e->nome }}@if(!$e->ativo) <span class="chip st-cinza text-xs">inativo</span>@endif @if($e->dono_nome)<span class="text-[11px] text-slate-400 font-normal"> · dono {{ $e->dono_nome }}</span>@endif</div>
+            <span class="text-slate-400 text-sm select-none" x-text="(aberto||todos)?'▲':'▼'"></span>
+          </div>
+          <div x-show="aberto || todos" x-cloak class="mt-2 space-y-0">
           <div class="flex flex-wrap items-end gap-2">
             <div class="flex-1 min-w-[160px]"><label class="label">Nome</label><input name="nome" class="input !min-h-[40px]" value="{{ $e->nome }}" required></div>
             <label class="flex items-center gap-2 text-sm font-medium pb-2 cursor-pointer">
@@ -111,6 +117,7 @@
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </form>
         <form method="post" action="{{ route('admin.cadastros.destroy',['embarcacoes',$e->id]) }}" class="hidden">@csrf @method('DELETE')</form>
