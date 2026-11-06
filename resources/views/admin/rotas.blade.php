@@ -16,9 +16,10 @@
 </div>
 
 {{-- LISTA --}}
-<div class="space-y-3">
+<div class="space-y-3" id="rotas-lista">
 @forelse($rotas as $r)
-  <div class="card p-4 {{ $r->ativo?'':'opacity-60' }}">
+  <div class="card p-4 {{ $r->ativo?'':'opacity-60' }}" data-id="{{ $r->id }}">
+    <div class="drag-rota cursor-grab select-none text-slate-300 leading-none mb-1" title="Segure e arraste pra mudar a ordem">⠿ <span class="text-[11px] align-middle text-slate-400">arraste pra reordenar</span></div>
     <div class="flex items-start justify-between gap-2">
       <div>
         @if($r->embarcacao)
@@ -49,4 +50,22 @@
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.3/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var el = document.getElementById('rotas-lista');
+  if (el && window.Sortable) {
+    window.Sortable.create(el, {
+      handle: '.drag-rota', animation: 150, ghostClass: 'opacity-40',
+      onEnd: function(){
+        var ids = Array.prototype.slice.call(el.querySelectorAll('[data-id]')).map(function(c){ return c.getAttribute('data-id'); });
+        fetch('{{ route('admin.rotas.reordenar') }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+          body: JSON.stringify({ ordem: ids })
+        }).catch(function(){});
+      }
+    });
+  }
+});
+</script>
 @endsection

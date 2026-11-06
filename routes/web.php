@@ -205,6 +205,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/excluir-vendas', [CadastroController::class, 'excluirVendas'])->name('excluir-vendas');
         Route::get('/rotas', [RotaController::class, 'index'])->name('rotas');
         Route::post('/rotas', [RotaController::class, 'store'])->name('rotas.store');
+        Route::post('/rotas/reordenar', [RotaController::class, 'reordenar'])->name('rotas.reordenar');
         Route::put('/rotas/{rota}', [RotaController::class, 'update'])->name('rotas.update');
         Route::post('/rotas/{rota}/toggle', [RotaController::class, 'toggle'])->name('rotas.toggle');
         Route::delete('/rotas/{rota}', [RotaController::class, 'excluir'])->name('rotas.excluir');

@@ -17,7 +17,7 @@ class RotaController extends Controller
     {
         $empresa = Tenant::empresa();
         return view('admin.rotas', [
-            'rotas' => Rota::with(['paradas', 'embarcacao'])->orderBy('nome')->get(),
+            'rotas' => Rota::with(['paradas', 'embarcacao'])->orderBy('ordem')->orderBy('nome')->get(),
             'embarcacoes' => Embarcacao::orderBy('nome')->get(),
             'tiposPassageiro' => \App\Models\TipoPassageiro::where('ativo', true)
                 ->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(),
@@ -29,6 +29,15 @@ class RotaController extends Controller
             'localidades' => Rota::todasLocalidades(),
             'dias' => Rota::DIAS,
         ]);
+    }
+
+    public function reordenar(Request $request)
+    {
+        $ids = (array) $request->input('ordem', []);
+        foreach (array_values($ids) as $i => $id) {
+            Rota::where('id', (int) $id)->update(['ordem' => $i]);
+        }
+        return response()->json(['ok' => true]);
     }
 
     public function store(Request $request)
