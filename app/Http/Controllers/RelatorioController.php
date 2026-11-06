@@ -61,6 +61,7 @@ class RelatorioController extends Controller
 
         // Acerto do agente externo (revendedor): quanto vendeu, comissao dele e quanto passar pra empresa
         $acerto = null;
+        $pendentes = collect();
         $uu = auth()->user();
         if ($uu->is_revendedor) {
             $passQ = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->whereBetween('created_at', [$inicio, $fim])->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
@@ -90,13 +91,17 @@ class RelatorioController extends Controller
                 'total_devido' => round($repassePend + $avEnt - $avSai, 2),
                 'acertado_hoje' => round((float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', true)->whereDate('acerto_empresa_em', today())->sum('acerto_empresa_valor'), 2),
             ];
+            // débitos em aberto (não acertados) — TODAS as datas, independe do período
+            $pendentes = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)
+                ->orderByDesc('id')->limit(200)
+                ->get(['id', 'numero', 'numero_completo', 'created_at', 'origem', 'destino', 'acerto_empresa_valor']);
         }
 
         $temEncomenda = $uu->temModulo('encomenda');
         $podeAvulso = $uu->podeModulo('avulso');
         $categorias = \App\Models\AvulsoCategoria::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
         return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite', 'transportes', 'transporteId', 'podeTransporte', 'viagens', 'viagemId'))
-            ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'temEncomenda' => $temEncomenda, 'podeAvulso' => $podeAvulso, 'categorias' => $categorias]);
+            ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'pendentes' => $pendentes, 'temEncomenda' => $temEncomenda, 'podeAvulso' => $podeAvulso, 'categorias' => $categorias]);
     }
 
     /** Exporta os recebimentos do período (e filtro de forma) em CSV — sem travar a tela. */

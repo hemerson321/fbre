@@ -199,6 +199,30 @@ function acertoPix(ac){
     </div>
   </div>
 @endif
+  @if($pendentes->isNotEmpty())
+  <div class="card overflow-hidden border border-amber-200">
+    <div class="p-3 border-b bg-amber-50 flex items-center justify-between">
+      <div class="font-bold text-sm text-amber-700">⚠️ Débitos em aberto (não acertados)</div>
+      <div class="text-[11px] text-amber-600">{{ $pendentes->count() }} passagem(ns) · de qualquer data</div>
+    </div>
+    <div class="divide-y text-sm">
+      @foreach($pendentes as $pd)
+      <div class="flex items-center justify-between p-3">
+        <div class="min-w-0">
+          <div class="font-semibold truncate">#{{ $pd->numero_completo ?: $pd->numero }} · {{ $pd->origem }} → {{ $pd->destino }}</div>
+          <div class="text-xs text-slate-400">{{ $pd->created_at?->format('d/m/Y H:i') }}</div>
+        </div>
+        <b class="text-amber-600 whitespace-nowrap">R$ {{ number_format((float)$pd->acerto_empresa_valor,2,',','.') }}</b>
+      </div>
+      @endforeach
+    </div>
+    <div class="flex items-center justify-between p-3 border-t bg-amber-50 font-bold text-sm">
+      <span>Total a repassar pra empresa</span>
+      <span class="text-amber-700">R$ {{ number_format((float)$pendentes->sum('acerto_empresa_valor'),2,',','.') }}</span>
+    </div>
+  </div>
+  @endif
+
   <div class="space-y-4">
     <div class="card overflow-hidden">
       <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Recebimentos ({{ $totais['recebido_qtd'] }})</div>
