@@ -189,7 +189,7 @@
             <div class="flex items-center justify-between gap-2 mt-2 pt-1.5 border-t border-slate-100">
               <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
               <div class="flex items-center gap-3">
-                <label class="text-[12px] font-semibold flex items-center gap-1 cursor-pointer" style="color:var(--cor1)">📎 Docs<input type="file" accept="image/*" multiple capture="environment" class="hidden" @change="anexarDocs(i,$event)"></label>
+                <label class="text-[12px] font-semibold flex items-center gap-1 cursor-pointer" style="color:var(--cor1)">📎 Anexos<input type="file" accept="image/*" multiple capture="environment" class="hidden" @change="anexarDocs(i,$event)"></label>
               </div>
             </div>
             <div x-show="p.documentos && p.documentos.length" x-cloak class="flex flex-wrap gap-1.5 mt-1.5">
