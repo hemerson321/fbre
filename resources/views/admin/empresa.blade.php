@@ -61,6 +61,11 @@
   <div x-show="ts" x-cloak class="pl-7 pb-2"><label class="label !text-xs">Nome que aparece</label><input name="label_taxa_embarque" class="input !min-h-[38px]" value="{{ $empresa->config('label_taxa_embarque') ?: 'Taxa de embarque' }}" maxlength="40"><p class="text-xs text-slate-400 mt-1">Defina os valores em <b>Cadastros gerais → Taxa de embarque</b>.</p></div>
   <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="usa_alimentacao" value="1" x-model="al" class="w-5 h-5 rounded"> <span class="font-semibold">Cobrar alimentação</span></label>
   <div x-show="al" x-cloak class="pl-7 pb-1"><label class="label !text-xs">Nome que aparece</label><input name="label_alimentacao" class="input !min-h-[38px]" value="{{ $empresa->config('label_alimentacao') ?: 'Alimentação' }}" maxlength="40"></div>
+  <div class="border-t pt-2 mt-2">
+    <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="usa_tarifa_transporte" value="1" @checked($empresa->config('usa_tarifa_transporte', true)) class="w-5 h-5 rounded"> <span class="font-semibold">Cobrar com tarifa de transporte</span></label>
+    <label class="flex items-center gap-2 py-1.5 cursor-pointer"><input type="checkbox" name="usa_desconto_tabela" value="1" @checked($empresa->config('usa_desconto_tabela', true)) class="w-5 h-5 rounded"> <span class="font-semibold">Usar preço de tabela com desconto</span></label>
+    <p class="text-[11px] text-slate-400 pl-7">Se desmarcados, esses campos não aparecem ao cadastrar os preços das rotas.</p>
+  </div>
   <p class="text-xs text-slate-400 mt-1">Depois é só definir os valores de cada trecho em <b>Cadastros gerais → rotas</b>.</p>
 </div>
 

@@ -26,6 +26,8 @@ class RotaController extends Controller
                 ->mapWithKeys(fn ($r) => [mb_strtolower($r->origem.'|'.$r->destino.'|'.$r->tipo_passageiro_id) => ['tarifa' => (float) $r->tarifa, 'alim' => (float) $r->alimentacao, 'integral' => (float) $r->integral]])
                 ->toArray(),
             'usaAlimentacao' => (bool) $empresa->config('usa_alimentacao', false),
+            'usaTarifaTransporte' => (bool) $empresa->config('usa_tarifa_transporte', true),
+            'usaDescontoTabela' => (bool) $empresa->config('usa_desconto_tabela', true),
             'localidades' => Rota::todasLocalidades(),
             'dias' => Rota::DIAS,
         ]);

@@ -53,6 +53,8 @@ class EmpresaController extends Controller
         $config = $empresa->config ?? [];
         $config['usa_taxa_embarque'] = $request->boolean('usa_taxa_embarque');
         $config['usa_alimentacao'] = $request->boolean('usa_alimentacao');
+        $config['usa_tarifa_transporte'] = $request->boolean('usa_tarifa_transporte');
+        $config['usa_desconto_tabela'] = $request->boolean('usa_desconto_tabela');
         $config['comprador_passagem'] = $request->boolean('comprador_passagem');
         $config['usa_cancel_transporte'] = $request->boolean('usa_cancel_transporte');
         $config['cancel_antes_pct'] = max(0, min(100, (int) $request->input('cancel_antes_pct', 10)));

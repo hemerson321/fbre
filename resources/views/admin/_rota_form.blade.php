@@ -1,6 +1,6 @@
 @php $edit = (bool) $rota; @endphp
 <form method="post" action="{{ $edit ? route('admin.rotas.update',$rota) : route('admin.rotas.store') }}"
-      x-data="rotaForm({{ $edit ? $rota->paradas->map(fn($p)=>['localidade'=>$p->localidade,'dia_semana'=>$p->dia_semana,'hora'=>$p->hora? substr($p->hora,0,5):''])->toJson() : '[]' }}, @js($trechoPrecosMapa ?? []), @js(($tiposPassageiro ?? collect())->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor','percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,'eh_normal'=>(bool)$t->eh_normal,'pct_sobre'=>$t->pct_sobre ?: 'tarifa'])->values()), @js(['alim'=>($usaAlimentacao ?? true)]))" x-init="$nextTick(()=>{ if(window.Sortable && $refs.paradasList) Sortable.create($refs.paradasList, { handle:'.drag-handle', animation:150, onEnd:(e)=>{ if(e.oldIndex===e.newIndex) return; const it=paradas.splice(e.oldIndex,1)[0]; paradas.splice(e.newIndex,0,it); } }); })" class="space-y-3">
+      x-data="rotaForm({{ $edit ? $rota->paradas->map(fn($p)=>['localidade'=>$p->localidade,'dia_semana'=>$p->dia_semana,'hora'=>$p->hora? substr($p->hora,0,5):''])->toJson() : '[]' }}, @js($trechoPrecosMapa ?? []), @js(($tiposPassageiro ?? collect())->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor','percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,'eh_normal'=>(bool)$t->eh_normal,'pct_sobre'=>$t->pct_sobre ?: 'tarifa'])->values()), @js(['alim'=>($usaAlimentacao ?? true), 'tarifa'=>($usaTarifaTransporte ?? true), 'desc'=>($usaDescontoTabela ?? true)]))" x-init="$nextTick(()=>{ if(window.Sortable && $refs.paradasList) Sortable.create($refs.paradasList, { handle:'.drag-handle', animation:150, onEnd:(e)=>{ if(e.oldIndex===e.newIndex) return; const it=paradas.splice(e.oldIndex,1)[0]; paradas.splice(e.newIndex,0,it); } }); })" class="space-y-3">
 @csrf @if($edit) @method('PUT') @endif
 <div class="grid sm:grid-cols-2 gap-3">
   <div><label class="label">Nome da rota</label><input name="nome" class="input" required value="{{ $edit ? $rota->nome : '' }}" placeholder="Ex.: Linha Tefé"></div>
@@ -66,11 +66,11 @@
                   <template x-if="tp.modo==='valor' || tp.eh_normal">
                     <div class="mt-1" x-data="{c: ensure(t.key, tp.id, tp)}">
                       <div class="grid grid-cols-2 gap-2">
-                        <div><div class="text-[10px] text-slate-500 font-semibold">Integral</div>
+                        <div x-show="usaDesc"><div class="text-[10px] text-slate-500 font-semibold">Integral</div>
                           <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.integral"></div>
-                        <div><div class="text-[10px] text-slate-500 font-semibold">Com desconto</div>
+                        <div><div class="text-[10px] text-slate-500 font-semibold" x-text="usaDesc ? 'Com desconto' : 'Preço'"></div>
                           <input type="text" inputmode="numeric" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="FBRE.fmtMoney(comDesc(c))" @input="setComDesc(c, FBRE.parseMoney($event.target.value)); $event.target.value=FBRE.fmtMoney(comDesc(c))" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(comDesc(c))"></div>
-                        <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
+                        <div x-show="usaTarifa"><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
                           <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.tarifa"></div>
                         <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>
                           <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.alim"></div>
@@ -93,11 +93,11 @@
                       <template x-if="c.manual">
                         <div>
                       <div class="grid grid-cols-2 gap-2">
-                        <div><div class="text-[10px] text-slate-500 font-semibold">Integral</div>
+                        <div x-show="usaDesc"><div class="text-[10px] text-slate-500 font-semibold">Integral</div>
                           <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.integral"></div>
-                        <div><div class="text-[10px] text-slate-500 font-semibold">Com desconto</div>
+                        <div><div class="text-[10px] text-slate-500 font-semibold" x-text="usaDesc ? 'Com desconto' : 'Preço'"></div>
                           <input type="text" inputmode="numeric" class="input !min-h-[32px] w-full text-right text-sm font-semibold" :value="FBRE.fmtMoney(comDesc(c))" @input="setComDesc(c, FBRE.parseMoney($event.target.value)); $event.target.value=FBRE.fmtMoney(comDesc(c))" @focus="$event.target.value=''" @blur="$event.target.value=FBRE.fmtMoney(comDesc(c))"></div>
-                        <div><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
+                        <div x-show="usaTarifa"><div class="text-[10px] text-slate-500 font-semibold">Tarifa de Transporte</div>
                           <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.tarifa"></div>
                         <div x-show="usaAlim"><div class="text-[10px] text-slate-500 font-semibold">Alimentação + Adicional</div>
                           <input class="input !min-h-[32px] w-full text-right text-sm" x-money="c.alim"></div>
@@ -143,6 +143,8 @@ function rotaForm(paradas, precos, tipos, flags){
     precos: Object.assign({}, precos||{}),
     tipos: (tipos||[]).map(t=>({...t})),
     usaAlim: !!(flags&&flags.alim),
+    usaTarifa: !(flags&&flags.tarifa===false),
+    usaDesc: !(flags&&flags.desc===false),
     filtroTrecho: '', abertos: {},
     aberto(k){ return !!this.abertos[k]; },
     toggle(k){ this.abertos = Object.assign({}, this.abertos, {[k]: !this.abertos[k]}); },
