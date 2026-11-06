@@ -68,12 +68,12 @@ class RelatorioController extends Controller
             $passQ = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->whereBetween('created_at', [$inicio, $fim])->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
             $bruto = (float) (clone $passQ)->sum('total');
             $repasseTotal = (float) (clone $passQ)->sum('acerto_empresa_valor');
-            $aPassar = (float) (clone $passQ)->where('acerto_empresa', false)->sum('acerto_empresa_valor');
+            $aPassar = (float) (clone $passQ)->where('acerto_empresa', false)->whereNotIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'))->sum('acerto_empresa_valor');
             $empAcerto = \App\Support\Tenant::empresa();
             $acertoApi = $uu->acerto_pix_api_id ? \App\Models\PagamentoApi::find($uu->acerto_pix_api_id) : null;
             $_pct = max(0, min(100, (int) ($uu->comissao_pct ?? 0)));
             $repasseExpr = (($uu->modo_acerto ?? 'cheio') === 'comissao') ? 'ROUND(total * (100 - '.$_pct.') / 100, 2)' : 'total';
-            $repassePend = (float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)
+            $repassePend = (float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)->whereNotIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'))
                 ->selectRaw('COALESCE(SUM(COALESCE(acerto_empresa_valor, '.$repasseExpr.')),0) as v')->value('v');
             $avEnt = (float) Pagamento::where('user_id', $uu->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'entrada')->where('conferido', false)->where('acerto_conta', true)->selectRaw('COALESCE(SUM(valor * (100 - COALESCE(acerto_pct,0)) / 100),0) as v')->value('v');
             $avSai = (float) Pagamento::where('user_id', $uu->id)->where('estornado', false)->where('modulo', 'avulso')->where('tipo_mov', 'saida')->where('conferido', false)->where('acerto_conta', true)->sum('valor');
@@ -93,10 +93,10 @@ class RelatorioController extends Controller
                 'av_entrada' => round($avEnt, 2),
                 'av_saida' => round($avSai, 2),
                 'total_devido' => round($repassePend + $avEnt - $avSai, 2),
-                'acertado_hoje' => round((float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', true)->whereDate('acerto_empresa_em', today())->sum('acerto_empresa_valor'), 2),
+                'acertado_hoje' => round((float) Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->whereNotIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'))->where('acerto_empresa', true)->whereDate('acerto_empresa_em', today())->sum('acerto_empresa_valor'), 2),
             ];
             // débitos em aberto (não acertados) — TODAS as datas, independe do período
-            $pendentes = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)
+            $pendentes = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->where('acerto_empresa', false)->whereNotIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'))
                 ->orderByDesc('id')->limit(200)
                 ->selectRaw('id, numero, numero_completo, created_at, origem, destino, COALESCE(acerto_empresa_valor, '.$repasseExpr.') as valor_aberto')
                 ->get();

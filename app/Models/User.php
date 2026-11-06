@@ -85,6 +85,12 @@ class User extends Authenticatable
     // ---- revendedores / acerto ----
     public function ehRevendedor(): bool { return (bool) $this->is_revendedor; }
 
+    /** O usuario e dono de algum transporte (lancha)? */
+    public function ehDonoTransporte(): bool { return \App\Models\Embarcacao::where('dono_id', $this->id)->exists(); }
+
+    /** Transportes (lanchas) em que este usuario e o dono. */
+    public function transportesDoDono() { return \App\Models\Embarcacao::where('dono_id', $this->id)->orderBy('nome')->get(); }
+
     /** Pode dar desconto do operador na venda? Revendedor nunca; admin/super sempre; operador conforme a flag. */
     public function podeDesconto(): bool
     {

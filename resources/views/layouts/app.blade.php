@@ -159,6 +159,7 @@ document.addEventListener('alpine:init', () => {
       $grupos['Administração'] = $adm;
   }
   if ($u->ehRevendedor()) $grupos['Revendedor'] = [['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝']];
+  if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
   // cor e ícone de cada grupo do menu (identidade visual por módulo)
   $metaGrupo = [
@@ -170,6 +171,7 @@ document.addEventListener('alpine:init', () => {
     'WiFi'          => ['📶', $corModulo('wifi')],
     'Caixa'         => ['💰', '#0b1a33'],
     'Revendedor'    => ['🤝', '#0e7490'],
+    'Meu transporte' => ['🚤', '#0e7490'],
     'Administração' => ['⚙️', '#334155'],
     'GERATEC'       => ['🛠️', '#334155'],
   ];

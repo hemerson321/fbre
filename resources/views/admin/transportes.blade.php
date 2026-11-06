@@ -24,7 +24,7 @@
       @forelse($embarcacoes as $e)
         <form method="post" action="{{ route('admin.embarcacoes.salvar',$e) }}" enctype="multipart/form-data" class="rounded-xl border border-slate-200 p-3 {{ $e->ativo?'':'opacity-50' }}" x-data="{ aberto:false, pol: {{ $e->usa_poltrona?'true':'false' }}, qtd: {{ $e->poltronas_qtd ?: 0 }}, colunas: {{ $e->poltronas_colunas ?: 4 }}, avancado: {{ trim((string)($e->poltronas_lista ?? '')) !== '' ? 'true':'false' }}, layout: {{ \Illuminate\Support\Js::from($e->poltronas_lista ?? '') }}, nomes: [], init(){ if(String(this.layout).trim()){ this.nomes=String(this.layout).split(/[\s|]+/).map(s=>s.trim()).filter(s=>s!==''); this.qtd=this.nomes.length; } else { this.sincronizar(); } }, sincronizar(){ const n=Math.max(0,Math.min(500,parseInt(this.qtd)||0)); const nv=[]; for(let i=0;i<n;i++){ nv.push((this.nomes[i]!==undefined&&String(this.nomes[i]).trim()!=='')?this.nomes[i]:String(i+1)); } this.nomes=nv; }, get esq(){ return Math.ceil(this.colunas/2); }, montar(){ if(this.avancado&&String(this.layout).trim()) return this.layout; let L=[]; for(let i=0;i<this.nomes.length;i+=this.colunas){ const f=this.nomes.slice(i,i+this.colunas); const e=f.slice(0,this.esq).join(' '); const d=f.slice(this.esq).join(' '); L.push(d?(e+' | '+d):e); } return L.join('\n'); } }">@csrf
           <div class="flex items-center justify-between cursor-pointer gap-2" @click="aberto=!aberto">
-            <div class="font-bold text-slate-700">🚤 {{ $e->nome }}@if(!$e->ativo) <span class="chip st-cinza text-xs">inativo</span>@endif @if($e->dono_nome)<span class="text-[11px] text-slate-400 font-normal"> · dono {{ $e->dono_nome }}</span>@endif</div>
+            <div class="font-bold text-slate-700">🚤 {{ $e->nome }}@if(!$e->ativo) <span class="chip st-cinza text-xs">inativo</span>@endif @if($e->dono_id || $e->dono_nome)<span class="text-[11px] text-slate-400 font-normal"> · {{ $e->dono_id ? "👤 dono: " : "dono " }}{{ optional($e->dono)->name ?? $e->dono_nome }}</span>@endif</div>
             <span class="text-slate-400 text-sm select-none" x-text="(aberto||todos)?'▲':'▼'"></span>
           </div>
           <div x-show="aberto || todos" x-cloak class="mt-2 space-y-0">
@@ -71,8 +71,16 @@
               <div><label class="label !text-xs">Cancel. antes da viagem %</label><input name="cancel_antes_pct" type="number" min="0" max="100" value="{{ $e->cancel_antes_pct ?? \App\Support\Tenant::empresa()?->config('cancel_antes_pct',10) }}" class="input !min-h-[40px]"></div>
               <div><label class="label !text-xs">Cancel. depois da viagem %</label><input name="cancel_depois_pct" type="number" min="0" max="100" value="{{ $e->cancel_depois_pct ?? \App\Support\Tenant::empresa()?->config('cancel_depois_pct',30) }}" class="input !min-h-[40px]"></div>
             </div>
+            <div class="mt-2">
+              <label class="label !text-xs">👤 Dono (usuário do sistema)</label>
+              <select name="dono_id" class="input !min-h-[40px]">
+                <option value="">— sem usuário dono —</option>
+                @foreach(($usuarios ?? []) as $u)<option value="{{ $u->id }}" @selected((string)($e->dono_id ?? '')===(string)$u->id)>{{ $u->name }}</option>@endforeach
+              </select>
+              <p class="text-[11px] text-slate-400 mt-0.5">O dono entra no sistema e vê a tela <b>Meu transporte</b>: vendas do balcão e dos agentes desta lancha, e dá baixa ele mesmo.</p>
+            </div>
             <div class="grid grid-cols-2 gap-2 mt-2">
-              <div><label class="label !text-xs">Dono do transporte (nome)</label>
+              <div><label class="label !text-xs">Nome do dono (se não tiver usuário)</label>
                 <input name="dono_nome" class="input !min-h-[40px]" value="{{ $e->dono_nome }}" placeholder="nome do dono da lancha" maxlength="120"></div>
               <div><label class="label !text-xs">Comissão da empresa %</label><input name="comissao_empresa_pct" type="number" min="0" max="100" value="{{ $e->comissao_empresa_pct }}" class="input !min-h-[40px]" placeholder="0"></div>
             </div>

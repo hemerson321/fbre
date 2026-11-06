@@ -125,6 +125,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/meus-filiados/salvar/{filiado?}', [AcertoController::class, 'salvarFiliado'])->name('filiados.salvar');
     Route::post('/meus-filiados/{filiado}/baixa', [AcertoController::class, 'baixaFiliado'])->name('filiados.baixa');
     Route::post('/meu/acertar-empresa', [AcertoController::class, 'pagarEmpresa'])->name('acertos.pagar-empresa');
+    // Dono do transporte: area "Meu transporte"
+    Route::get('/meu-transporte', [\App\Http\Controllers\MeuTransporteController::class, 'index'])->name('meu-transporte');
+    Route::post('/meu-transporte/{embarcacao}/baixa-balcao', [\App\Http\Controllers\MeuTransporteController::class, 'baixaBalcao'])->name('meu-transporte.baixa-balcao');
+    Route::post('/meu-transporte/{embarcacao}/baixa-agente/{agente}', [\App\Http\Controllers\MeuTransporteController::class, 'baixaAgente'])->name('meu-transporte.baixa-agente');
+    Route::get('/meu-transporte/{embarcacao}/relatorio', [\App\Http\Controllers\MeuTransporteController::class, 'relatorio'])->name('meu-transporte.relatorio');
     Route::get('/passagens/{passagem}/comprovante', [\App\Http\Controllers\PassagemController::class, 'comprovante'])->name('passagens.comprovante')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/imprimir-direto', [\App\Http\Controllers\PassagemController::class, 'imprimirDireto'])->name('passagens.imprimir-direto')->middleware('perm:passagem.ver');
     Route::get('/passagens/{passagem}', [\App\Http\Controllers\PassagemController::class, 'show'])->name('passagens.show')->middleware('perm:passagem.ver');
