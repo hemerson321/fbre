@@ -817,7 +817,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:(p.documentos||[]), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:(p.documentos||[]).map(x=>String(x)), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
       },
