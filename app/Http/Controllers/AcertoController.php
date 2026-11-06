@@ -127,11 +127,29 @@ class AcertoController extends Controller
         $pct = (int) $embarcacao->comissao_empresa_pct;
         $base = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
-        $passagens = (clone $base)->orderByDesc('id')->limit(500)->get();
-        $bruto = (float) (clone $base)->sum('total');
-        $dono = round($bruto * (100 - $pct) / 100, 2);
+        $passagens = (clone $base)->with('operador')->orderByDesc('id')->limit(1000)->get();
+        // parte do dono por passagem: venda de AGENTE (repasse) -> empresa nao ganha, dono recebe o repasse;
+        // venda de BALCAO -> dono recebe o total menos a comissao da empresa.
+        foreach ($passagens as $p) {
+            $p->dono_valor = $p->revendedor_id
+                ? (float) $p->acerto_empresa_valor
+                : round((float) $p->total * (100 - $pct) / 100, 2);
+            $p->canal = $p->revendedor_id ? 'agente' : 'balcao';
+        }
+        $balcao  = $passagens->where('canal', 'balcao')->values();
+        $agentes = $passagens->where('canal', 'agente')->values();
+        $brutoBalcao  = round((float) $balcao->sum('total'), 2);
+        $donoBalcao   = round((float) $balcao->sum('dono_valor'), 2);
+        $brutoAgentes = round((float) $agentes->sum('total'), 2);
+        $donoAgentes  = round((float) $agentes->sum('dono_valor'), 2);
+        $bruto = round($brutoBalcao + $brutoAgentes, 2);
+        $dono = round($donoBalcao + $donoAgentes, 2);
         $comissao = round($bruto - $dono, 2);
-        return view('acertos.dono', compact('embarcacao', 'passagens', 'bruto', 'dono', 'comissao', 'pct', 'viagemId'));
+        return view('acertos.dono', compact(
+            'embarcacao', 'passagens', 'balcao', 'agentes',
+            'brutoBalcao', 'donoBalcao', 'brutoAgentes', 'donoAgentes',
+            'bruto', 'dono', 'comissao', 'pct', 'viagemId'
+        ));
     }
 
     public function baixaEmpresa(Request $request, User $revendedor)
