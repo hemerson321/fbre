@@ -23,17 +23,25 @@ class RelatorioController extends Controller
         $podeTransporte = auth()->user()->podeFiltrarTransporte();
         $transporteId = $podeTransporte ? $request->input('transporte_id') : null;
         $transportes = \App\Models\Embarcacao::orderBy('nome')->get();
+        $viagemId = $request->input('viagem_id') ?: null;
+        $viagens = \App\Support\Tenant::empresa()?->temRecurso('viagens')
+            ? \App\Models\Viagem::with('rota')->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+                ->orderByDesc('data_partida')->limit(120)->get() : collect();
+        $fViagemPag = fn ($q) => $q->where(function ($w) use ($viagemId) {
+            $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('viagem_id', $viagemId)->select('id')))
+              ->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('viagem_id', $viagemId)->select('id')));
+        });
 
         // período longo (> 31 dias) abre resumido por padrão pra não travar
         $longo = $inicio->diffInDays($fim) > 31;
         $pedido = $request->input('modo');
         $modo = $pedido === 'resumido' ? 'resumido' : ($pedido === 'analitico' ? 'analitico' : ($longo ? 'resumido' : 'analitico'));
 
-        $encQ = Encomenda::when(! $todos, fn ($q) => $q->where('user_id', $uid))->whereBetween('created_at', [$inicio, $fim])->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId));
+        $encQ = Encomenda::when(! $todos, fn ($q) => $q->where('user_id', $uid))->whereBetween('created_at', [$inicio, $fim])->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
         $pagQ = Pagamento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('estornado', false)
             ->when($canal, fn ($q) => $q->canal($canal))->whereBetween('created_at', [$inicio, $fim])
-            ->when($transporteId, fn ($q) => $q->where(function ($w) use ($transporteId) { $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('embarcacao_id', $transporteId)->select('id')))->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id'))); }));
-        $evQ = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')->whereBetween('created_at', [$inicio, $fim])->when($transporteId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id')));
+            ->when($transporteId, fn ($q) => $q->where(function ($w) use ($transporteId) { $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('embarcacao_id', $transporteId)->select('id')))->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id'))); }))->when($viagemId, $fViagemPag);
+        $evQ = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')->whereBetween('created_at', [$inicio, $fim])->when($transporteId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id')))->when($viagemId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('viagem_id', $viagemId)->select('id')));
 
         // Totais somados NO BANCO (rápido mesmo com milhões de linhas)
         $totais = [
@@ -55,7 +63,7 @@ class RelatorioController extends Controller
         $acerto = null;
         $uu = auth()->user();
         if ($uu->is_revendedor) {
-            $passQ = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->whereBetween('created_at', [$inicio, $fim]);
+            $passQ = Passagem::where('revendedor_id', $uu->id)->where('cancelada', false)->whereBetween('created_at', [$inicio, $fim])->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
             $bruto = (float) (clone $passQ)->sum('total');
             $repasseTotal = (float) (clone $passQ)->sum('acerto_empresa_valor');
             $aPassar = (float) (clone $passQ)->where('acerto_empresa', false)->sum('acerto_empresa_valor');
@@ -87,7 +95,7 @@ class RelatorioController extends Controller
         $temEncomenda = $uu->temModulo('encomenda');
         $podeAvulso = $uu->podeModulo('avulso');
         $categorias = \App\Models\AvulsoCategoria::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
-        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite', 'transportes', 'transporteId', 'podeTransporte'))
+        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite', 'transportes', 'transporteId', 'podeTransporte', 'viagens', 'viagemId'))
             ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'temEncomenda' => $temEncomenda, 'podeAvulso' => $podeAvulso, 'categorias' => $categorias]);
     }
 

@@ -21,6 +21,11 @@
     <select name="transporte_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
       @foreach($transportes as $t)<option value="{{ $t->id }}" @selected((string)$transporteId===(string)$t->id)>{{ $t->nome }}</option>@endforeach</select></div>
   @endif
+  @if($viagens->isNotEmpty())
+  <div><label class="label">Viagem</label>
+    <select name="viagem_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as viagens</option>
+      @foreach($viagens as $v)<option value="{{ $v->id }}" @selected((string)($viagemId ?? '')===(string)$v->id)>{{ $v->data_partida?->format('d/m/Y') }}{{ $v->rota ? ' · '.$v->rota->nome : '' }}</option>@endforeach</select></div>
+  @endif
 </x-periodo>
 
 <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
@@ -34,9 +39,9 @@
 @if(!empty($acerto))
 <div class="card p-4" style="background:linear-gradient(135deg,#0b1a33,#13294d);color:#fff" x-data="acertoPix(@js($acerto))">
   <div class="text-[11px] font-bold uppercase opacity-70 mb-2">Acerto com a empresa · {{ $acerto['qtd'] }} passagem(ns) no período</div>
-  @if(($acerto['a_passar'] ?? 0) > 0)
-    <div class="text-xs opacity-70">Passar pra empresa (período)</div>
-    <div class="text-2xl font-extrabold text-amber-300 leading-tight mb-2">R$ {{ number_format($acerto['a_passar'],2,',','.') }}</div>
+  @if(($acerto['total_devido'] ?? 0) > 0)
+    <div class="text-xs opacity-70">Você deve à empresa (tudo em aberto)</div>
+    <div class="text-2xl font-extrabold text-amber-300 leading-tight mb-2">R$ {{ number_format($acerto['total_devido'],2,',','.') }}</div>
   @else
     <div class="text-xs opacity-70">Arrecadei no período</div>
     <div class="text-2xl font-extrabold text-emerald-300 leading-tight mb-2">R$ {{ number_format($acerto['bruto'],2,',','.') }}</div>
