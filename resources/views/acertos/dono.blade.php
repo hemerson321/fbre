@@ -58,9 +58,11 @@
 
   {{-- ações --}}
   <div class="flex gap-2">
-    <button type="button" @click="compartilhar()" class="btn flex-1 text-white" style="background:#22c55e">📲 Enviar no WhatsApp</button>
+    <a href="{{ route('admin.acertos.dono-relatorio',$embarcacao) }}?pdf=1{{ ($dataViagem ?? null) ? '&data_viagem='.$dataViagem : '' }}" target="_blank" class="btn btn-ghost flex-1" style="border:1px solid #334155">🖨 PDF / Imprimir</a>
+    <button type="button" @click="compartilhar()" class="btn flex-1 text-white" style="background:#22c55e">📲 WhatsApp</button>
     <form method="post" action="{{ route('admin.acertos.baixa-dono',$embarcacao) }}" onsubmit="return confirm('Confirmar pagamento ao dono de {{ $embarcacao->nome }}? Isso dá baixa e lança a saída no caixa.')" class="flex-1">@csrf
       @if($viagemId)<input type="hidden" name="viagem_id" value="{{ $viagemId }}">@endif
+      @if($dataViagem ?? null)<input type="hidden" name="data_viagem" value="{{ $dataViagem }}">@endif
       <button class="btn btn-accent w-full">✓ Pagar dono (baixa)</button>
     </form>
   </div>

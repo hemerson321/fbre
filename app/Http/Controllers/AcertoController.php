@@ -23,6 +23,7 @@ class AcertoController extends Controller
 
         $transporteId = $request->input('transporte_id') ?: null;
         $viagemId = $request->input('viagem_id') ?: null;
+        $dataViagem = $request->input('data_viagem') ?: null;
         $opFiltro = $request->input('user_id') ?: null;
 
         $transportes = \App\Models\Embarcacao::orderBy('nome')->get();
@@ -30,6 +31,11 @@ class AcertoController extends Controller
             ? \App\Models\Viagem::with('rota')->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
                 ->where(fn ($q) => $q->whereBetween('data_partida', [now()->subMonthsNoOverflow(3)->startOfDay(), now()->addMonthsNoOverflow(3)->endOfDay()])->orWhereNull('data_partida'))
                 ->orderByDesc('data_partida')->limit(300)->get() : collect();
+        $datasViagem = $transporteId
+            ? Passagem::where('embarcacao_id', $transporteId)->where('cancelada', false)->whereNotNull('data_viagem')
+                ->whereBetween('data_viagem', [now()->subMonthsNoOverflow(3)->toDateString(), now()->addMonthsNoOverflow(3)->toDateString()])
+                ->select('data_viagem')->distinct()->orderByDesc('data_viagem')->pluck('data_viagem')
+            : collect();
         $pessoas = User::where('empresa_id', Tenant::id())->orderBy('name')->get();
 
         $ft = $this->filtraTransp($transporteId);
@@ -38,10 +44,11 @@ class AcertoController extends Controller
         // Agentes externos (revendedores): devem repassar das passagens vendidas.
         $linhas = User::where('is_revendedor', true)
             ->when($opFiltro, fn ($q) => $q->where('id', $opFiltro))
-            ->orderBy('name')->get()->map(function ($r) use ($transporteId, $viagemId) {
+            ->orderBy('name')->get()->map(function ($r) use ($transporteId, $viagemId, $dataViagem) {
                 $base = Passagem::where('revendedor_id', $r->id)->where('cancelada', false)
                     ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
-                    ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
+                    ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+                    ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem));
                 $pend = (clone $base)->where('acerto_empresa', false);
                 return [
                     'rev' => $r,
@@ -55,11 +62,12 @@ class AcertoController extends Controller
         $ops = User::where('empresa_id', Tenant::id())->where('is_revendedor', false)
             ->when($opFiltro, fn ($q) => $q->where('id', $opFiltro))
             ->orderBy('name')->get()
-            ->map(function ($o) use ($inicio, $fim, $transporteId, $viagemId, $ft, $fv) {
+            ->map(function ($o) use ($inicio, $fim, $transporteId, $viagemId, $ft, $fv, $dataViagem) {
                 $base = Pagamento::where('user_id', $o->id)->where('estornado', false)
                     ->where('tipo_mov', '!=', 'saida')->where('meio', '!=', 'desconto')
                     ->whereBetween('created_at', [$inicio, $fim])
-                    ->when($transporteId, $ft)->when($viagemId, $fv);
+                    ->when($transporteId, $ft)->when($viagemId, $fv)
+                    ->when($dataViagem, fn ($q) => $q->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::whereDate('data_viagem', $dataViagem)->select('id')));
                 $pend = (clone $base)->where('conferido', false);
                 return [
                     'op' => $o,
@@ -74,10 +82,11 @@ class AcertoController extends Controller
         // Donos de transporte: a empresa fica com a comissao e paga o resto pro dono.
         $donos = \App\Models\Embarcacao::whereNotNull('dono_nome')->where('dono_nome', '!=', '')
             ->when($transporteId, fn ($q) => $q->where('id', $transporteId))
-            ->orderBy('nome')->get()->map(function ($emb) use ($viagemId) {
+            ->orderBy('nome')->get()->map(function ($emb) use ($viagemId, $dataViagem) {
                 $pct = (int) $emb->comissao_empresa_pct;
                 $base = Passagem::where('embarcacao_id', $emb->id)->where('cancelada', false)->where('transferida', false)
-                    ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
+                    ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+                    ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem));
                 $pend = (clone $base)->where('acerto_dono', false);
                 return [
                     'emb' => $emb,
@@ -91,7 +100,7 @@ class AcertoController extends Controller
         $aba = $request->input('aba');
         return view('acertos.index', compact(
             'linhas', 'ops', 'donos', 'inicio', 'fim', 'periodo', 'aba',
-            'transportes', 'viagens', 'pessoas', 'transporteId', 'viagemId', 'opFiltro'
+            'transportes', 'viagens', 'datasViagem', 'pessoas', 'transporteId', 'viagemId', 'dataViagem', 'opFiltro'
         ));
     }
 
@@ -101,9 +110,11 @@ class AcertoController extends Controller
         abort_unless(auth()->user()->podeAcerto(), 403);
         abort_unless($embarcacao->empresa_id === Tenant::id(), 404);
         $viagemId = $request->input('viagem_id') ?: null;
+        $dataViagem = $request->input('data_viagem') ?: null;
         $pct = (int) $embarcacao->comissao_empresa_pct;
         $q = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
-            ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId));
+            ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
+            ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
         $valorDono = (float) (clone $q)->selectRaw('COALESCE(SUM(CASE WHEN revendedor_id IS NOT NULL THEN acerto_empresa_valor ELSE total * (100 - '.$pct.') / 100 END),0) as v')->value('v');
         $n = $q->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id()]);
         if ($valorDono > 0) {
@@ -124,9 +135,11 @@ class AcertoController extends Controller
         abort_unless(auth()->user()->podeAcerto(), 403);
         abort_unless($embarcacao->empresa_id === Tenant::id(), 404);
         $viagemId = $request->input('viagem_id') ?: null;
+        $dataViagem = $request->input('data_viagem') ?: null;
         $pct = (int) $embarcacao->comissao_empresa_pct;
         $base = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
-            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem));
         $passagens = (clone $base)->with('operador')->orderByDesc('id')->limit(1000)->get();
         // parte do dono por passagem: venda de AGENTE (repasse) -> empresa nao ganha, dono recebe o repasse;
         // venda de BALCAO -> dono recebe o total menos a comissao da empresa.
@@ -145,11 +158,15 @@ class AcertoController extends Controller
         $bruto = round($brutoBalcao + $brutoAgentes, 2);
         $dono = round($donoBalcao + $donoAgentes, 2);
         $comissao = round($bruto - $dono, 2);
-        return view('acertos.dono', compact(
+        $dados = compact(
             'embarcacao', 'passagens', 'balcao', 'agentes',
             'brutoBalcao', 'donoBalcao', 'brutoAgentes', 'donoAgentes',
-            'bruto', 'dono', 'comissao', 'pct', 'viagemId'
-        ));
+            'bruto', 'dono', 'comissao', 'pct', 'viagemId', 'dataViagem'
+        );
+        if ($request->boolean('pdf')) {
+            return view('acertos.dono-pdf', $dados + ['empresa' => Tenant::empresa()]);
+        }
+        return view('acertos.dono', $dados);
     }
 
     public function baixaEmpresa(Request $request, User $revendedor)

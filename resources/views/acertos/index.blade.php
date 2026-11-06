@@ -22,7 +22,7 @@
   <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
     <input type="hidden" name="aba" value="{{ $aba }}">
     <input type="hidden" name="transporte_id" value="{{ $transporteId }}">
-    <input type="hidden" name="viagem_id" value="{{ $viagemId }}">
+    <input type="hidden" name="data_viagem" value="{{ $dataViagem }}">
   </x-periodo>
 
   {{-- filtro por transporte e data da viagem --}}
@@ -43,13 +43,13 @@
     @if($transporteId)
       <div class="flex-1 min-w-[180px]">
         <label class="label !text-xs">📅 Data da viagem</label>
-        <select name="viagem_id" class="input !min-h-[38px]" onchange="this.form.submit()">
+        <select name="data_viagem" class="input !min-h-[38px]" onchange="this.form.submit()">
           <option value="">Todas as datas</option>
-          @foreach($viagens as $v)<option value="{{ $v->id }}" @selected((string)($viagemId ?? '')===(string)$v->id)>{{ $v->data_partida?->format('d/m/Y') }}@if($v->rota) · {{ $v->rota->nome }}@endif</option>@endforeach
+          @foreach($datasViagem as $dv)@php $dvs = \Illuminate\Support\Carbon::parse($dv)->toDateString(); @endphp<option value="{{ $dvs }}" @selected((string)($dataViagem ?? '')===$dvs)>{{ \Illuminate\Support\Carbon::parse($dv)->format('d/m/Y') }}</option>@endforeach
         </select>
       </div>
-      @if($viagemId)<a href="{{ request()->fullUrlWithQuery(['viagem_id'=>null]) }}" class="btn btn-ghost btn-sm">limpar data</a>@endif
-      <a href="{{ request()->fullUrlWithQuery(['transporte_id'=>null,'viagem_id'=>null]) }}" class="btn btn-ghost btn-sm">todos</a>
+      @if($dataViagem)<a href="{{ request()->fullUrlWithQuery(['data_viagem'=>null]) }}" class="btn btn-ghost btn-sm">limpar data</a>@endif
+      <a href="{{ request()->fullUrlWithQuery(['transporte_id'=>null,'data_viagem'=>null]) }}" class="btn btn-ghost btn-sm">todos</a>
     @endif
   </form>
 
@@ -142,9 +142,9 @@
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <a href="{{ route('admin.acertos.dono-relatorio',$l['emb']) }}" class="btn btn-ghost btn-sm whitespace-nowrap">📄 Relatório</a>
+          <a href="{{ route('admin.acertos.dono-relatorio',$l['emb']) }}{{ $dataViagem ? '?data_viagem='.$dataViagem : '' }}" class="btn btn-ghost btn-sm whitespace-nowrap">📄 Relatório</a>
           @if($l['qtd']>0)
-          <form method="post" action="{{ route('admin.acertos.baixa-dono',$l['emb']) }}" onsubmit="return confirm('Pagar o dono de {{ $l['emb']->nome }}? Marca {{ $l['qtd'] }} passagens como acertadas com o dono.')">@csrf
+          <form method="post" action="{{ route('admin.acertos.baixa-dono',$l['emb']) }}" onsubmit="return confirm('Pagar o dono de {{ $l['emb']->nome }}? Marca {{ $l['qtd'] }} passagens como acertadas com o dono.')">@csrf @if($dataViagem)<input type="hidden" name="data_viagem" value="{{ $dataViagem }}">@endif
             <button class="btn btn-accent btn-sm whitespace-nowrap">Pagar dono</button>
           </form>
           @else
