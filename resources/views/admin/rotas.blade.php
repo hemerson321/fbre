@@ -15,6 +15,14 @@
   @include('admin._rota_form', ['rota' => null])
 </div>
 
+{{-- IMPORTAR CSV --}}
+<form method="post" action="{{ route('admin.rotas.importar') }}" enctype="multipart/form-data" class="card p-3 flex flex-wrap items-center gap-2 text-sm" onsubmit="return confirm('Importar as rotas do arquivo? Rotas com o mesmo nome no mesmo transporte terão as paradas substituídas.')">@csrf
+  <span class="font-semibold">📥 Importar rotas (CSV)</span>
+  <input type="file" name="arquivo" accept=".csv,.txt" class="input !min-h-[38px] text-xs flex-1 min-w-[180px]" required>
+  <button class="btn btn-ghost btn-sm">Importar</button>
+  <p class="text-[11px] text-slate-400 w-full">Colunas: <b>embarcacao, rota, ordem, localidade, hora, dia_offset</b>. As rotas entram <b>abertas</b> (sem dia fixo); depois é só abrir cada uma e definir o dia de partida.</p>
+</form>
+
 {{-- LISTA --}}
 <div class="space-y-3" id="rotas-lista">
 @forelse($rotas as $r)

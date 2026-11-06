@@ -42,6 +42,52 @@ class RotaController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function importar(Request $request)
+    {
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+        $request->validate(['arquivo' => 'required|file|max:8192']);
+        $linhas = file($request->file('arquivo')->getRealPath(), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        if (! $linhas) return back()->with('erro', 'Arquivo vazio.');
+        if (stripos($linhas[0], 'embarcacao') !== false) array_shift($linhas);
+
+        $embCache = []; $rotaCache = []; $nE = 0; $nR = 0; $nP = 0;
+        \Illuminate\Support\Facades\DB::transaction(function () use ($linhas, &$embCache, &$rotaCache, &$nE, &$nR, &$nP) {
+            foreach ($linhas as $linha) {
+                $c = array_map(fn ($x) => trim((string) $x), str_getcsv($linha));
+                [$emb, $rota, $ordem, $loc, $hora] = array_pad($c, 6, '');
+                if ($emb === '' || $rota === '' || $loc === '') continue;
+
+                $ek = mb_strtolower($emb);
+                if (! isset($embCache[$ek])) {
+                    $e = Embarcacao::firstOrCreate(['nome' => $emb], ['ativo' => true, 'comissao_empresa_pct' => 10]);
+                    if ($e->wasRecentlyCreated) $nE++;
+                    $embCache[$ek] = $e;
+                }
+                $e = $embCache[$ek];
+
+                $rk = $ek.'|'.mb_strtolower($rota);
+                if (! isset($rotaCache[$rk])) {
+                    $rt = Rota::firstOrCreate(['nome' => $rota, 'embarcacao_id' => $e->id], ['ativo' => true]);
+                    if ($rt->wasRecentlyCreated) { $nR++; }
+                    else { \App\Models\RotaParada::where('rota_id', $rt->id)->delete(); } // re-import limpa paradas antigas
+                    $rotaCache[$rk] = $rt;
+                }
+                $rt = $rotaCache[$rk];
+
+                \App\Models\RotaParada::create([
+                    'rota_id' => $rt->id,
+                    'ordem' => (int) ($ordem ?: 0),
+                    'localidade' => $loc,
+                    'hora' => $hora !== '' ? $hora : null,
+                    'dia_semana' => null, // rota aberta: usuario define o dia depois
+                ]);
+                $nP++;
+            }
+        });
+
+        return back()->with('ok', "Importado: {$nE} embarcações novas, {$nR} rotas novas, {$nP} paradas.");
+    }
+
     public function store(Request $request)
     {
         $data = $this->validar($request);
