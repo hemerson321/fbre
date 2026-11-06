@@ -31,8 +31,6 @@ class MeuTransporteController extends Controller
         $meus = $this->transportesDoUsuario();
         abort_if($meus->isEmpty(), 403);
 
-        [$inicio, $fim, $periodo] = CaixaController::periodo($request);
-
         $transporteId = (int) ($request->input('transporte_id') ?: $meus->first()->id);
         $emb = $meus->firstWhere('id', $transporteId) ?: $meus->first();
         $transporteId = (int) $emb->id;
@@ -77,17 +75,15 @@ class MeuTransporteController extends Controller
 
         $aReceber = round($balcaoDono + $agentesDono, 2);
 
-        // ===== JA RECEBIDO (acerto_dono = true) dentro do periodo =====
+        // ===== JA RECEBIDO (acerto_dono = true) — todas as datas / filtro de viagem =====
         $rec = Passagem::where('embarcacao_id', $emb->id)->where('cancelada', false)->where('acerto_dono', true)
-            ->whereBetween('acerto_dono_em', [$inicio, $fim])
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
             ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem));
         $recebido = (float) (clone $rec)->selectRaw('COALESCE(SUM('.$donoExpr.'),0) as v')->value('v');
         $recebidoQtd = (int) (clone $rec)->count();
 
-        // ===== RESUMO DE VENDAS no periodo (por created_at) =====
+        // ===== RESUMO DE VENDAS — todas as datas / filtro de viagem =====
         $vend = Passagem::where('embarcacao_id', $emb->id)->where('cancelada', false)
-            ->whereBetween('created_at', [$inicio, $fim])
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
             ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem));
         $vendasBruto = (float) (clone $vend)->sum('total');
@@ -96,7 +92,7 @@ class MeuTransporteController extends Controller
         $vendasComissao = round($vendasBruto - $vendasDono, 2);
 
         return view('meu-transporte.index', compact(
-            'meus', 'emb', 'transporteId', 'pct', 'inicio', 'fim', 'periodo', 'dataViagem', 'viagemId',
+            'meus', 'emb', 'transporteId', 'pct', 'dataViagem', 'viagemId',
             'temViagens', 'viagens', 'datasViagem',
             'balcaoQtd', 'balcaoBruto', 'balcaoDono', 'agentesList', 'agentesDono', 'agentesQtd',
             'aReceber', 'recebido', 'recebidoQtd',

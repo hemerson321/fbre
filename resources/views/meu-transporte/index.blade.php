@@ -18,20 +18,9 @@
     <a href="{{ route('meu-transporte.relatorio', $emb) }}?pdf=1{{ $dataViagem ? '&data_viagem='.$dataViagem : '' }}{{ $viagemId ? '&viagem_id='.$viagemId : '' }}" target="_blank" class="btn btn-ghost btn-sm ml-auto whitespace-nowrap">📄 Prestação (PDF)</a>
   </div>
 
-  {{-- FILTRO: periodo --}}
-  <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
-    <input type="hidden" name="transporte_id" value="{{ $transporteId }}">
-    <input type="hidden" name="data_viagem" value="{{ $dataViagem }}">
-    <input type="hidden" name="viagem_id" value="{{ $viagemId }}">
-  </x-periodo>
-
   {{-- FILTRO: transporte / data de viagem / viagem --}}
   <form method="get" class="card p-3 flex flex-wrap items-end gap-2 text-sm">
-    <input type="hidden" name="periodo" value="{{ request('periodo', $periodo) }}">
-    <input type="hidden" name="inicio" value="{{ request('inicio') }}">
-    <input type="hidden" name="fim" value="{{ request('fim') }}">
-    <input type="hidden" name="hora_inicio" value="{{ request('hora_inicio') }}">
-    <input type="hidden" name="hora_fim" value="{{ request('hora_fim') }}">
+    <div class="w-full text-[11px] text-slate-400 font-semibold uppercase">Filtrar por viagem (opcional) — por padrão mostra tudo</div>
     @if($meus->count() > 1)
       <div class="flex-1 min-w-[160px]">
         <label class="label !text-xs">🚤 Transporte</label>
@@ -78,12 +67,12 @@
     <div class="card p-3">
       <div class="text-[11px] text-slate-500 uppercase font-semibold">🧾 Líquido do dono</div>
       <div class="text-lg font-bold" style="color:var(--cor1)">{{ $brl($vendasDono) }}</div>
-      <div class="text-[11px] text-slate-400">no período</div>
+      <div class="text-[11px] text-slate-400">total</div>
     </div>
     <div class="card p-3">
       <div class="text-[11px] text-slate-500 uppercase font-semibold">✅ Já recebido</div>
       <div class="text-lg font-bold text-emerald-600">{{ $brl($recebido) }}</div>
-      <div class="text-[11px] text-slate-400">{{ $recebidoQtd }} baixada(s) no período</div>
+      <div class="text-[11px] text-slate-400">{{ $recebidoQtd }} baixada(s)</div>
     </div>
   </div>
 
