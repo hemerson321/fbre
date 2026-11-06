@@ -87,8 +87,27 @@ class CaixaController extends Controller
 
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
 
+        // VENDAS (BRUTO): valor total vendido no filtro, independente de ter entrado no caixa (ex.: venda de agente ainda nao repassada)
+        $filtroData = function ($q) use ($inicio, $fim, $userId, $transporteId) {
+            return $q->whereBetween('created_at', [$inicio, $fim])
+                ->when($userId, fn ($x) => $x->where('user_id', $userId))
+                ->when($transporteId, fn ($x) => $x->where('embarcacao_id', $transporteId));
+        };
+        $aplicaVB = function ($q) use ($viagemId, $userId, $transporteId, $filtroData) {
+            if ($viagemId) {
+                return $q->where('viagem_id', $viagemId)
+                    ->when($userId, fn ($x) => $x->where('user_id', $userId))
+                    ->when($transporteId, fn ($x) => $x->where('embarcacao_id', $transporteId));
+            }
+            return $filtroData($q);
+        };
+        $vendasBruto = 0.0;
+        if (! $modulo || $modulo === 'passagem') $vendasBruto += (float) $aplicaVB(\App\Models\Passagem::where('cancelada', false))->sum('total');
+        if (! $modulo || $modulo === 'encomenda') $vendasBruto += (float) $aplicaVB(Encomenda::query())->sum('total');
+        if (! $modulo || $modulo === 'frete') $vendasBruto += (float) $filtroData(\App\Models\Frete::query())->sum('total');
+
         return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'transporteId', 'podeTransporte'))
-            ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas]);
+            ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto]);
     }
 
     /** Aplica o filtro por canal (PIX dividido em manual/automático). */
