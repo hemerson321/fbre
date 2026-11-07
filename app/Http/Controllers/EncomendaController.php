@@ -20,9 +20,16 @@ class EncomendaController extends Controller
 {
     public function inicio()
     {
+        $u = auth()->user();
+        $preview = request('preview_as') ? ['preview_as' => request('preview_as')] : [];
         // dono de transporte entra direto no "Meu transporte" (sem a home)
-        if (auth()->user()?->ehDonoPuro()) {
-            return redirect()->route('meu-transporte', request('preview_as') ? ['preview_as' => request('preview_as')] : []);
+        if ($u?->ehDonoPuro()) {
+            return redirect()->route('meu-transporte', $preview);
+        }
+        // operador de balcao e agente externo caem direto em "Nova passagem"
+        // (quem vende na frente; admin/gerente/super continuam na home)
+        if ($u && ! $u->isAdmin() && ! $u->isSuper() && ! $u->gerente() && $u->permite('passagem', 'cadastra')) {
+            return redirect()->route('passagens.create', $preview);
         }
         return view('home');
     }
