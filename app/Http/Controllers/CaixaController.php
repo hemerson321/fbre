@@ -128,7 +128,21 @@ class CaixaController extends Controller
         if (! $modulo || $modulo === 'encomenda') $vendasBruto += (float) $aplicaVB(Encomenda::query())->sum('total');
         if (! $modulo || $modulo === 'frete') $vendasBruto += (float) $filtroData(\App\Models\Frete::query())->sum('total');
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem'))
+        // Acerto com donos (balcao): o admin paga cada dono a parte do balcao do barco dele.
+        // So aparece para quem confere o caixa (caixaTodos) e nunca o(s) proprio(s) barco(s) do viewer.
+        $donosBalcao = collect();
+        if (auth()->user()->caixaTodos()) {
+            $meusIds = $meusBarcos ?: [];
+            $donosBalcao = \App\Models\Embarcacao::whereNotNull('dono_id')->whereNotIn('id', $meusIds)->orderBy('nome')->get()
+                ->map(function ($e) {
+                    $pct = (int) $e->comissao_empresa_pct;
+                    $p = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+                        ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->first();
+                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'valor' => (float) $p->v, 'dono' => optional($e->dono)->name ?? $e->dono_nome];
+                })->filter(fn ($x) => $x->valor > 0)->values();
+        }
+
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto]);
     }
 

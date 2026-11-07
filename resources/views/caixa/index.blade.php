@@ -84,6 +84,32 @@
   </div>
 </div>
 
+@if($donosBalcao->isNotEmpty())
+<div class="card overflow-hidden border border-amber-200">
+  <div class="p-3 border-b bg-amber-50 flex items-center justify-between flex-wrap gap-2">
+    <div class="font-bold text-sm text-amber-700">🚤 Acerto com donos (balcão)</div>
+    <div class="text-[11px] text-amber-600">pague o dono do balcão vendido pra lancha dele; fica só a comissão da empresa</div>
+  </div>
+  <div class="divide-y text-sm">
+    @foreach($donosBalcao as $d)
+    <div class="flex items-center justify-between gap-2 p-3 flex-wrap">
+      <div class="min-w-0">
+        <div class="font-semibold truncate">🚤 {{ $d->emb->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· dono {{ $d->dono }}</span>@endif</div>
+        <div class="text-xs text-slate-400">{{ $d->qtd }} passagem(ns) de balcão · comissão empresa {{ (int)$d->emb->comissao_empresa_pct }}%</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="text-lg font-bold text-amber-700">R$ {{ number_format($d->valor,2,',','.') }}</div>
+        <form method="post" action="{{ route('meu-transporte.baixa-balcao', $d->emb) }}" onsubmit="return confirm('Pagar o dono de {{ $d->emb->nome }}? Sai R$ {{ number_format($d->valor,2,',','.') }} do caixa e fica só a comissão da empresa.')">
+          @csrf
+          <button class="btn btn-accent btn-sm whitespace-nowrap">Pagar dono</button>
+        </form>
+      </div>
+    </div>
+    @endforeach
+  </div>
+</div>
+@endif
+
 <div class="card overflow-hidden">
   <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Por operador</div>
   <table class="w-full text-sm"><thead class="bg-slate-50 text-[11px] uppercase text-slate-500"><tr><th class="p-3 text-left">Operador</th>@foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)<th class="p-3 text-right">{{ $meios[$m] }}</th>@endforeach<th class="p-3 text-right">Total</th></tr></thead>
