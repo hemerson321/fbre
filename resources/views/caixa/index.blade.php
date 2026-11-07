@@ -2,7 +2,7 @@
 @section('titulo','Caixa')
 @section('conteudo')
 <div class="space-y-4">
-<div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ auth()->user()->ehDonoTransporte() ? '🚤 Caixa do meu transporte' : ($verTodos ? 'Caixa geral' : 'Meu caixa') }}</h1>
+<div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ (auth()->user()->ehDonoTransporte() && ! auth()->user()->caixaTodos()) ? '🚤 Caixa do meu transporte' : ($verTodos ? 'Caixa geral' : 'Meu caixa') }}</h1>
   <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Imprimir</button></div>
 
 @if($podeAvulso)
@@ -61,6 +61,11 @@
   <div><label class="label">Transporte</label>
     <select name="transporte_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
       @foreach($transportes as $t)<option value="{{ $t->id }}" @selected((string)$transporteId===(string)$t->id)>{{ $t->nome }}</option>@endforeach</select></div>
+  @endif
+  @if($podeTransporte && $transporteId && $datasViagem->count())
+  <div><label class="label">Data da viagem</label>
+    <select name="data_viagem" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as datas</option>
+      @foreach($datasViagem as $dv)@php $dvs=\Illuminate\Support\Carbon::parse($dv)->toDateString(); @endphp<option value="{{ $dvs }}" @selected((string)($dataViagem ?? '')===$dvs)>{{ \Illuminate\Support\Carbon::parse($dv)->format('d/m/Y') }}</option>@endforeach</select></div>
   @endif
 </x-periodo>
 @if($viagemId)<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Mostrando o caixa da viagem selecionada (o período acima é ignorado).</div>@endif

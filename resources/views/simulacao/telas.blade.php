@@ -60,7 +60,7 @@ function setFrame(frame){
   var sel=frame.querySelector('select[data-sim]');
   var view=frame.querySelector('[data-view]');
   var id=sel.value;
-  if(id){ view.innerHTML='<iframe src="{{ url('/simulacao/tela') }}/'+encodeURIComponent(id)+'?t='+Date.now()+'"></iframe>'; }
+  if(id){ view.innerHTML='<iframe src="{{ url('/') }}?preview_as='+encodeURIComponent(id)+'&t='+Date.now()+'"></iframe>'; }
   else { view.innerHTML='<div class="sim-empty">Escolha o usuário no topo.</div>'; }
 }
 function recarregar(){ document.querySelectorAll('.sim-frame').forEach(setFrame); }

@@ -1,6 +1,7 @@
 @php
     $empresa = \App\Support\Tenant::empresa();
     $u = auth()->user();
+    $previewAs = (int) request('preview_as');
     $cor1 = $empresa?->cor_primaria ?? '#0b1a33';
     $cor2 = $empresa?->cor_secundaria ?? '#00a8e8';
     // módulo atual (pela rota) -> cor do topo acompanha o módulo
@@ -136,7 +137,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('frete','ver'))      $g[] = ['r'=>route('fretes.index'), 'l'=>'Fretes / entrega', 'i'=>'📦'];
   if ($g && $modOn('frete')) $grupos['Fretes'] = $g;
   $g = [];
-  if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->ehDonoTransporte()?'Caixa do meu transporte':($u->caixaTodos()?'Caixa geral':'Meu caixa'), 'i'=>'💰'];
+  if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>($u->ehDonoTransporte() && ! $u->caixaTodos())?'Caixa do meu transporte':($u->caixaTodos()?'Caixa geral':'Meu caixa'), 'i'=>'💰'];
   if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
   if ($u->podeAcerto() && $u->temModulo('passagem')) {
       if (\App\Support\Tenant::empresa()?->config('usa_revendedores')) $g[] = ['r'=>route('admin.acertos', ['aba'=>'agentes']), 'l'=>'Acerto Agentes', 'i'=>'🤝'];
@@ -207,9 +208,9 @@ document.addEventListener('alpine:init', () => {
       </form>
     @endif
     <button type="button" id="fbre-net" class="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold bg-white/10" title="Estado da conexão"><span class="inline-block w-2 h-2 rounded-full bg-white/60"></span>…</button>
-    <form method="post" action="{{ route('logout') }}" class="hidden sm:block">@csrf
+    @if(!$previewAs)<form method="post" action="{{ route('logout') }}" class="hidden sm:block">@csrf
       <button class="text-xs rounded-lg bg-white/10 px-3 py-1.5 hover:bg-white/20">Sair</button>
-    </form>
+    </form>@endif
   </div>
 
   {{-- ===== MENU HORIZONTAL (desktop) ===== --}}
@@ -273,9 +274,9 @@ document.addEventListener('alpine:init', () => {
         @endforeach
       </div>
     @endforeach
-    <form method="post" action="{{ route('logout') }}" class="pt-2 border-t">@csrf
+    @if(!$previewAs)<form method="post" action="{{ route('logout') }}" class="pt-2 border-t">@csrf
       <button class="w-full text-left flex items-center gap-3 rounded-xl px-3 py-3 font-medium text-red-600"><span class="w-6 text-center">⏻</span>Sair</button>
-    </form>
+    </form>@endif
   </nav>
 </aside>
 <div class="no-print fixed inset-0 z-30 bg-black/40 lg:hidden" x-show="menu" @click="menu=false" x-cloak></div>
@@ -317,7 +318,27 @@ document.addEventListener('alpine:init', () => {
   </div>
 </nav>
 
-@if(!($simFrame ?? false))<script src="/js/fbre-offline.js?v={{ @filemtime(public_path('js/fbre-offline.js')) ?: '1' }}"></script>@endif
+@if(!$previewAs && !($simFrame ?? false))<script src="/js/fbre-offline.js?v={{ @filemtime(public_path('js/fbre-offline.js')) ?: '1' }}"></script>@endif
+@if($previewAs)
+<script>
+(function(){
+  var pid = {{ $previewAs }};
+  function withPreview(href){
+    try{ var u=new URL(href, location.origin); if(u.origin!==location.origin) return href; u.searchParams.set('preview_as', pid); return u.pathname+u.search+u.hash; }catch(e){ return href; }
+  }
+  document.addEventListener('click', function(ev){
+    var a = ev.target.closest ? ev.target.closest('a[href]') : null; if(!a) return;
+    var href = a.getAttribute('href'); if(!href || href[0]==='#' || /^(javascript:|mailto:|tel:)/i.test(href)) return;
+    if(a.target && a.target!=='_self') return;
+    a.setAttribute('href', withPreview(a.href));
+  }, true);
+  document.addEventListener('submit', function(ev){
+    var f = ev.target; if(!f || !f.tagName || f.tagName.toLowerCase()!=='form') return;
+    if(!f.querySelector('input[name=\'preview_as\']')){ var i=document.createElement('input'); i.type='hidden'; i.name='preview_as'; i.value=pid; f.appendChild(i); }
+  }, true);
+})();
+</script>
+@endif
 <script>
   window.FBRE = {
     csrf: document.querySelector('meta[name=csrf-token]').content,

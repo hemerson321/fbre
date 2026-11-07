@@ -25,6 +25,13 @@ class CaixaController extends Controller
         $podeTransporte = auth()->user()->podeFiltrarTransporte();
         $transporteId = $podeTransporte ? $request->input('transporte_id') : null;
         $transportes = \App\Models\Embarcacao::orderBy('nome')->get();
+        $dataViagem = $podeTransporte ? ($request->input('data_viagem') ?: null) : null;
+        $datasViagem = $transporteId
+            ? \App\Models\Passagem::where('embarcacao_id', $transporteId)->where('cancelada', false)->whereNotNull('data_viagem')
+                ->whereBetween('data_viagem', [now()->subMonthsNoOverflow(3)->toDateString(), now()->addMonthsNoOverflow(3)->toDateString()])
+                ->select('data_viagem')->distinct()->orderByDesc('data_viagem')->pluck('data_viagem')
+            : collect();
+        $filtraDataViagem = fn ($q) => $q->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::whereDate('data_viagem', $dataViagem)->select('id'));
         $filtraTransp = fn ($q) => $q->where(function ($w) use ($transporteId) {
             $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('embarcacao_id', $transporteId)->select('id')))
               ->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id')));
@@ -41,7 +48,8 @@ class CaixaController extends Controller
 
         // ===== Escopo do DONO: se o usuario e dono de transporte (ex.: Cris admin+dona),
         // o caixa so mostra as vendas do(s) transporte(s) dele. Para ver tudo, usa o Relatorio. =====
-        $meusBarcos = auth()->user()->ehDonoTransporte()
+        // dono que NAO e admin fica preso no transporte dele; admin/gerente/financeiro ve o caixa da empresa (guiche)
+        $meusBarcos = (auth()->user()->ehDonoTransporte() && ! auth()->user()->caixaTodos())
             ? \App\Models\Embarcacao::where('dono_id', auth()->id())->pluck('id')->map(fn ($i) => (int) $i)->all()
             : null;
         if ($meusBarcos !== null) {
@@ -65,6 +73,7 @@ class CaixaController extends Controller
             ->when($canal, fn ($q) => $this->filtrarCanal($q, $canal))
             ->when($transporteId, $filtraTransp)
             ->when($escopoBarcos, $filtraBarcos)
+            ->when($dataViagem, $filtraDataViagem)
             ->where('tipo_mov', '!=', 'saida')
             ->where($semRevenda);
 
@@ -82,7 +91,7 @@ class CaixaController extends Controller
         $descontos = Pagamento::where('estornado', false)->where('meio', 'desconto')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
-            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->when($escopoBarcos, $filtraBarcos)->where($semRevenda)->sum('valor');
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->when($escopoBarcos, $filtraBarcos)->when($dataViagem, $filtraDataViagem)->where($semRevenda)->sum('valor');
 
         $entregas = Evento::where('tipo', 'entrega')
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
@@ -100,7 +109,7 @@ class CaixaController extends Controller
             ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('origem_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
-            ->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->when($escopoBarcos, $filtraBarcos)->sum('valor');
+            ->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->when($escopoBarcos, $filtraBarcos)->when($dataViagem, $filtraDataViagem)->sum('valor');
 
         $categorias = AvulsoCategoria::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
         $podeAvulso = auth()->user()->podeModulo('avulso');
@@ -124,11 +133,11 @@ class CaixaController extends Controller
             return $filtroData($q);
         };
         $vendasBruto = 0.0;
-        if (! $modulo || $modulo === 'passagem') $vendasBruto += (float) $aplicaVB(\App\Models\Passagem::where('cancelada', false))->sum('total');
+        if (! $modulo || $modulo === 'passagem') $vendasBruto += (float) $aplicaVB(\App\Models\Passagem::where('cancelada', false)->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem)))->sum('total');
         if (! $modulo || $modulo === 'encomenda') $vendasBruto += (float) $aplicaVB(Encomenda::query())->sum('total');
         if (! $modulo || $modulo === 'frete') $vendasBruto += (float) $filtroData(\App\Models\Frete::query())->sum('total');
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'transporteId', 'podeTransporte'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto]);
     }
 
