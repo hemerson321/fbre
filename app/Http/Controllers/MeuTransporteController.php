@@ -144,6 +144,18 @@ class MeuTransporteController extends Controller
             'acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id(),
             'acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id(),
         ]);
+        // Entrada no caixa DO TRANSPORTE (o dono recebeu o repasse do agente). Marcada no barco
+        // para aparecer no "Caixa do meu transporte"; nao entra no caixa geral da empresa.
+        if ($valor > 0 && $n > 0) {
+            Pagamento::create([
+                'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
+                'embarcacao_id' => $embarcacao->id,
+                'meio' => 'dinheiro', 'valor' => $valor, 'user_id' => auth()->id(),
+                'momento' => 'baixa', 'tipo_mov' => 'entrada',
+                'categoria' => 'Repasse do agente', 'descricao' => 'Repasse do agente '.$agente->name.' - '.$embarcacao->nome,
+                'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false,
+            ]);
+        }
         return back()->with('ok', 'Baixa do agente '.$agente->name.': '.$n.' passagem(ns) · R$ '.number_format($valor, 2, ',', '.').' recebido direto do agente.');
     }
 

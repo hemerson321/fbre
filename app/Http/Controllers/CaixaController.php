@@ -60,7 +60,8 @@ class CaixaController extends Controller
         $filtraBarcos = function ($q) use ($escopoBarcos) {
             $q->where(function ($w) use ($escopoBarcos) {
                 $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::whereIn('embarcacao_id', $escopoBarcos)->select('id')))
-                  ->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::whereIn('embarcacao_id', $escopoBarcos)->select('id')));
+                  ->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::whereIn('embarcacao_id', $escopoBarcos)->select('id')))
+                  ->orWhereIn('embarcacao_id', $escopoBarcos);
             });
         };
 
@@ -73,6 +74,7 @@ class CaixaController extends Controller
             ->when($canal, fn ($q) => $this->filtrarCanal($q, $canal))
             ->when($transporteId, $filtraTransp)
             ->when($escopoBarcos, $filtraBarcos)
+            ->when(! $escopoBarcos, fn ($q) => $q->whereNull('embarcacao_id'))
             ->when($dataViagem, $filtraDataViagem)
             ->where('tipo_mov', '!=', 'saida')
             ->where($semRevenda);
