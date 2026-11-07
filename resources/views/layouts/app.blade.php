@@ -161,10 +161,20 @@ document.addEventListener('alpine:init', () => {
       $adm[] = ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'];
       $grupos['Administração'] = $adm;
   }
-  if ($u->ehRevendedor()) $grupos['Revendedor'] = [['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝']];
+  if ($u->ehRevendedor() && \App\Support\Tenant::empresa()?->config('revendedor_multi')) $grupos['Revendedor'] = [['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝']];
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
   if ($u->ehDonoPuro()) $grupos = ['Meu transporte' => [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']]];
+  if ($u->ehRevendedor()) {
+      $itensAg = [
+          ['r'=>route('passagens.create'), 'l'=>'Nova passagem', 'i'=>'🎫'],
+          ['r'=>route('passagens.minhas-vendas'), 'l'=>'Relatório', 'i'=>'📋'],
+      ];
+      // "Meus filiados" so aparece se o recurso multiagente estiver habilitado pra empresa
+      if (\App\Support\Tenant::empresa()?->config('revendedor_multi')) $itensAg[] = ['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝'];
+      $grupos = ['Passagens' => $itensAg];
+      $semBemVindo = true;
+  }
   // cor e ícone de cada grupo do menu (identidade visual por módulo)
   $metaGrupo = [
     'Encomendas'    => ['📦', $corModulo('encomenda')],
