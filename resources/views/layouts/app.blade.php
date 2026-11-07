@@ -141,9 +141,8 @@ document.addEventListener('alpine:init', () => {
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>($u->ehDonoTransporte() && ! $u->caixaTodos())?'Caixa do meu transporte':($u->caixaTodos()?'Caixa geral':'Meu caixa'), 'i'=>'💰'];
   if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
   if ($u->podeAcerto() && $u->temModulo('passagem')) {
-      if (\App\Support\Tenant::empresa()?->config('usa_revendedores')) $g[] = ['r'=>route('admin.acertos', ['aba'=>'agentes']), 'l'=>'Acerto Agentes', 'i'=>'🤝'];
+      // Acerto Agentes/Transporte sairam do menu: agente paga direto o dono e o dono acerta sozinho no "Meu transporte".
       $g[] = ['r'=>route('admin.acertos', ['aba'=>'operadores']), 'l'=>'Acerto Operadores', 'i'=>'💵'];
-      $g[] = ['r'=>route('admin.acertos', ['aba'=>'transportes']), 'l'=>'Acerto Transporte', 'i'=>'🚤'];
   }
   if ($g) $grupos['Caixa'] = $g;
   if ($u->isAdmin() || $u->isSuper()) {
