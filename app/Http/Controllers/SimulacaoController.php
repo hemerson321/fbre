@@ -69,11 +69,14 @@ class SimulacaoController extends Controller
     /** Renderiza a home do sistema COMO o usuario alvo (so para o iframe do painel). Nao mexe na sessao. */
     public function tela(Request $request, User $user)
     {
-        $real = auth()->user();
+        $real = $request->user();
         abort_unless($real && ($real->isAdmin() || $real->isSuper()), 403);
         abort_if($user->super_admin && ! $real->isSuper(), 403);
-        auth()->setUser($user); // so para este request (nao persiste na sessao)
-        return view('home');
+        // fixa o usuario alvo so para este request (nao persiste na sessao)
+        $request->setUserResolver(fn () => $user);
+        auth()->setUser($user);
+        return response(view('home', ['simFrame' => true]))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     public function sair(Request $request)

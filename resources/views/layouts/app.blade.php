@@ -317,7 +317,7 @@ document.addEventListener('alpine:init', () => {
   </div>
 </nav>
 
-<script src="/js/fbre-offline.js?v={{ @filemtime(public_path('js/fbre-offline.js')) ?: '1' }}"></script>
+@if(!($simFrame ?? false))<script src="/js/fbre-offline.js?v={{ @filemtime(public_path('js/fbre-offline.js')) ?: '1' }}"></script>@endif
 <script>
   window.FBRE = {
     csrf: document.querySelector('meta[name=csrf-token]').content,
