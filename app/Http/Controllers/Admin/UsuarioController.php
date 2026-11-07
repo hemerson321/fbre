@@ -96,7 +96,7 @@ class UsuarioController extends Controller
             'password' => [$u ? 'nullable' : 'required', 'string', 'min:6'],
             'prefixo' => ['nullable', 'string', 'max:8', 'regex:/^[A-Za-z0-9]+$/', Rule::unique('users', 'prefixo')->ignore($u?->id)],
             'setor' => 'nullable|string|max:60',
-            'papel' => 'nullable|in:operador_barco,agencia_externa,gerente',
+            'papel' => 'nullable|in:'.implode(',', array_keys(\App\Models\User::PAPEIS)),
             'admin' => 'nullable|boolean',
             'perm_cadastra' => 'nullable|boolean',
             'perm_baixa' => 'nullable|boolean',
