@@ -21,6 +21,18 @@ class SimulacaoController extends Controller
         return $u && ($u->isAdmin() || $u->isSuper());
     }
 
+    /** Listas de usuarios por papel (para os selects). */
+    protected function listas(): array
+    {
+        $donoIds = Embarcacao::whereNotNull('dono_id')->pluck('dono_id')->map(fn ($i) => (int) $i)->unique()->all();
+        return [
+            'admins' => User::where('ativo', true)->where(fn ($q) => $q->where('admin', true)->orWhere('super_admin', true))->orderBy('name')->get(),
+            'operadores' => User::where('ativo', true)->where('is_revendedor', false)->where('admin', false)->where('super_admin', false)->whereNotIn('id', $donoIds)->orderBy('name')->get(),
+            'agentes' => User::where('ativo', true)->where('is_revendedor', true)->orderBy('name')->get(),
+            'donos' => $donoIds ? User::where('ativo', true)->whereIn('id', $donoIds)->orderBy('name')->get() : collect(),
+        ];
+    }
+
     public function index()
     {
         abort_unless($this->podeSimular() || session('simula_admin_id'), 403);
@@ -29,15 +41,7 @@ class SimulacaoController extends Controller
             return redirect()->route('inicio');
         }
 
-        $donoIds = Embarcacao::whereNotNull('dono_id')->pluck('dono_id')->map(fn ($i) => (int) $i)->unique()->all();
-
-        $admins = User::where('ativo', true)->where(fn ($q) => $q->where('admin', true)->orWhere('super_admin', true))->orderBy('name')->get();
-        $operadores = User::where('ativo', true)->where('is_revendedor', false)->where('admin', false)->where('super_admin', false)
-            ->whereNotIn('id', $donoIds)->orderBy('name')->get();
-        $agentes = User::where('ativo', true)->where('is_revendedor', true)->orderBy('name')->get();
-        $donos = $donoIds ? User::where('ativo', true)->whereIn('id', $donoIds)->orderBy('name')->get() : collect();
-
-        return view('simulacao.index', compact('admins', 'operadores', 'agentes', 'donos'));
+        return view('simulacao.index', $this->listas());
     }
 
     public function entrar(Request $request)
@@ -63,7 +67,7 @@ class SimulacaoController extends Controller
     public function telas()
     {
         abort_unless($this->podeSimular(), 403);
-        return view('simulacao.telas');
+        return view('simulacao.telas', $this->listas());
     }
 
     /** Renderiza a home do sistema COMO o usuario alvo (so para o iframe do painel). Nao mexe na sessao. */

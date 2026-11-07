@@ -147,7 +147,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->isAdmin() || $u->isSuper()) {
       $adm = [
           ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'],
-          ['r'=>route('simulacao'), 'l'=>'Simulação (demo)', 'i'=>'🧪'],
+          ['r'=>route('simulacao.telas'), 'l'=>'Simulação (demo)', 'i'=>'🧪'],
           ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
           ['r'=>route('admin.transportes'), 'l'=>'Transportes', 'i'=>'⛴️'],
           ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],

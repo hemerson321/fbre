@@ -1,34 +1,49 @@
 @extends('layouts.app')
 @section('titulo','Simulação — 4 telas')
 @section('conteudo')
+@php
+  $frames = [
+    ['admin',    '🛡️ Administrador', 'desktop', $admins],
+    ['operador', '💼 Operador',       'desktop', $operadores],
+    ['agente',   '🤝 Agente',         'mobile',  $agentes],
+    ['dono',     '🚤 Dono',           'mobile',  $donos],
+  ];
+  $frameHtml = function ($f) {
+    [$role,$label,$tipo,$lista] = $f;
+    $opts = '<option value="">'.$label.' — escolher usuário</option>';
+    foreach ($lista as $u) {
+      $opts .= '<option value="'.$u->id.'">'.e($u->name).($u->prefixo ? ' ('.e($u->prefixo).')' : '').'</option>';
+    }
+    return '<div class="sim-frame sim-'.$tipo.'" data-role="'.$role.'"><div class="sim-wrap">'
+      .'<div class="sim-head"><select class="sim-sel" data-sim="'.$role.'">'.$opts.'</select><span class="sim-tipo">'.$tipo.'</span></div>'
+      .'<div class="sim-view" data-view></div></div></div>';
+  };
+@endphp
 <div class="space-y-3">
   <div class="flex items-center justify-between flex-wrap gap-2">
     <div>
       <h1 class="text-xl font-bold">🧪 Simulação — 4 telas</h1>
-      <p class="text-xs text-slate-500">As 4 visões ao mesmo tempo: 2 em desktop e 2 em celular. Escolha os usuários na <a href="{{ route('simulacao') }}" class="underline">Simulação</a>.</p>
+      <p class="text-xs text-slate-500">Escolha o usuário no topo de cada quadro. 2 em desktop e 2 em celular.</p>
     </div>
-    <div class="flex gap-2">
-      <a href="{{ route('simulacao') }}" class="btn btn-ghost btn-sm">⚙️ Escolher usuários</a>
-      <button type="button" onclick="recarregar()" class="btn btn-ghost btn-sm">🔄 Atualizar</button>
-    </div>
+    <button type="button" onclick="recarregar()" class="btn btn-ghost btn-sm">🔄 Atualizar</button>
   </div>
 
   <div class="text-[11px] font-bold uppercase text-slate-400">🖥️ Desktop</div>
   <div class="grid lg:grid-cols-2 gap-4">
-    <div data-role="admin" data-label="🛡️ Administrador" class="sim-frame sim-desktop"></div>
-    <div data-role="operador" data-label="💼 Operador" class="sim-frame sim-desktop"></div>
+    @foreach(array_filter($frames, fn($f)=>$f[2]==='desktop') as $f){!! $frameHtml($f) !!}@endforeach
   </div>
 
   <div class="text-[11px] font-bold uppercase text-slate-400 pt-1">📱 Celular</div>
   <div class="grid grid-cols-2 gap-4 max-w-xl">
-    <div data-role="agente" data-label="🤝 Agente" class="sim-frame sim-mobile"></div>
-    <div data-role="dono" data-label="🚤 Dono" class="sim-frame sim-mobile"></div>
+    @foreach(array_filter($frames, fn($f)=>$f[2]==='mobile') as $f){!! $frameHtml($f) !!}@endforeach
   </div>
 </div>
 
 <style>
 .sim-wrap{ border:1px solid #e2e8f0; border-radius:16px; overflow:hidden; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.08); }
-.sim-head{ font-size:12px; font-weight:700; padding:6px 10px; background:#0b1a33; color:#fff; display:flex; justify-content:space-between; align-items:center; }
+.sim-head{ padding:6px 8px; background:#0b1a33; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.sim-sel{ flex:1; min-width:0; background:#fff; color:#0b1a33; border:0; border-radius:8px; padding:6px 8px; font-size:12px; font-weight:700; }
+.sim-tipo{ color:#fff; opacity:.6; font-size:11px; text-transform:uppercase; }
 .sim-view{ overflow:hidden; background:#f1f5f9; }
 .sim-view iframe{ border:0; background:#fff; display:block; }
 .sim-desktop .sim-view{ height:430px; }
@@ -40,20 +55,20 @@
 </style>
 
 <script>
-function montar(){
-  document.querySelectorAll('.sim-frame').forEach(function(f){
-    var role=f.getAttribute('data-role'), label=f.getAttribute('data-label');
-    var id=null; try{ id=localStorage.getItem('sim_user_'+role); }catch(e){}
-    var tipo=f.classList.contains('sim-desktop')?'desktop':'celular';
-    var head='<div class="sim-head"><span>'+label+'</span><span style="opacity:.6;font-weight:500">'+tipo+'</span></div>';
-    if(id){
-      f.innerHTML='<div class="sim-wrap">'+head+'<div class="sim-view"><iframe src="{{ url('/simulacao/tela') }}/'+encodeURIComponent(id)+'?t='+Date.now()+'" loading="lazy"></iframe></div></div>';
-    } else {
-      f.innerHTML='<div class="sim-wrap">'+head+'<div class="sim-view"><div class="sim-empty">Escolha o usuário de<br><b>'+label+'</b><br>na tela de Simulação.</div></div></div>';
-    }
-  });
+function setFrame(frame){
+  var sel=frame.querySelector('select[data-sim]');
+  var view=frame.querySelector('[data-view]');
+  var id=sel.value;
+  if(id){ view.innerHTML='<iframe src="{{ url('/simulacao/tela') }}/'+encodeURIComponent(id)+'?t='+Date.now()+'" loading="lazy"></iframe>'; }
+  else { view.innerHTML='<div class="sim-empty">Escolha o usuário no topo.</div>'; }
 }
-function recarregar(){ montar(); }
-montar();
+function recarregar(){ document.querySelectorAll('.sim-frame').forEach(setFrame); }
+document.querySelectorAll('.sim-frame').forEach(function(frame){
+  var sel=frame.querySelector('select[data-sim]');
+  var key='sim_user_'+frame.getAttribute('data-role');
+  try{ var v=localStorage.getItem(key); if(v){ sel.value=v; } }catch(e){}
+  sel.addEventListener('change', function(){ try{ localStorage.setItem(key, sel.value); }catch(e){} setFrame(frame); });
+  setFrame(frame);
+});
 </script>
 @endsection
