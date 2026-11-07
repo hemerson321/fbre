@@ -147,7 +147,7 @@ function acertoPix(ac){
 </script>
 @endif
 
-@if(($podeAvulso ?? false))
+@if(($podeAvulso ?? false) && ! auth()->user()->ehRevendedor())
 <div class="card p-4" x-data="{open:false, tipo:'entrada'}">
   <div class="text-[11px] font-bold uppercase text-slate-500 mb-2">Caixa do agente — entrada / saída (entra no acerto)</div>
   <div class="flex gap-2">
