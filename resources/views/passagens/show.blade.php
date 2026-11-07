@@ -77,7 +77,7 @@
     <button onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost flex-1">🖨 Comprovante</button>
     <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost flex-1">📲 Enviar PDF (WhatsApp)</button>
     @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
-    <button type="button" class="btn btn-danger" @click="painel = painel==='cancel' ? '' : 'cancel'">Cancelar</button>
+    <button type="button" class="btn btn-danger" @click="painel = painel==='cancel' ? '' : 'cancel'">↩ Devolução</button>
     @endif
     @if(!$p->cancelada && !$p->transferida && ($empP?->config('usa_cancel_transporte')) && ($u->isAdmin()||$u->isSuper()))
     <button type="button" class="btn btn-ghost" style="border:1px solid #6366f1;color:#4f46e5" @click="painel = painel==='transf' ? '' : 'transf'">↪ Transferir</button>
@@ -89,9 +89,17 @@
   @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
   <div x-show="painel==='cancel'" x-cloak>
   <form method="post" action="{{ route('passagens.cancelar',$p) }}" class="card p-4">@csrf
-    <label class="label">Motivo do cancelamento</label>
-    <input name="motivo" class="input mb-2" required minlength="3">
-    <button class="btn btn-danger w-full">Confirmar cancelamento</button>
+    @php $embc = $p->embarcacao; $pa = $embc?->cancelAntes() ?? 10; $pd = $embc?->cancelDepois() ?? 30;
+         $jaSaiu = $p->embarcou || ($p->data_viagem && \Carbon\Carbon::parse($p->data_viagem)->endOfDay()->isPast()); @endphp
+    <div class="font-bold text-sm mb-1">↩ Devolução ao passageiro</div>
+    <div class="rounded-lg bg-slate-50 border p-2 text-[12px] text-slate-600 mb-2 space-y-1">
+      <div>🟢 <b>Antes</b> da lancha sair: devolve <b>{{ 100-$pa }}%</b> · retém {{ $pa }}% → <b>caixa local</b> (não entra no caixa da empresa).</div>
+      <div>🔴 <b>Depois</b> que a lancha saiu: devolve <b>{{ 100-$pd }}%</b> · retém {{ $pd }}% → é do <b>dono</b> da lancha.</div>
+      <div class="font-semibold pt-1" style="color:var(--cor1)">Agora é: {{ $jaSaiu ? 'DEPOIS — retém '.$pd.'% (dono)' : 'ANTES — retém '.$pa.'% (caixa local)' }}</div>
+    </div>
+    <label class="label">Motivo da devolução</label>
+    <input name="motivo" class="input mb-2" required minlength="3" placeholder="ex.: passageiro desistiu">
+    <button class="btn btn-danger w-full">Confirmar devolução</button>
   </form>
   </div>
   @endif
@@ -152,7 +160,15 @@
   @endif
   </div>
   @if($p->transferida)<div class="card p-3 text-center text-indigo-600 text-sm font-semibold">↪ Transferida @if($p->transferida_para_id)para <a href="{{ route('passagens.show',$p->transferida_para_id) }}" class="underline">nova passagem</a>@endif · {{ $p->motivo_cancelamento }}</div>
-  @elseif($p->cancelada)<div class="card p-3 text-center text-slate-500 text-sm">Cancelada: {{ $p->motivo_cancelamento }}</div>@endif
+  @elseif($p->cancelada)
+    <div class="card p-3 border border-rose-200 bg-rose-50 text-center text-sm">
+      <div class="font-bold text-rose-700">↩ Devolução{{ $p->cancel_fase==='depois' ? ' · depois da viagem' : ($p->cancel_fase==='antes' ? ' · antes da viagem' : '') }}</div>
+      @if($p->cancel_retido !== null)
+        <div class="text-rose-600 text-[12px] mt-0.5">Retido R$ {{ number_format((float)$p->cancel_retido,2,',','.') }}{{ $p->cancel_fase==='depois' ? ' (dono)' : ($p->cancel_fase==='antes' ? ' (caixa local)' : '') }} · Devolvido R$ {{ number_format((float)$p->cancel_reembolso,2,',','.') }}</div>
+      @endif
+      @if($p->motivo_cancelamento)<div class="text-slate-500 text-[12px] mt-0.5">{{ $p->motivo_cancelamento }}</div>@endif
+    </div>
+  @endif
   @if($p->origem_transferencia_id)<div class="card p-3 text-center text-indigo-600 text-sm">↪ Esta passagem veio de uma <a href="{{ route('passagens.show',$p->origem_transferencia_id) }}" class="underline">transferência</a>.</div>@endif
 </div>
 @endsection

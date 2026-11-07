@@ -742,17 +742,49 @@ class PassagemController extends Controller
                 \App\Models\Pagamento::create([
                     'empresa_id' => $empresa->id, 'modulo' => 'passagem', 'origem_id' => $passagem->id, 'encomenda_id' => null,
                     'meio' => 'dinheiro', 'valor' => $reembolso, 'user_id' => auth()->id(),
-                    'momento' => 'baixa', 'tipo_mov' => 'saida', 'categoria' => 'Reembolso cancelamento',
-                    'descricao' => 'Cancelamento '.($depois ? 'apos' : 'antes').' da viagem — retido '.$pct.'%',
+                    'momento' => 'baixa', 'tipo_mov' => 'saida', 'categoria' => 'Devolução ao passageiro',
+                    'descricao' => 'Devolução '.($depois ? 'apos' : 'antes').' da viagem — devolvido '.(100 - $pct).'%',
                 ]);
             }
+
+            // O valor retido NAO fica como receita da empresa.
+            if ($retido > 0.009) {
+                if ($depois) {
+                    // Depois da saida: os 30% sao do DONO da lancha (lancha ja rodou).
+                    // Sai do caixa da empresa (saida) e entra pro dono (entrada marcada no barco, so balcao).
+                    \App\Models\Pagamento::create([
+                        'empresa_id' => $empresa->id, 'modulo' => 'passagem', 'origem_id' => $passagem->id, 'encomenda_id' => null,
+                        'meio' => 'dinheiro', 'valor' => $retido, 'user_id' => auth()->id(),
+                        'momento' => 'baixa', 'tipo_mov' => 'saida', 'categoria' => 'Devolução — parte do dono',
+                        'descricao' => 'Devolução apos a viagem — '.$pct.'% do dono'.($emb ? ' ('.$emb->nome.')' : ''),
+                    ]);
+                    if (! $passagem->revendedor_id && $emb) {
+                        \App\Models\Pagamento::create([
+                            'empresa_id' => $empresa->id, 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
+                            'embarcacao_id' => $emb->id,
+                            'meio' => 'dinheiro', 'valor' => $retido, 'user_id' => auth()->id(),
+                            'momento' => 'baixa', 'tipo_mov' => 'entrada', 'categoria' => 'Devolução (parte do dono)',
+                            'descricao' => 'Devolução da passagem '.$passagem->numeroFormatado().' — '.$pct.'%',
+                        ]);
+                    }
+                } else {
+                    // Antes da saida: os 10% NAO entram no caixa da empresa — viram caixa local (troco dos funcionarios).
+                    \App\Models\Pagamento::create([
+                        'empresa_id' => $empresa->id, 'modulo' => 'passagem', 'origem_id' => $passagem->id, 'encomenda_id' => null,
+                        'meio' => 'dinheiro', 'valor' => $retido, 'user_id' => auth()->id(),
+                        'momento' => 'baixa', 'tipo_mov' => 'saida', 'categoria' => 'Devolução — caixa local',
+                        'descricao' => 'Devolução antes da viagem — '.$pct.'% p/ caixa local (troco)',
+                    ]);
+                }
+            }
+
             $passagem->forceFill([
                 'cancelada' => true, 'motivo_cancelamento' => $data['motivo'],
                 'cancel_retido' => $retido, 'cancel_reembolso' => $reembolso, 'cancel_fase' => $depois ? 'depois' : 'antes',
             ])->save();
             $passagem->recalcular();
             return redirect()->route('passagens.show', $passagem)
-                ->with('ok', 'Cancelada. Retido '.$pct.'% (R$ '.number_format($retido, 2, ',', '.').'), reembolso R$ '.number_format($reembolso, 2, ',', '.').'.');
+                ->with('ok', 'Devolução registrada. Devolvido R$ '.number_format($reembolso, 2, ',', '.').' ('.(100 - $pct).'%). Retido '.$pct.'% (R$ '.number_format($retido, 2, ',', '.').') — '.($depois ? 'parte do dono' : 'caixa local').'.');
         }
 
         // Sem politica: estorna tudo (comportamento padrao).
@@ -774,6 +806,21 @@ class PassagemController extends Controller
             'data_viagem' => 'nullable|date',
             'motivo' => 'nullable|string|max:300',
         ]);
+
+        // Evita duplicar poltrona no transporte destino.
+        $destino = Embarcacao::find($data['embarcacao_id']);
+        if ($destino && $destino->usa_poltrona) {
+            $seats = $passagem->passageiros->pluck('poltrona')->filter()->map(fn ($x) => (string) $x);
+            if ($seats->isNotEmpty()) {
+                $dv = $data['data_viagem'] ?? $passagem->data_viagem;
+                $ocup = $this->ocupadas($destino->id, $dv, null, $passagem->rota_id, $passagem->origem, $passagem->destino);
+                $conf = $seats->intersect($ocup)->values();
+                if ($conf->isNotEmpty()) {
+                    return back()->with('erro', 'Poltrona(s) '.$conf->implode(', ').' já vendida(s) no '.$destino->nome.' nessa data. Troque a poltrona do passageiro antes de transferir.');
+                }
+            }
+        }
+
         $op = auth()->user();
         $valor = (float) $passagem->pago;
 
@@ -846,6 +893,20 @@ class PassagemController extends Controller
         if ($passagem->rota_id && ($rota = \App\Models\Rota::find($passagem->rota_id))) {
             $viagemId = $rota->viagemPara($nova)->id;
         }
+
+        // Evita duplicar poltrona na nova data (mesmo transporte).
+        $embP = $passagem->embarcacao;
+        if ($embP && $embP->usa_poltrona) {
+            $seats = $passagem->passageiros->pluck('poltrona')->filter()->map(fn ($x) => (string) $x);
+            if ($seats->isNotEmpty()) {
+                $ocup = $this->ocupadas($embP->id, $nova->toDateString(), $viagemId, $passagem->rota_id, $passagem->origem, $passagem->destino, $passagem->id);
+                $conf = $seats->intersect($ocup)->values();
+                if ($conf->isNotEmpty()) {
+                    return back()->with('erro', 'Poltrona(s) '.$conf->implode(', ').' já ocupada(s) em '.$nova->format('d/m/Y').'. Escolha outra data ou troque a poltrona.');
+                }
+            }
+        }
+
         $obs = trim(($passagem->observacao ? $passagem->observacao."\n" : '').'Viagem remarcada de '.$antiga.' para '.$nova->format('d/m/Y').($data['motivo'] ? ' ('.$data['motivo'].')' : ''));
         $passagem->forceFill(['data_viagem' => $nova->toDateString(), 'viagem_id' => $viagemId, 'observacao' => $obs])->save();
         return redirect()->route('passagens.show', $passagem)->with('ok', 'Viagem remarcada para '.$nova->format('d/m/Y').'.');
