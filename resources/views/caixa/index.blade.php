@@ -2,7 +2,7 @@
 @section('titulo','Caixa')
 @section('conteudo')
 <div class="space-y-4">
-<div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ auth()->user()->ehDonoTransporte() ? '🚤 Caixa do meu transporte' : ($verTodos ? 'Caixa geral' : 'Meu caixa') }}</h1>
+<div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ $verTodos ? 'Caixa geral' : 'Meu caixa' }}</h1>
   <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Imprimir</button></div>
 
 @if($podeAvulso)
