@@ -143,7 +143,7 @@
       <span class="n">3</span><span class="ic">🎫</span><span class="t">Passageiros</span>
       <span class="ml-auto text-[13px] font-bold shrink-0">(<span x-text="passageiros.length"></span>)</span>
       <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold shrink-0 whitespace-nowrap" @click="addPax()">＋<span class="hidden sm:inline"> passageiro</span></button>
-      <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1 shrink-0 whitespace-nowrap" @click="abrirCaptura()">📷<span class="hidden sm:inline"> Captura</span></button>
+      @unless(auth()->user()->ehRevendedor())<button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1 shrink-0 whitespace-nowrap" @click="abrirCaptura()">📷<span class="hidden sm:inline"> Captura</span></button>@endunless
     </div>
     <div class="sec-b">
       <div x-show="capturaAviso" x-cloak class="mb-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold px-3 py-2" x-text="capturaAviso"></div>
