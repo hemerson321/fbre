@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('titulo','Simulação — 4 telas')
+@section('titulo','Simulação')
 @section('conteudo')
 @php
   $frames = [
@@ -21,10 +21,7 @@
 @endphp
 <div class="space-y-3" x-data="{ tab:'desktop' }">
   <div class="flex items-center justify-between flex-wrap gap-2">
-    <div>
-      <h1 class="text-xl font-bold">🧪 Simulação — 4 telas</h1>
-      <p class="text-xs text-slate-500">Escolha o usuário no topo de cada quadro.</p>
-    </div>
+    <h1 class="text-xl font-bold">Simulação</h1>
     <button type="button" onclick="recarregar()" class="btn btn-ghost btn-sm">🔄 Atualizar</button>
   </div>
 
