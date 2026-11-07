@@ -62,26 +62,21 @@
   {{-- ABA: ACERTOS --}}
   @if($aba==='acertos')
   {{-- RESUMO DO PERIODO --}}
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    <div class="card p-3">
-      <div class="text-[11px] text-slate-500 uppercase font-semibold">💰 Vendas (bruto)</div>
-      <div class="text-lg font-bold text-slate-800">{{ $brl($vendasBruto) }}</div>
-      <div class="text-[11px] text-slate-400">{{ $vendasQtd }} passagem(ns)</div>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="card p-4 ring-2" style="--tw-ring-color:var(--cor1)">
+      <div class="text-[11px] text-slate-500 uppercase font-semibold">💵 O que é seu</div>
+      <div class="text-2xl font-extrabold" style="color:var(--cor1)">{{ $brl($vendasDono) }}</div>
+      <div class="text-[11px] text-slate-400">{{ $vendasQtd }} venda(s) · de {{ $brl($vendasBruto) }} vendidos</div>
     </div>
-    <div class="card p-3">
-      <div class="text-[11px] text-slate-500 uppercase font-semibold">🏢 Comissão</div>
-      <div class="text-lg font-bold text-slate-500">{{ $brl($vendasComissao) }}</div>
-      <div class="text-[11px] text-slate-400">empresa ({{ $pct }}% balcão) + agentes</div>
-    </div>
-    <div class="card p-3">
-      <div class="text-[11px] text-slate-500 uppercase font-semibold">🧾 Líquido do dono</div>
-      <div class="text-lg font-bold" style="color:var(--cor1)">{{ $brl($vendasDono) }}</div>
-      <div class="text-[11px] text-slate-400">total</div>
-    </div>
-    <div class="card p-3">
+    <div class="card p-4">
       <div class="text-[11px] text-slate-500 uppercase font-semibold">✅ Já recebido</div>
-      <div class="text-lg font-bold text-emerald-600">{{ $brl($recebido) }}</div>
+      <div class="text-2xl font-extrabold text-emerald-600">{{ $brl($recebido) }}</div>
       <div class="text-[11px] text-slate-400">{{ $recebidoQtd }} baixada(s)</div>
+    </div>
+    <div class="card p-4">
+      <div class="text-[11px] text-slate-500 uppercase font-semibold">⏳ A receber</div>
+      <div class="text-2xl font-extrabold text-amber-600">{{ $brl($aReceber) }}</div>
+      <div class="text-[11px] text-slate-400">ainda em aberto</div>
     </div>
   </div>
 
@@ -150,13 +145,23 @@
     <div class="p-3 border-b font-bold text-sm text-slate-500 uppercase">Vendas da lancha ({{ $vendas->count() }})</div>
     <div class="divide-y text-sm">
       @forelse($vendas as $p)
+      @php
+        $ehAg  = (bool) $p->revendedor_id;
+        $donoP = $ehAg ? (float) ($p->acerto_empresa_valor ?? 0) : (float) $p->total * (100 - $pct) / 100;
+        $comP  = (float) $p->total - $donoP;
+      @endphp
       <div class="flex items-center justify-between gap-3 p-3">
         <div class="min-w-0">
           <div class="font-semibold truncate">#{{ $p->numeroFormatado() }} · {{ $p->origem }} → {{ $p->destino }}</div>
-          <div class="text-xs text-slate-400 truncate">{{ $p->revendedor_id ? '🤝 '.($p->revendedor?->name ?? 'agente') : '🏬 balcão' }} · vendeu: {{ $p->operador?->name ?? '—' }}@if($p->data_viagem) · 📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</div>
+          <div class="text-xs text-slate-400 truncate">{{ $ehAg ? '🤝 '.($p->revendedor?->name ?? 'agente') : '🏬 balcão' }} · vendeu: {{ $p->operador?->name ?? '—' }}@if($p->data_viagem) · 📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</div>
+          <div class="text-[11px] mt-1">
+            <span class="text-slate-400">bruto {{ $brl($p->total) }}</span>
+            <span class="text-rose-500 font-medium"> · comissão {{ $ehAg ? 'do agente' : 'empresa '.$pct.'%' }} {{ $brl($comP) }}</span>
+          </div>
         </div>
         <div class="text-right shrink-0">
-          <div class="font-bold">R$ {{ number_format((float)$p->total,2,',','.') }}</div>
+          <div class="text-[10px] text-slate-400 uppercase font-semibold leading-none">seu</div>
+          <div class="font-extrabold text-base" style="color:var(--cor1)">{{ $brl($donoP) }}</div>
           @if($p->acerto_dono)<span class="text-[11px] text-emerald-600 font-semibold">✓ acertado</span>@else<span class="text-[11px] text-amber-600 font-semibold">em aberto</span>@endif
         </div>
       </div>

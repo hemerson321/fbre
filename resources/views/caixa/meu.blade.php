@@ -222,7 +222,22 @@ function acertoPix(ac){
       <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Recebimentos ({{ $totais['recebido_qtd'] }})</div>
       <div class="divide-y text-sm">
         @forelse($recebimentos as $p)
-          <div class="flex justify-between p-3"><div><b>#{{ $p->encomenda?->numeroFormatado() }}</b> <span class="chip bg-slate-100 text-slate-600">{{ $meios[$p->canal] ?? \App\Models\Pagamento::MEIOS[$p->meio] ?? $p->meio }}</span><div class="text-xs text-slate-400">{{ $p->created_at->format('d/m H:i') }}</div></div><b>R$ {{ number_format((float)$p->valor,2,',','.') }}</b></div>
+          @php
+            $pg = $p->passagemOrigem; $en = $p->encomenda;
+            $numero = $pg?->numeroFormatado() ?? $en?->numeroFormatado();
+            $transp = $pg?->embarcacao?->nome ?? $en?->embarcacao?->nome;
+            $quem   = $pg ? ($pg->comprador_nome ?: '—') : ($en?->destinatario_nome ?: '—');
+            $rota   = $pg ? trim(($pg->origem ?? '').' → '.($pg->destino ?? '')) : '';
+          @endphp
+          <div class="flex justify-between gap-3 p-3">
+            <div class="min-w-0">
+              <div class="font-semibold truncate">#{{ $numero }}@if($rota && $rota !== '→') · {{ $rota }}@endif</div>
+              @if($transp)<span class="text-[11px] font-bold text-white px-1.5 py-0.5 rounded inline-block mt-0.5" style="background:var(--cor1)">🚤 {{ $transp }}</span>@endif
+              <div class="text-xs text-slate-500 mt-0.5">👤 {{ $quem }} · 🧑‍💼 {{ $p->user?->name ?? '—' }}</div>
+              <div class="text-[11px] text-slate-400">{{ $p->created_at->format('d/m/Y H:i') }} · <span class="chip bg-slate-100 text-slate-600">{{ $meios[$p->canal] ?? \App\Models\Pagamento::MEIOS[$p->meio] ?? $p->meio }}</span></div>
+            </div>
+            <b class="whitespace-nowrap">R$ {{ number_format((float)$p->valor,2,',','.') }}</b>
+          </div>
         @empty <div class="p-6 text-center text-slate-400">Nenhum recebimento.</div> @endforelse
       </div>
     </div>

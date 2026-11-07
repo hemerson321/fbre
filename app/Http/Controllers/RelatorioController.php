@@ -40,6 +40,7 @@ class RelatorioController extends Controller
 
         $encQ = Encomenda::when(! $todos, fn ($q) => $q->where('user_id', $uid))->whereBetween('created_at', [$inicio, $fim])->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId));
         $pagQ = Pagamento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('estornado', false)
+            ->where(fn ($q) => $q->whereNull('momento')->orWhere('momento', '!=', 'baixa'))
             ->when($canal, fn ($q) => $q->canal($canal))->whereBetween('created_at', [$inicio, $fim])
             ->when($transporteId, fn ($q) => $q->where(function ($w) use ($transporteId) { $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('embarcacao_id', $transporteId)->select('id')))->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id'))); }))->when($viagemId, $fViagemPag);
         $evQ = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')->whereBetween('created_at', [$inicio, $fim])->when($transporteId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id')))->when($viagemId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('viagem_id', $viagemId)->select('id')));
@@ -57,7 +58,7 @@ class RelatorioController extends Controller
         // Listas só no analítico, limitadas (o resto é via Exportar)
         $limite = self::LIMITE;
         $cadastros    = $modo === 'analitico' ? (clone $encQ)->with('embarcacao')->orderByDesc('id')->limit($limite)->get() : collect();
-        $recebimentos = $modo === 'analitico' ? (clone $pagQ)->with('encomenda')->orderByDesc('id')->limit($limite)->get() : collect();
+        $recebimentos = $modo === 'analitico' ? (clone $pagQ)->with(['user', 'encomenda.embarcacao', 'passagemOrigem.embarcacao'])->orderByDesc('id')->limit($limite)->get() : collect();
         $entregas     = $modo === 'analitico' ? (clone $evQ)->with('encomenda')->orderByDesc('id')->limit($limite)->get() : collect();
 
         // Acerto do agente externo (revendedor): quanto vendeu, comissao dele e quanto passar pra empresa

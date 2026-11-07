@@ -56,6 +56,7 @@ class Pagamento extends Model
 
     public function encomenda(): BelongsTo { return $this->belongsTo(Encomenda::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
+    public function passagemOrigem(): BelongsTo { return $this->belongsTo(Passagem::class, 'origem_id'); }
 
     /** Modelo de origem do pagamento conforme o módulo. */
     public function fonte()
