@@ -210,7 +210,7 @@ document.addEventListener('alpine:init', () => {
       @endif
       <div class="min-w-0">
         <div class="font-bold leading-tight truncate">{{ $empresa?->nomeExibicao() ?? 'GERATEC' }}</div>
-        <div class="text-[11px] opacity-70 leading-tight truncate">{{ $u->name }} · {{ $u->setor ?: 'Operador' }}</div>
+        <div class="text-[11px] opacity-70 leading-tight truncate">{{ $u->name }} · {{ $u->ehDonoPuro() ? 'Dono' : ($u->setor ?: 'Operador') }}</div>
       </div>
     </a>
     @if($u->isSuper() && session('empresa_ativa') && ! config('fbre.single'))
