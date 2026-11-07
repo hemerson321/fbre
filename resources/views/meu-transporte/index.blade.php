@@ -5,17 +5,19 @@
 <div class="max-w-4xl mx-auto space-y-4">
 
   {{-- CABECALHO --}}
-  <div class="card p-4 flex items-center gap-3">
-    @if($emb->logo)
-      <img src="/{{ $emb->logo }}" class="h-14 w-14 object-contain rounded-lg border bg-white shrink-0" alt="logo">
-    @else
-      <div class="h-14 w-14 rounded-lg border bg-slate-50 grid place-items-center text-2xl shrink-0">🚤</div>
-    @endif
-    <div class="min-w-0">
-      <h1 class="text-lg font-bold text-slate-800 truncate">{{ $emb->nome }}</h1>
-      <p class="text-xs text-slate-500">Meu transporte · vendas, acertos e baixa</p>
+  <div class="card p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+    <div class="flex items-center gap-3 min-w-0 flex-1">
+      @if($emb->logo)
+        <img src="/{{ $emb->logo }}" class="h-12 w-12 object-contain rounded-lg border bg-white shrink-0" alt="logo">
+      @else
+        <div class="h-12 w-12 rounded-lg border bg-slate-50 grid place-items-center text-2xl shrink-0">🚤</div>
+      @endif
+      <div class="min-w-0">
+        <h1 class="text-lg font-bold text-slate-800 truncate">{{ $emb->nome }}</h1>
+        <p class="text-xs text-slate-500 truncate">Meu transporte · acertos e vendas</p>
+      </div>
     </div>
-    <a href="{{ route('meu-transporte.relatorio', $emb) }}?pdf=1{{ $dataViagem ? '&data_viagem='.$dataViagem : '' }}{{ $viagemId ? '&viagem_id='.$viagemId : '' }}" target="_blank" class="btn btn-ghost btn-sm ml-auto whitespace-nowrap">📄 Prestação (PDF)</a>
+    <a href="{{ route('meu-transporte.relatorio', $emb) }}?pdf=1{{ $dataViagem ? '&data_viagem='.$dataViagem : '' }}{{ $viagemId ? '&viagem_id='.$viagemId : '' }}" target="_blank" class="btn btn-ghost btn-sm w-full sm:w-auto justify-center whitespace-nowrap shrink-0">📄 Prestação (PDF)</a>
   </div>
 
   {{-- FILTRO: transporte / data de viagem / viagem --}}
