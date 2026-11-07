@@ -59,6 +59,23 @@ class SimulacaoController extends Controller
         return redirect()->route('inicio')->with('ok', 'Simulando como '.$alvo->name.'.');
     }
 
+    /** Painel com as 4 telas ao mesmo tempo (2 desktop + 2 celular). */
+    public function telas()
+    {
+        abort_unless($this->podeSimular(), 403);
+        return view('simulacao.telas');
+    }
+
+    /** Renderiza a home do sistema COMO o usuario alvo (so para o iframe do painel). Nao mexe na sessao. */
+    public function tela(Request $request, User $user)
+    {
+        $real = auth()->user();
+        abort_unless($real && ($real->isAdmin() || $real->isSuper()), 403);
+        abort_if($user->super_admin && ! $real->isSuper(), 403);
+        auth()->setUser($user); // so para este request (nao persiste na sessao)
+        return view('home');
+    }
+
     public function sair(Request $request)
     {
         $adminId = session('simula_admin_id');

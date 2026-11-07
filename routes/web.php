@@ -136,6 +136,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/simulacao', [\App\Http\Controllers\SimulacaoController::class, 'index'])->name('simulacao');
     Route::post('/simulacao/entrar', [\App\Http\Controllers\SimulacaoController::class, 'entrar'])->name('simulacao.entrar');
     Route::post('/simulacao/sair', [\App\Http\Controllers\SimulacaoController::class, 'sair'])->name('simulacao.sair');
+    Route::get('/simulacao/telas', [\App\Http\Controllers\SimulacaoController::class, 'telas'])->name('simulacao.telas');
+    Route::get('/simulacao/tela/{user}', [\App\Http\Controllers\SimulacaoController::class, 'tela'])->name('simulacao.tela');
     Route::get('/passagens/{passagem}/comprovante', [\App\Http\Controllers\PassagemController::class, 'comprovante'])->name('passagens.comprovante')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/imprimir-direto', [\App\Http\Controllers\PassagemController::class, 'imprimirDireto'])->name('passagens.imprimir-direto')->middleware('perm:passagem.ver');
     Route::get('/passagens/{passagem}', [\App\Http\Controllers\PassagemController::class, 'show'])->name('passagens.show')->middleware('perm:passagem.ver');

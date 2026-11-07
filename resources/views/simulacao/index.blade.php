@@ -7,6 +7,11 @@
     <p class="text-xs text-slate-500">Entre como um usuário de cada papel pra demonstrar o módulo de passagem ao cliente. Você volta pro seu usuário quando quiser.</p>
   </div>
 
+  <a href="{{ route('simulacao.telas') }}" class="card p-3 flex items-center justify-between gap-2 bg-indigo-50 border-indigo-200 hover:bg-indigo-100 transition">
+    <span class="text-sm font-semibold text-indigo-800">🖥️ Ver as 4 telas juntas (2 desktop + 2 celular)</span>
+    <span class="text-indigo-700 font-bold">→</span>
+  </a>
+
   {{-- abas --}}
   <div class="flex flex-wrap gap-2">
     @foreach(['admin'=>'🛡️ Administrador','operador'=>'💼 Operador','agente'=>'🤝 Agente','dono'=>'🚤 Dono do transporte'] as $k=>$l)
