@@ -118,7 +118,9 @@ class RelatorioController extends Controller
                 })->filter(fn ($x) => $x->valor > 0)->sortByDesc('valor')->values();
         }
 
-        $temEncomenda = $uu->temModulo('encomenda');
+        $_modAtivos = \App\Support\Tenant::empresa()?->config('modulos_ativos');
+        $_encOn = empty($_modAtivos) || in_array('encomenda', (array) $_modAtivos, true);
+        $temEncomenda = $uu->temModulo('encomenda') && $_encOn;
         $podeAvulso = $uu->podeModulo('avulso');
         $categorias = \App\Models\AvulsoCategoria::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
         return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite', 'transportes', 'transporteId', 'podeTransporte', 'viagens', 'viagemId'))
