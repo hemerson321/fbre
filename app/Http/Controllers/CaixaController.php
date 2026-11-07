@@ -124,7 +124,7 @@ class CaixaController extends Controller
             return $filtroData($q);
         };
         $vendasBruto = 0.0;
-        if (! $modulo || $modulo === 'passagem') $vendasBruto += (float) $aplicaVB(\App\Models\Passagem::where('cancelada', false)->where(function ($q) use ($meusBarcos) { $q->whereNull('revendedor_id')->orWhere('acerto_empresa', true)->orWhere(function ($w) use ($meusBarcos) { if (empty($meusBarcos)) { $w->whereRaw('1=0'); } else { $w->where('acerto_dono', true)->whereIn('embarcacao_id', $meusBarcos); } }); })->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem)))->sum('total');
+        if (! $modulo || $modulo === 'passagem') $vendasBruto += (float) $aplicaVB(\App\Models\Passagem::where('cancelada', false)->whereNull('revendedor_id')->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem)))->sum('total');
         if (! $modulo || $modulo === 'encomenda') $vendasBruto += (float) $aplicaVB(Encomenda::query())->sum('total');
         if (! $modulo || $modulo === 'frete') $vendasBruto += (float) $filtroData(\App\Models\Frete::query())->sum('total');
 
