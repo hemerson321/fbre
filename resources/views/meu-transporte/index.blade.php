@@ -99,16 +99,9 @@
           <div class="font-semibold text-slate-700">🏬 Balcão <span class="text-[11px] text-slate-400 font-normal">· a empresa te paga</span></div>
           <div class="text-[11px] text-slate-400">{{ $balcaoQtd }} passagem(ns) · bruto {{ $brl($balcaoBruto) }} · comissão empresa {{ $pct }}% ({{ $brl($balcaoBruto - $balcaoDono) }})</div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="text-right shrink-0">
           <div class="text-lg font-bold text-slate-800">{{ $brl($balcaoDono) }}</div>
-          @if($balcaoDono > 0)
-            <form method="post" action="{{ route('meu-transporte.baixa-balcao', $emb) }}" onsubmit="return confirm('Confirmar que recebeu {{ $brl($balcaoDono) }} da empresa (balcão)? Vai marcar {{ $balcaoQtd }} passagem(ns) como acertadas.')">
-              @csrf
-              <input type="hidden" name="data_viagem" value="{{ $dataViagem }}">
-              <input type="hidden" name="viagem_id" value="{{ $viagemId }}">
-              <button class="btn btn-accent btn-sm whitespace-nowrap">Dar baixa</button>
-            </form>
-          @endif
+          <div class="text-[11px] text-slate-400">a empresa acerta</div>
         </div>
       </div>
     </div>
