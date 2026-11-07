@@ -47,9 +47,9 @@
 .sim-full{ margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); padding-left:16px; padding-right:16px; }
 .sim-desktop .sim-view{ width:100%; height:82vh; min-height:620px; }
 .sim-desktop iframe{ width:100%; height:100%; transform:none; }
-.sim-mobile{ max-width:420px; }
-.sim-mobile .sim-view{ width:400px; height:760px; }
-.sim-mobile iframe{ width:390px; height:741px; transform:scale(1.025); transform-origin:top left; }
+.sim-mobile{ max-width:360px; }
+.sim-mobile .sim-view{ width:340px; height:660px; border-radius:0 0 16px 16px; }
+.sim-mobile iframe{ width:390px; height:757px; transform:scale(.872); transform-origin:top left; }
 .sim-empty{ display:flex; align-items:center; justify-content:center; height:100%; min-height:300px; color:#94a3b8; font-size:13px; text-align:center; padding:12px; }
 </style>
 
