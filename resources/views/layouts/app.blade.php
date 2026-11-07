@@ -318,11 +318,27 @@ document.addEventListener('alpine:init', () => {
   </div>
 </nav>
 
-@if(!$previewAs && !($simFrame ?? false))<script src="/js/fbre-offline.js?v={{ @filemtime(public_path('js/fbre-offline.js')) ?: '1' }}"></script>@endif
 @if($previewAs)
 <script>
 (function(){
   var pid = {{ $previewAs }};
+  var _f = window.fetch ? window.fetch.bind(window) : null;
+  if(_f){
+    window.fetch = function(input, init){
+      try{
+        var url = (typeof input==='string') ? input : (input && input.url);
+        if(url){
+          var u = new URL(url, location.origin);
+          if(u.origin===location.origin && !u.searchParams.has('preview_as')){
+            u.searchParams.set('preview_as', pid);
+            if(typeof input==='string'){ input = u.pathname+u.search+u.hash; }
+            else { input = new Request(u.toString(), input); }
+          }
+        }
+      }catch(e){}
+      return _f(input, init);
+    };
+  }
   function withPreview(href){
     try{ var u=new URL(href, location.origin); if(u.origin!==location.origin) return href; u.searchParams.set('preview_as', pid); return u.pathname+u.search+u.hash; }catch(e){ return href; }
   }
@@ -334,11 +350,12 @@ document.addEventListener('alpine:init', () => {
   }, true);
   document.addEventListener('submit', function(ev){
     var f = ev.target; if(!f || !f.tagName || f.tagName.toLowerCase()!=='form') return;
-    if(!f.querySelector('input[name=\'preview_as\']')){ var i=document.createElement('input'); i.type='hidden'; i.name='preview_as'; i.value=pid; f.appendChild(i); }
+    if(!f.querySelector('input[name=preview_as]')){ var i=document.createElement('input'); i.type='hidden'; i.name='preview_as'; i.value=pid; f.appendChild(i); }
   }, true);
 })();
 </script>
 @endif
+<script src="/js/fbre-offline.js?v={{ @filemtime(public_path('js/fbre-offline.js')) ?: '1' }}"></script>
 <script>
   window.FBRE = {
     csrf: document.querySelector('meta[name=csrf-token]').content,
