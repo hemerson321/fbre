@@ -110,6 +110,7 @@ document.addEventListener('alpine:init', () => {
 @php
   // ---------- menu por módulo (uma definição, usada no topo e na gaveta) ----------
   $grupos = [];
+  $semBemVindo = $u->ehDonoPuro();
   $g = [];
   if ($u->permite('encomenda','cadastra')) $g[] = ['r'=>route('encomendas.create'), 'l'=>'Nova encomenda', 'i'=>'➕'];
   if ($u->permite('encomenda','ver')) $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
@@ -164,6 +165,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->ehRevendedor()) $grupos['Revendedor'] = [['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝']];
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
+  if ($u->ehDonoPuro()) $grupos = ['Meu transporte' => [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']]];
   // cor e ícone de cada grupo do menu (identidade visual por módulo)
   $metaGrupo = [
     'Encomendas'    => ['📦', $corModulo('encomenda')],
@@ -216,11 +218,11 @@ document.addEventListener('alpine:init', () => {
   {{-- ===== MENU HORIZONTAL (desktop) ===== --}}
   <nav class="hidden lg:block bg-white border-b border-slate-200" x-data="{ aberto:null }" @click.outside="aberto=null">
     <div class="mx-auto max-w-[1440px] px-4 flex items-stretch h-12 gap-1">
-      <a href="{{ route('inicio') }}"
+      @if(!$semBemVindo)<a href="{{ route('inicio') }}"
          class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-slate-50"
          style="{{ $ativo(route('inicio')) ? 'color:'.$cor1.';background:color-mix(in srgb,'.$cor1.' 12%,white);box-shadow:inset 0 -3px 0 '.$cor1 : 'color:#334155' }}">
         <span class="text-base">👋</span>Bem Vindo
-      </a>
+      </a>@endif
       @foreach($grupos as $titulo => $itens)
         @php [$gi,$gc] = $metaGrupo[$titulo] ?? ['•','#475569']; $temAtivo = collect($itens)->contains(fn($it)=>$ativo($it['r'])); @endphp
         <div class="relative flex items-center">
@@ -261,9 +263,9 @@ document.addEventListener('alpine:init', () => {
     <button @click="menu=false" class="p-2">✕</button>
   </div>
   <nav class="p-3 space-y-3 text-sm flex-1 overflow-y-auto overscroll-contain pb-8">
-    <a href="{{ route('inicio') }}" @if($ativo(route('inicio'))) style="border-left:4px solid var(--cor1)" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo(route('inicio')) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
+    @if(!$semBemVindo)<a href="{{ route('inicio') }}" @if($ativo(route('inicio'))) style="border-left:4px solid var(--cor1)" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo(route('inicio')) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
       <span class="text-lg w-6 text-center">👋</span>Bem Vindo
-    </a>
+    </a>@endif
     @foreach($grupos as $titulo => $itens)
       <div>
         <div class="px-3 pb-1 text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{{ $titulo }}</div>
@@ -310,7 +312,7 @@ document.addEventListener('alpine:init', () => {
   <div class="grid grid-cols-4 text-[11px] font-semibold text-slate-500">
     @php $tab = fn($r,$l,$i) => '<a href="'.$r.'" class="flex flex-col items-center gap-0.5 py-2 '.($ativo($r)?'text-[var(--cor1)]':'').'"><span class="text-xl">'.$i.'</span>'.$l.'</a>';
       $tabs = [];
-      $tabs[] = $tab(route('inicio'), 'Início', '🏠');
+      if(!$semBemVindo) $tabs[] = $tab(route('inicio'), 'Início', '🏠');
       if($u->podeVerCaixa()) $tabs[] = $tab(route('caixa.index'), 'Caixa', '💰');
       if($u->podeRelatorio()) $tabs[] = $tab(route('relatorio.meu'), 'Relatório', '📋');
       foreach(array_slice($tabs,0,3) as $t) echo $t; @endphp

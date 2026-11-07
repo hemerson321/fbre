@@ -20,6 +20,10 @@ class EncomendaController extends Controller
 {
     public function inicio()
     {
+        // dono de transporte entra direto no "Meu transporte" (sem a home)
+        if (auth()->user()?->ehDonoPuro()) {
+            return redirect()->route('meu-transporte', request('preview_as') ? ['preview_as' => request('preview_as')] : []);
+        }
         return view('home');
     }
 

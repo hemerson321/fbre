@@ -64,6 +64,7 @@ class User extends Authenticatable
         'operador_barco' => 'Operador de Balcão',
         'agencia_externa' => 'Agência Externa',
         'gerente' => 'Gerente',
+        'dono_transporte' => 'Dono de Transporte',
     ];
 
     protected static function booted(): void
@@ -121,6 +122,7 @@ class User extends Authenticatable
     public function podeRetroativo(): bool        { return $this->super_admin || (bool) $this->perm_retroativo; }
     public function podeParcial(): bool           { return $this->admin || $this->gerente() || (bool) $this->perm_parcial; }
     public function gerente(): bool               { return $this->papel === 'gerente'; }
+    public function ehDonoPuro(): bool             { return $this->papel === 'dono_transporte'; }
     public function caixaTodos(): bool            { return $this->admin || $this->gerente() || $this->caixa_todos || $this->financeiro(); }
     public function relatorioTodos(): bool        { return $this->admin || $this->gerente() || $this->relatorio_todos || $this->financeiro(); }
     public function papelNome(): string           { return self::PAPEIS[$this->papel] ?? '—'; }
