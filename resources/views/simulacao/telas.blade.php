@@ -19,7 +19,7 @@
       .'<div class="sim-view" data-view></div></div></div>';
   };
 @endphp
-<div class="space-y-3" x-data="{ tab:'admin' }">
+<div class="space-y-3 sim-full" x-data="{ tab:'admin' }">
   <div class="flex items-center justify-between flex-wrap gap-2">
     <h1 class="text-xl font-bold">Simulação</h1>
     <button type="button" onclick="recarregar()" class="btn btn-ghost btn-sm">🔄 Atualizar</button>
@@ -28,7 +28,7 @@
   {{-- 1 aba por tela --}}
   <div class="flex flex-wrap gap-2">
     @foreach($frames as $f)
-      <button type="button" @click="tab='{{ $f[0] }}'" class="btn btn-sm" :class="tab==='{{ $f[0] }}' ? 'text-white' : 'btn-ghost'" :style="tab==='{{ $f[0] }}' ? 'background:var(--cor1)' : ''">{{ $f[1] }}</button>
+      <button type="button" @click="tab='{{ $f[0] }}'" class="btn !px-5 !py-2.5 text-[15px]" :class="tab==='{{ $f[0] }}' ? 'text-white' : 'btn-ghost'" :style="tab==='{{ $f[0] }}' ? 'background:var(--cor1)' : ''">{{ $f[1] }}</button>
     @endforeach
   </div>
 
@@ -44,11 +44,12 @@
 .sim-tipo{ color:#fff; opacity:.7; font-size:11px; white-space:nowrap; }
 .sim-view{ overflow:hidden; background:#f1f5f9; }
 .sim-view iframe{ border:0; background:#fff; display:block; }
-.sim-desktop .sim-view{ width:794px; max-width:100%; height:620px; }
-.sim-desktop iframe{ width:1280px; height:1000px; transform:scale(.62); transform-origin:top left; }
-.sim-mobile{ max-width:380px; }
-.sim-mobile .sim-view{ width:360px; height:690px; }
-.sim-mobile iframe{ width:390px; height:748px; transform:scale(.923); transform-origin:top left; }
+.sim-full{ margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); padding-left:16px; padding-right:16px; }
+.sim-desktop .sim-view{ width:100%; height:82vh; min-height:620px; }
+.sim-desktop iframe{ width:100%; height:100%; transform:none; }
+.sim-mobile{ max-width:420px; }
+.sim-mobile .sim-view{ width:400px; height:760px; }
+.sim-mobile iframe{ width:390px; height:741px; transform:scale(1.025); transform-origin:top left; }
 .sim-empty{ display:flex; align-items:center; justify-content:center; height:100%; min-height:300px; color:#94a3b8; font-size:13px; text-align:center; padding:12px; }
 </style>
 
