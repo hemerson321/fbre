@@ -73,7 +73,13 @@ class MeuTransporteController extends Controller
         $agentesDono = round((float) $agentesList->sum('dono'), 2);
         $agentesQtd  = (int) $agentesList->sum('qtd');
 
-        $aReceber = round($balcaoDono + $agentesDono, 2);
+        // Saldo devedor do dono (devoluções de passagens já acertadas) — abatido no próximo acerto.
+        $saldoDevedor = round(
+            (float) Pagamento::where('embarcacao_id', $emb->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
+            - (float) Pagamento::where('embarcacao_id', $emb->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
+        if ($saldoDevedor < 0) $saldoDevedor = 0.0;
+
+        $aReceber = round($balcaoDono + $agentesDono - $saldoDevedor, 2);
 
         // ===== JA RECEBIDO (acerto_dono = true) — todas as datas / filtro de viagem =====
         $rec = Passagem::where('embarcacao_id', $emb->id)->where('cancelada', false)->where('acerto_dono', true)
@@ -101,7 +107,7 @@ class MeuTransporteController extends Controller
             'meus', 'emb', 'transporteId', 'pct', 'dataViagem', 'viagemId',
             'temViagens', 'viagens', 'datasViagem',
             'balcaoQtd', 'balcaoBruto', 'balcaoDono', 'agentesList', 'agentesDono', 'agentesQtd',
-            'aba', 'vendas', 'aReceber', 'recebido', 'recebidoQtd',
+            'aba', 'vendas', 'aReceber', 'recebido', 'recebidoQtd', 'saldoDevedor',
             'vendasBruto', 'vendasQtd', 'vendasDono', 'vendasComissao'
         ));
     }
@@ -118,16 +124,36 @@ class MeuTransporteController extends Controller
             ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
         $valor = (float) (clone $q)->selectRaw('COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->value('v');
         $n = $q->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id()]);
-        if ($valor > 0) {
+
+        // Abate o saldo devedor do dono (devoluções de passagens já acertadas).
+        $deb = round(
+            (float) Pagamento::where('embarcacao_id', $embarcacao->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
+            - (float) Pagamento::where('embarcacao_id', $embarcacao->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
+        $deb = max(0.0, $deb);
+        $abate = round(min($valor, $deb), 2);
+        $pagar = round($valor - $abate, 2);
+
+        if ($pagar > 0) {
             Pagamento::create([
                 'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
-                'meio' => 'dinheiro', 'valor' => $valor, 'user_id' => auth()->id(),
+                'meio' => 'dinheiro', 'valor' => $pagar, 'user_id' => auth()->id(),
                 'momento' => 'baixa', 'tipo_mov' => 'saida',
-                'categoria' => 'Pagamento ao dono (balcão)', 'descricao' => 'Repasse do balcão ao dono - '.$embarcacao->nome,
+                'categoria' => 'Pagamento ao dono (balcão)', 'descricao' => 'Repasse do balcão ao dono - '.$embarcacao->nome.($abate > 0 ? ' (já abatido R$ '.number_format($abate, 2, ',', '.').' de devolução)' : ''),
                 'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false,
             ]);
         }
-        return back()->with('ok', 'Baixa do balcão: '.$n.' passagem(ns) · R$ '.number_format($valor, 2, ',', '.').' recebido da empresa.');
+        if ($abate > 0) {
+            Pagamento::create([
+                'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
+                'embarcacao_id' => $embarcacao->id, 'meio' => 'dinheiro', 'valor' => $abate, 'user_id' => auth()->id(),
+                'momento' => 'baixa', 'tipo_mov' => 'entrada', 'categoria' => 'Débito do dono — abatido',
+                'descricao' => 'Débito de devolução abatido no acerto - '.$embarcacao->nome,
+            ]);
+        }
+
+        $msg = 'Baixa do balcão: '.$n.' passagem(ns) · R$ '.number_format($pagar, 2, ',', '.').' pago ao dono.';
+        if ($abate > 0) $msg .= ' Abatido R$ '.number_format($abate, 2, ',', '.').' de devolução.';
+        return back()->with('ok', $msg);
     }
 
     /** Dono recebe do AGENTE: o agente pagou direto -> so marca as passagens (nao mexe no caixa da empresa). */

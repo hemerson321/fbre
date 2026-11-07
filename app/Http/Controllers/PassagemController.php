@@ -748,7 +748,21 @@ class PassagemController extends Controller
             }
 
             // O valor retido NAO fica como receita da empresa.
-            if ($retido > 0.009) {
+            $comPct = (int) ($emb->comissao_empresa_pct ?? 0);
+            if ($passagem->acerto_dono && ! $passagem->revendedor_id && $emb) {
+                // Passagem JA acertada com o dono (balcao): ele ja recebeu o repasse.
+                // Ele devolve o repasse INTEIRO -> fica em debito e sera descontado no proximo acerto.
+                // (Opcao B: o dono NAO fica com os 30%; o retido fica todo pra empresa.)
+                $repasse = round(((float) $passagem->total) * (100 - $comPct) / 100, 2);
+                if ($repasse > 0.009) {
+                    \App\Models\Pagamento::create([
+                        'empresa_id' => $empresa->id, 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
+                        'embarcacao_id' => $emb->id, 'meio' => 'dinheiro', 'valor' => $repasse, 'user_id' => auth()->id(),
+                        'momento' => 'baixa', 'tipo_mov' => 'entrada', 'categoria' => 'Débito do dono (devolução)',
+                        'descricao' => 'Dono deve à empresa — devolução da passagem '.$passagem->numeroFormatado().' (já acertada)',
+                    ]);
+                }
+            } elseif ($retido > 0.009) {
                 if ($depois) {
                     // Depois da saida: os 30% sao do DONO da lancha (lancha ja rodou).
                     // Sai do caixa da empresa (saida) e entra pro dono (entrada marcada no barco, so balcao).
@@ -783,8 +797,13 @@ class PassagemController extends Controller
                 'cancel_retido' => $retido, 'cancel_reembolso' => $reembolso, 'cancel_fase' => $depois ? 'depois' : 'antes',
             ])->save();
             $passagem->recalcular();
-            return redirect()->route('passagens.show', $passagem)
-                ->with('ok', 'Devolução registrada. Devolvido R$ '.number_format($reembolso, 2, ',', '.').' ('.(100 - $pct).'%). Retido '.$pct.'% (R$ '.number_format($retido, 2, ',', '.').') — '.($depois ? 'parte do dono' : 'caixa local').'.');
+            $msg = 'Devolução registrada. Devolvido R$ '.number_format($reembolso, 2, ',', '.').' ('.(100 - $pct).'%).';
+            if ($passagem->acerto_dono && ! $passagem->revendedor_id && $emb) {
+                $msg .= ' Esta passagem já tinha sido acertada com o dono — ele fica devendo R$ '.number_format(round(((float) $passagem->total) * (100 - (int) ($emb->comissao_empresa_pct ?? 0)) / 100, 2), 2, ',', '.').' à empresa (descontado no próximo acerto).';
+            } else {
+                $msg .= ' Retido '.$pct.'% (R$ '.number_format($retido, 2, ',', '.').') — '.($depois ? 'parte do dono' : 'caixa local').'.';
+            }
+            return redirect()->route('passagens.show', $passagem)->with('ok', $msg);
         }
 
         // Sem politica: estorna tudo (comportamento padrao).

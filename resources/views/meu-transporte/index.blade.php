@@ -130,6 +130,18 @@
       @endforelse
     </div>
 
+    @if($saldoDevedor > 0)
+    <div class="rounded-xl border border-rose-200 bg-rose-50 p-3">
+      <div class="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <div class="font-semibold text-rose-700">↩ Débito com a empresa</div>
+          <div class="text-[11px] text-rose-500">devolução de passagem que já tinha sido acertada — será descontado no seu próximo acerto</div>
+        </div>
+        <div class="text-lg font-bold text-rose-700">− {{ $brl($saldoDevedor) }}</div>
+      </div>
+    </div>
+    @endif
+
     <p class="text-[11px] text-slate-400">O balcão é pago pela empresa (sai do caixa dela). O agente paga direto a você — a baixa aqui só confirma o recebimento, não mexe no caixa da empresa.</p>
   </div>
   @endif

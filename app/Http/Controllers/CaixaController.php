@@ -58,6 +58,10 @@ class CaixaController extends Controller
                 if (! empty($meusBarcos)) $w->orWhereIn('embarcacao_id', $meusBarcos);
             });
         };
+        // O ledger de débito do dono (devolução/abatido) não é dinheiro de caixa — fica fora das somas.
+        $semDebitoLedger = function ($q) {
+            $q->where(fn ($w) => $w->whereNull('categoria')->orWhereNotIn('categoria', ['Débito do dono (devolução)', 'Débito do dono — abatido']));
+        };
 
         $base = Pagamento::where('estornado', false)
             ->where('meio', '!=', 'desconto')
@@ -68,6 +72,7 @@ class CaixaController extends Controller
             ->when($canal, fn ($q) => $this->filtrarCanal($q, $canal))
             ->when($transporteId, $filtraTransp)
             ->where($filtraRepasseDono)
+            ->where($semDebitoLedger)
             ->when($dataViagem, $filtraDataViagem)
             ->where('tipo_mov', '!=', 'saida')
             ->where($semRevenda);
@@ -138,8 +143,12 @@ class CaixaController extends Controller
                     $pct = (int) $e->comissao_empresa_pct;
                     $p = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
                         ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->first();
-                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'valor' => (float) $p->v, 'dono' => optional($e->dono)->name ?? $e->dono_nome];
-                })->filter(fn ($x) => $x->valor > 0)->values();
+                    $deb = round(
+                        (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
+                        - (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
+                    $deb = max(0.0, $deb);
+                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'valor' => (float) $p->v, 'debito' => $deb, 'liquido' => round((float) $p->v - $deb, 2), 'dono' => optional($e->dono)->name ?? $e->dono_nome];
+                })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0)->values();
         }
 
         return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao'))
