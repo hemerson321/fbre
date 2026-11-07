@@ -48,8 +48,8 @@ class CaixaController extends Controller
 
         // ===== Escopo do DONO: se o usuario e dono de transporte (ex.: Cris admin+dona),
         // o caixa so mostra as vendas do(s) transporte(s) dele. Para ver tudo, usa o Relatorio. =====
-        // dono que NAO e admin fica preso no transporte dele; admin/gerente/financeiro ve o caixa da empresa (guiche)
-        $meusBarcos = (auth()->user()->ehDonoTransporte() && ! auth()->user()->caixaTodos())
+        // dono de transporte (mesmo sendo admin) ve no caixa SO o(s) transporte(s) dele
+        $meusBarcos = auth()->user()->ehDonoTransporte()
             ? \App\Models\Embarcacao::where('dono_id', auth()->id())->pluck('id')->map(fn ($i) => (int) $i)->all()
             : null;
         if ($meusBarcos !== null) {

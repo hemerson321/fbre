@@ -138,7 +138,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('frete','ver'))      $g[] = ['r'=>route('fretes.index'), 'l'=>'Fretes / entrega', 'i'=>'📦'];
   if ($g && $modOn('frete')) $grupos['Fretes'] = $g;
   $g = [];
-  if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>($u->ehDonoTransporte() && ! $u->caixaTodos())?'Caixa do meu transporte':($u->caixaTodos()?'Caixa geral':'Meu caixa'), 'i'=>'💰'];
+  if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->ehDonoTransporte()?'Caixa do meu transporte':($u->caixaTodos()?'Caixa geral':'Meu caixa'), 'i'=>'💰'];
   if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
   if ($u->podeAcerto() && $u->temModulo('passagem')) {
       // Acerto Agentes/Transporte sairam do menu: agente paga direto o dono e o dono acerta sozinho no "Meu transporte".
