@@ -147,6 +147,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->isAdmin() || $u->isSuper()) {
       $adm = [
           ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'],
+          ['r'=>route('simulacao'), 'l'=>'Simulação (demo)', 'i'=>'🧪'],
           ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
           ['r'=>route('admin.transportes'), 'l'=>'Transportes', 'i'=>'⛴️'],
           ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
@@ -290,6 +291,12 @@ document.addEventListener('alpine:init', () => {
   @if($errors->any())
     <div class="mb-3 rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm no-print">
       <ul class="list-disc pl-4">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+    </div>
+  @endif
+  @if(session('simula_admin_id'))
+    <div class="mb-3 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 px-4 py-2.5 text-sm no-print flex items-center justify-between gap-3 flex-wrap">
+      <span>🧪 <b>Simulação</b> — você está entrando como <b>{{ auth()->user()->name }}</b>. É só uma demonstração.</span>
+      <form method="post" action="{{ route('simulacao.sair') }}">@csrf<button class="btn btn-sm text-white" style="background:#b45309">↩️ Sair da simulação</button></form>
     </div>
   @endif
   @yield('conteudo')
