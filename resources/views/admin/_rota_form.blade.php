@@ -13,7 +13,10 @@
 <div>
   <div class="flex items-center justify-between mb-1">
     <label class="label !mb-0">Paradas (na ordem da viagem)</label>
-    <button type="button" class="btn btn-ghost btn-sm" @click="add()">＋ parada</button>
+    <div class="flex items-center gap-2">
+      <button type="button" class="btn btn-ghost btn-sm" @click="inverter()" title="Inverte a ordem das cidades (pra cadastrar a volta)">⇅ Inverter ordem</button>
+      <button type="button" class="btn btn-ghost btn-sm" @click="add()">＋ parada</button>
+    </div>
   </div>
   <div class="space-y-2" x-ref="paradasList">
     <template x-for="(p,i) in paradas" :key="i">
@@ -154,6 +157,7 @@ function rotaForm(paradas, precos, tipos, flags){
     resumoTrecho(t){ const n=this.normal; if(!n) return ''; const c=this.precos[this.cellKey(t.key,n.id)];
       const v=c?Number(c.tarifa)||0:0; return v>0 ? (n.nome+' '+this.moeda(v)) : ''; },
     add(){ this.paradas.push({localidade:'',dia_semana:'',hora:''}); },
+    inverter(){ const c=this.paradas.map(p=>p.localidade); c.reverse(); this.paradas.forEach((p,i)=>{ p.localidade=c[i]; }); },
     moeda(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); },
     get normal(){ return this.tipos.find(t=>t.eh_normal) || this.tipos[0] || null; },
     get valorTipos(){ return this.tipos.filter(t=>t.modo==='valor'||t.eh_normal); },
