@@ -76,7 +76,23 @@ class PassagemController extends Controller
     public function create()
     {
         $u = auth()->user();
-        $embarcacoes = Embarcacao::where('ativo', true)->orderBy('nome')
+        // Só aparecem no seletor de venda os transportes que têm ROTA ativa COM trecho precificado.
+        $precoPares = TrechoPreco::where('ativo', true)->get(['origem', 'destino'])
+            ->map(fn ($tp) => mb_strtolower(trim((string) $tp->origem)).'|'.mb_strtolower(trim((string) $tp->destino)))
+            ->filter(fn ($k) => $k !== '|')->unique()->flip();
+        $embComVenda = Rota::where('ativo', true)->whereNotNull('embarcacao_id')->with('paradas:id,rota_id,localidade')->get()
+            ->filter(function ($r) use ($precoPares) {
+                $locs = $r->paradas->pluck('localidade')->filter()->map(fn ($l) => mb_strtolower(trim((string) $l)))->values()->all();
+                $n = count($locs);
+                for ($i = 0; $i < $n; $i++) {
+                    for ($j = 0; $j < $n; $j++) {
+                        if ($i === $j) continue;
+                        if (isset($precoPares[$locs[$i].'|'.$locs[$j]])) return true;
+                    }
+                }
+                return false;
+            })->pluck('embarcacao_id')->unique()->values();
+        $embarcacoes = Embarcacao::where('ativo', true)->whereIn('id', $embComVenda)->orderBy('nome')
             ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas']);
         $colunas = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao', 'idade_min', 'idade_max'];
         $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get($colunas);
