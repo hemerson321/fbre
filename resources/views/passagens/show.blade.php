@@ -92,10 +92,13 @@
     @php $embc = $p->embarcacao; $pa = $embc?->cancelAntes() ?? 10; $pd = $embc?->cancelDepois() ?? 30;
          $jaSaiu = $p->embarcou || ($p->data_viagem && \Carbon\Carbon::parse($p->data_viagem)->endOfDay()->isPast()); @endphp
     <div class="font-bold text-sm mb-1">↩ Devolução ao passageiro</div>
-    <div class="rounded-lg bg-slate-50 border p-2 text-[12px] text-slate-600 mb-2 space-y-1">
-      <div>🟢 <b>Antes</b> da lancha sair: devolve <b>{{ 100-$pa }}%</b> · retém {{ $pa }}% → <b>caixa local</b> (não entra no caixa da empresa).</div>
-      <div>🔴 <b>Depois</b> que a lancha saiu: devolve <b>{{ 100-$pd }}%</b> · retém {{ $pd }}% → é do <b>dono</b> da lancha.</div>
-      <div class="font-semibold pt-1" style="color:var(--cor1)">Agora é: {{ $jaSaiu ? 'DEPOIS — retém '.$pd.'% (dono)' : 'ANTES — retém '.$pa.'% (caixa local)' }}</div>
+    <div class="rounded-lg bg-slate-50 border p-2.5 text-[12px] text-slate-600 mb-2 space-y-2">
+      <div class="flex gap-2"><span class="shrink-0">🟢</span><span><b>Antes</b> da lancha sair — devolve <b>{{ 100-$pa }}%</b> ao passageiro e retém <b>{{ $pa }}%</b>, que vai pro <b>caixa local</b> (não entra no caixa da empresa).</span></div>
+      <div class="flex gap-2"><span class="shrink-0">🔴</span><span><b>Depois</b> que a lancha saiu — devolve <b>{{ 100-$pd }}%</b> ao passageiro e retém <b>{{ $pd }}%</b>, que fica pro <b>dono</b> da lancha.</span></div>
+      @if($p->acerto_dono && ! $p->revendedor_id)
+      <div class="flex gap-2 text-rose-600"><span class="shrink-0">⚠️</span><span>Esta passagem <b>já foi acertada com o dono</b>. Ele vai ficar <b>devendo o repasse à empresa</b> — descontado no próximo acerto.</span></div>
+      @endif
+      <div class="pt-0.5"><span class="inline-block rounded px-2 py-1 text-white font-bold text-[11px]" style="background:{{ $jaSaiu ? '#e11d48' : '#16a34a' }}">Esta passagem agora: {{ $jaSaiu ? 'DEPOIS — retém '.$pd.'%' : 'ANTES — retém '.$pa.'%' }}</span></div>
     </div>
     <label class="label">Motivo da devolução</label>
     <input name="motivo" class="input mb-2" required minlength="3" placeholder="ex.: passageiro desistiu">
