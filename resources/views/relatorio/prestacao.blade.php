@@ -32,7 +32,6 @@
 <body>
   <div class="acoes">
     <button class="btn" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
-    @if(!empty($voltar))<a class="btn g" href="{{ $voltar }}">← Voltar</a>@endif
   </div>
 
   <div class="top">

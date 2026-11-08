@@ -30,7 +30,6 @@
 <body>
   <div class="acoes">
     <button class="btn" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
-    <a class="btn g" href="{{ url()->previous() }}">← Voltar</a>
   </div>
 
   <div class="cab">{{ strtoupper($cab['embarcacao']) }} — Data Viagem: {{ $cab['data'] ? $cab['data']->format('d/m/Y') : ($cab['periodo'] ?: '—') }} — {{ $cab['rota'] }}</div>

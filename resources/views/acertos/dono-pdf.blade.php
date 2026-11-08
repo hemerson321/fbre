@@ -32,16 +32,8 @@
 </style>
 </head>
 <body>
-  @php
-    $u = auth()->user();
-    $qs = array_filter(['transporte_id' => $embarcacao->id, 'data_viagem' => $dataViagem ?? null, 'viagem_id' => $viagemId ?? null]);
-    $voltar = ($u && ($u->isAdmin() || $u->isSuper()))
-      ? route('admin.acertos.dono-relatorio', $embarcacao).(($dataViagem ?? null) ? '?data_viagem='.$dataViagem : ($viagemId ? '?viagem_id='.$viagemId : ''))
-      : route('meu-transporte', $qs);
-  @endphp
   <div class="acoes">
     <button class="btn" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
-    <a class="btn g" href="{{ $voltar }}">← Voltar</a>
   </div>
 
   <div class="top">

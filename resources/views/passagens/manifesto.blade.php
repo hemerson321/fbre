@@ -27,7 +27,6 @@
 <body>
   <div class="acoes">
     <button class="btn" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
-    <a class="btn g" href="{{ url()->previous() }}">← Voltar</a>
   </div>
 
   <div class="top">
