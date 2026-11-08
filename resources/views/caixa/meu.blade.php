@@ -225,6 +225,7 @@ function acertoPix(ac){
 
 </div>{{-- fecha a grade de cards secundários --}}
 
+@php $mostraComprador = (bool) \App\Support\Tenant::empresa()?->config('comprador_passagem'); @endphp
 <div class="card overflow-hidden">
   <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Recebimentos ({{ $totais['recebido_qtd'] }})</div>
   <div class="overflow-x-auto">
@@ -235,7 +236,7 @@ function acertoPix(ac){
           <th class="p-2">Transporte</th>
           <th class="p-2">Trecho</th>
           <th class="p-2">Viagem</th>
-          <th class="p-2">Comprador</th>
+          @if($mostraComprador)<th class="p-2">Comprador</th>@endif
           <th class="p-2">Poltrona</th>
           <th class="p-2">Vendeu</th>
           <th class="p-2">Compra</th>
@@ -259,7 +260,7 @@ function acertoPix(ac){
             <td class="p-2">@if($transp)<span class="text-[11px] font-bold text-white px-1.5 py-0.5 rounded whitespace-nowrap" style="background:var(--cor1)">🚤 {{ $transp }}</span>@else<span class="text-slate-300">—</span>@endif</td>
             <td class="p-2 whitespace-nowrap">{{ $rota && $rota !== '→' ? $rota : '—' }}</td>
             <td class="p-2 whitespace-nowrap">{{ $viagem }}</td>
-            <td class="p-2">{{ $quem }}</td>
+            @if($mostraComprador)<td class="p-2">{{ $quem }}</td>@endif
             <td class="p-2 whitespace-nowrap font-medium">{{ $poltronas ?: '—' }}</td>
             <td class="p-2 whitespace-nowrap">{{ $p->user?->name ?? '—' }}</td>
             <td class="p-2 whitespace-nowrap text-slate-500">{{ $p->created_at->format('d/m/Y H:i') }}</td>
@@ -267,7 +268,7 @@ function acertoPix(ac){
             <td class="p-2 pr-3 text-right font-bold whitespace-nowrap">R$ {{ number_format((float)$p->valor,2,',','.') }}</td>
           </tr>
         @empty
-          <tr><td colspan="10" class="p-6 text-center text-slate-400">Nenhum recebimento.</td></tr>
+          <tr><td colspan="{{ $mostraComprador ? 10 : 9 }}" class="p-6 text-center text-slate-400">Nenhum recebimento.</td></tr>
         @endforelse
       </tbody>
     </table>
