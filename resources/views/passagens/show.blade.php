@@ -110,7 +110,7 @@
   <div x-show="painel==='transf'" x-cloak>
   <form method="post" action="{{ route('passagens.transferir',$p) }}" class="card p-4">@csrf
     <div class="font-bold text-sm mb-2">↪ Transferir pra outro transporte</div>
-    <div x-data="transfCal(@js($linhasShow ?? []), @js($p->origem))">
+    <div x-data="transfCal(@js($linhasShow ?? []), @js($p->origem), @js($p->destino), @js(route('passagens.assentos')))">
       <label class="label">Transporte destino</label>
       <select name="embarcacao_id" x-model="embSel" @change="onEmb()" class="input mb-2" required>
         <option value="">— escolher —</option>
@@ -130,6 +130,17 @@
           <div class="text-[10px] text-slate-400 mt-2 text-center">Só os dias de viagem da linha ficam disponíveis.</div>
         </div>
       </div>
+      <div x-show="usaPoltrona" x-cloak class="mb-2 rounded-lg border border-slate-200 p-2">
+        <label class="label !text-xs">🪑 Poltronas no destino</label>
+        <div class="text-[11px] mb-1" :class="ocupadas.length?'text-rose-500':'text-emerald-600'"><span x-show="ocupadas.length">Ocupadas nesse trecho: <b x-text="ocupadasTxt"></b></span><span x-show="!ocupadas.length">Todas livres nesse trecho</span></div>
+        @foreach($p->passageiros as $pax)
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xs flex-1 truncate text-slate-600">{{ $pax->nome }}</span>
+          <input name="poltronas[{{ $pax->id }}]" value="{{ $pax->poltrona }}" @input="$event.target.value=$event.target.value.toUpperCase()" class="input !min-h-[34px] !w-24 text-center font-bold" :class="poltronaOcupada($event?.target?.value)?'!border-rose-500':''" placeholder="poltrona">
+        </div>
+        @endforeach
+        <p class="text-[11px] text-slate-400">Escolha poltronas livres pra não conflitar com quem já está no trecho.</p>
+      </div>
     </div>
     <label class="label">Motivo (opcional)</label>
     <input name="motivo" class="input mb-2" maxlength="300" placeholder="ex.: cliente perdeu a lancha 1">
@@ -140,7 +151,7 @@
   @endif
   @if(!$p->cancelada && !$p->transferida && ($u->isAdmin()||$u->isSuper()))
   <div x-show="painel==='troca'" x-cloak>
-  <form method="post" action="{{ route('passagens.trocar-viagem',$p) }}" class="card p-4" x-data="trocaCal(@js($linhasShow ?? []), @js($p->origem), @js((string)$p->embarcacao_id))">@csrf
+  <form method="post" action="{{ route('passagens.trocar-viagem',$p) }}" class="card p-4" x-data="trocaCal(@js($linhasShow ?? []), @js($p->origem), @js((string)$p->embarcacao_id), @js($p->destino), @js(route('passagens.assentos')))">@csrf
     <div class="font-bold text-sm">📅 Trocar a data da viagem (remarcar)</div>
     <p class="text-[12px] text-slate-500 mb-2">Mantém <b>a mesma passagem</b> e <b>o mesmo transporte</b> — só muda o <b>dia da viagem</b>. Use quando o passageiro remarca pra outra data. <b>Não mexe no dinheiro</b> (diferente do cancelamento e da transferência).</p>
     <label class="label">Nova data da viagem</label>
@@ -155,6 +166,17 @@
         <div class="text-[10px] text-slate-400 mt-2 text-center">Só os dias de viagem da linha ficam disponíveis.</div>
       </div>
     </div>
+      <div x-show="usaPoltrona" x-cloak class="mb-2 rounded-lg border border-slate-200 p-2">
+        <label class="label !text-xs">🪑 Poltronas nessa data</label>
+        <div class="text-[11px] mb-1" :class="ocupadas.length?'text-rose-500':'text-emerald-600'"><span x-show="ocupadas.length">Ocupadas nesse trecho: <b x-text="ocupadasTxt"></b></span><span x-show="!ocupadas.length">Todas livres nesse trecho</span></div>
+        @foreach($p->passageiros as $pax)
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xs flex-1 truncate text-slate-600">{{ $pax->nome }}</span>
+          <input name="poltronas[{{ $pax->id }}]" value="{{ $pax->poltrona }}" @input="$event.target.value=$event.target.value.toUpperCase()" class="input !min-h-[34px] !w-24 text-center font-bold" :class="poltronaOcupada($event?.target?.value)?'!border-rose-500':''" placeholder="poltrona">
+        </div>
+        @endforeach
+        <p class="text-[11px] text-slate-400">Se a poltrona estiver ocupada na nova data, escolha outra livre.</p>
+      </div>
     <label class="label">Motivo (opcional)</label>
     <input name="motivo" class="input mb-2" maxlength="300" placeholder="ex.: passageiro remarcou">
     <button class="btn w-full text-white" style="background:#0891b2">Confirmar troca de data</button>
@@ -193,14 +215,14 @@ function imprimirDiretoPassagem(btn){
 <script>document.addEventListener('DOMContentLoaded',()=>FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}'));</script>
 @endif
 <script>
-function transfCal(linhas, origem){
+function transfCal(linhas, origem, destino, assentosUrl){
   return {
-    linhas: linhas||[], origem: origem||'', embSel:'', viagemData:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null, linhaNome:'',
+    linhas: linhas||[], origem: origem||'', destino: destino||'', assentosUrl: assentosUrl||'', ocupadas:[], usaPoltrona:false, embSel:'', viagemData:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null, linhaNome:'',
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sab'],
     isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
     get hojeISO(){ return this.isoLocal(new Date()); },
     fmtBr(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); },
-    onEmb(){ this.resolver(); },
+    onEmb(){ this.resolver(); this.carregarAssentos(); },
     resolver(){
       this.viagemDia=null; this.viagemData=''; this.viagemHora=''; this.linhaNome='';
       const emb=this.embSel?String(this.embSel):''; if(!emb) return;
@@ -227,13 +249,21 @@ function transfCal(linhas, origem){
         out.push({iso,dia:d.getDate(),valido,outroMes,sel:iso===this.viagemData}); }
       return out;
     },
-    escolher(iso){ this.viagemData=iso; this.calAberto=false; }
+    escolher(iso){ this.viagemData=iso; this.calAberto=false; this.carregarAssentos(); },
+    carregarAssentos(){
+      this.ocupadas=[]; this.usaPoltrona=false;
+      const emb=this.embSel?String(this.embSel):''; if(!emb||!this.assentosUrl) return;
+      const qs=new URLSearchParams({embarcacao_id:emb, data_viagem:this.viagemData||'', origem:this.origem||'', destino:this.destino||''});
+      fetch(this.assentosUrl+'?'+qs.toString(),{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(j=>{ this.usaPoltrona=!!j.usa_poltrona; this.ocupadas=(j.ocupadas||[]).map(x=>String(x).toUpperCase()); }).catch(()=>{});
+    },
+    get ocupadasTxt(){ return this.ocupadas.join(', '); },
+    poltronaOcupada(v){ return this.ocupadas.includes(String(v||'').trim().toUpperCase()); }
   };
 }
-function trocaCal(linhas, origem, embId){
-  const c = transfCal(linhas, origem);
+function trocaCal(linhas, origem, embId, destino, assentosUrl){
+  const c = transfCal(linhas, origem, destino, assentosUrl);
   c.embSel = embId || '';
-  c.init = function(){ this.resolver(); };
+  c.init = function(){ this.resolver(); this.carregarAssentos(); };
   return c;
 }
 </script>

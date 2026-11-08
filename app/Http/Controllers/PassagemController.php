@@ -866,18 +866,24 @@ class PassagemController extends Controller
             'embarcacao_id' => 'required|integer|exists:embarcacoes,id',
             'data_viagem' => 'nullable|date',
             'motivo' => 'nullable|string|max:300',
+            'poltronas' => 'nullable|array',
         ]);
+        $poltronasIn = collect((array) $request->input('poltronas', []))->map(fn ($v) => strtoupper(trim((string) $v)))->all();
 
-        // Evita duplicar poltrona no transporte destino.
+        // Evita duplicar poltrona no transporte destino (usa as poltronas escolhidas no formulario).
         $destino = Embarcacao::find($data['embarcacao_id']);
         if ($destino && $destino->usa_poltrona) {
-            $seats = $passagem->passageiros->pluck('poltrona')->filter()->map(fn ($x) => (string) $x);
+            $seats = $passagem->passageiros->map(fn ($px) => (string) ($poltronasIn[$px->id] ?? $px->poltrona ?? ''))->filter()->values();
+            $dups = $seats->duplicates()->values();
+            if ($dups->isNotEmpty()) {
+                return back()->with('erro', 'Poltrona(s) repetida(s) na transferência: '.$dups->implode(', ').'.');
+            }
             if ($seats->isNotEmpty()) {
                 $dv = $data['data_viagem'] ?? $passagem->data_viagem;
                 $ocup = $this->ocupadas($destino->id, $dv, null, $passagem->rota_id, $passagem->origem, $passagem->destino);
                 $conf = $seats->intersect($ocup)->values();
                 if ($conf->isNotEmpty()) {
-                    return back()->with('erro', 'Poltrona(s) '.$conf->implode(', ').' já vendida(s) no '.$destino->nome.' nessa data. Troque a poltrona do passageiro antes de transferir.');
+                    return back()->with('erro', 'Poltrona(s) '.$conf->implode(', ').' já vendida(s) no '.$destino->nome.' nesse trecho. Escolha poltronas livres.');
                 }
             }
         }
@@ -885,7 +891,7 @@ class PassagemController extends Controller
         $op = auth()->user();
         $valor = (float) $passagem->pago;
 
-        $nova = \Illuminate\Support\Facades\DB::transaction(function () use ($passagem, $data, $empresa, $op, $valor) {
+        $nova = \Illuminate\Support\Facades\DB::transaction(function () use ($passagem, $data, $empresa, $op, $valor, $poltronasIn, $destino) {
             $seq = $op->proximoSeq();
             $pref = $op->prefixo ?: ('OP'.$op->id);
             $nova = $passagem->replicate([
@@ -908,6 +914,9 @@ class PassagemController extends Controller
                 $np = $pax->replicate(['checkin', 'embarcou']);
                 $np->passagem_id = $nova->id;
                 $np->checkin = false;
+                if ($destino && $destino->usa_poltrona && array_key_exists($pax->id, $poltronasIn)) {
+                    $np->poltrona = $poltronasIn[$pax->id] ?: null;
+                }
                 $np->save();
             }
             $nova->recalcular();
@@ -947,7 +956,9 @@ class PassagemController extends Controller
         $data = $request->validate([
             'data_viagem' => 'required|date',
             'motivo' => 'nullable|string|max:300',
+            'poltronas' => 'nullable|array',
         ]);
+        $poltronasIn = collect((array) $request->input('poltronas', []))->map(fn ($v) => strtoupper(trim((string) $v)))->all();
         $antiga = $passagem->data_viagem ? \Carbon\Carbon::parse($passagem->data_viagem)->format('d/m/Y') : '—';
         $nova = \Carbon\Carbon::parse($data['data_viagem']);
         $viagemId = $passagem->viagem_id;
@@ -958,18 +969,30 @@ class PassagemController extends Controller
         // Evita duplicar poltrona na nova data (mesmo transporte).
         $embP = $passagem->embarcacao;
         if ($embP && $embP->usa_poltrona) {
-            $seats = $passagem->passageiros->pluck('poltrona')->filter()->map(fn ($x) => (string) $x);
+            $seats = $passagem->passageiros->map(fn ($px) => (string) ($poltronasIn[$px->id] ?? $px->poltrona ?? ''))->filter()->values();
+            $dups = $seats->duplicates()->values();
+            if ($dups->isNotEmpty()) {
+                return back()->with('erro', 'Poltrona(s) repetida(s): '.$dups->implode(', ').'.');
+            }
             if ($seats->isNotEmpty()) {
                 $ocup = $this->ocupadas($embP->id, $nova->toDateString(), $viagemId, $passagem->rota_id, $passagem->origem, $passagem->destino, $passagem->id);
                 $conf = $seats->intersect($ocup)->values();
                 if ($conf->isNotEmpty()) {
-                    return back()->with('erro', 'Poltrona(s) '.$conf->implode(', ').' já ocupada(s) em '.$nova->format('d/m/Y').'. Escolha outra data ou troque a poltrona.');
+                    return back()->with('erro', 'Poltrona(s) '.$conf->implode(', ').' já ocupada(s) em '.$nova->format('d/m/Y').'. Escolha outra poltrona livre.');
                 }
             }
         }
 
         $obs = trim(($passagem->observacao ? $passagem->observacao."\n" : '').'Viagem remarcada de '.$antiga.' para '.$nova->format('d/m/Y').($data['motivo'] ? ' ('.$data['motivo'].')' : ''));
         $passagem->forceFill(['data_viagem' => $nova->toDateString(), 'viagem_id' => $viagemId, 'observacao' => $obs])->save();
+        if ($embP && $embP->usa_poltrona && $poltronasIn) {
+            foreach ($passagem->passageiros as $pax) {
+                if (array_key_exists($pax->id, $poltronasIn)) {
+                    $pax->poltrona = $poltronasIn[$pax->id] ?: null;
+                    $pax->save();
+                }
+            }
+        }
         return redirect()->route('passagens.show', $passagem)->with('ok', 'Viagem remarcada para '.$nova->format('d/m/Y').'.');
     }
 }
