@@ -108,7 +108,8 @@
         <div class="flex items-center justify-between gap-2 flex-wrap border-t first:border-t-0 pt-2 first:pt-0">
           <div class="min-w-0">
             <div class="font-medium text-slate-700 truncate">{{ $ag->nome }}</div>
-            <div class="text-[11px] text-slate-400">{{ $ag->qtd }} passagem(ns) · bruto {{ $brl($ag->bruto) }} · comissão do agente {{ $brl($ag->bruto - $ag->dono) }}</div>
+            @php $agPct = $ag->bruto > 0 ? round(($ag->bruto - $ag->dono) / $ag->bruto * 100) : 0; @endphp
+            <div class="text-[11px] text-slate-400">{{ $ag->qtd }} passagem(ns) · bruto {{ $brl($ag->bruto) }} · comissão do agente {{ $agPct }}% ({{ $brl($ag->bruto - $ag->dono) }})</div>
           </div>
           <div class="flex items-center gap-2">
             <div class="text-lg font-bold text-slate-800">{{ $brl($ag->dono) }}</div>
