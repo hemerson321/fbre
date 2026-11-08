@@ -744,7 +744,7 @@ class PassagemController extends Controller
     public function comprovante(Passagem $passagem)
     {
         abort_unless($passagem->empresa_id === Tenant::id(), 404);
-        $passagem->load(['passageiros', 'embarcacao', 'operador', 'camarote']);
+        $passagem->load(['passageiros', 'embarcacao', 'operador', 'camarote', 'pagamentos', 'viagem']);
         try {
             $html = view('passagens.comprovante', ['p' => $passagem, 'empresa' => Tenant::empresa(), 'modo' => request('modo')])->render();
             return response($html);
