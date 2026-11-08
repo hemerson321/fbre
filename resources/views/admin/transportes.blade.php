@@ -91,6 +91,22 @@
             </div>
             <p class="text-[11px] text-slate-400">A empresa fica com essa % de cada passagem deste transporte; o dono recebe o resto (acerto em Acertos).</p>
             <p class="text-[11px] text-slate-400 mt-0.5">Cole o link da API de posição deste barco. Com ele, o sistema avisa o destinatário no WhatsApp ~1h antes da encomenda chegar na cidade de destino.</p>
+            <div class="border-t pt-2 mt-2" x-data="{ ri: {{ ($e->regra_idade ? 'true':'false') }} }">
+              @php $ovr = collect($e->regra_idade ?? [])->keyBy('tipo_id'); @endphp
+              <label class="flex items-center gap-2 py-1 cursor-pointer text-sm font-semibold"><input type="checkbox" name="usa_regra_idade" value="1" x-model="ri" class="w-5 h-5 rounded"> 👶 Regra de idade própria deste transporte</label>
+              <p x-show="!ri" x-cloak class="text-[11px] text-slate-400 pl-7">Usando o padrão da empresa (configurado em <b>Minha empresa</b>).</p>
+              <div x-show="ri" x-cloak class="pl-7 space-y-1 mt-1">
+                <p class="text-[11px] text-slate-400">Vale só pra este transporte. Em branco = não depende de idade (escolhe na mão).</p>
+                @foreach($tiposPassageiro as $t)
+                  @php $o = $ovr->get($t->id); @endphp
+                  <div class="grid grid-cols-12 gap-2 items-center">
+                    <div class="col-span-6 text-xs font-semibold truncate">{{ $t->nome }}</div>
+                    <div class="col-span-3"><input type="number" min="0" max="120" placeholder="de" value="{{ $o['min'] ?? '' }}" name="regra_idade[{{ $t->id }}][min]" class="input !min-h-[36px] text-center text-xs"></div>
+                    <div class="col-span-3"><input type="number" min="0" max="120" placeholder="até" value="{{ $o['max'] ?? '' }}" name="regra_idade[{{ $t->id }}][max]" class="input !min-h-[36px] text-center text-xs"></div>
+                  </div>
+                @endforeach
+              </div>
+            </div>
             <div x-data="{ open:false, trip: {{ \Illuminate\Support\Js::from($e->tripulantes ?? []) }} }" class="mt-2">
               <button type="button" @click="open=true" class="btn btn-ghost btn-sm">🚢 Ficha / tripulação da embarcação</button>
               <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-3 overflow-auto">

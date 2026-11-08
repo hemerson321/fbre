@@ -11,7 +11,7 @@ class Embarcacao extends Model
 
     protected $table = 'embarcacoes';
     protected $guarded = [];
-    protected $casts = ['ativo' => 'boolean', 'usa_poltrona' => 'boolean', 'poltronas_qtd' => 'integer', 'poltronas_colunas' => 'integer', 'cancel_antes_pct' => 'integer', 'cancel_depois_pct' => 'integer', 'comissao_empresa_pct' => 'integer', 'tripulantes' => 'array', 'ficha' => 'array'];
+    protected $casts = ['ativo' => 'boolean', 'usa_poltrona' => 'boolean', 'poltronas_qtd' => 'integer', 'poltronas_colunas' => 'integer', 'cancel_antes_pct' => 'integer', 'cancel_depois_pct' => 'integer', 'comissao_empresa_pct' => 'integer', 'tripulantes' => 'array', 'ficha' => 'array', 'regra_idade' => 'array'];
 
     public function dono() { return $this->belongsTo(User::class, 'dono_id'); }
 
@@ -25,5 +25,12 @@ class Embarcacao extends Model
     public function cancelDepois(): int
     {
         return $this->cancel_depois_pct ?? (int) (\App\Support\Tenant::empresa()?->config('cancel_depois_pct', 30));
+    }
+
+    /** Bandas de idade próprias do transporte (override), ou null = herda da empresa. */
+    public function bandasIdade(): ?array
+    {
+        $r = $this->regra_idade;
+        return (is_array($r) && count($r)) ? array_values($r) : null;
     }
 }

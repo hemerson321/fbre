@@ -93,7 +93,7 @@ class PassagemController extends Controller
                 return false;
             })->pluck('embarcacao_id')->unique()->values();
         $embarcacoes = Embarcacao::where('ativo', true)->whereIn('id', $embComVenda)->orderBy('nome')
-            ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas']);
+            ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas', 'regra_idade']);
         $colunas = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao', 'idade_min', 'idade_max'];
         $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get($colunas);
         if ($tipos->isEmpty()) {
@@ -130,6 +130,7 @@ class PassagemController extends Controller
 
         return view('passagens.create', [
             'embarcacoes' => $embarcacoes,
+            'regrasIdade' => $embarcacoes->mapWithKeys(fn ($e) => [(string) $e->id => ($e->bandasIdade() ?: [])])->filter(fn ($v) => ! empty($v)),
             'tipos' => $tipos,
             'normalId' => $normalId,
             'trechoPrecos' => $trechoPrecos,

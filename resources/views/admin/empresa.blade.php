@@ -76,6 +76,44 @@
   <p class="text-xs text-slate-400 mt-1">Depois é só definir os valores de cada trecho em <b>Cadastros gerais → rotas</b>.</p>
 </div>
 
+@php $tpIdade = ($tiposPassageiro ?? collect())->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'eh_normal'=>(bool)$t->eh_normal,'min'=>$t->idade_min,'max'=>$t->idade_max])->values(); @endphp
+<div class="border-t pt-3 mt-1" x-data='regraIdadeEmpresa(@json($tpIdade))'>
+  <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">👶 Classificação por idade</h2>
+  <p class="text-xs text-slate-500 mb-2">Na venda, quando o operador digita a <b>data de nascimento</b>, o sistema calcula a idade e já marca o tipo certo (adulto, criança, idoso...). Defina de quantos a quantos <b>anos</b> cada tipo vale. Deixe <b>em branco</b> os tipos que não dependem de idade (ex.: <b>PCD</b>) — esses continuam escolhidos na mão.</p>
+  <div class="space-y-1.5">
+    <div class="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-400 uppercase px-0.5">
+      <div class="col-span-6">Tipo</div><div class="col-span-3 text-center">De (anos)</div><div class="col-span-3 text-center">Até (anos)</div>
+    </div>
+    <template x-for="t in tipos" :key="t.id">
+      <div class="grid grid-cols-12 gap-2 items-center">
+        <div class="col-span-6 text-sm font-semibold truncate" x-text="t.nome"></div>
+        <div class="col-span-3"><input type="number" min="0" max="120" inputmode="numeric" class="input !min-h-[38px] text-center" placeholder="—" x-model="t.min" :name="`faixa[${t.id}][min]`"></div>
+        <div class="col-span-3"><input type="number" min="0" max="120" inputmode="numeric" class="input !min-h-[38px] text-center" placeholder="—" x-model="t.max" :name="`faixa[${t.id}][max]`"></div>
+      </div>
+    </template>
+  </div>
+  <div class="flex flex-wrap items-center gap-2 mt-2">
+    <button type="button" @click="sugerir()" class="text-xs font-semibold px-3 py-1.5 rounded-lg border" style="border-color:var(--cor2);color:var(--cor2)">✨ Usar sugestão</button>
+    <button type="button" @click="limpar()" class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 text-slate-500">Limpar tudo</button>
+  </div>
+  <p class="text-[11px] text-slate-400 mt-1.5">Sugestão: bebê de colo <b>0 a 1</b>, criança <b>2 a 10</b>, adulto <b>11 a 59</b>, idoso <b>60</b> em diante (deixe o "até" em branco). Esta é a regra <b>padrão</b> — cada transporte pode ter a sua própria no cadastro de transportes.</p>
+</div>
+@push('scripts')
+<script>
+function regraIdadeEmpresa(tipos){ return {
+  tipos:(tipos||[]).map(t=>({id:t.id,nome:t.nome,eh_normal:!!t.eh_normal,min:(t.min===null||t.min===undefined)?'':t.min,max:(t.max===null||t.max===undefined)?'':t.max})),
+  sugerir(){ this.tipos.forEach(t=>{ const n=(t.nome||'').toLowerCase();
+    if(/beb|colo/.test(n)){ t.min=0; t.max=1; }
+    else if(/crian/.test(n)){ t.min=2; t.max=10; }
+    else if(/idoso|melhor idade/.test(n)){ t.min=60; t.max=''; }
+    else if(/pcd|defici|especial|cadeir/.test(n)){ t.min=''; t.max=''; }
+    else if(t.eh_normal||/adulto|inteir|normal/.test(n)){ t.min=11; t.max=59; }
+  }); },
+  limpar(){ this.tipos.forEach(t=>{ t.min=''; t.max=''; }); },
+}; }
+</script>
+@endpush
+
 <div class="border-t pt-3 mt-1">
   <h2 class="font-bold text-sm text-slate-500 uppercase mb-1">WhatsApp por serviço</h2>
   <p class="text-xs text-slate-500 mb-2">Escolha qual conexão de WhatsApp cada serviço usa. Cadastre as conexões no menu <b>WhatsApp</b>.</p>

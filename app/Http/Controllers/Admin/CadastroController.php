@@ -41,6 +41,7 @@ class CadastroController extends Controller
         return view('admin.transportes', [
             'embarcacoes' => Embarcacao::orderBy('nome')->get(),
             'usuarios' => \App\Models\User::where('empresa_id', \App\Support\Tenant::id())->where('ativo', true)->orderBy('name')->get(),
+            'tiposPassageiro' => TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'eh_normal', 'idade_min', 'idade_max']),
         ]);
     }
 
@@ -230,12 +231,25 @@ class CadastroController extends Controller
             'ficha' => 'nullable|array',
             'tripulantes' => 'nullable|array',
             'logo' => 'nullable|image|max:2048',
+            'usa_regra_idade' => 'nullable|boolean',
+            'regra_idade' => 'nullable|array',
         ]);
         $ficha = collect($request->input('ficha', []))->map(fn ($v) => is_string($v) ? trim($v) : $v)->filter(fn ($v) => $v !== null && $v !== '')->all();
         $trip = collect($request->input('tripulantes', []))->filter(fn ($t) => trim($t['nome'] ?? '') !== '')->map(fn ($t) => [
             'nome' => trim($t['nome']), 'funcao' => trim($t['funcao'] ?? ''), 'nascimento' => ($t['nascimento'] ?? '') ?: null,
             'cir' => trim($t['cir'] ?? ''), 'validade_cir' => ($t['validade_cir'] ?? '') ?: null,
         ])->values()->all();
+        $regraIdade = null;
+        if ($request->boolean('usa_regra_idade')) {
+            $regraIdade = [];
+            foreach ((array) $request->input('regra_idade', []) as $tid => $fx) {
+                $mn = ($fx['min'] ?? '') === '' ? null : max(0, min(120, (int) $fx['min']));
+                $mx = ($fx['max'] ?? '') === '' ? null : max(0, min(120, (int) $fx['max']));
+                if ($mn === null && $mx === null) continue;
+                $regraIdade[] = ['tipo_id' => (int) $tid, 'min' => $mn, 'max' => $mx];
+            }
+            if (! $regraIdade) $regraIdade = null;
+        }
         $embarcacao->update([
             'nome' => $data['nome'],
             'usa_poltrona' => $request->boolean('usa_poltrona'),
@@ -251,6 +265,7 @@ class CadastroController extends Controller
             'hora_saida' => ($data['hora_saida'] ?? '') !== '' ? $data['hora_saida'] : null,
             'ficha' => $ficha ?: null,
             'tripulantes' => $trip ?: null,
+            'regra_idade' => $regraIdade,
         ]);
         if ($request->hasFile('logo')) {
             $embarcacao->logo = 'storage/'.$request->file('logo')->store('logos', 'public');

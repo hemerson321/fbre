@@ -203,7 +203,7 @@
             {{-- linha 5: dados extras (sempre visíveis) --}}
             <div class="grid grid-cols-2 gap-2 mt-1.5">
               <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm w-full" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
-              <div><label class="lbl">Nascimento</label><input type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" class="field !min-h-0 py-1 text-sm w-full" x-model="p.nasc_br" @input="mascaraNasc(p)"></div>
+              <div><label class="lbl">Nascimento</label><input type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" class="field !min-h-0 py-1 text-sm w-full" x-model="p.nasc_br" @input="mascaraNasc(p)"><div x-show="idadeTxt(p)" x-cloak class="text-[10px] font-bold mt-0.5" style="color:var(--cor1)" x-text="'\ud83c\udf82 '+idadeTxt(p)"></div></div>
               <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" inputmode="tel" placeholder="(00) 00000-0000"></div>
               <div><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.nacionalidade" placeholder="Brasileira"></div>
             </div>
@@ -440,6 +440,7 @@
       pixEstModal:false, pixEstCopia:'',
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4),'layout'=>(string)($e->poltronas_lista ?? '')])->values()),
+      regrasIdade:@js($regrasIdade ?? []),
       podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
       capturaAberta:false, capturaUrl:'', capturaSid:'', capturaDesde:0, capturaTimer:null, capturaStatus:'', capturaAviso:'', _avisoT:null,
       camAberta:false, camStream:null, camFacing:'environment', camTargetIdx:0, camStatus:'', camLendo:false,
@@ -473,7 +474,7 @@
         // destino NÃO é lembrado: muda a cada venda, começa sempre em branco
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
-        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhasTransporte.length){ const n=x=>String(x||'').trim().toLowerCase(); if(this.origemSel && !this.origens.some(c=>n(c)===n(this.origemSel))) this.origemSel=''; if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
+        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhasTransporte.length){ const n=x=>String(x||'').trim().toLowerCase(); if(this.origemSel && !this.origens.some(c=>n(c)===n(this.origemSel))) this.origemSel=''; if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); this.passageiros.forEach(p=>{ if(p.nascimento) this.aplicarIdade(p); }); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
         this.addPax();
         this.mudarEmbarcacao();
         this.onRota();
@@ -587,9 +588,12 @@
       },
       // ---- tipo automatico pela idade (data de nascimento) ----
       idadeAnos(nasc){ if(!nasc) return null; const d=new Date(nasc); if(isNaN(d.getTime())) return null; const h=new Date(); let a=h.getFullYear()-d.getFullYear(); const m=h.getMonth()-d.getMonth(); if(m<0||(m===0&&h.getDate()<d.getDate())) a--; return a>=0?a:null; },
+      bandasAtivas(){ const emb=this.embarcacaoSel?String(this.embarcacaoSel):''; const ov=this.regrasIdade&&this.regrasIdade[emb]; if(ov&&ov.length) return ov;
+        const has=v=>v!==null&&v!==undefined&&v!==''; return this.tipos.filter(t=>has(t.idade_min)||has(t.idade_max)).map(t=>({tipo_id:t.id,min:t.idade_min,max:t.idade_max})); },
       tipoPorIdade(nasc){ const a=this.idadeAnos(nasc); if(a===null) return null; let melhor=null, span=1e9;
-        this.tipos.forEach(t=>{ const mn=(t.idade_min===null||t.idade_min===undefined||t.idade_min==='')?null:Number(t.idade_min); const mx=(t.idade_max===null||t.idade_max===undefined||t.idade_max==='')?null:Number(t.idade_max); if(mn===null&&mx===null) return; if((mn===null||a>=mn)&&(mx===null||a<=mx)){ const s=(mx===null?120:mx)-(mn===null?0:mn); if(s<span){ span=s; melhor=t; } } });
-        return melhor; },
+        this.bandasAtivas().forEach(b=>{ const mn=(b.min===null||b.min===undefined||b.min==='')?null:Number(b.min); const mx=(b.max===null||b.max===undefined||b.max==='')?null:Number(b.max); if(mn===null&&mx===null) return; if((mn===null||a>=mn)&&(mx===null||a<=mx)){ const s=(mx===null?120:mx)-(mn===null?0:mn); if(s<span){ span=s; melhor=this.tipos.find(t=>String(t.id)===String(b.tipo_id)); } } });
+        return melhor||null; },
+      idadeTxt(p){ const a=this.idadeAnos(p.nascimento); if(a===null) return ''; const t=this.tipos.find(x=>String(x.id)===String(p.tipo_id)); return a+(a===1?' ano':' anos')+(t?(' · '+t.nome):''); },
       isoToBr(iso){ if(!iso) return ''; const a=(''+iso).slice(0,10).split('-'); return a.length===3 ? a[2]+'/'+a[1]+'/'+a[0] : ''; },
       mascaraNasc(p){ let v=(p.nasc_br||'').replace(/[^0-9]/g,'').slice(0,8); let o=v; if(v.length>4) o=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4); else if(v.length>2) o=v.slice(0,2)+'/'+v.slice(2); p.nasc_br=o; if(v.length===8){ const d=+v.slice(0,2), m=+v.slice(2,4), a=+v.slice(4,8); if(d>=1&&d<=31&&m>=1&&m<=12&&a>=1900&&a<=2100){ p.nascimento=v.slice(4,8)+'-'+v.slice(2,4)+'-'+v.slice(0,2); this.aplicarIdade(p); return; } } p.nascimento=''; },
       aplicarIdade(p){ const t=this.tipoPorIdade(p.nascimento); if(t){ p.tipo_id=t.id; this.aplicarTipo(p); } },

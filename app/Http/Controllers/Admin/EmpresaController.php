@@ -15,7 +15,11 @@ class EmpresaController extends Controller
     // ---------- admin da empresa: edita a própria ----------
     public function editar()
     {
-        return view('admin.empresa', ['empresa' => Tenant::empresa(), 'conexoesWa' => WhatsappConexao::where('ativo', true)->orderBy('nome')->get()]);
+        return view('admin.empresa', [
+            'empresa' => Tenant::empresa(),
+            'conexoesWa' => WhatsappConexao::where('ativo', true)->orderBy('nome')->get(),
+            'tiposPassageiro' => \App\Models\TipoPassageiro::where('empresa_id', Tenant::id())->where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'eh_normal', 'idade_min', 'idade_max']),
+        ]);
     }
 
     public function salvar(Request $request)
@@ -92,6 +96,15 @@ class EmpresaController extends Controller
 
         try {
             $empresa->update($data);
+
+        // Classificação por idade (padrão da empresa): grava as faixas em cada tipo.
+        foreach ((array) $request->input('faixa', []) as $tid => $fx) {
+            $tp = \App\Models\TipoPassageiro::where('empresa_id', $empresa->id)->find((int) $tid);
+            if (! $tp) continue;
+            $mn = ($fx['min'] ?? '') === '' ? null : max(0, min(120, (int) $fx['min']));
+            $mx = ($fx['max'] ?? '') === '' ? null : max(0, min(120, (int) $fx['max']));
+            $tp->update(['idade_min' => $mn, 'idade_max' => $mx]);
+        }
             if ($request->hasFile('logo')) {
                 $empresa->refresh()->iconesPwa(); // gera icones quadrados do PWA
             }
