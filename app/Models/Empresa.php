@@ -122,4 +122,11 @@ class Empresa extends Model
     {
         return $this->nome_fantasia ?: $this->nome;
     }
+
+    /** Fuso-horário da empresa (cidade onde opera). Default: fuso do app. */
+    public function fusoHorario(): string
+    {
+        $tz = $this->config('fuso');
+        return (is_string($tz) && $tz !== '') ? $tz : config('app.timezone');
+    }
 }

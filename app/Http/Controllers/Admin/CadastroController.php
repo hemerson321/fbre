@@ -226,6 +226,7 @@ class CadastroController extends Controller
             'dono_id' => 'nullable|integer|exists:users,id',
             'dono_nome' => 'nullable|string|max:120',
             'comissao_empresa_pct' => 'nullable|integer|min:0|max:100',
+            'hora_saida' => 'nullable|date_format:H:i',
             'ficha' => 'nullable|array',
             'tripulantes' => 'nullable|array',
             'logo' => 'nullable|image|max:2048',
@@ -247,6 +248,7 @@ class CadastroController extends Controller
             'dono_id' => ($data['dono_id'] ?? null) ?: null,
             'dono_nome' => (trim((string) ($data['dono_nome'] ?? '')) ?: (($data['dono_id'] ?? null) ? optional(\App\Models\User::find($data['dono_id']))->name : null)) ?: null,
             'comissao_empresa_pct' => (int) ($data['comissao_empresa_pct'] ?? 0),
+            'hora_saida' => ($data['hora_saida'] ?? '') !== '' ? $data['hora_saida'] : null,
             'ficha' => $ficha ?: null,
             'tripulantes' => $trip ?: null,
         ]);

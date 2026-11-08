@@ -72,6 +72,11 @@
               <div><label class="label !text-xs">Cancel. depois da viagem %</label><input name="cancel_depois_pct" type="number" min="0" max="100" value="{{ $e->cancel_depois_pct ?? \App\Support\Tenant::empresa()?->config('cancel_depois_pct',30) }}" class="input !min-h-[40px]"></div>
             </div>
             <div class="mt-2">
+              <label class="label !text-xs">🕐 Hora de saída da lancha</label>
+              <input name="hora_saida" type="time" value="{{ $e->hora_saida ? \Illuminate\Support\Str::substr($e->hora_saida,0,5) : '' }}" class="input !min-h-[40px] !w-40">
+              <p class="text-[11px] text-slate-400 mt-0.5">Usada na devolução pra saber se a lancha <b>já saiu</b> (retém a % de depois) ou <b>não</b> (retém a de antes). Sem hora, só vira "depois" quando o dia da viagem acaba.</p>
+            </div>
+            <div class="mt-2">
               <label class="label !text-xs">👤 Dono (usuário do sistema)</label>
               <select name="dono_id" class="input !min-h-[40px]">
                 <option value="">— sem usuário dono —</option>

@@ -14,6 +14,13 @@
   <div class="sm:col-span-2"><label class="label">Endereço</label><input name="endereco" class="input" value="{{ old('endereco',$empresa->endereco) }}"></div>
   <div><label class="label">Cidade</label><input name="cidade" class="input" value="{{ old('cidade',$empresa->cidade) }}"></div>
   <div><label class="label">UF</label><input name="uf" class="input" maxlength="2" value="{{ old('uf',$empresa->uf) }}"></div>
+  <div><label class="label">🕐 Fuso-horário (cidade onde opera)</label>
+    @php $fz = $empresa->config('fuso','America/Manaus'); $opts = ['America/Manaus'=>'Manaus / AM, RR (GMT-4)','America/Boa_Vista'=>'Boa Vista / RR (GMT-4)','America/Porto_Velho'=>'Porto Velho / RO (GMT-4)','America/Cuiaba'=>'Cuiabá / MT (GMT-4)','America/Rio_Branco'=>'Rio Branco / AC (GMT-5)','America/Belem'=>'Belém / PA, AP (GMT-3)','America/Sao_Paulo'=>'Brasília / SP, DF (GMT-3)','America/Fortaleza'=>'Fortaleza / CE (GMT-3)','America/Recife'=>'Recife / PE (GMT-3)']; @endphp
+    <select name="fuso" class="input">
+      @foreach($opts as $k=>$v)<option value="{{ $k }}" @selected($fz===$k)>{{ $v }}</option>@endforeach
+    </select>
+    <p class="text-[11px] text-slate-400 mt-0.5">Usado pra decidir se a lancha já saiu (devolução). Cada empresa/cidade usa o seu.</p>
+  </div>
   <div class="sm:col-span-2"><label class="label">Chave PIX (impressa no comprovante)</label><input name="pix" class="input" value="{{ old('pix',$empresa->pix) }}"></div>
   <div class="sm:col-span-2"><label class="label">Rodapé do comprovante</label><textarea name="rodape_comprovante" rows="2" class="input !min-h-[60px] py-2">{{ old('rodape_comprovante',$empresa->rodape_comprovante) }}</textarea></div>
   <div><label class="label">Cor principal</label><input name="cor_primaria" type="color" class="input !p-1 h-12" value="{{ old('cor_primaria',$empresa->cor_primaria) }}"></div>

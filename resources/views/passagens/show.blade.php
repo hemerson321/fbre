@@ -90,7 +90,7 @@
   <div x-show="painel==='cancel'" x-cloak>
   <form method="post" action="{{ route('passagens.cancelar',$p) }}" class="card p-4">@csrf
     @php $embc = $p->embarcacao; $pa = $embc?->cancelAntes() ?? 10; $pd = $embc?->cancelDepois() ?? 30;
-         $jaSaiu = $p->embarcou || ($p->data_viagem && \Carbon\Carbon::parse($p->data_viagem)->endOfDay()->isPast()); @endphp
+         $jaSaiu = $p->jaSaiu(); @endphp
     <div class="font-bold text-sm mb-1">↩ Devolução ao passageiro</div>
     <div class="rounded-lg bg-slate-50 border p-2.5 text-[12px] text-slate-600 mb-2 space-y-2">
       <div class="flex gap-2"><span class="shrink-0">🟢</span><span><b>Antes</b> da lancha sair — devolve <b>{{ 100-$pa }}%</b> ao passageiro e retém <b>{{ $pa }}%</b>, que vai pro <b>caixa local</b> (não entra no caixa da empresa).</span></div>

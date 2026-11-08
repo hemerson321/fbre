@@ -749,8 +749,7 @@ class PassagemController extends Controller
         if ($empresa && $empresa->config('usa_cancel_transporte')) {
             // Politica por transporte: empresa retem uma % e reembolsa o resto (saida no caixa).
             $emb = $passagem->embarcacao;
-            $depois = (bool) $passagem->embarcou
-                || ($passagem->data_viagem && \Carbon\Carbon::parse($passagem->data_viagem)->endOfDay()->isPast());
+            $depois = $passagem->jaSaiu();
             $pct = $depois ? ($emb ? $emb->cancelDepois() : 30) : ($emb ? $emb->cancelAntes() : 10);
             $pago = (float) $passagem->pago;
             $retido = round($pago * $pct / 100, 2);

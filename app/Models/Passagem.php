@@ -44,6 +44,24 @@ class Passagem extends Model
     public function passageiros(): HasMany { return $this->hasMany(PassagemPassageiro::class); }
     public function pagamentos(): HasMany { return $this->hasMany(Pagamento::class, 'origem_id')->where('modulo', self::MODULO)->where('estornado', false); }
     public function embarcacao(): BelongsTo { return $this->belongsTo(Embarcacao::class); }
+
+    /**
+     * A lancha já saiu? Considera a HORA de saída do transporte e o FUSO da empresa
+     * (cidade onde opera), pra funcionar em qualquer cidade. Sem hora de saída, usa o
+     * fim do dia da viagem. Quem já embarcou conta como "já saiu".
+     */
+    public function jaSaiu(): bool
+    {
+        if ($this->embarcou) return true;
+        if (! $this->data_viagem) return false;
+        $tz = \App\Support\Tenant::empresa()?->fusoHorario() ?: config('app.timezone');
+        $dia = \Carbon\Carbon::parse($this->data_viagem)->format('Y-m-d');
+        $hora = optional($this->embarcacao)->hora_saida;
+        $alvo = $hora
+            ? \Carbon\Carbon::parse($dia.' '.$hora, $tz)
+            : \Carbon\Carbon::parse($dia, $tz)->endOfDay();
+        return \Carbon\Carbon::now($tz)->greaterThanOrEqualTo($alvo);
+    }
     public function viagem(): BelongsTo { return $this->belongsTo(Viagem::class); }
     public function rota(): BelongsTo { return $this->belongsTo(Rota::class); }
     public function camarote(): BelongsTo { return $this->belongsTo(Camarote::class); }
