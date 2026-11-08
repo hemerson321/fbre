@@ -33,6 +33,13 @@ class RelatorioController extends Controller
               ->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('viagem_id', $viagemId)->select('id')));
         });
 
+        $dataViagem = $request->input('data_viagem') ?: null;
+        $datasViagem = \App\Models\Passagem::where('cancelada', false)->whereNotNull('data_viagem')
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->whereBetween('data_viagem', [now()->subMonthsNoOverflow(3)->toDateString(), now()->addMonthsNoOverflow(3)->toDateString()])
+            ->select('data_viagem')->distinct()->orderByDesc('data_viagem')->limit(200)->pluck('data_viagem');
+        $fDataViagemPag = fn ($q) => $q->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::whereDate('data_viagem', $dataViagem)->select('id'));
+
         // período longo (> 31 dias) abre resumido por padrão pra não travar
         $longo = $inicio->diffInDays($fim) > 31;
         $pedido = $request->input('modo');
@@ -42,7 +49,7 @@ class RelatorioController extends Controller
         $pagQ = Pagamento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('estornado', false)
             ->where(fn ($q) => $q->whereNull('momento')->orWhere('momento', '!=', 'baixa'))
             ->when($canal, fn ($q) => $q->canal($canal))->whereBetween('created_at', [$inicio, $fim])
-            ->when($transporteId, fn ($q) => $q->where(function ($w) use ($transporteId) { $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('embarcacao_id', $transporteId)->select('id')))->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id'))); }))->when($viagemId, $fViagemPag);
+            ->when($transporteId, fn ($q) => $q->where(function ($w) use ($transporteId) { $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('embarcacao_id', $transporteId)->select('id')))->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id'))); }))->when($viagemId, $fViagemPag)->when($dataViagem, $fDataViagemPag);
         $evQ = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')->whereBetween('created_at', [$inicio, $fim])->when($transporteId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id')))->when($viagemId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('viagem_id', $viagemId)->select('id')));
 
         // Totais somados NO BANCO (rápido mesmo com milhões de linhas)
@@ -58,7 +65,7 @@ class RelatorioController extends Controller
         // Listas só no analítico, limitadas (o resto é via Exportar)
         $limite = self::LIMITE;
         $cadastros    = $modo === 'analitico' ? (clone $encQ)->with('embarcacao')->orderByDesc('id')->limit($limite)->get() : collect();
-        $recebimentos = $modo === 'analitico' ? (clone $pagQ)->with(['user', 'encomenda.embarcacao', 'passagemOrigem.embarcacao'])->orderByDesc('id')->limit($limite)->get() : collect();
+        $recebimentos = $modo === 'analitico' ? (clone $pagQ)->with(['user', 'encomenda.embarcacao', 'passagemOrigem.embarcacao', 'passagemOrigem.passageiros:id,passagem_id,poltrona,nome'])->orderByDesc('id')->limit($limite)->get() : collect();
         $entregas     = $modo === 'analitico' ? (clone $evQ)->with('encomenda')->orderByDesc('id')->limit($limite)->get() : collect();
 
         // Acerto do agente externo (revendedor): quanto vendeu, comissao dele e quanto passar pra empresa
@@ -152,7 +159,7 @@ class RelatorioController extends Controller
             ]);
         }
 
-        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite', 'transportes', 'transporteId', 'podeTransporte', 'viagens', 'viagemId'))
+        return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite', 'transportes', 'transporteId', 'podeTransporte', 'viagens', 'viagemId', 'dataViagem', 'datasViagem'))
             ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'pendentes' => $pendentes, 'debitosDono' => $debitosDono, 'temEncomenda' => $temEncomenda, 'podeAvulso' => $podeAvulso, 'categorias' => $categorias]);
     }
 

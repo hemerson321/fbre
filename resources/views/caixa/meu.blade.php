@@ -22,6 +22,11 @@
     <select name="transporte_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
       @foreach($transportes as $t)<option value="{{ $t->id }}" @selected((string)$transporteId===(string)$t->id)>{{ $t->nome }}</option>@endforeach</select></div>
   @endif
+  @if($datasViagem->isNotEmpty())
+  <div><label class="label">Data da viagem</label>
+    <select name="data_viagem" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as datas</option>
+      @foreach($datasViagem as $dv)@php $dvs = \Illuminate\Support\Carbon::parse($dv)->toDateString(); @endphp<option value="{{ $dvs }}" @selected((string)($dataViagem ?? '')===$dvs)>{{ \Illuminate\Support\Carbon::parse($dv)->format('d/m/Y') }}</option>@endforeach</select></div>
+  @endif
   @if($viagens->isNotEmpty())
   <div><label class="label">Viagem</label>
     <select name="viagem_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as viagens</option>
@@ -218,10 +223,27 @@ function acertoPix(ac){
   </div>
   @endif
 
-  <div class="space-y-4">
-    <div class="card overflow-hidden">
-      <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Recebimentos ({{ $totais['recebido_qtd'] }})</div>
-      <div class="divide-y text-sm">
+</div>{{-- fecha a grade de cards secundários --}}
+
+<div class="card overflow-hidden">
+  <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Recebimentos ({{ $totais['recebido_qtd'] }})</div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-slate-50 text-slate-500 text-[11px] uppercase text-left">
+          <th class="p-2 pl-3">Nº</th>
+          <th class="p-2">Transporte</th>
+          <th class="p-2">Trecho</th>
+          <th class="p-2">Viagem</th>
+          <th class="p-2">Comprador</th>
+          <th class="p-2">Poltrona</th>
+          <th class="p-2">Vendeu</th>
+          <th class="p-2">Compra</th>
+          <th class="p-2">Meio</th>
+          <th class="p-2 pr-3 text-right">Valor</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
         @forelse($recebimentos as $p)
           @php
             $pg = $p->passagemOrigem; $en = $p->encomenda;
@@ -229,31 +251,39 @@ function acertoPix(ac){
             $transp = $pg?->embarcacao?->nome ?? $en?->embarcacao?->nome;
             $quem   = $pg ? ($pg->comprador_nome ?: '—') : ($en?->destinatario_nome ?: '—');
             $rota   = $pg ? trim(($pg->origem ?? '').' → '.($pg->destino ?? '')) : '';
+            $poltronas = $pg ? $pg->passageiros->pluck('poltrona')->filter()->implode(', ') : '';
+            $viagem = $pg?->data_viagem ? \Illuminate\Support\Carbon::parse($pg->data_viagem)->format('d/m/Y') : '—';
           @endphp
-          <div class="flex justify-between gap-3 p-3">
-            <div class="min-w-0">
-              <div class="font-semibold truncate">#{{ $numero }}@if($rota && $rota !== '→') · {{ $rota }}@endif</div>
-              @if($transp)<span class="text-[11px] font-bold text-white px-1.5 py-0.5 rounded inline-block mt-0.5" style="background:var(--cor1)">🚤 {{ $transp }}</span>@endif
-              <div class="text-xs text-slate-500 mt-0.5">👤 {{ $quem }} · 🧑‍💼 {{ $p->user?->name ?? '—' }}</div>
-              <div class="text-[11px] text-slate-400">{{ $p->created_at->format('d/m/Y H:i') }} · <span class="chip bg-slate-100 text-slate-600">{{ $meios[$p->canal] ?? \App\Models\Pagamento::MEIOS[$p->meio] ?? $p->meio }}</span></div>
-            </div>
-            <b class="whitespace-nowrap">R$ {{ number_format((float)$p->valor,2,',','.') }}</b>
-          </div>
-        @empty <div class="p-6 text-center text-slate-400">Nenhum recebimento.</div> @endforelse
-      </div>
-    </div>
-    @if($temEncomenda)
-    <div class="card overflow-hidden">
-      <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Entregas que dei baixa ({{ $totais['entregas'] }})</div>
-      <div class="divide-y text-sm">
-        @forelse($entregas as $ev)
-          <div class="p-3"><b>#{{ $ev->encomenda?->numeroFormatado() }}</b> {{ $ev->encomenda?->destinatario_nome }} <span class="text-xs text-slate-400">{{ $ev->created_at->format('d/m H:i') }}{{ ($ev->dados['para'] ?? null) ? ' · retirou: '.$ev->dados['para'] : '' }}</span></div>
-        @empty <div class="p-6 text-center text-slate-400">Nenhuma entrega.</div> @endforelse
-      </div>
-    </div>
-    @endif
+          <tr class="hover:bg-slate-50 align-top">
+            <td class="p-2 pl-3 font-semibold whitespace-nowrap">#{{ $numero }}</td>
+            <td class="p-2">@if($transp)<span class="text-[11px] font-bold text-white px-1.5 py-0.5 rounded whitespace-nowrap" style="background:var(--cor1)">🚤 {{ $transp }}</span>@else<span class="text-slate-300">—</span>@endif</td>
+            <td class="p-2 whitespace-nowrap">{{ $rota && $rota !== '→' ? $rota : '—' }}</td>
+            <td class="p-2 whitespace-nowrap">{{ $viagem }}</td>
+            <td class="p-2">{{ $quem }}</td>
+            <td class="p-2 whitespace-nowrap font-medium">{{ $poltronas ?: '—' }}</td>
+            <td class="p-2 whitespace-nowrap">{{ $p->user?->name ?? '—' }}</td>
+            <td class="p-2 whitespace-nowrap text-slate-500">{{ $p->created_at->format('d/m/Y H:i') }}</td>
+            <td class="p-2 whitespace-nowrap"><span class="chip bg-slate-100 text-slate-600">{{ $meios[$p->canal] ?? \App\Models\Pagamento::MEIOS[$p->meio] ?? $p->meio }}</span></td>
+            <td class="p-2 pr-3 text-right font-bold whitespace-nowrap">R$ {{ number_format((float)$p->valor,2,',','.') }}</td>
+          </tr>
+        @empty
+          <tr><td colspan="10" class="p-6 text-center text-slate-400">Nenhum recebimento.</td></tr>
+        @endforelse
+      </tbody>
+    </table>
   </div>
 </div>
+
+@if($temEncomenda)
+<div class="card overflow-hidden">
+  <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Entregas que dei baixa ({{ $totais['entregas'] }})</div>
+  <div class="divide-y text-sm">
+    @forelse($entregas as $ev)
+      <div class="p-3"><b>#{{ $ev->encomenda?->numeroFormatado() }}</b> {{ $ev->encomenda?->destinatario_nome }} <span class="text-xs text-slate-400">{{ $ev->created_at->format('d/m H:i') }}{{ ($ev->dados['para'] ?? null) ? ' · retirou: '.$ev->dados['para'] : '' }}</span></div>
+    @empty <div class="p-6 text-center text-slate-400">Nenhuma entrega.</div> @endforelse
+  </div>
+</div>
+@endif
 @endif
 </div>
 @endsection
