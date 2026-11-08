@@ -66,6 +66,32 @@ class PassagemService
             }
         }
 
+        // Cota de gratuidade por viagem (ex.: idoso gratuito — Estatuto do Idoso). Só com viagem definida.
+        if ($viagemId) {
+            $gratNomes = \App\Models\TipoPassageiro::where('empresa_id', $empresa->id)->where('ativo', true)->where('gratuito', true)
+                ->pluck('nome')->map(fn ($n) => mb_strtolower($n))->all();
+            if ($gratNomes) {
+                $novosGrat = collect($data['passageiros'] ?? [])->filter(fn ($px) => in_array(mb_strtolower((string) ($px['tipo'] ?? '')), $gratNomes, true))->count();
+                if ($novosGrat > 0) {
+                    $cota = null;
+                    if (! empty($data['embarcacao_id']) && ($emb = \App\Models\Embarcacao::find($data['embarcacao_id'])) && $emb->gratuito_qtd !== null) {
+                        $cota = (int) $emb->gratuito_qtd;
+                    }
+                    if ($cota === null) $cota = (int) $empresa->config('gratuito_qtd', 2);
+                    $jaGrat = (int) DB::table('passagens')
+                        ->join('passagem_passageiros', 'passagens.id', '=', 'passagem_passageiros.passagem_id')
+                        ->where('passagens.empresa_id', $empresa->id)
+                        ->where('passagens.cancelada', false)
+                        ->where('passagens.viagem_id', $viagemId)
+                        ->whereIn(DB::raw('LOWER(passagem_passageiros.tipo)'), $gratNomes)
+                        ->count();
+                    if ($jaGrat + $novosGrat > $cota) {
+                        throw new \RuntimeException('Cota de gratuidade desta viagem atingida ('.$cota.' por viagem). Já emitidas: '.$jaGrat.'.');
+                    }
+                }
+            }
+        }
+
         // número oficial do aparelho (PREFIXO-0001); fallback no servidor
         $numeroCompleto = trim((string) ($data['numero_completo'] ?? ''));
         $seq = (int) ($data['numero_seq'] ?? 0);

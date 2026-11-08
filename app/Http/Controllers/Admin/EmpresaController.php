@@ -63,6 +63,7 @@ class EmpresaController extends Controller
         $config['usa_cancel_transporte'] = $request->boolean('usa_cancel_transporte');
         $config['cancel_antes_pct'] = max(0, min(100, (int) $request->input('cancel_antes_pct', 10)));
         $config['cancel_depois_pct'] = max(0, min(100, (int) $request->input('cancel_depois_pct', 30)));
+        $config['gratuito_qtd'] = max(0, min(999, (int) $request->input('gratuito_qtd', 2)));
         $fusosOk = ['America/Manaus', 'America/Sao_Paulo', 'America/Belem', 'America/Rio_Branco', 'America/Boa_Vista', 'America/Porto_Velho', 'America/Cuiaba', 'America/Fortaleza', 'America/Recife'];
         $fuso = (string) $request->input('fuso');
         $config['fuso'] = in_array($fuso, $fusosOk, true) ? $fuso : 'America/Manaus';

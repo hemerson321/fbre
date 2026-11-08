@@ -107,6 +107,11 @@
                 @endforeach
               </div>
             </div>
+            <div class="border-t pt-2 mt-2">
+              <label class="label !text-xs">🎟️ Gratuidades por viagem (próprio)</label>
+              <input name="gratuito_qtd" type="number" min="0" max="999" value="{{ $e->gratuito_qtd }}" placeholder="padrão da empresa" class="input !min-h-[40px] !w-48">
+              <p class="text-[11px] text-slate-400 mt-0.5">Em branco = usa a cota padrão da empresa. Máx. de passageiros gratuitos (ex.: idoso gratuito) por viagem deste transporte.</p>
+            </div>
             <div x-data="{ open:false, trip: {{ \Illuminate\Support\Js::from($e->tripulantes ?? []) }} }" class="mt-2">
               <button type="button" @click="open=true" class="btn btn-ghost btn-sm">🚢 Ficha / tripulação da embarcação</button>
               <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-3 overflow-auto">
