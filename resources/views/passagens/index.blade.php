@@ -6,7 +6,16 @@
   <div class="rounded-2xl px-4 py-3 text-white flex items-center gap-3" style="background:{{ $cor }}">
     <span class="text-2xl">🧾</span><div class="font-bold">Passagens / embarque</div>
     @can('cadastra', null)@endcan
-    <a href="{{ route('passagens.manifesto', array_merge(request()->query(), ['print'=>1])) }}" target="_blank" class="ml-auto btn btn-sm bg-white/20 text-white">📋 Lista (PDF)</a>
+    <div class="relative ml-auto" x-data="{o:false}">
+      <button type="button" @click="o=!o" class="btn btn-sm bg-white/20 text-white">📋 Listas (PDF) ▾</button>
+      <div x-show="o" x-cloak @click.outside="o=false" class="absolute right-0 mt-1 w-64 bg-white rounded-xl shadow-xl border z-30 overflow-hidden text-slate-700">
+        <div class="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-400 bg-slate-50 border-b">Filtre por transporte e viagem</div>
+        <a href="{{ route('passagens.manifesto', array_merge(request()->query(), ['tipo'=>'trecho','print'=>1])) }}" target="_blank" class="block px-3 py-2 text-sm hover:bg-slate-50 border-b">🧾 Por trecho <div class="text-[11px] text-slate-400">RG · nascimento · nacionalidade</div></a>
+        <a href="{{ route('passagens.manifesto', array_merge(request()->query(), ['tipo'=>'poltrona','print'=>1])) }}" target="_blank" class="block px-3 py-2 text-sm hover:bg-slate-50 border-b">💺 Por poltrona <div class="text-[11px] text-slate-400">mapa de assentos · checkin</div></a>
+        <a href="{{ route('passagens.manifesto', array_merge(request()->query(), ['tipo'=>'federal','print'=>1])) }}" target="_blank" class="block px-3 py-2 text-sm hover:bg-slate-50 border-b">🛂 Órgão federal <div class="text-[11px] text-slate-400">nome · nascimento · sexo (bilíngue)</div></a>
+        <a href="{{ route('passagens.manifesto', array_merge(request()->query(), ['print'=>1])) }}" target="_blank" class="block px-3 py-2 text-sm hover:bg-slate-50">📋 Lista geral</a>
+      </div>
+    </div>
     <a href="{{ route('passagens.create') }}" class="btn btn-sm bg-white/20 text-white">+ Nova</a>
   </div>
 

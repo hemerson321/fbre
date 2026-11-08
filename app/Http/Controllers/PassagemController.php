@@ -268,7 +268,7 @@ class PassagemController extends Controller
     public function manifesto(Request $request)
     {
         $f = $this->filtros($request);
-        $passagens = Passagem::filtrar($f)->with(['passageiros', 'camarote', 'embarcacao'])
+        $passagens = Passagem::filtrar($f)->where('cancelada', false)->with(['passageiros', 'camarote', 'embarcacao'])
             ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
 
         $linhas = collect();
@@ -277,36 +277,54 @@ class PassagemController extends Controller
                 $linhas->push((object) [
                     'nome' => $pax->nome,
                     'documento' => $pax->documento,
-                    'nacionalidade' => $pax->nacionalidade ?: 'Brasil',
+                    'nacionalidade' => $pax->nacionalidade ?: 'Brasileira',
                     'nascimento' => $pax->nascimento,
+                    'sexo' => $pax->sexo,
+                    'telefone' => $pax->telefone,
                     'origem' => $p->origem,
                     'destino' => $p->destino,
+                    'trecho' => $p->origem.'/'.$p->destino,
                     'data' => $p->data_viagem,
                     'numero' => $p->numeroFormatado(),
+                    'ticket' => $p->numeroFormatado(),
                     'tipo' => $p->tipo === 'camarote' ? ('Camarote'.($p->camarote?->nome ? ' '.$p->camarote->nome : '')) : ($pax->papel ?: $pax->tipo),
+                    'papel' => $pax->papel,
                     'poltrona' => $pax->poltrona,
                     'checkin' => (bool) $pax->checkin,
                     'embarcou' => (bool) $p->embarcou,
-                    'camarote' => $p->tipo === 'camarote' ? ($p->camarote?->nome ?: 'Camarote') : null,
                 ]);
             }
         }
 
-        // cabeçalho da lista (igual ao modelo da Marinha)
+        // cabecalho (modelo oficial)
         $embs = $passagens->map(fn ($p) => $p->embarcacao?->nome)->filter()->unique()->values();
-        $origens = $passagens->pluck('origem')->filter()->unique()->values();
-        $destinos = $passagens->pluck('destino')->filter()->unique()->values();
         $datas = $passagens->pluck('data_viagem')->filter()->unique()->values();
-        $hora = optional($passagens->first()?->embarcacao)->nome ? null : null;
+
+        $rota = null;
+        $rotaId = $passagens->pluck('rota_id')->filter()->first();
+        if ($rotaId) $rota = \App\Models\Rota::find($rotaId);
+        $escalas = $rota ? array_values($rota->localidades()) : $passagens->pluck('destino')->filter()->unique()->values()->all();
+        $primeiro = ! empty($escalas) ? $escalas[0] : ($passagens->pluck('origem')->filter()->first() ?: '—');
+        $ultimo = ! empty($escalas) ? end($escalas) : ($passagens->pluck('destino')->filter()->last() ?: '—');
 
         $cab = [
-            'embarcacao' => $embs->count() === 1 ? $embs->first() : ($embs->count() > 1 ? 'Vários' : '—'),
-            'porto_part' => $origens->count() === 1 ? $origens->first() : ($origens->count() > 1 ? 'Vários' : '—'),
-            'porto_cheg' => $destinos->count() === 1 ? $destinos->first() : ($destinos->count() > 1 ? 'Vários' : '—'),
-            'data' => $datas->count() === 1 ? \Carbon\Carbon::parse($datas->first())->format('d/m/Y') : (($f['inicio'] ?? '') && ($f['fim'] ?? '') ? ($f['inicio'].' a '.$f['fim']) : '—'),
+            'embarcacao' => $embs->count() === 1 ? $embs->first() : ($embs->count() > 1 ? 'Vários transportes' : '—'),
+            'data' => $datas->count() === 1 ? \Carbon\Carbon::parse($datas->first()) : null,
+            'periodo' => (($f['inicio'] ?? '') || ($f['fim'] ?? '')) ? (($f['inicio'] ?? '…').' a '.($f['fim'] ?? '…')) : null,
+            'rota' => $primeiro.'/'.$ultimo,
+            'escalas' => $escalas,
+            'destino' => $ultimo,
         ];
 
-        return view('passagens.manifesto', [
+        $tipo = $request->input('tipo');
+        $view = match ($tipo) {
+            'trecho' => 'passagens.lista_trecho',
+            'poltrona' => 'passagens.lista_poltrona',
+            'federal' => 'passagens.lista_federal',
+            default => 'passagens.manifesto',
+        };
+
+        return view($view, [
             'linhas' => $linhas,
             'f' => $f,
             'empresa' => Tenant::empresa(),
