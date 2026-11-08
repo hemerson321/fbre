@@ -64,12 +64,7 @@
   {{-- ABA: ACERTOS --}}
   @if($aba==='acertos')
   {{-- RESUMO DO PERIODO --}}
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-    <div class="card p-4 ring-2" style="--tw-ring-color:var(--cor1)">
-      <div class="text-[11px] text-slate-500 uppercase font-semibold">💵 O que é seu</div>
-      <div class="text-2xl font-extrabold" style="color:var(--cor1)">{{ $brl($vendasDono) }}</div>
-      <div class="text-[11px] text-slate-400">{{ $vendasQtd }} venda(s) · de {{ $brl($vendasBruto) }} vendidos</div>
-    </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
     <div class="card p-4">
       <div class="text-[11px] text-slate-500 uppercase font-semibold">✅ Já recebido</div>
       <div class="text-2xl font-extrabold text-emerald-600">{{ $brl($recebido) }}</div>
