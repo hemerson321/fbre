@@ -170,6 +170,9 @@ class CadastroController extends Controller
             ];
             if (! empty($row['id']) && ($t = TipoPassageiro::find($row['id']))) {
                 $t->update($payload);
+            } elseif ($t = TipoPassageiro::where('empresa_id', Tenant::id())->whereRaw('LOWER(nome) = ?', [mb_strtolower(trim($row['nome']))])->first()) {
+                // reaproveita um tipo já existente com o mesmo nome (mantém o id e os preços vinculados)
+                $t->update($payload);
             } else {
                 $t = TipoPassageiro::create($payload);
             }
