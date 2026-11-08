@@ -124,6 +124,34 @@ class RelatorioController extends Controller
         $temEncomenda = $uu->temModulo('encomenda') && $_encOn;
         $podeAvulso = $uu->podeModulo('avulso');
         $categorias = \App\Models\AvulsoCategoria::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
+        if ($request->boolean('pdf')) {
+            $recs = (clone $pagQ)->with(['passagemOrigem.embarcacao', 'encomenda.embarcacao'])->orderByDesc('id')->limit(2000)->get();
+            $linhas = $recs->map(function ($p) {
+                $pg = $p->passagemOrigem; $en = $p->encomenda;
+                $quem = $pg ? ($pg->comprador_nome ?: '') : ($en?->destinatario_nome ?: '');
+                $transp = $pg?->embarcacao?->nome ?? $en?->embarcacao?->nome;
+                return (object) [
+                    'data' => $p->created_at,
+                    'descricao' => trim(($transp ? '🚤 '.$transp.' · ' : '').($quem ?: 'Recebimento')),
+                    'ref' => '#'.($pg?->numeroFormatado() ?? $en?->numeroFormatado() ?? ''),
+                    'valor' => (float) $p->valor,
+                ];
+            });
+            $canais = Pagamento::CANAIS;
+            $totais = [['label' => 'Total recebido', 'valor' => (float) $porMeio->sum(), 'forte' => true]];
+            foreach ($porMeio as $k => $v) $totais[] = ['label' => ($canais[$k] ?? $k), 'valor' => (float) $v];
+            return view('relatorio.prestacao', [
+                'empresa' => \App\Support\Tenant::empresa(),
+                'titulo' => 'Prestação de contas',
+                'subtitulo' => $todos ? 'Relatório geral' : (($uu->ehRevendedor() ? 'Agente: ' : 'Operador: ').$uu->name),
+                'periodo' => 'Período: '.\Carbon\Carbon::parse($inicio)->format('d/m/Y').' a '.\Carbon\Carbon::parse($fim)->format('d/m/Y'),
+                'linhas' => $linhas,
+                'totais' => $totais,
+                'assinatura' => $uu->name,
+                'voltar' => route('relatorio.meu'),
+            ]);
+        }
+
         return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite', 'transportes', 'transporteId', 'podeTransporte', 'viagens', 'viagemId'))
             ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'pendentes' => $pendentes, 'debitosDono' => $debitosDono, 'temEncomenda' => $temEncomenda, 'podeAvulso' => $podeAvulso, 'categorias' => $categorias]);
     }

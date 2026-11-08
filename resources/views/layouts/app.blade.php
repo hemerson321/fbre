@@ -145,6 +145,7 @@ document.addEventListener('alpine:init', () => {
       $g[] = ['r'=>route('admin.acertos', ['aba'=>'operadores']), 'l'=>'Acerto Operadores', 'i'=>'💵'];
   }
   if ($g) $grupos['Caixa'] = $g;
+  if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isAdmin() || $u->isSuper()) {
       $adm = [
           ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'],
@@ -162,7 +163,6 @@ document.addEventListener('alpine:init', () => {
       $grupos['Administração'] = $adm;
   }
   if ($u->ehRevendedor() && \App\Support\Tenant::empresa()?->config('revendedor_multi')) $grupos['Revendedor'] = [['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝']];
-  if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
   if ($u->ehDonoPuro()) $grupos = ['Meu transporte' => [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']]];
   if ($u->ehRevendedor()) {

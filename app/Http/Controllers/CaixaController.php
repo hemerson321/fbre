@@ -151,6 +151,34 @@ class CaixaController extends Controller
                 })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0)->values();
         }
 
+        if ($request->boolean('pdf')) {
+            $movs = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->limit(2000)->get();
+            $canais = Pagamento::CANAIS;
+            $linhas = $movs->map(fn ($p) => (object) [
+                'data' => $p->created_at,
+                'descricao' => trim(($p->user?->name ? $p->user->name.' · ' : '').($p->categoria ?: ucfirst((string) $p->modulo))),
+                'ref' => $p->encomenda?->numeroFormatado() ? '#'.$p->encomenda->numeroFormatado() : ($canais[$p->canal] ?? ''),
+                'valor' => (float) $p->valor,
+            ]);
+            $ent = (float) $porMeio->sum('valor');
+            $tot = [
+                ['label' => 'Entradas', 'valor' => $ent, 'forte' => true],
+                ['label' => 'Saídas', 'valor' => (float) $saidas],
+                ['label' => 'Líquido', 'valor' => $ent - (float) $saidas, 'forte' => true],
+                ['label' => 'Vendas (bruto)', 'valor' => (float) $vendasBruto],
+            ];
+            return view('relatorio.prestacao', [
+                'empresa' => Tenant::empresa(),
+                'titulo' => 'Prestação de contas — Caixa',
+                'subtitulo' => $verTodos ? 'Caixa geral da empresa' : ('Caixa · '.auth()->user()->name),
+                'periodo' => 'Período: '.\Carbon\Carbon::parse($inicio)->format('d/m/Y').' a '.\Carbon\Carbon::parse($fim)->format('d/m/Y'),
+                'linhas' => $linhas,
+                'totais' => $tot,
+                'assinatura' => auth()->user()->name,
+                'voltar' => route('caixa.index'),
+            ]);
+        }
+
         return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto]);
     }

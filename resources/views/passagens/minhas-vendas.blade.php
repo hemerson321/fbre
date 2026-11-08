@@ -6,6 +6,7 @@
     <h1 class="text-xl font-bold">Minhas vendas <span class="text-slate-400 font-normal text-base">· {{ auth()->user()->name }}</span></h1>
     <div class="flex items-center gap-2 no-print">
       <a href="{{ route('passagens.minhas-vendas.exportar', request()->query()) }}" class="btn btn-ghost btn-sm">⬇️ Exportar CSV</a>
+      <a href="{{ request()->fullUrlWithQuery(['pdf'=>1]) }}" target="_blank" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a>
       <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>
     </div>
   </div>

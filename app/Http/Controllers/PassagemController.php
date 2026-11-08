@@ -586,6 +586,31 @@ class PassagemController extends Controller
             ];
         }
 
+        if ($request->boolean('pdf')) {
+            $linhas = $vendas->map(fn ($p) => (object) [
+                'data' => $p->created_at,
+                'descricao' => ($p->embarcacao?->nome ? '🚤 '.$p->embarcacao->nome.' · ' : '').$p->origem.' → '.$p->destino.($p->comprador_nome ? ' · '.$p->comprador_nome : ''),
+                'ref' => '#'.$p->numeroFormatado(),
+                'valor' => (float) $p->total,
+            ]);
+            $tot = [
+                ['label' => 'Total vendido', 'valor' => (float) $totais['total'], 'forte' => true],
+                ['label' => 'Recebido', 'valor' => (float) $totais['recebido']],
+                ['label' => 'A receber', 'valor' => (float) $totais['devido']],
+            ];
+            if ($acerto) $tot[] = ['label' => 'A repassar ('.$acerto['titulo'].')', 'valor' => (float) $acerto['pendente']];
+            return view('relatorio.prestacao', [
+                'empresa' => \App\Support\Tenant::empresa(),
+                'titulo' => 'Prestação de contas',
+                'subtitulo' => ($u->ehRevendedor() ? 'Agente: ' : 'Operador: ').$u->name,
+                'periodo' => 'Período: '.\Carbon\Carbon::parse($inicio)->format('d/m/Y').' a '.\Carbon\Carbon::parse($fim)->format('d/m/Y'),
+                'linhas' => $linhas,
+                'totais' => $tot,
+                'assinatura' => $u->name,
+                'voltar' => route('passagens.minhas-vendas'),
+            ]);
+        }
+
         return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal', 'limite'));
     }
 

@@ -8,6 +8,7 @@
       <a href="{{ request()->fullUrlWithQuery(['modo'=>'resumido']) }}" class="px-4 py-2 font-semibold {{ $modo==='resumido' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Resumido</a>
       <a href="{{ request()->fullUrlWithQuery(['modo'=>'analitico']) }}" class="px-4 py-2 font-semibold {{ $modo==='analitico' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50' }}">Analítico</a>
     </div>
+    <a href="{{ request()->fullUrlWithQuery(['pdf'=>1]) }}" target="_blank" class="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 shadow-sm">📄 Prestação (PDF)</a>
     <button onclick="window.print()" class="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 shadow-sm">🖨 Imprimir</button>
   </div></div>
 

@@ -3,7 +3,7 @@
 @section('conteudo')
 <div class="space-y-4">
 <div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ $verTodos ? 'Caixa geral' : 'Meu caixa' }}</h1>
-  <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Imprimir</button></div>
+  <div class="flex items-center gap-2 no-print"><a href="{{ request()->fullUrlWithQuery(['pdf'=>1]) }}" target="_blank" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div></div>
 
 @if($podeAvulso)
 <div x-data="{open:false, tipo:'entrada'}" class="no-print">
