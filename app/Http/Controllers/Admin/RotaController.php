@@ -16,6 +16,7 @@ class RotaController extends Controller
     public function index()
     {
         $empresa = Tenant::empresa();
+        TrechoPreco::curarOrfaos();
         return view('admin.rotas', [
             'rotas' => Rota::with(['paradas', 'embarcacao'])->orderBy('ordem')->orderBy('nome')->get(),
             'embarcacoes' => Embarcacao::orderBy('nome')->get(),

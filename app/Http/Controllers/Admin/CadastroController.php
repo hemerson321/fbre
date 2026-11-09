@@ -47,6 +47,7 @@ class CadastroController extends Controller
 
     public function index()
     {
+        \App\Models\TrechoPreco::curarOrfaos();
         return view('admin.cadastros', [
             'embarcacoes' => Embarcacao::orderBy('nome')->get(),
             'setores' => Setor::orderBy('nome')->get(),
@@ -172,9 +173,6 @@ class CadastroController extends Controller
             ];
             if (! empty($row['id']) && ($t = TipoPassageiro::find($row['id']))) {
                 $t->update($payload);
-            } elseif ($t = TipoPassageiro::where('empresa_id', Tenant::id())->whereRaw('LOWER(nome) = ?', [mb_strtolower(trim($row['nome']))])->first()) {
-                // reaproveita um tipo já existente com o mesmo nome (mantém o id e os preços vinculados)
-                $t->update($payload);
             } else {
                 $t = TipoPassageiro::create($payload);
             }
@@ -191,6 +189,8 @@ class CadastroController extends Controller
 
         // removidos: desativa (preserva histórico de passagens)
         TipoPassageiro::whereNotIn('id', $vistos ?: [0])->update(['ativo' => false]);
+
+        \App\Models\TrechoPreco::curarOrfaos();
 
         return back()->with('ok', 'Tipos de passageiro salvos.');
     }

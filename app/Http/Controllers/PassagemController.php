@@ -76,6 +76,7 @@ class PassagemController extends Controller
     public function create()
     {
         $u = auth()->user();
+        TrechoPreco::curarOrfaos();
         // Só aparecem no seletor de venda os transportes que têm ROTA ativa COM trecho precificado.
         $precoPares = TrechoPreco::where('ativo', true)->get(['origem', 'destino'])
             ->map(fn ($tp) => mb_strtolower(trim((string) $tp->origem)).'|'.mb_strtolower(trim((string) $tp->destino)))
