@@ -19,7 +19,7 @@
     </div>
   </div>
   <div class="space-y-2" x-ref="paradasList">
-    <template x-for="(p,i) in paradas" :key="i">
+    <template x-for="(p,i) in paradas" :key="p._id">
       <div class="grid grid-cols-12 gap-2 items-center">
         <span class="col-span-1 text-center text-slate-400 font-bold drag-handle cursor-grab select-none" title="Segure e arraste pra reordenar">⠿<span x-text="i+1"></span></span>
         <input :name="`paradas[${i}][localidade]`" x-model="p.localidade" list="locais" class="input col-span-5" placeholder="Cidade" required>
@@ -140,9 +140,10 @@
 @push('scripts')
 <script>
 function rotaForm(paradas, precos, tipos, flags){
+  let _uid = 0; const nid = () => ++_uid;
   const p = (paradas && paradas.length) ? paradas : [{localidade:'',dia_semana:'',hora:''},{localidade:'',dia_semana:'',hora:''}];
   return {
-    paradas: p.map(x=>({localidade:x.localidade||'', dia_semana:(x.dia_semana??'')+'', hora:x.hora||''})),
+    paradas: p.map(x=>({_id:nid(), localidade:x.localidade||'', dia_semana:(x.dia_semana??'')+'', hora:x.hora||''})),
     precos: Object.assign({}, precos||{}),
     tipos: (tipos||[]).map(t=>({...t})),
     usaAlim: !!(flags&&flags.alim),
@@ -156,7 +157,7 @@ function rotaForm(paradas, precos, tipos, flags){
       return this.trechos.filter(t=> (t.o+' '+t.d).toLowerCase().includes(f)); },
     resumoTrecho(t){ const n=this.normal; if(!n) return ''; const c=this.precos[this.cellKey(t.key,n.id)];
       const v=c?Number(c.tarifa)||0:0; return v>0 ? (n.nome+' '+this.moeda(v)) : ''; },
-    add(){ this.paradas.push({localidade:'',dia_semana:'',hora:''}); },
+    add(){ this.paradas.push({_id:nid(), localidade:'',dia_semana:'',hora:''}); },
     inverter(){ const c=this.paradas.map(p=>p.localidade); c.reverse(); this.paradas.forEach((p,i)=>{ p.localidade=c[i]; }); },
     moeda(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); },
     get normal(){ return this.tipos.find(t=>t.eh_normal) || this.tipos[0] || null; },
