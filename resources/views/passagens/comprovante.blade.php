@@ -8,7 +8,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .ticket:last-child{page-break-after:auto}
 .c{text-align:center}.muted{color:#6b7280}.b{font-weight:700}
 .hdr{text-align:center;margin-bottom:4px}
-.hdr img{height:38px;max-width:58mm;object-fit:contain;margin-bottom:3px}
+.hdr img{height:54px;max-width:62mm;object-fit:contain;margin-bottom:3px}
 .emp{font-weight:800;font-size:14px;letter-spacing:.02em;line-height:1.1}
 .cnpj{font-size:10px;color:#6b7280}
 .band{margin:6px -4mm 0;padding:5px 0;text-align:center;color:#fff;font-weight:800;font-size:12px;letter-spacing:.09em;background:var(--cor)}
