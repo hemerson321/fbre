@@ -95,7 +95,7 @@ class PassagemController extends Controller
             })->pluck('embarcacao_id')->unique()->values();
         $embarcacoes = Embarcacao::where('ativo', true)->whereIn('id', $embComVenda)->orderBy('nome')
             ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas', 'regra_idade']);
-        $colunas = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao', 'idade_min', 'idade_max', 'gratuito'];
+        $colunas = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao', 'idade_min', 'idade_max', 'gratuito', 'pcd'];
         $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get($colunas);
         if ($tipos->isEmpty()) {
             // auto-reparo: cria o Normal (Adulto) e alguns tipos padrão
@@ -530,7 +530,8 @@ class PassagemController extends Controller
     /** Uso da cota de gratuidade no trecho (para o indicador na venda). */
     public function gratuidade(Request $request)
     {
-        $info = app(\App\Services\PassagemService::class)->gratuidadeUso(
+        $svc = app(\App\Services\PassagemService::class);
+        $args = [
             Tenant::id(),
             $request->integer('viagem_id') ?: null,
             $request->input('rota_id') ?: null,
@@ -538,8 +539,12 @@ class PassagemController extends Controller
             $request->integer('embarcacao_id') ?: null,
             (string) $request->input('origem', ''),
             (string) $request->input('destino', ''),
-        );
-        return response()->json(['ativo' => $info['ativo'], 'cota' => $info['cota'], 'usados' => $info['usados'], 'restante' => $info['restante']]);
+        ];
+        $resumo = fn ($x) => ['ativo' => $x['ativo'], 'cota' => $x['cota'], 'usados' => $x['usados'], 'restante' => $x['restante']];
+        $g = $svc->cotaUso('gratuito', ...$args);
+        $p = $svc->cotaUso('pcd', ...$args);
+        // mantém campos de topo (gratuito) por compatibilidade + objetos por grupo
+        return response()->json($resumo($g) + ['gratuito' => $resumo($g), 'pcd' => $resumo($p)]);
     }
 
     public function assentos(Request $request)

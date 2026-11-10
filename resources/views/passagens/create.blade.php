@@ -111,6 +111,9 @@
         <div x-show="gratInfo" x-cloak class="text-[11px] font-semibold flex items-center gap-1 mt-0.5" :class="(gratInfo && gratInfo.restante<=0) ? 'text-red-500' : 'text-slate-400'" title="Gratuidades (ex.: idoso gratuito) já usadas neste trecho desta viagem">
           🎟️ <span x-text="gratInfo ? ('Gratuidade neste trecho: '+gratInfo.usados+'/'+gratInfo.cota) : ''"></span><span x-show="gratInfo && gratInfo.restante<=0"> · esgotado</span>
         </div>
+        <div x-show="pcdInfo" x-cloak class="text-[11px] font-semibold flex items-center gap-1 mt-0.5" :class="(pcdInfo && pcdInfo.restante<=0) ? 'text-red-500' : 'text-slate-400'" title="Vagas PCD já usadas neste trecho desta viagem">
+          ♿ <span x-text="pcdInfo ? ('PCD neste trecho: '+pcdInfo.usados+'/'+pcdInfo.cota) : ''"></span><span x-show="pcdInfo && pcdInfo.restante<=0"> · esgotado</span>
+        </div>
       </div>
     </section>
 
@@ -174,7 +177,7 @@
             <div class="grid grid-cols-5 gap-2 mt-1.5 items-end">
               <div class="col-span-3"><label class="lbl">Tipo</label>
                 <select class="field !min-h-0 py-1 text-sm w-full" x-model="p.tipo_id" @change="aplicarTipo(p)">
-                  @foreach($tipos as $t)@php $lbl = $t->nome.(((($t->modo ?? 'valor')==='porcentagem') && !$t->eh_normal) ? ' ('.$t->percentual.'%)' : ''); @endphp<option value="{{ $t->id }}"@if($t->gratuito) :disabled="gratInfo && gratInfo.restante<=0" x-text="(gratInfo && gratInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@endif>{{ $lbl }}</option>@endforeach
+                  @foreach($tipos as $t)@php $lbl = $t->nome.(((($t->modo ?? 'valor')==='porcentagem') && !$t->eh_normal) ? ' ('.$t->percentual.'%)' : ''); @endphp<option value="{{ $t->id }}"@if($t->gratuito) :disabled="gratInfo && gratInfo.restante<=0" x-text="(gratInfo && gratInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@elseif($t->pcd) :disabled="pcdInfo && pcdInfo.restante<=0" x-text="(pcdInfo && pcdInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@endif>{{ $lbl }}</option>@endforeach
                 </select></div>
               <div class="col-span-2 text-right"><label class="lbl">Valor</label>
                 <div class="text-base font-extrabold leading-tight" style="color:var(--cor1)" x-text="FBRE.moeda(paxTotal(p))"></div></div>
@@ -445,7 +448,7 @@
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4),'layout'=>(string)($e->poltronas_lista ?? '')])->values()),
       regrasIdade:@js($regrasIdade ?? []),
-      gratInfo:null, _gratTok:0,
+      gratInfo:null, pcdInfo:null, _gratTok:0,
       podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
       capturaAberta:false, capturaUrl:'', capturaSid:'', capturaDesde:0, capturaTimer:null, capturaStatus:'', capturaAviso:'', _avisoT:null,
       camAberta:false, camStream:null, camFacing:'environment', camTargetIdx:0, camStatus:'', camLendo:false,
@@ -611,7 +614,7 @@
       carregarGratuidade(){ if(!this.origemSel||!this.destinoSel){ this.gratInfo=null; return; }
         try{ const u=new URL('/passagens/gratuidade', location.origin); u.searchParams.set('origem', this.origemSel); u.searchParams.set('destino', this.destinoSel);
           if(this.embarcacaoSel) u.searchParams.set('embarcacao_id', this.embarcacaoSel); if(this.rotaId) u.searchParams.set('rota_id', this.rotaId); if(this.viagemData) u.searchParams.set('data_viagem', this.viagemData);
-          const tok=++this._gratTok; fetch(u,{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.ok?r.json():null).then(j=>{ if(tok!==this._gratTok) return; this.gratInfo=(j&&j.ativo)?j:null; }).catch(()=>{}); }catch(e){} },
+          const tok=++this._gratTok; fetch(u,{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.ok?r.json():null).then(j=>{ if(tok!==this._gratTok) return; this.gratInfo=(j&&j.gratuito&&j.gratuito.ativo)?j.gratuito:null; this.pcdInfo=(j&&j.pcd&&j.pcd.ativo)?j.pcd:null; }).catch(()=>{}); }catch(e){} },
       isoToBr(iso){ if(!iso) return ''; const a=(''+iso).slice(0,10).split('-'); return a.length===3 ? a[2]+'/'+a[1]+'/'+a[0] : ''; },
       mascaraNasc(p){ let v=(p.nasc_br||'').replace(/[^0-9]/g,'').slice(0,8); let o=v; if(v.length>4) o=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4); else if(v.length>2) o=v.slice(0,2)+'/'+v.slice(2); p.nasc_br=o; if(v.length===8){ const d=+v.slice(0,2), m=+v.slice(2,4), a=+v.slice(4,8); if(d>=1&&d<=31&&m>=1&&m<=12&&a>=1900&&a<=2100){ p.nascimento=v.slice(4,8)+'-'+v.slice(2,4)+'-'+v.slice(0,2); this.aplicarIdade(p); return; } } p.nascimento=''; },
       aplicarIdade(p){ const t=this.tipoPorIdade(p.nascimento); if(t){ p.tipo_id=t.id; this.aplicarTipo(p); } },

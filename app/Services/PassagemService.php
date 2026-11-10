@@ -66,13 +66,15 @@ class PassagemService
             }
         }
 
-        // Cota de gratuidade POR TRECHO (soma por segmento da viagem, como as poltronas).
+        // Cotas por trecho (gratuidade / PCD) — soma por segmento da viagem, como as poltronas.
         if ($viagemId || ! empty($data['data_viagem'])) {
-            $gi = $this->gratuidadeUso($empresa->id, $viagemId, $rotaId, $data['data_viagem'] ?? null, $data['embarcacao_id'] ?? null, (string) ($data['origem'] ?? ''), (string) ($data['destino'] ?? ''));
-            if ($gi['ativo']) {
-                $novosGrat = collect($data['passageiros'] ?? [])->filter(fn ($px) => in_array(mb_strtolower((string) ($px['tipo'] ?? '')), $gi['nomes'], true))->count();
-                if ($novosGrat > 0 && $gi['usados'] + $novosGrat > $gi['cota']) {
-                    throw new \App\Exceptions\VendaRecusada('Cota de gratuidade atingida neste trecho ('.$gi['cota'].' por viagem). Já emitidas aqui: '.$gi['usados'].'.');
+            $rotulos = ['gratuito' => 'gratuidade', 'pcd' => 'PCD'];
+            foreach (['gratuito', 'pcd'] as $grupo) {
+                $gi = $this->cotaUso($grupo, $empresa->id, $viagemId, $rotaId, $data['data_viagem'] ?? null, $data['embarcacao_id'] ?? null, (string) ($data['origem'] ?? ''), (string) ($data['destino'] ?? ''));
+                if (! $gi['ativo']) continue;
+                $novos = collect($data['passageiros'] ?? [])->filter(fn ($px) => in_array(mb_strtolower((string) ($px['tipo'] ?? '')), $gi['nomes'], true))->count();
+                if ($novos > 0 && $gi['usados'] + $novos > $gi['cota']) {
+                    throw new \App\Exceptions\VendaRecusada('Cota de '.$rotulos[$grupo].' atingida neste trecho ('.$gi['cota'].' por viagem). Já emitidas aqui: '.$gi['usados'].'.');
                 }
             }
         }
@@ -181,14 +183,24 @@ class PassagemService
      * Uso da cota de gratuidade NO TRECHO pedido (soma por segmento da viagem, como as poltronas).
      * @return array{ativo:bool,cota:int,usados:int,restante:int,nomes:array}
      */
+    /** Atalho: cota de gratuidade (idoso gratuito). */
     public function gratuidadeUso(int $empresaId, ?int $viagemId, $rotaId, ?string $dataViagem, ?int $embarcacaoId, string $origem, string $destino): array
     {
+        return $this->cotaUso('gratuito', $empresaId, $viagemId, $rotaId, $dataViagem, $embarcacaoId, $origem, $destino);
+    }
+
+    /** Uso de uma COTA por grupo ('gratuito' | 'pcd') NO TRECHO pedido (soma por segmento). */
+    public function cotaUso(string $grupo, int $empresaId, ?int $viagemId, $rotaId, ?string $dataViagem, ?int $embarcacaoId, string $origem, string $destino): array
+    {
+        $map = ['gratuito' => ['flag' => 'gratuito', 'qtd' => 'gratuito_qtd'], 'pcd' => ['flag' => 'pcd', 'qtd' => 'pcd_qtd']];
+        $cfg = $map[$grupo] ?? $map['gratuito'];
+        $flag = $cfg['flag']; $qtdCol = $cfg['qtd'];
         $empresa = \App\Models\Empresa::find($empresaId);
-        $nomes = \App\Models\TipoPassageiro::where('empresa_id', $empresaId)->where('ativo', true)->where('gratuito', true)
+        $nomes = \App\Models\TipoPassageiro::where('empresa_id', $empresaId)->where('ativo', true)->where($flag, true)
             ->pluck('nome')->map(fn ($n) => mb_strtolower((string) $n))->all();
         $cota = null;
-        if ($embarcacaoId && ($emb = \App\Models\Embarcacao::find($embarcacaoId)) && $emb->gratuito_qtd !== null) $cota = (int) $emb->gratuito_qtd;
-        if ($cota === null) $cota = (int) ($empresa ? $empresa->config('gratuito_qtd', 2) : 2);
+        if ($embarcacaoId && ($emb = \App\Models\Embarcacao::find($embarcacaoId)) && $emb->{$qtdCol} !== null) $cota = (int) $emb->{$qtdCol};
+        if ($cota === null) $cota = (int) ($empresa ? $empresa->config($qtdCol, 2) : 2);
 
         if (! $nomes) return ['ativo' => false, 'cota' => $cota, 'usados' => 0, 'restante' => $cota, 'nomes' => []];
 

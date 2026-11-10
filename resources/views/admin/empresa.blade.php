@@ -103,6 +103,13 @@
       <span class="text-[11px] text-slate-400">Máx. de passageiros <b>gratuitos</b> (ex.: idoso gratuito) por viagem. Marque quais tipos contam como gratuito em <b>Cadastros gerais → Tipos de passageiro</b>. Cada transporte pode ter a sua própria cota.</span>
     </div>
   </div>
+  <div class="mt-2">
+    <label class="label !text-xs">♿ PCD por viagem (padrão)</label>
+    <div class="flex items-center gap-2">
+      <input type="number" min="0" max="999" name="pcd_qtd" value="{{ $empresa->config('pcd_qtd', 2) }}" class="input !min-h-[38px] !w-24 text-center">
+      <span class="text-[11px] text-slate-400">Máx. de passageiros <b>PCD</b> por viagem. Marque quais tipos contam como PCD em <b>Cadastros gerais → Tipos de passageiro</b>. Cada transporte pode ter a sua própria cota.</span>
+    </div>
+  </div>
   <p class="text-[11px] text-slate-400 mt-1.5">Sugestão: bebê de colo <b>0 a 1</b>, criança <b>2 a 10</b>, adulto <b>11 a 59</b>, idoso <b>60</b> em diante (deixe o "até" em branco). Esta é a regra <b>padrão</b> — cada transporte pode ter a sua própria no cadastro de transportes.</p>
 </div>
 @push('scripts')
