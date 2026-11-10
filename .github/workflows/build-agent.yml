@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     paths: ['print-agent/**', '.github/workflows/build-agent.yml']
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -23,3 +26,10 @@ jobs:
           path: |
             print-agent/installer/agenteprint-setup.exe
             print-agent/dist/agenteprint.exe
+      - name: Publicar no Releases (link fixo, sem login)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: agente-latest
+          name: Agente de Impressao (ultimo build)
+          files: print-agent/installer/agenteprint-setup.exe
+          make_latest: true
