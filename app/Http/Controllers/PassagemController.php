@@ -829,12 +829,17 @@ class PassagemController extends Controller
             return response()->json(['ok' => false, 'erro' => 'Nenhuma estação de impressão ativa.'], 422);
         }
 
-        $passagem->loadMissing(['passageiros', 'embarcacao', 'operador']);
+        $passagem->loadMissing(['passageiros', 'embarcacao', 'operador', 'pagamentos']);
         $empresa = Tenant::empresa();
         $pax = $passagem->passageiros->values();
         $tot = $pax->count();
         $checkin = route('checkin', $passagem);
         $brl = fn ($v) => \App\Support\Recibo::brl($v);
+        $formas = $passagem->pagamentos->map(fn ($pg) => \App\Models\Pagamento::MEIOS[$pg->meio] ?? $pg->meio)->filter()->unique()->implode(', ');
+        $hora = $passagem->embarcacao?->hora_saida ? \Illuminate\Support\Str::substr($passagem->embarcacao->hora_saida, 0, 5) : null;
+        $usaCancel = (bool) $empresa->config('usa_cancel_transporte');
+        $cancelAntes = $passagem->embarcacao?->cancel_antes_pct ?? $empresa->config('cancel_antes_pct', 10);
+        $cancelDepois = $passagem->embarcacao?->cancel_depois_pct ?? $empresa->config('cancel_depois_pct', 30);
 
         // logos (empresa e barco) em base64, se existirem
         $lerLogo = function (?string $rel): ?string {
@@ -867,24 +872,26 @@ class PassagemController extends Controller
             $doc->txt('VIAGEM', 'l', true);
             if ($logoBarco) $doc->img($logoBarco);
             if ($passagem->embarcacao?->nome) $doc->lr('Embarcacao', $passagem->embarcacao->nome);
-            if ($passagem->data_viagem) $doc->lr('Saida', $passagem->data_viagem->format('d/m/Y').' '.($diaSem[(int) $passagem->data_viagem->dayOfWeek] ?? ''));
+            if ($passagem->data_viagem) $doc->lr('Saida', $passagem->data_viagem->format('d/m/Y').($hora ? ' '.$hora : '').' '.($diaSem[(int) $passagem->data_viagem->dayOfWeek] ?? ''));
             if ($passagem->viagem_id) $doc->lr('No da viagem', (string) $passagem->viagem_id);
             $doc->linha();
             $doc->txt('PASSAGEIRO', 'l', true);
             $doc->txt(mb_strtoupper($pz->nome ?: 'PASSAGEIRO'), 'l', true, 1);
-            if (trim((string) $pz->tipo) !== '') $doc->lr('Tipo', mb_strtoupper(trim((string) $pz->tipo)));
+            $papelTipo = trim((string) ($pz->papel ?: $pz->tipo)); if ($papelTipo !== '') $doc->lr('Tipo', mb_strtoupper($papelTipo));
             if ($pz->documento) $doc->lr('Documento', $pz->documento);
             if ($tot > 1) $doc->lr('Bilhete', ($i + 1).'/'.$tot);
             $doc->linha();
             $doc->txt('PAGAMENTO', 'l', true);
             $doc->lr('VALOR TOTAL', $brl($pz->valor_total), true);
             $doc->lr('Situacao', (float) $passagem->devido > 0.009 ? 'EM ABERTO' : 'PAGO');
+            if ($formas !== '') $doc->lr('Forma', $formas);
             if ($passagem->operador?->name) $doc->lr('Vendedor', $passagem->operador->name);
             $doc->lr('Compra', $passagem->created_at->format('d/m/Y H:i'));
             $doc->linha();
             $doc->qr($checkin, 8);
             $doc->txt('CHECK-IN - apresente no embarque', 'c');
             if ($empresa->rodape_comprovante) { $doc->linha(); $doc->txt($empresa->rodape_comprovante, 'c'); }
+            if ($usaCancel) { $doc->linha(); $doc->txt('Devolucao: antes da saida retem '.$cancelAntes.'%, depois da saida retem '.$cancelDepois.'%.', 'c'); }
             $doc->feed(4)->cortar();
 
             \App\Models\FilaImpressao::create([

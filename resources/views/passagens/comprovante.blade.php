@@ -75,6 +75,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 
   <div class="sec">
     <div class="sec-h">Viagem</div>
+    @if($p->embarcacao?->logo)<div style="text-align:center;margin:2px 0 4px"><img src="/{{ $p->embarcacao->logo }}" alt="barco" style="height:30px;max-width:46mm;object-fit:contain"></div>@endif
     @if($p->embarcacao)<div class="row"><span class="k">Embarcação</span><span class="vv">{{ $p->embarcacao->nome }}</span></div>@endif
     @if($p->camarote)<div class="row"><span class="k">Suíte / Camarote</span><span class="vv">{{ $p->camarote->nome }}</span></div>@endif
     @if($p->data_viagem)<div class="row"><span class="k">Saída</span><span class="vv">{{ $p->data_viagem->format('d/m/Y') }}{{ $hora ? ' · '.$hora : '' }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}</span></div>@endif
