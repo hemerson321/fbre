@@ -68,8 +68,8 @@ class PassagemService
 
         // Cotas por trecho (gratuidade / PCD) — soma por segmento da viagem, como as poltronas.
         if ($viagemId || ! empty($data['data_viagem'])) {
-            $rotulos = ['gratuito' => 'gratuidade', 'pcd' => 'PCD', 'idoso_meia' => 'idoso (meia)'];
-            foreach (['gratuito', 'pcd', 'idoso_meia'] as $grupo) {
+            $rotulos = ['pcd' => 'PCD', 'idoso' => 'idoso (gratuito/meia)'];
+            foreach (['pcd', 'idoso'] as $grupo) {
                 $gi = $this->cotaUso($grupo, $empresa->id, $viagemId, $rotaId, $data['data_viagem'] ?? null, $data['embarcacao_id'] ?? null, (string) ($data['origem'] ?? ''), (string) ($data['destino'] ?? ''));
                 if (! $gi['ativo']) continue;
                 $novos = collect($data['passageiros'] ?? [])->filter(fn ($px) => in_array(mb_strtolower((string) ($px['tipo'] ?? '')), $gi['nomes'], true))->count();
@@ -192,11 +192,18 @@ class PassagemService
     /** Uso de uma COTA por grupo ('gratuito' | 'pcd') NO TRECHO pedido (soma por segmento). */
     public function cotaUso(string $grupo, int $empresaId, ?int $viagemId, $rotaId, ?string $dataViagem, ?int $embarcacaoId, string $origem, string $destino): array
     {
-        $map = ['gratuito' => ['flag' => 'gratuito', 'qtd' => 'gratuito_qtd'], 'pcd' => ['flag' => 'pcd', 'qtd' => 'pcd_qtd'], 'idoso_meia' => ['flag' => 'idoso_meia', 'qtd' => 'idoso_meia_qtd']];
-        $cfg = $map[$grupo] ?? $map['gratuito'];
-        $flag = $cfg['flag']; $qtdCol = $cfg['qtd'];
+        // POOL ÚNICO de idoso: gratuito + meia somam na MESMA cota (tam. = gratuito_qtd). PCD à parte.
+        $map = [
+            'idoso'      => ['flags' => ['gratuito', 'idoso_meia'], 'qtd' => 'gratuito_qtd'],
+            'pcd'        => ['flags' => ['pcd'],                      'qtd' => 'pcd_qtd'],
+            'gratuito'   => ['flags' => ['gratuito'],                 'qtd' => 'gratuito_qtd'],
+            'idoso_meia' => ['flags' => ['idoso_meia'],               'qtd' => 'idoso_meia_qtd'],
+        ];
+        $cfg = $map[$grupo] ?? $map['idoso'];
+        $flags = $cfg['flags']; $qtdCol = $cfg['qtd'];
         $empresa = \App\Models\Empresa::find($empresaId);
-        $nomes = \App\Models\TipoPassageiro::where('empresa_id', $empresaId)->where('ativo', true)->where($flag, true)
+        $nomes = \App\Models\TipoPassageiro::where('empresa_id', $empresaId)->where('ativo', true)
+            ->where(function ($w) use ($flags) { foreach ($flags as $fl) $w->orWhere($fl, true); })
             ->pluck('nome')->map(fn ($n) => mb_strtolower((string) $n))->all();
         $cota = null;
         if ($embarcacaoId && ($emb = \App\Models\Embarcacao::find($embarcacaoId)) && $emb->{$qtdCol} !== null) $cota = (int) $emb->{$qtdCol};

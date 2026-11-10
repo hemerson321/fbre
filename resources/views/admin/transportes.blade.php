@@ -108,19 +108,14 @@
               </div>
             </div>
             <div class="border-t pt-2 mt-2">
-              <label class="label !text-xs">🎟️ Gratuidades por viagem (próprio)</label>
+              <label class="label !text-xs">🧓 Idoso por viagem — gratuito + meia (próprio)</label>
               <input name="gratuito_qtd" type="number" min="0" max="999" value="{{ $e->gratuito_qtd }}" placeholder="padrão da empresa" class="input !min-h-[40px] !w-48">
-              <p class="text-[11px] text-slate-400 mt-0.5">Em branco = usa a cota padrão da empresa. Máx. de passageiros gratuitos (ex.: idoso gratuito) por viagem deste transporte.</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Em branco = usa a cota padrão da empresa. <b>Cota única do idoso</b> (gratuito + meia dividem estas vagas) por viagem deste transporte.</p>
             </div>
             <div class="pt-2 mt-2">
               <label class="label !text-xs">♿ PCD por viagem (próprio)</label>
               <input name="pcd_qtd" type="number" min="0" max="999" value="{{ $e->pcd_qtd }}" placeholder="padrão da empresa" class="input !min-h-[40px] !w-48">
               <p class="text-[11px] text-slate-400 mt-0.5">Em branco = usa a cota padrão da empresa. Máx. de passageiros PCD por viagem deste transporte.</p>
-            </div>
-            <div class="pt-2 mt-2">
-              <label class="label !text-xs">🧓 Idoso ½ (50%) por viagem (próprio)</label>
-              <input name="idoso_meia_qtd" type="number" min="0" max="999" value="{{ $e->idoso_meia_qtd }}" placeholder="padrão da empresa" class="input !min-h-[40px] !w-48">
-              <p class="text-[11px] text-slate-400 mt-0.5">Em branco = usa a cota padrão da empresa.</p>
             </div>
             <div x-data="{ open:false, trip: {{ \Illuminate\Support\Js::from($e->tripulantes ?? []) }} }" class="mt-2">
               <button type="button" @click="open=true" class="btn btn-ghost btn-sm">🚢 Ficha / tripulação da embarcação</button>

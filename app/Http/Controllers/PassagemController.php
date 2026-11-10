@@ -541,11 +541,11 @@ class PassagemController extends Controller
             (string) $request->input('destino', ''),
         ];
         $resumo = fn ($x) => ['ativo' => $x['ativo'], 'cota' => $x['cota'], 'usados' => $x['usados'], 'restante' => $x['restante']];
-        $g = $svc->cotaUso('gratuito', ...$args);
+        $idoso = $svc->cotaUso('idoso', ...$args);   // pool unico: gratuito + meia
         $p = $svc->cotaUso('pcd', ...$args);
-        $im = $svc->cotaUso('idoso_meia', ...$args);
-        // mantém campos de topo (gratuito) por compatibilidade + objetos por grupo
-        return response()->json($resumo($g) + ['gratuito' => $resumo($g), 'pcd' => $resumo($p), 'idoso_meia' => $resumo($im)]);
+        $ri = $resumo($idoso);
+        // 'idoso' = pool compartilhado; aliases gratuito/idoso_meia apontam pro mesmo pool (compat)
+        return response()->json($ri + ['idoso' => $ri, 'pcd' => $resumo($p), 'gratuito' => $ri, 'idoso_meia' => $ri]);
     }
 
     public function assentos(Request $request)
