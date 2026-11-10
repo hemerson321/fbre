@@ -102,6 +102,8 @@ class SyncController extends Controller
 
         try {
             $enc = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
+        } catch (\App\Exceptions\VendaRecusada $e) {
+            return response()->json(['ok' => false, 'erro' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             report($e);
             return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
@@ -165,6 +167,8 @@ class SyncController extends Controller
         ]);
         try {
             $p = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
+        } catch (\App\Exceptions\VendaRecusada $e) {
+            return response()->json(['ok' => false, 'erro' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             report($e);
             return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
@@ -200,6 +204,8 @@ class SyncController extends Controller
         ]);
         try {
             $f = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
+        } catch (\App\Exceptions\VendaRecusada $e) {
+            return response()->json(['ok' => false, 'erro' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             report($e);
             return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);
@@ -233,6 +239,8 @@ class SyncController extends Controller
         }
         try {
             $svc->baixa($enc, $data, auth()->id(), $data['uuid']);
+        } catch (\App\Exceptions\VendaRecusada $e) {
+            return response()->json(['ok' => false, 'erro' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             report($e);
             return response()->json(['ok' => false, 'erro' => class_basename($e).': '.mb_substr($e->getMessage(), 0, 300)], 500);

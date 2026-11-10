@@ -43,25 +43,25 @@ class PassagemService
             if ($op->limite_passagens_dia) {
                 $qd = (int) Passagem::where('user_id', $userId)->where('cancelada', false)->whereDate('created_at', today())->sum('qtd_passageiros');
                 if ($qd + $novos > $op->limite_passagens_dia) {
-                    throw new \RuntimeException('Limite diário de passagens atingido ('.$op->limite_passagens_dia.'/dia). Já vendidas hoje: '.$qd.'.');
+                    throw new \App\Exceptions\VendaRecusada('Limite diário de passagens atingido ('.$op->limite_passagens_dia.'/dia). Já vendidas hoje: '.$qd.'.');
                 }
             }
             if ($op->limite_valor_dia) {
                 $vd = (float) Passagem::where('user_id', $userId)->where('cancelada', false)->whereDate('created_at', today())->sum('total');
                 if ($vd + $saleTotal > (float) $op->limite_valor_dia + 0.009) {
-                    throw new \RuntimeException('Limite diário de valor atingido (R$ '.number_format((float) $op->limite_valor_dia, 2, ',', '.').'/dia).');
+                    throw new \App\Exceptions\VendaRecusada('Limite diário de valor atingido (R$ '.number_format((float) $op->limite_valor_dia, 2, ',', '.').'/dia).');
                 }
             }
             if ($viagemId && $op->limite_passagens_viagem) {
                 $qv = (int) Passagem::where('user_id', $userId)->where('cancelada', false)->where('viagem_id', $viagemId)->sum('qtd_passageiros');
                 if ($qv + $novos > $op->limite_passagens_viagem) {
-                    throw new \RuntimeException('Limite de passagens por viagem atingido ('.$op->limite_passagens_viagem.'/viagem). Já nesta viagem: '.$qv.'.');
+                    throw new \App\Exceptions\VendaRecusada('Limite de passagens por viagem atingido ('.$op->limite_passagens_viagem.'/viagem). Já nesta viagem: '.$qv.'.');
                 }
             }
             if ($viagemId && $op->limite_valor_viagem) {
                 $vv = (float) Passagem::where('user_id', $userId)->where('cancelada', false)->where('viagem_id', $viagemId)->sum('total');
                 if ($vv + $saleTotal > (float) $op->limite_valor_viagem + 0.009) {
-                    throw new \RuntimeException('Limite de valor por viagem atingido (R$ '.number_format((float) $op->limite_valor_viagem, 2, ',', '.').'/viagem).');
+                    throw new \App\Exceptions\VendaRecusada('Limite de valor por viagem atingido (R$ '.number_format((float) $op->limite_valor_viagem, 2, ',', '.').'/viagem).');
                 }
             }
         }
@@ -72,7 +72,7 @@ class PassagemService
             if ($gi['ativo']) {
                 $novosGrat = collect($data['passageiros'] ?? [])->filter(fn ($px) => in_array(mb_strtolower((string) ($px['tipo'] ?? '')), $gi['nomes'], true))->count();
                 if ($novosGrat > 0 && $gi['usados'] + $novosGrat > $gi['cota']) {
-                    throw new \RuntimeException('Cota de gratuidade atingida neste trecho ('.$gi['cota'].' por viagem). Já emitidas aqui: '.$gi['usados'].'.');
+                    throw new \App\Exceptions\VendaRecusada('Cota de gratuidade atingida neste trecho ('.$gi['cota'].' por viagem). Já emitidas aqui: '.$gi['usados'].'.');
                 }
             }
         }
