@@ -158,11 +158,27 @@ class PassagemController extends Controller
     {
         $data = $this->validar($request);
         if (auth()->user()->revendedorDono() !== null) { $data['forma'] = 'avista'; }
-        $this->checarPoltronas($data);
+
+        // Trava por viagem: serializa a checagem+criação pra NÃO haver venda duplicada de poltrona
+        // mesmo com dois operadores/agentes salvando no mesmo instante.
+        $usaPol = ! empty($data['embarcacao_id']) && optional(Embarcacao::find($data['embarcacao_id']))->usa_poltrona;
+        $lockKey = 'pol_'.Tenant::id().'_'.($data['embarcacao_id'] ?? 0).'_'.($data['viagem_id'] ?? $data['data_viagem'] ?? $data['rota_id'] ?? 'x');
+        $locked = false;
         try {
-            $p = app(\App\Services\PassagemService::class)->criar($data, auth()->id(), $request->input('uuid'));
-        } catch (\RuntimeException $e) {
-            abort(422, $e->getMessage());
+            if ($usaPol) { \Illuminate\Support\Facades\DB::select('SELECT GET_LOCK(?, 5) AS l', [$lockKey]); $locked = true; }
+            $this->checarPoltronas($data);
+            try {
+                $p = app(\App\Services\PassagemService::class)->criar($data, auth()->id(), $request->input('uuid'));
+            } catch (\RuntimeException $e) {
+                abort(422, $e->getMessage());
+            }
+        } finally {
+            if ($locked) \Illuminate\Support\Facades\DB::select('SELECT RELEASE_LOCK(?) AS r', [$lockKey]);
+        }
+        // solta as reservas (holds) deste operador nas poltronas recém-vendidas
+        if ($usaPol) {
+            $seats = collect($data['passageiros'])->pluck('poltrona')->filter()->values()->all();
+            if ($seats) \App\Models\PoltronaHold::where('embarcacao_id', $data['embarcacao_id'])->where('user_id', auth()->id())->whereIn('poltrona', $seats)->delete();
         }
         session(['ultima_origem_pass' => $data['origem']]);
 
@@ -535,7 +551,101 @@ class PassagemController extends Controller
             'colunas' => (int) ($emb->poltronas_colunas ?: 4),
             'layout' => (string) ($emb->poltronas_lista ?? ''),
             'ocupadas' => $this->ocupadas($emb->id, $request->input('data_viagem'), $request->input('viagem_id'), $request->input('rota_id'), $request->input('origem'), $request->input('destino'))->values(),
+            'reservadas' => $this->reservadas($emb->id, $request->input('data_viagem'), $request->input('viagem_id'), $request->input('rota_id'), $request->input('origem'), $request->input('destino'), auth()->id())->values(),
         ];
+    }
+
+    /** Poltronas RESERVADAS (hold temporário) por OUTROS operadores/agentes, no mesmo trecho. */
+    protected function reservadas($embarcacaoId, $dataViagem, $viagemId, $rotaId = null, $origem = null, $destino = null, $exceptUserId = null): \Illuminate\Support\Collection
+    {
+        $q = \App\Models\PoltronaHold::ativo()->where('embarcacao_id', $embarcacaoId)
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->when(! $viagemId && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+            ->when($exceptUserId, fn ($q) => $q->where('user_id', '!=', $exceptUserId));
+
+        $ordem = [];
+        if ($rotaId && ($rota = \App\Models\Rota::find($rotaId))) $ordem = array_map('mb_strtolower', $rota->localidades());
+        $idx = fn ($c) => array_search(mb_strtolower((string) $c), $ordem, true);
+        $reqS = $origem !== null ? $idx($origem) : false;
+        $reqD = $destino !== null ? $idx($destino) : false;
+        $temTrecho = $ordem && $reqS !== false && $reqD !== false;
+        $reqMin = $temTrecho ? min($reqS, $reqD) : null;
+        $reqMax = $temTrecho ? max($reqS, $reqD) : null;
+
+        $res = collect();
+        foreach ($q->get(['poltrona', 'origem', 'destino']) as $h) {
+            if ($temTrecho) {
+                $c = $idx($h->origem); $d = $idx($h->destino);
+                if ($c !== false && $d !== false) {
+                    [$cMin, $cMax] = [min($c, $d), max($c, $d)];
+                    if (! ($reqMin < $cMax && $cMin < $reqMax)) continue;
+                }
+            }
+            if ($h->poltrona) $res->push((string) $h->poltrona);
+        }
+        return $res->unique()->values();
+    }
+
+    protected function ocupacaoJson($embId, array $data, $viagemId, $uid): array
+    {
+        return [
+            'ocupadas' => $this->ocupadas($embId, $data['data_viagem'] ?? null, $viagemId, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null)->values(),
+            'reservadas' => $this->reservadas($embId, $data['data_viagem'] ?? null, $viagemId, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null, $uid)->values(),
+        ];
+    }
+
+    /** Reserva/solta poltrona em tempo real (hold temporário). */
+    public function poltronaHold(Request $request)
+    {
+        $data = $request->validate([
+            'action' => 'required|in:hold,release,heartbeat',
+            'embarcacao_id' => 'required|integer',
+            'viagem_id' => 'nullable|integer',
+            'rota_id' => 'nullable|integer',
+            'data_viagem' => 'nullable|date',
+            'origem' => 'nullable|string|max:80',
+            'destino' => 'nullable|string|max:80',
+            'poltronas' => 'nullable|array',
+            'poltronas.*' => 'string|max:10',
+        ]);
+        $uid = auth()->id();
+        $embId = (int) $data['embarcacao_id'];
+        $viagemId = $data['viagem_id'] ?? null;
+        if (! $viagemId && ! empty($data['rota_id']) && ($rota = \App\Models\Rota::find($data['rota_id']))) {
+            $ref = ! empty($data['data_viagem']) ? \Carbon\Carbon::parse($data['data_viagem']) : now();
+            $viagemId = $rota->viagemPara($ref)->id;
+        }
+        $pols = collect($data['poltronas'] ?? [])->map(fn ($p) => (string) $p)->filter()->unique()->values();
+        $expira = now()->addSeconds(60);
+        // limpeza barata de expirados antigos
+        \App\Models\PoltronaHold::where('expires_at', '<', now()->subMinutes(5))->delete();
+
+        if ($data['action'] === 'release') {
+            \App\Models\PoltronaHold::where('embarcacao_id', $embId)->where('user_id', $uid)
+                ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+                ->when($pols->isNotEmpty(), fn ($q) => $q->whereIn('poltrona', $pols))
+                ->delete();
+            return response()->json($this->ocupacaoJson($embId, $data, $viagemId, $uid) + ['ok' => true]);
+        }
+        if ($data['action'] === 'heartbeat') {
+            \App\Models\PoltronaHold::where('embarcacao_id', $embId)->where('user_id', $uid)
+                ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+                ->when($pols->isNotEmpty(), fn ($q) => $q->whereIn('poltrona', $pols))
+                ->update(['expires_at' => $expira]);
+            return response()->json($this->ocupacaoJson($embId, $data, $viagemId, $uid) + ['ok' => true]);
+        }
+        // hold
+        $vendidas = $this->ocupadas($embId, $data['data_viagem'] ?? null, $viagemId, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null);
+        $outras = $this->reservadas($embId, $data['data_viagem'] ?? null, $viagemId, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null, $uid);
+        $conflito = [];
+        foreach ($pols as $p) {
+            if ($vendidas->contains($p) || $outras->contains($p)) { $conflito[] = $p; continue; }
+            \App\Models\PoltronaHold::updateOrCreate(
+                ['embarcacao_id' => $embId, 'viagem_id' => $viagemId, 'data_viagem' => $data['data_viagem'] ?? null, 'poltrona' => $p, 'user_id' => $uid],
+                ['empresa_id' => Tenant::id(), 'origem' => $data['origem'] ?? null, 'destino' => $data['destino'] ?? null, 'expires_at' => $expira],
+            );
+        }
+        return response()->json($this->ocupacaoJson($embId, $data, $viagemId, $uid) + ['ok' => empty($conflito), 'conflito' => $conflito]);
     }
 
     // ---------------- DETALHE ----------------

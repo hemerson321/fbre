@@ -292,6 +292,7 @@
     <div class="flex gap-3 text-xs mb-2">
       <span class="chip bg-slate-100 text-slate-600">livre</span>
       <span class="chip bg-red-100 text-red-700">ocupada</span>
+      <span class="chip bg-amber-100 text-amber-700">reservando agora</span>
       <span class="chip" style="background:color-mix(in srgb,var(--cor1) 15%,white);color:var(--cor1)">selecionada</span>
     </div>
     <template x-if="temLayout">
@@ -303,11 +304,11 @@
               <template x-for="(f,ri) in bloco" :key="ri">
                 <div class="flex items-center justify-center gap-1">
                   <div class="flex gap-1"><template x-for="n in f.esq" :key="n">
-                    <button type="button" class="min-w-[36px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="assentoClasse(n)" :disabled="estaOcupada(n) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
+                    <button type="button" class="min-w-[36px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="assentoClasse(n)" :disabled="(estaOcupada(n)||estaReservada(n)) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
                   </template></div>
                   <div class="w-4 text-center text-[9px] text-slate-300 select-none" x-show="f.dir.length">║</div>
                   <div class="flex gap-1"><template x-for="n in f.dir" :key="n">
-                    <button type="button" class="min-w-[36px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="assentoClasse(n)" :disabled="estaOcupada(n) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
+                    <button type="button" class="min-w-[36px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="assentoClasse(n)" :disabled="(estaOcupada(n)||estaReservada(n)) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
                   </template></div>
                 </div>
               </template>
@@ -323,11 +324,11 @@
         <template x-for="(f,ri) in fileiras" :key="ri">
           <div class="flex items-center justify-center gap-1">
             <div class="flex gap-1.5"><template x-for="n in f.esq" :key="n">
-              <button type="button" class="w-9 h-10 rounded-t-xl rounded-b-md border-2 text-xs font-bold" :class="assentoClasse(n)" :disabled="estaOcupada(n) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
+              <button type="button" class="w-9 h-10 rounded-t-xl rounded-b-md border-2 text-xs font-bold" :class="assentoClasse(n)" :disabled="(estaOcupada(n)||estaReservada(n)) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
             </template></div>
             <div class="w-6 text-center text-[9px] text-slate-300 select-none">║</div>
             <div class="flex gap-1.5"><template x-for="n in f.dir" :key="n">
-              <button type="button" class="w-9 h-10 rounded-t-xl rounded-b-md border-2 text-xs font-bold" :class="assentoClasse(n)" :disabled="estaOcupada(n) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
+              <button type="button" class="w-9 h-10 rounded-t-xl rounded-b-md border-2 text-xs font-bold" :class="assentoClasse(n)" :disabled="(estaOcupada(n)||estaReservada(n)) && !poltronaMinha(n)" @click="escolherPoltrona(n)" x-text="n"></button>
             </template></div>
           </div>
         </template>
@@ -463,7 +464,7 @@
       rotaId:'', linhaNome:'', paradasInfo:[], viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
       diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
       // poltrona
-      usaPoltrona:false, qtdPoltronas:0, colunasPoltrona:4, poltronasLayout:'', temLayout:false, ocupadas:[], mapaAberto:false, paxAtual:0,
+      usaPoltrona:false, qtdPoltronas:0, colunasPoltrona:4, poltronasLayout:'', temLayout:false, ocupadas:[], reservadas:[], _rtTimer:null, mapaAberto:false, paxAtual:0,
       numeroPreview:'—',
 
       init(){
@@ -483,6 +484,11 @@
         this.$watch('destinoSel', ()=>this.carregarGratuidade());
         this.$watch('viagemData', ()=>this.carregarGratuidade());
         this.$watch('embarcacaoSel', ()=>this.carregarGratuidade());
+        this.$watch('origemSel', ()=>this.carregarOcupadas());
+        this.$watch('destinoSel', ()=>this.carregarOcupadas());
+        this.$watch('viagemData', ()=>this.carregarOcupadas());
+        this.iniciarTempoReal();
+        window.addEventListener('beforeunload', ()=>this.soltarTudoBeacon());
         this.addPax();
         this.mudarEmbarcacao();
         this.onRota();
@@ -582,7 +588,7 @@
         if(j.nome) p.nome=j.nome; if(j.nascimento){ p.nascimento=j.nascimento; p.nasc_br=this.isoToBr(j.nascimento); } if(j.sexo) p.sexo=j.sexo;
         if(j.nacionalidade) p.nacionalidade=j.nacionalidade; if(j.documento) p.documento=j.documento;
         if(j.foto) p.foto=j.foto; if(j.foto_rg) p.foto_rg=j.foto_rg; p._mais=true; this.aplicarIdade(p); },
-      rmPax(i){ this.passageiros.splice(i,1); },
+      rmPax(i){ const pol=this.passageiros[i]?.poltrona; this.passageiros.splice(i,1); if(pol && !this.passageiros.some(p=>String(p.poltrona)===String(pol))) this.soltar([pol]); },
       aplicarTipo(p){
         const t=this.tipos.find(x=>String(x.id)===String(p.tipo_id)) || this.tipos[0];
         if(t){ p.tipo_id=t.id; p.tipo=t.nome; p.percentual=t.percentual; p.paga_taxa=!!t.paga_taxa; p.modo=t.modo||'valor'; }
@@ -724,14 +730,21 @@
           if(this.origemSel)u.searchParams.set('origem',this.origemSel);
           if(this.destinoSel)u.searchParams.set('destino',this.destinoSel);
           const r=await fetch(u,{headers:{Accept:'application/json'},credentials:'same-origin'}); const j=await r.json();
-          this.ocupadas=(j.ocupadas||[]).map(String); if(j.colunas)this.colunasPoltrona=j.colunas; if(j.qtd)this.qtdPoltronas=j.qtd; if(j.layout!==undefined){ this.poltronasLayout=j.layout||''; this.temLayout=(j.layout||'').trim().length>0; }
+          this.ocupadas=(j.ocupadas||[]).map(String); this.reservadas=(j.reservadas||[]).map(String); if(j.colunas)this.colunasPoltrona=j.colunas; if(j.qtd)this.qtdPoltronas=j.qtd; if(j.layout!==undefined){ this.poltronasLayout=j.layout||''; this.temLayout=(j.layout||'').trim().length>0; }
         }catch(e){ this.ocupadas=[]; }
       },
       abrirMapa(i){ this.paxAtual=i; this.mapaAberto=true; this.carregarOcupadas(); },
       estaOcupada(n){ return this.ocupadas.includes(String(n)); },
+      estaReservada(n){ return this.reservadas.includes(String(n)); },
       poltronaMinha(n){ return this.passageiros.some(p=>String(p.poltrona)===String(n)); },
-      assentoClasse(n){ const minha=String(this.passageiros[this.paxAtual]?.poltrona)===String(n); if(minha) return 'text-white'; if(this.estaOcupada(n)||this.poltronaMinha(n)) return 'bg-red-100 text-red-700 border-red-200 opacity-70'; return 'bg-slate-50 hover:bg-slate-100 border-slate-200'; },
-      escolherPoltrona(n){ if(this.estaOcupada(n)&&!this.poltronaMinha(n))return; const i=this.paxAtual; this.passageiros[i].poltrona=String(n); this.mapaAberto=false; this.$nextTick(()=>{ const el=document.getElementById('pax-nome-'+i); if(el){ el.focus(); el.select && el.select(); } }); },
+      assentoClasse(n){ const minha=String(this.passageiros[this.paxAtual]?.poltrona)===String(n); if(minha) return 'text-white'; if(this.estaOcupada(n)||this.poltronaMinha(n)) return 'bg-red-100 text-red-700 border-red-200 opacity-70'; if(this.estaReservada(n)) return 'bg-amber-100 text-amber-700 border-amber-300 opacity-80'; return 'bg-slate-50 hover:bg-slate-100 border-slate-200'; },
+      async escolherPoltrona(n){ n=String(n); if((this.estaOcupada(n)||this.estaReservada(n))&&!this.poltronaMinha(n))return; const i=this.paxAtual; const ant=this.passageiros[i].poltrona; const ok=await this.reservar(n); if(!ok){ alert('Essa poltrona acabou de ser escolhida por outro operador. Escolha outra.'); this.carregarOcupadas(); return; } if(ant && String(ant)!==n && !this.passageiros.some((p,k)=>k!==i&&String(p.poltrona)===String(ant))) this.soltar([ant]); this.passageiros[i].poltrona=n; this.mapaAberto=false; this.$nextTick(()=>{ const el=document.getElementById('pax-nome-'+i); if(el){ el.focus(); el.select && el.select(); } }); },
+      _holdBody(extra){ const b={embarcacao_id:this.embarcacaoSel||'', rota_id:this.rotaId||'', data_viagem:this.viagemData||'', origem:this.origemSel||'', destino:this.destinoSel||''}; return Object.assign(b, extra||{}); },
+      async reservar(n){ try{ const r=await fetch('/passagens/poltrona-hold',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},credentials:'same-origin',body:JSON.stringify(this._holdBody({action:'hold',poltronas:[String(n)]}))}); const j=await r.json(); if(j&&j.ocupadas)this.ocupadas=j.ocupadas.map(String); if(j&&j.reservadas)this.reservadas=j.reservadas.map(String); return j?!!j.ok:false; }catch(e){ return true; } },
+      soltar(seats){ const s=(seats||[]).map(String).filter(Boolean); if(!s.length)return; try{ fetch('/passagens/poltrona-hold',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf},credentials:'same-origin',body:JSON.stringify(this._holdBody({action:'release',poltronas:s}))}); }catch(e){} },
+      soltarTudoBeacon(){ try{ const seats=this.passageiros.map(p=>p.poltrona).filter(Boolean).map(String); if(!seats.length||!navigator.sendBeacon)return; const fd=new FormData(); fd.append('_token',FBRE.csrf); fd.append('action','release'); fd.append('embarcacao_id',this.embarcacaoSel||''); if(this.rotaId)fd.append('rota_id',this.rotaId); if(this.viagemData)fd.append('data_viagem',this.viagemData); seats.forEach(x=>fd.append('poltronas[]',x)); navigator.sendBeacon('/passagens/poltrona-hold', fd); }catch(e){} },
+      iniciarTempoReal(){ if(this._rtTimer)return; this._rtTimer=setInterval(()=>this.tickTempoReal(), 3000); },
+      async tickTempoReal(){ if(!this.usaPoltrona||!this.embarcacaoSel||!navigator.onLine)return; const seats=this.passageiros.map(p=>p.poltrona).filter(Boolean).map(String); if(!this.mapaAberto && seats.length===0)return; if(seats.length){ try{ const r=await fetch('/passagens/poltrona-hold',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},credentials:'same-origin',body:JSON.stringify(this._holdBody({action:'heartbeat',poltronas:seats}))}); const j=await r.json(); if(j&&j.ocupadas)this.ocupadas=j.ocupadas.map(String); if(j&&j.reservadas)this.reservadas=j.reservadas.map(String); return; }catch(e){} } this.carregarOcupadas(); },
 
       // mapa no formato da lancha: fileiras com corredor no meio
       get fileiras(){

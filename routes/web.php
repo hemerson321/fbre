@@ -104,6 +104,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/lista', [\App\Http\Controllers\PassagemController::class, 'manifesto'])->name('passagens.manifesto')->middleware('perm:passagem.ver');
     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos')->middleware('perm:passagem.ver');
     Route::get('/passagens/gratuidade', [\App\Http\Controllers\PassagemController::class, 'gratuidade'])->name('passagens.gratuidade')->middleware('perm:passagem');
+    Route::post('/passagens/poltrona-hold', [\App\Http\Controllers\PassagemController::class, 'poltronaHold'])->name('passagens.poltrona-hold')->middleware('perm:passagem');
 
     Route::get('/passagens/minhas-vendas', [\App\Http\Controllers\PassagemController::class, 'minhasVendas'])->name('passagens.minhas-vendas')->middleware('perm:passagem.ver');
     Route::get('/passagens/minhas-vendas/exportar', [\App\Http\Controllers\PassagemController::class, 'minhasVendasExportar'])->name('passagens.minhas-vendas.exportar')->middleware('perm:passagem.ver');
