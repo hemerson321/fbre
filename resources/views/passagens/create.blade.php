@@ -13,6 +13,7 @@
   .field { @apply rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-[15px] w-full transition; min-height: 46px; }
   .field:focus { @apply outline-none bg-white; border-color: var(--cor2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor2) 25%, transparent); }
   .lbl { @apply block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1; }
+  .atkbd { @apply inline-flex items-center justify-center rounded px-1 text-[10px] font-extrabold leading-none align-middle; background: var(--cor2); color:#0b1a33; min-width:18px; height:16px; }
   .forma { @apply flex-1 rounded-xl border-2 py-2.5 text-[13px] font-bold text-center cursor-pointer transition text-slate-500 border-slate-200 bg-white; }
   .forma.on { background: var(--cor1); color:#fff; border-color: var(--cor1); }
   .pax { @apply rounded-xl p-3 border; background:#fff; border-color:#e8edf3; box-shadow:0 1px 2px rgba(15,23,42,.04); }
@@ -29,7 +30,7 @@
 </style>
 @endpush
 @section('conteudo')
-<form method="post" action="{{ route('passagens.store') }}" x-data="novaPassagem()" @submit.prevent="salvar($event)"
+<form method="post" action="{{ route('passagens.store') }}" x-data="novaPassagem()" @submit.prevent="salvar($event)" @keydown.window="teclaAtalho($event)"
       class="mx-auto max-w-[1440px] space-y-2 pb-28 lg:pb-0" @php $emp=\App\Support\Tenant::empresa(); $corMod=(bool)($emp?->config('cores_por_modulo', true) ?? true); @endphp style="--cor1:{{ $corMod ? '#059669' : ($emp?->cor_primaria ?? '#0b1a33') }};--cor2:{{ $corMod ? '#34d399' : ($emp?->cor_secundaria ?? '#00a8e8') }}">
 @csrf
 <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -91,6 +92,7 @@
           </div>
         </div>
         </div>
+        <div class="text-[11px] text-slate-400 font-semibold flex flex-wrap items-center gap-x-3 gap-y-1 mb-1 px-0.5"><span>⌨️ Atalhos:</span><span><b class="atkbd">F1</b> Destino</span><span><b class="atkbd">F2</b> Poltrona</span><span><b class="atkbd">F3</b> Pagamento</span></div>
         <div class="grid grid-cols-2 gap-2">
           <div><label class="lbl">Origem</label>
             <select class="field" x-model="origemSel" required @change="onRota()">
@@ -98,8 +100,8 @@
               <template x-for="c in origens" :key="c"><option :value="c" x-text="c"></option></template>
             </select>
           </div>
-          <div><label class="lbl">Destino</label>
-            <select class="field" x-model="destinoSel" required @change="onRota()">
+          <div><label class="lbl">Destino <span class="atkbd">F1</span></label>
+            <select class="field" x-model="destinoSel" required @change="onRota()" x-ref="fDestino">
               <option value="">—</option>
               <template x-for="c in destinos" :key="c"><option :value="c" x-text="c"></option></template>
             </select>
@@ -187,7 +189,7 @@
               <div class="flex-1"><label class="lbl">Documento (RG/CPF)</label>
                 <input class="field !min-h-0 py-1 text-sm w-full" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(p.documento)}" placeholder="opcional" x-model="p.documento" title="RG ou CPF. Se digitar um CPF, precisa ser válido.">
                 <div x-show="!FBRE.docOk(p.documento)" x-cloak class="text-[10px] text-red-500 mt-0.5">CPF inválido</div></div>
-              <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)">
+              <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)" title="Poltrona (F2)">
                 <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑'"></span>
               </button>
             </div>
@@ -226,12 +228,12 @@
   {{-- COLUNA 3: pagamento --}}
   <div class="lg:col-span-3 space-y-2">
     <section class="sec shrink-0">
-      <div class="sec-h"><span class="n">4</span><span class="ic">💳</span><span class="t">Pagamento</span></div>
+      <div class="sec-h"><span class="n">4</span><span class="ic">💳</span><span class="t">Pagamento</span><span class="atkbd ml-1">F3</span></div>
       <div class="sec-b">
-        <div class="flex gap-1.5">
+        <div class="flex gap-1.5" x-ref="fForma">
           @foreach(\App\Models\Passagem::FORMAS as $k=>$l)
           @if(empty($soAvista) || $k==='avista')
-          <label class="forma" :class="forma==='{{ $k }}' && 'on'"><input type="radio" value="{{ $k }}" x-model="forma" class="sr-only"> {{ $l }}</label>
+          <label class="forma" :class="forma==='{{ $k }}' && 'on'"><input type="radio" name="forma_sel" value="{{ $k }}" x-model="forma" class="sr-only"> {{ $l }}</label>
           @endif
           @endforeach
         </div>
@@ -652,6 +654,12 @@
         this.precoInfo = this.baseNormal>0 || this.passageiros.some(p=>Number(p.valor_passagem)>0);
       },
       onRota(){ const n=x=>String(x||'').trim().toLowerCase(); if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; this.resolverLinha(); this.aplicarPreco(); if(this.usaPoltrona) this.carregarOcupadas(); },
+      teclaAtalho(e){
+        const k=e.key; if(k!=='F1'&&k!=='F2'&&k!=='F3') return; e.preventDefault();
+        if(k==='F1'){ const el=this.$refs.fDestino; if(el){ el.focus(); try{ el.showPicker&&el.showPicker(); }catch(_){} } }
+        else if(k==='F2'){ if(this.usaPoltrona){ let i=this.passageiros.findIndex(p=>!p.poltrona); if(i<0)i=0; this.abrirMapa(i); } else { const el=this.$refs.fForma&&this.$refs.fForma.querySelector('input'); if(el) el.focus(); } }
+        else if(k==='F3'){ const w=this.$refs.fForma; if(w){ const r=w.querySelector('input'); if(r) r.focus(); w.scrollIntoView({block:'center',behavior:'smooth'}); } }
+      },
 
       // ---- viagem (igual encomenda) ----
       isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
