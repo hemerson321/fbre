@@ -59,13 +59,6 @@
   </form>
   @endif
 
-  {{-- embarque --}}
-  @if(!$p->cancelada && !$p->embarcou && ($p->devido<=0.009 || $p->forma==='faturado') && $u->permite('passagem','baixa'))
-  <form method="post" action="{{ route('passagens.embarcar',$p) }}">@csrf
-    <button class="btn btn-ghost w-full">✅ Confirmar embarque</button>
-  </form>
-  @endif
-
   @php $empP = \App\Support\Tenant::empresa(); @endphp
   @if(!$p->cancelada && $empP && $empP->usaPix('passagem') && $p->devido > 0)
   <button onclick="FBRE.abrirImpressao('{{ route('imprimir.pix.passagem',$p) }}')" class="btn btn-accent w-full">💠 Gerar PIX dinâmico (imprimir QR)</button>
@@ -184,6 +177,15 @@
   </div>
   @endif
   </div>
+  {{-- EMBARQUE — separado das impressões pra não clicar por engano --}}
+  @if(!$p->cancelada && !$p->embarcou && ($p->devido<=0.009 || $p->forma==='faturado') && $u->permite('passagem','baixa'))
+  <div class="border-t border-slate-200 pt-3 mt-2">
+    <form method="post" action="{{ route('passagens.embarcar',$p) }}">@csrf
+      <button class="btn w-full text-white" style="background:#059669">✅ Confirmar embarque (check-in)</button>
+    </form>
+    <p class="text-[11px] text-slate-400 text-center mt-1">Use só na hora do embarque do passageiro — não é pra imprimir.</p>
+  </div>
+  @endif
   @if($p->transferida)<div class="card p-3 text-center text-indigo-600 text-sm font-semibold">↪ Transferida @if($p->transferida_para_id)para <a href="{{ route('passagens.show',$p->transferida_para_id) }}" class="underline">nova passagem</a>@endif · {{ $p->motivo_cancelamento }}</div>
   @elseif($p->cancelada)
     <div class="card p-3 border border-rose-200 bg-rose-50 text-center text-sm">
