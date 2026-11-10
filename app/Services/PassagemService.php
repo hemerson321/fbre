@@ -66,28 +66,13 @@ class PassagemService
             }
         }
 
-        // Cota de gratuidade por viagem (ex.: idoso gratuito — Estatuto do Idoso). Só com viagem definida.
-        if ($viagemId) {
-            $gratNomes = \App\Models\TipoPassageiro::where('empresa_id', $empresa->id)->where('ativo', true)->where('gratuito', true)
-                ->pluck('nome')->map(fn ($n) => mb_strtolower($n))->all();
-            if ($gratNomes) {
-                $novosGrat = collect($data['passageiros'] ?? [])->filter(fn ($px) => in_array(mb_strtolower((string) ($px['tipo'] ?? '')), $gratNomes, true))->count();
-                if ($novosGrat > 0) {
-                    $cota = null;
-                    if (! empty($data['embarcacao_id']) && ($emb = \App\Models\Embarcacao::find($data['embarcacao_id'])) && $emb->gratuito_qtd !== null) {
-                        $cota = (int) $emb->gratuito_qtd;
-                    }
-                    if ($cota === null) $cota = (int) $empresa->config('gratuito_qtd', 2);
-                    $jaGrat = (int) DB::table('passagens')
-                        ->join('passagem_passageiros', 'passagens.id', '=', 'passagem_passageiros.passagem_id')
-                        ->where('passagens.empresa_id', $empresa->id)
-                        ->where('passagens.cancelada', false)
-                        ->where('passagens.viagem_id', $viagemId)
-                        ->whereIn(DB::raw('LOWER(passagem_passageiros.tipo)'), $gratNomes)
-                        ->count();
-                    if ($jaGrat + $novosGrat > $cota) {
-                        throw new \RuntimeException('Cota de gratuidade desta viagem atingida ('.$cota.' por viagem). Já emitidas: '.$jaGrat.'.');
-                    }
+        // Cota de gratuidade POR TRECHO (soma por segmento da viagem, como as poltronas).
+        if ($viagemId || ! empty($data['data_viagem'])) {
+            $gi = $this->gratuidadeUso($empresa->id, $viagemId, $rotaId, $data['data_viagem'] ?? null, $data['embarcacao_id'] ?? null, (string) ($data['origem'] ?? ''), (string) ($data['destino'] ?? ''));
+            if ($gi['ativo']) {
+                $novosGrat = collect($data['passageiros'] ?? [])->filter(fn ($px) => in_array(mb_strtolower((string) ($px['tipo'] ?? '')), $gi['nomes'], true))->count();
+                if ($novosGrat > 0 && $gi['usados'] + $novosGrat > $gi['cota']) {
+                    throw new \RuntimeException('Cota de gratuidade atingida neste trecho ('.$gi['cota'].' por viagem). Já emitidas aqui: '.$gi['usados'].'.');
                 }
             }
         }
@@ -192,6 +177,68 @@ class PassagemService
     }
 
     /** Baixa: pagamento e/ou embarque (check-in). */
+    /**
+     * Uso da cota de gratuidade NO TRECHO pedido (soma por segmento da viagem, como as poltronas).
+     * @return array{ativo:bool,cota:int,usados:int,restante:int,nomes:array}
+     */
+    public function gratuidadeUso(int $empresaId, ?int $viagemId, $rotaId, ?string $dataViagem, ?int $embarcacaoId, string $origem, string $destino): array
+    {
+        $empresa = \App\Models\Empresa::find($empresaId);
+        $nomes = \App\Models\TipoPassageiro::where('empresa_id', $empresaId)->where('ativo', true)->where('gratuito', true)
+            ->pluck('nome')->map(fn ($n) => mb_strtolower((string) $n))->all();
+        $cota = null;
+        if ($embarcacaoId && ($emb = \App\Models\Embarcacao::find($embarcacaoId)) && $emb->gratuito_qtd !== null) $cota = (int) $emb->gratuito_qtd;
+        if ($cota === null) $cota = (int) ($empresa ? $empresa->config('gratuito_qtd', 2) : 2);
+
+        if (! $nomes) return ['ativo' => false, 'cota' => $cota, 'usados' => 0, 'restante' => $cota, 'nomes' => []];
+
+        if (! $viagemId && $rotaId) {
+            $rt = \App\Models\Rota::find($rotaId);
+            if ($rt) {
+                $dataRef = $dataViagem ? \Carbon\Carbon::parse($dataViagem) : now();
+                $viagemId = $rt->viagemPara($dataRef)->id;
+            }
+        }
+        if (! $viagemId && ! $dataViagem) return ['ativo' => true, 'cota' => $cota, 'usados' => 0, 'restante' => $cota, 'nomes' => $nomes];
+
+        $rota = $rotaId ? \App\Models\Rota::find($rotaId) : null;
+        if (! $rota) {
+            $rota = \App\Models\Rota::with('paradas')->get()->first(function ($r) use ($origem, $destino) {
+                $locs = array_map('mb_strtolower', $r->localidades());
+                return in_array(mb_strtolower($origem), $locs, true) && in_array(mb_strtolower($destino), $locs, true);
+            });
+        }
+        $ordem = $rota ? array_map('mb_strtolower', $rota->localidades()) : [];
+        $idx = fn ($c) => array_search(mb_strtolower((string) $c), $ordem, true);
+        $reqS = $idx($origem); $reqD = $idx($destino);
+        $temTrecho = $ordem && $reqS !== false && $reqD !== false;
+
+        $rows = DB::table('passagens as p')
+            ->join('passagem_passageiros as pp', 'p.id', '=', 'pp.passagem_id')
+            ->where('p.empresa_id', $empresaId)->where('p.cancelada', false)
+            ->when($viagemId, fn ($q) => $q->where('p.viagem_id', $viagemId))
+            ->when(! $viagemId && $dataViagem, fn ($q) => $q->whereDate('p.data_viagem', $dataViagem))
+            ->whereIn(DB::raw('LOWER(pp.tipo)'), $nomes)
+            ->select('p.origem', 'p.destino', DB::raw('COUNT(*) as n'))
+            ->groupBy('p.origem', 'p.destino')->get();
+
+        if (! $temTrecho) {
+            $tot = (int) $rows->sum('n');
+            return ['ativo' => true, 'cota' => $cota, 'usados' => $tot, 'restante' => max(0, $cota - $tot), 'nomes' => $nomes];
+        }
+        [$reqMin, $reqMax] = [min($reqS, $reqD), max($reqS, $reqD)];
+        $seg = [];
+        foreach ($rows as $r) {
+            $c = $idx($r->origem); $d = $idx($r->destino);
+            if ($c === false || $d === false) { for ($k = $reqMin; $k < $reqMax; $k++) $seg[$k] = ($seg[$k] ?? 0) + (int) $r->n; continue; }
+            [$cMin, $cMax] = [min($c, $d), max($c, $d)];
+            for ($k = $cMin; $k < $cMax; $k++) $seg[$k] = ($seg[$k] ?? 0) + (int) $r->n;
+        }
+        $usados = 0;
+        for ($k = $reqMin; $k < $reqMax; $k++) $usados = max($usados, $seg[$k] ?? 0);
+        return ['ativo' => true, 'cota' => $cota, 'usados' => $usados, 'restante' => max(0, $cota - $usados), 'nomes' => $nomes];
+    }
+
     public function baixa(Passagem $p, array $data, int $userId): void
     {
         if ($p->cancelada) return;

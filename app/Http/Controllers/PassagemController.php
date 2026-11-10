@@ -511,6 +511,21 @@ class PassagemController extends Controller
     }
 
     /** JSON: poltronas ocupadas de uma embarcação/viagem (AJAX da tela de cadastro). */
+    /** Uso da cota de gratuidade no trecho (para o indicador na venda). */
+    public function gratuidade(Request $request)
+    {
+        $info = app(\App\Services\PassagemService::class)->gratuidadeUso(
+            Tenant::id(),
+            $request->integer('viagem_id') ?: null,
+            $request->input('rota_id') ?: null,
+            $request->input('data_viagem') ?: null,
+            $request->integer('embarcacao_id') ?: null,
+            (string) $request->input('origem', ''),
+            (string) $request->input('destino', ''),
+        );
+        return response()->json(['ativo' => $info['ativo'], 'cota' => $info['cota'], 'usados' => $info['usados'], 'restante' => $info['restante']]);
+    }
+
     public function assentos(Request $request)
     {
         $emb = Embarcacao::findOrFail($request->integer('embarcacao_id'));

@@ -108,6 +108,9 @@
         <div x-show="precoInfo" class="text-[11px] font-semibold" style="color:var(--cor1)" x-cloak>
           💲 Preço do trecho carregado
         </div>
+        <div x-show="gratInfo" x-cloak class="text-[11px] font-semibold flex items-center gap-1 mt-0.5" :class="(gratInfo && gratInfo.restante<=0) ? 'text-red-500' : 'text-slate-400'" title="Gratuidades (ex.: idoso gratuito) já usadas neste trecho desta viagem">
+          🎟️ <span x-text="gratInfo ? ('Gratuidade neste trecho: '+gratInfo.usados+'/'+gratInfo.cota) : ''"></span><span x-show="gratInfo && gratInfo.restante<=0"> · esgotado</span>
+        </div>
       </div>
     </section>
 
@@ -441,6 +444,7 @@
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
       embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4),'layout'=>(string)($e->poltronas_lista ?? '')])->values()),
       regrasIdade:@js($regrasIdade ?? []),
+      gratInfo:null, _gratTok:0,
       podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
       capturaAberta:false, capturaUrl:'', capturaSid:'', capturaDesde:0, capturaTimer:null, capturaStatus:'', capturaAviso:'', _avisoT:null,
       camAberta:false, camStream:null, camFacing:'environment', camTargetIdx:0, camStatus:'', camLendo:false,
@@ -475,6 +479,10 @@
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
         this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhasTransporte.length){ const n=x=>String(x||'').trim().toLowerCase(); if(this.origemSel && !this.origens.some(c=>n(c)===n(this.origemSel))) this.origemSel=''; if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); this.passageiros.forEach(p=>{ if(p.nascimento) this.aplicarIdade(p); }); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
+        this.$watch('origemSel', ()=>this.carregarGratuidade());
+        this.$watch('destinoSel', ()=>this.carregarGratuidade());
+        this.$watch('viagemData', ()=>this.carregarGratuidade());
+        this.$watch('embarcacaoSel', ()=>this.carregarGratuidade());
         this.addPax();
         this.mudarEmbarcacao();
         this.onRota();
@@ -594,6 +602,10 @@
         this.bandasAtivas().forEach(b=>{ const mn=(b.min===null||b.min===undefined||b.min==='')?null:Number(b.min); const mx=(b.max===null||b.max===undefined||b.max==='')?null:Number(b.max); if(mn===null&&mx===null) return; if((mn===null||a>=mn)&&(mx===null||a<=mx)){ const s=(mx===null?120:mx)-(mn===null?0:mn); if(s<span){ span=s; melhor=this.tipos.find(t=>String(t.id)===String(b.tipo_id)); } } });
         return melhor||null; },
       idadeTxt(p){ const a=this.idadeAnos(p.nascimento); if(a===null) return ''; const t=this.tipos.find(x=>String(x.id)===String(p.tipo_id)); return a+(a===1?' ano':' anos')+(t?(' · '+t.nome):''); },
+      carregarGratuidade(){ if(!this.origemSel||!this.destinoSel){ this.gratInfo=null; return; }
+        try{ const u=new URL('/passagens/gratuidade', location.origin); u.searchParams.set('origem', this.origemSel); u.searchParams.set('destino', this.destinoSel);
+          if(this.embarcacaoSel) u.searchParams.set('embarcacao_id', this.embarcacaoSel); if(this.rotaId) u.searchParams.set('rota_id', this.rotaId); if(this.viagemData) u.searchParams.set('data_viagem', this.viagemData);
+          const tok=++this._gratTok; fetch(u,{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.ok?r.json():null).then(j=>{ if(tok!==this._gratTok) return; this.gratInfo=(j&&j.ativo)?j:null; }).catch(()=>{}); }catch(e){} },
       isoToBr(iso){ if(!iso) return ''; const a=(''+iso).slice(0,10).split('-'); return a.length===3 ? a[2]+'/'+a[1]+'/'+a[0] : ''; },
       mascaraNasc(p){ let v=(p.nasc_br||'').replace(/[^0-9]/g,'').slice(0,8); let o=v; if(v.length>4) o=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4); else if(v.length>2) o=v.slice(0,2)+'/'+v.slice(2); p.nasc_br=o; if(v.length===8){ const d=+v.slice(0,2), m=+v.slice(2,4), a=+v.slice(4,8); if(d>=1&&d<=31&&m>=1&&m<=12&&a>=1900&&a<=2100){ p.nascimento=v.slice(4,8)+'-'+v.slice(2,4)+'-'+v.slice(0,2); this.aplicarIdade(p); return; } } p.nascimento=''; },
       aplicarIdade(p){ const t=this.tipoPorIdade(p.nascimento); if(t){ p.tipo_id=t.id; this.aplicarTipo(p); } },
