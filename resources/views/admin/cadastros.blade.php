@@ -58,7 +58,7 @@
 <div class="card p-4 space-y-2 md:col-span-2" x-data="tiposEditor(@js($tiposPassageiro->map(fn($t)=>[
      'id'=>$t->id,'nome'=>$t->nome,'cor'=>$t->cor ?: '#2563eb','modo'=>$t->modo ?: 'valor',
      'percentual'=>(int)$t->percentual,'tarifa_padrao'=>(float)$t->tarifa_padrao,'alimentacao_padrao'=>(float)$t->alimentacao_padrao,
-     'eh_normal'=>(bool)$t->eh_normal,'paga_taxa'=>(bool)$t->paga_taxa,'pct_sobre'=>$t->pct_sobre ?: 'tarifa','idade_min'=>$t->idade_min,'idade_max'=>$t->idade_max,'gratuito'=>(bool)$t->gratuito,'pcd'=>(bool)$t->pcd,
+     'eh_normal'=>(bool)$t->eh_normal,'paga_taxa'=>(bool)$t->paga_taxa,'pct_sobre'=>$t->pct_sobre ?: 'tarifa','idade_min'=>$t->idade_min,'idade_max'=>$t->idade_max,'gratuito'=>(bool)$t->gratuito,'pcd'=>(bool)$t->pcd,'idoso_meia'=>(bool)$t->idoso_meia,
    ])->values()))">
   <h2 class="font-bold text-sm text-slate-500 uppercase">Tipos de passageiro</h2>
   <p class="text-xs text-slate-500">Escolha o modo: <b>Valor</b> (Tarifa + Alimentação por rota) ou <b>Porcentagem</b> (% do Normal, automático). Marque qual tipo é o <b>Normal</b> (base do cálculo — ex.: Adulto). Defina a <b>Idade</b> (ex.: 1 a 5, 5 a 10) e o sistema escolhe o tipo automaticamente pela data de nascimento do passageiro.</p>
@@ -105,6 +105,8 @@
         <input type="hidden" :name="`tipos[${i}][gratuito]`" :value="t.gratuito ? 1 : ''">
         <label class="flex items-center gap-1.5 text-sm pb-2 cursor-pointer" title="Conta na cota de PCD por viagem"><input type="checkbox" x-model="t.pcd" class="w-4 h-4 rounded"> ♿ PCD</label>
         <input type="hidden" :name="`tipos[${i}][pcd]`" :value="t.pcd ? 1 : ''">
+        <label class="flex items-center gap-1.5 text-sm pb-2 cursor-pointer" title="Conta na cota de idoso 50% por viagem"><input type="checkbox" x-model="t.idoso_meia" class="w-4 h-4 rounded"> 🧓 Idoso ½</label>
+        <input type="hidden" :name="`tipos[${i}][idoso_meia]`" :value="t.idoso_meia ? 1 : ''">
         <button type="button" @click="remover(i)" class="text-red-500 text-xl pb-1" title="Remover">×</button>
       </div>
     </template>
@@ -119,8 +121,8 @@
 <script>
 function tiposEditor(tipos){
   return {
-    tipos: (tipos&&tipos.length) ? tipos : [{id:null,nome:'Adulto',cor:'#2563eb',modo:'valor',percentual:100,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:true,paga_taxa:true,pct_sobre:'tarifa',idade_min:null,idade_max:null,gratuito:false,pcd:false}],
-    adicionar(){ this.tipos.push({id:null,nome:'',cor:'#7c3aed',modo:'porcentagem',percentual:50,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:false,paga_taxa:true,pct_sobre:'tarifa',idade_min:null,idade_max:null,gratuito:false,pcd:false}); },
+    tipos: (tipos&&tipos.length) ? tipos : [{id:null,nome:'Adulto',cor:'#2563eb',modo:'valor',percentual:100,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:true,paga_taxa:true,pct_sobre:'tarifa',idade_min:null,idade_max:null,gratuito:false,pcd:false,idoso_meia:false}],
+    adicionar(){ this.tipos.push({id:null,nome:'',cor:'#7c3aed',modo:'porcentagem',percentual:50,tarifa_padrao:0,alimentacao_padrao:0,eh_normal:false,paga_taxa:true,pct_sobre:'tarifa',idade_min:null,idade_max:null,gratuito:false,pcd:false,idoso_meia:false}); },
     remover(i){ const era=this.tipos[i].eh_normal; this.tipos.splice(i,1); if(era && this.tipos.length) this.tipos[0].eh_normal=true; },
     marcarNormal(i){ this.tipos.forEach((t,k)=>{ t.eh_normal = (k===i); if(k===i) t.modo='valor'; }); },
   };

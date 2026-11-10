@@ -148,6 +148,7 @@ class CadastroController extends Controller
             'tipos.*.paga_taxa' => 'nullable',
             'tipos.*.gratuito' => 'nullable',
             'tipos.*.pcd' => 'nullable',
+            'tipos.*.idoso_meia' => 'nullable',
         ]);
 
         $vistos = [];
@@ -169,6 +170,7 @@ class CadastroController extends Controller
                 'paga_taxa' => ! empty($row['paga_taxa']),
                 'gratuito' => ! empty($row['gratuito']),
                 'pcd' => ! empty($row['pcd']),
+                'idoso_meia' => ! empty($row['idoso_meia']),
                 'eh_normal' => $ehNormal,
                 'ativo' => true,
                 'ordem' => $ordem++,
@@ -242,6 +244,7 @@ class CadastroController extends Controller
             'regra_idade' => 'nullable|array',
             'gratuito_qtd' => 'nullable|integer|min:0|max:999',
             'pcd_qtd' => 'nullable|integer|min:0|max:999',
+            'idoso_meia_qtd' => 'nullable|integer|min:0|max:999',
         ]);
         $ficha = collect($request->input('ficha', []))->map(fn ($v) => is_string($v) ? trim($v) : $v)->filter(fn ($v) => $v !== null && $v !== '')->all();
         $trip = collect($request->input('tripulantes', []))->filter(fn ($t) => trim($t['nome'] ?? '') !== '')->map(fn ($t) => [
@@ -277,6 +280,7 @@ class CadastroController extends Controller
             'regra_idade' => $regraIdade,
             'gratuito_qtd' => ($data['gratuito_qtd'] ?? '') !== '' ? (int) $data['gratuito_qtd'] : null,
             'pcd_qtd' => ($data['pcd_qtd'] ?? '') !== '' ? (int) $data['pcd_qtd'] : null,
+            'idoso_meia_qtd' => ($data['idoso_meia_qtd'] ?? '') !== '' ? (int) $data['idoso_meia_qtd'] : null,
         ]);
         if ($request->hasFile('logo')) {
             $embarcacao->logo = 'storage/'.$request->file('logo')->store('logos', 'public');

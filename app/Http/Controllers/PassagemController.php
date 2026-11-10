@@ -95,7 +95,7 @@ class PassagemController extends Controller
             })->pluck('embarcacao_id')->unique()->values();
         $embarcacoes = Embarcacao::where('ativo', true)->whereIn('id', $embComVenda)->orderBy('nome')
             ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas', 'regra_idade']);
-        $colunas = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao', 'idade_min', 'idade_max', 'gratuito', 'pcd'];
+        $colunas = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao', 'idade_min', 'idade_max', 'gratuito', 'pcd', 'idoso_meia'];
         $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get($colunas);
         if ($tipos->isEmpty()) {
             // auto-reparo: cria o Normal (Adulto) e alguns tipos padrão
@@ -543,8 +543,9 @@ class PassagemController extends Controller
         $resumo = fn ($x) => ['ativo' => $x['ativo'], 'cota' => $x['cota'], 'usados' => $x['usados'], 'restante' => $x['restante']];
         $g = $svc->cotaUso('gratuito', ...$args);
         $p = $svc->cotaUso('pcd', ...$args);
+        $im = $svc->cotaUso('idoso_meia', ...$args);
         // mantém campos de topo (gratuito) por compatibilidade + objetos por grupo
-        return response()->json($resumo($g) + ['gratuito' => $resumo($g), 'pcd' => $resumo($p)]);
+        return response()->json($resumo($g) + ['gratuito' => $resumo($g), 'pcd' => $resumo($p), 'idoso_meia' => $resumo($im)]);
     }
 
     public function assentos(Request $request)
