@@ -109,16 +109,16 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   @php $trackUrl = trim((string) ($p->embarcacao?->gps_url ?? '')) ?: null; @endphp
   <div class="qr">
     @if($trackUrl)
-    <div style="display:flex;gap:8px;justify-content:center;align-items:flex-start;margin-top:2px">
-      <div style="flex:1;min-width:0">
-        <div class="qrp" data-url="{{ route('checkin',$p) }}" data-size="104"></div>
-        <div class="b" style="font-size:10px;color:var(--cor);letter-spacing:.03em">CHECK-IN</div>
-        <div class="muted" style="font-size:8px">Apresente no embarque</div>
+    <div style="margin-top:3px">
+      <div style="border:1.5px solid var(--cor);border-radius:10px;padding:7px 6px 6px">
+        <div class="qrp" data-url="{{ route('checkin',$p) }}" data-size="124"></div>
+        <div class="b" style="font-size:11px;color:var(--cor);letter-spacing:.05em">CHECK-IN</div>
+        <div class="muted" style="font-size:8.5px">Apresente este QR no embarque</div>
       </div>
-      <div style="flex:1;min-width:0">
-        <div class="qrp" data-url="{{ $trackUrl }}" data-size="104"></div>
-        <div class="b" style="font-size:10px;color:#047857;letter-spacing:.03em">ACOMPANHE A VIAGEM</div>
-        <div class="muted" style="font-size:8px">Siga o barco em tempo real</div>
+      <div style="border:1.5px solid #047857;border-radius:10px;padding:7px 6px 6px;margin-top:7px">
+        <div class="qrp" data-url="{{ $trackUrl }}" data-size="124"></div>
+        <div class="b" style="font-size:11px;color:#047857;letter-spacing:.05em">ACOMPANHE A VIAGEM</div>
+        <div class="muted" style="font-size:8.5px">Siga o barco em tempo real</div>
       </div>
     </div>
     @else
