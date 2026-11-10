@@ -59,8 +59,11 @@
             <a href="#" onclick="event.preventDefault(); if(confirm('Remover embarcação?')) this.closest('form').nextElementSibling.submit();" class="text-red-500 text-xs pb-2">remover</a>
           </div>
           <div class="mt-2">
-            <label class="label">URL de rastreio do barco (opcional)</label>
+            <label class="label">URL de rastreio do barco (API — avisos de encomenda)</label>
             <input name="rastreio_url" class="input !min-h-[40px] font-mono text-xs" value="{{ $e->rastreio_url }}" placeholder="https://rionave.com/wp-json/riotag/v1/posicao/TOKEN" autocapitalize="none" inputmode="url">
+            <label class="label mt-2">📍 Link de GPS pro passageiro (QR no bilhete)</label>
+            <input name="gps_url" class="input !min-h-[40px] font-mono text-xs" value="{{ $e->gps_url }}" placeholder="https://... (pagina pra acompanhar o barco em tempo real)" autocapitalize="none" inputmode="url">
+            <p class="text-[11px] text-slate-400 mt-0.5">Se preenchido, o bilhete mostra um 2º QR code <b>"Acompanhe a viagem em tempo real"</b> (separado do QR de check-in). Pode ser qualquer link de mapa/rastreio.</p>
             <label class="label mt-2">🖼️ Logo do transporte (opcional)</label>
             <div class="flex items-center gap-3">
               @if($e->logo)<img src="/{{ $e->logo }}" class="h-12 w-12 rounded-lg object-cover bg-white border shrink-0">@endif

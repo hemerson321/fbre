@@ -8,7 +8,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .ticket:last-child{page-break-after:auto}
 .c{text-align:center}.muted{color:#6b7280}.b{font-weight:700}
 .hdr{text-align:center;margin-bottom:4px}
-.hdr img{height:54px;max-width:62mm;object-fit:contain;margin-bottom:3px}
+.hdr img{height:80px;max-width:72mm;object-fit:contain;margin-bottom:4px}
 .emp{font-weight:800;font-size:14px;letter-spacing:.02em;line-height:1.1}
 .cnpj{font-size:10px;color:#6b7280}
 .band{margin:6px -4mm 0;padding:5px 0;text-align:center;color:#fff;font-weight:800;font-size:12px;letter-spacing:.09em;background:var(--cor)}
@@ -106,10 +106,26 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @if($pax->valor_integral > $pax->valor_total + 0.009)<div class="row"><span class="k">Preço normal</span><span class="vv">R$ {{ number_format((float) $pax->valor_integral,2,',','.') }}</span></div>@endif
   </div>
 
+  @php $trackUrl = trim((string) ($p->embarcacao?->gps_url ?? '')) ?: null; @endphp
   <div class="qr">
+    @if($trackUrl)
+    <div style="display:flex;gap:8px;justify-content:center;align-items:flex-start;margin-top:2px">
+      <div style="flex:1;min-width:0">
+        <div class="qrp" data-url="{{ route('checkin',$p) }}" data-size="104"></div>
+        <div class="b" style="font-size:10px;color:var(--cor);letter-spacing:.03em">CHECK-IN</div>
+        <div class="muted" style="font-size:8px">Apresente no embarque</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="qrp" data-url="{{ $trackUrl }}" data-size="104"></div>
+        <div class="b" style="font-size:10px;color:#047857;letter-spacing:.03em">ACOMPANHE A VIAGEM</div>
+        <div class="muted" style="font-size:8px">Siga o barco em tempo real</div>
+      </div>
+    </div>
+    @else
     <div class="qrp" data-url="{{ route('checkin',$p) }}"></div>
     <div class="b" style="font-size:10px;color:var(--cor);letter-spacing:.05em">CHECK-IN</div>
     <div class="muted" style="font-size:9px">Apresente este QR no embarque</div>
+    @endif
   </div>
 
   @if($e?->rodape_comprovante)<div class="info">{{ $e->rodape_comprovante }}</div>@endif
@@ -142,7 +158,7 @@ function rasterTickets(){
   })(0);
 }
 function qrImprimir(){
-  try{ document.querySelectorAll('.qrp').forEach(function(el){ new QRCode(el,{text:el.dataset.url,width:130,height:130,correctLevel:QRCode.CorrectLevel.M}); }); }catch(e){}
+  try{ document.querySelectorAll('.qrp').forEach(function(el){ var sz=parseInt(el.dataset.size)||130; new QRCode(el,{text:el.dataset.url,width:sz,height:sz,correctLevel:QRCode.CorrectLevel.M}); }); }catch(e){}
   if(RASTER){ setTimeout(rasterTickets, 450); return; }
   var isMobile = /Android|iPhone|iPad|iPod|Mobile|Opera Mini/i.test(navigator.userAgent||'') || (window.matchMedia && window.matchMedia('(max-width:820px)').matches) || ('ontouchstart' in window && Math.min(screen.width,screen.height)<820);
   if(MODO==='pdf' || isMobile){
