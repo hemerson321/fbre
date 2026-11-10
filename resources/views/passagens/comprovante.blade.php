@@ -126,8 +126,23 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 <script>
 var MODO=@json($modo ?? null);
 var _pdfBlob=null,_pdfFile=null,_pdfName='passagem-{{ $p->numeroFormatado() }}.pdf';
+var RASTER = new URLSearchParams(location.search).has('raster');
+function rasterTickets(){
+  var h2c = window.html2canvas;
+  if(!h2c){ try{ parent.postMessage({fbreRaster:true, imagens:[], erro:'sem html2canvas'}, '*'); }catch(e){} return; }
+  var els = Array.prototype.slice.call(document.querySelectorAll('.ticket'));
+  var out = [];
+  (function next(i){
+    if(i>=els.length){ try{ parent.postMessage({fbreRaster:true, imagens:out}, '*'); }catch(e){} return; }
+    h2c(els[i], {scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false}).then(function(cv){
+      try{ out.push(cv.toDataURL('image/png')); }catch(e){}
+      next(i+1);
+    }).catch(function(){ next(i+1); });
+  })(0);
+}
 function qrImprimir(){
   try{ document.querySelectorAll('.qrp').forEach(function(el){ new QRCode(el,{text:el.dataset.url,width:130,height:130,correctLevel:QRCode.CorrectLevel.M}); }); }catch(e){}
+  if(RASTER){ setTimeout(rasterTickets, 450); return; }
   var isMobile = /Android|iPhone|iPad|iPod|Mobile|Opera Mini/i.test(navigator.userAgent||'') || (window.matchMedia && window.matchMedia('(max-width:820px)').matches) || ('ontouchstart' in window && Math.min(screen.width,screen.height)<820);
   if(MODO==='pdf' || isMobile){
     document.getElementById('pdfbar').style.display='block';

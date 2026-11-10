@@ -203,14 +203,30 @@
 <script>
 function imprimirDiretoPassagem(btn){
   const txt = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Enviando pra impressora...';
-  fetch('{{ route('passagens.imprimir-direto',$p) }}', {method:'POST', headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}})
-    .then(r=>r.json())
-    .then(d=>{
-      if(d && d.ok){ btn.textContent = '✅ Enviado ('+d.jobs+' bilhete'+(d.jobs>1?'s':'')+')'; setTimeout(()=>{btn.textContent=txt; btn.disabled=false;}, 2500); }
-      else { alert((d && d.erro) || 'Não consegui enviar pra impressora.'); btn.textContent=txt; btn.disabled=false; }
-    })
-    .catch(()=>{ alert('Falha de conexão ao enviar pra impressora.'); btn.textContent=txt; btn.disabled=false; });
+  const POST = '{{ route('passagens.imprimir-direto',$p) }}';
+  const RURL = '{{ route('passagens.comprovante',$p) }}?raster=1';
+  btn.disabled = true; btn.textContent = 'Gerando bilhete...';
+  let done = false;
+  const ifr = document.createElement('iframe');
+  ifr.style.cssText = 'position:fixed;left:-10000px;top:0;width:360px;height:10px;border:0;opacity:0';
+  const fim = (ok, info) => {
+    if(done) return; done = true;
+    window.removeEventListener('message', onMsg); try{ ifr.remove(); }catch(e){}
+    if(ok){ btn.textContent = '✅ Enviado ('+info+')'; } else { alert(info || 'Não consegui imprimir.'); }
+    setTimeout(()=>{ btn.textContent = txt; btn.disabled = false; }, 2600);
+  };
+  const onMsg = (ev) => {
+    const d = ev.data; if(!d || !d.fbreRaster) return;
+    if(!d.imagens || !d.imagens.length){ fim(false, 'Não consegui gerar o bilhete.'); return; }
+    btn.textContent = 'Enviando pra impressora...';
+    fetch(POST, {method:'POST', headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'}, body: JSON.stringify({imagens:d.imagens})})
+      .then(r=>r.json())
+      .then(dd=>{ if(dd && dd.ok){ fim(true, dd.jobs+' bilhete'+(dd.jobs>1?'s':'')); } else { fim(false, (dd && dd.erro) || 'Erro na impressora.'); } })
+      .catch(()=>fim(false, 'Falha de conexão ao enviar.'));
+  };
+  window.addEventListener('message', onMsg);
+  document.body.appendChild(ifr); ifr.src = RURL;
+  setTimeout(()=>{ if(!done) fim(false, 'Tempo esgotado ao gerar o bilhete.'); }, 20000);
 }
 </script>
 @if(request('print'))

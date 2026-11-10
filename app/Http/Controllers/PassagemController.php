@@ -821,12 +821,42 @@ class PassagemController extends Controller
     }
 
     /** Impressão direta pelo Agente (token): um bilhete por passageiro, mesmo em compra junta. */
-    public function imprimirDireto(Passagem $passagem)
+    public function imprimirDireto(Request $request, Passagem $passagem)
     {
         abort_unless($passagem->empresa_id === Tenant::id(), 404);
         $estacao = \App\Models\Estacao::resolver();
         if (! $estacao) {
             return response()->json(['ok' => false, 'erro' => 'Nenhuma estação de impressão ativa.'], 422);
+        }
+
+        // CAMINHO 1 (idêntico ao navegador): o front rasteriza o bilhete (html2canvas)
+        // e manda as imagens; o agente imprime a imagem inteira. Fica igualzinho.
+        $imagens = $request->input('imagens');
+        if (is_array($imagens) && count($imagens)) {
+            $tot = count($imagens);
+            $n = 0;
+            foreach ($imagens as $i => $img) {
+                if (! is_string($img) || $img === '') continue;
+                if (str_contains($img, ',')) $img = substr($img, strpos($img, ',') + 1); // tira dataURL
+                \App\Models\FilaImpressao::create([
+                    'estacao_id' => $estacao->id,
+                    'encomenda_id' => null,
+                    'tipo' => 'generico',
+                    'dados' => [
+                        'linhas' => [
+                            ['op' => 'img', 'data' => $img, 'w' => 576],
+                            ['op' => 'feed', 'n' => 3],
+                            ['op' => 'cut'],
+                        ],
+                        'impressora' => 'comprovante',
+                        'ref' => $passagem->numeroFormatado().' ('.($i + 1).'/'.$tot.')',
+                    ],
+                ]);
+                $n++;
+            }
+            if ($n > 0) {
+                return ['ok' => true, 'jobs' => $n, 'estacao' => $estacao->nome, 'modo' => 'img'];
+            }
         }
 
         $passagem->loadMissing(['passageiros', 'embarcacao', 'operador', 'pagamentos']);
