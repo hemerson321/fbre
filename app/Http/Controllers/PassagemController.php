@@ -835,35 +835,52 @@ class PassagemController extends Controller
         $tot = $pax->count();
         $checkin = route('checkin', $passagem);
         $brl = fn ($v) => \App\Support\Recibo::brl($v);
+
+        // logos (empresa e barco) em base64, se existirem
+        $lerLogo = function (?string $rel): ?string {
+            if (! $rel) return null;
+            $p = public_path($rel);
+            if (! is_file($p)) return null;
+            $b = @file_get_contents($p);
+            return $b ? base64_encode($b) : null;
+        };
+        $logoEmp = $lerLogo($empresa->logo ?? null);
+        $logoBarco = $lerLogo($passagem->embarcacao->logo ?? null);
+        $diaSem = ['Domingo', 'Segunda-feira', 'Terca-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sabado'];
         $n = 0;
 
         foreach ($pax as $i => $pz) {
             // o LAYOUT do bilhete vive aqui (servidor). O agente só executa as linhas.
             $doc = new \App\Support\Recibo;
+            if ($logoEmp) $doc->img($logoEmp);
             $doc->txt(mb_strtoupper($empresa->nomeExibicao()), 'c', true, 2);
             if ($empresa->cnpj) $doc->txt('CNPJ '.$empresa->cnpj, 'c');
+            $contato = trim((string) ($empresa->whatsapp ?: $empresa->telefone));
+            if ($contato !== '') $doc->txt($contato, 'c');
+            $doc->linha('=');
+            $doc->txt('BILHETE DE PASSAGEM', 'c', true, 1);
+            $doc->linha('=');
+            $doc->txt('No '.$passagem->numeroFormatado(), 'c', true, 2);
+            if ($pz->poltrona) $doc->txt('POLTRONA '.$pz->poltrona, 'c', true, 2);
+            $doc->txt(mb_strtoupper($passagem->origem).'  >  '.mb_strtoupper($passagem->destino), 'c', true, 1);
             $doc->linha();
-            $doc->txt('PASSAGEM No '.$passagem->numeroFormatado(), 'c', true, 2);
-            $doc->txt('Bilhete '.($i + 1).'/'.$tot.'  '.$passagem->created_at->format('d/m/Y H:i'), 'c');
-            if ($passagem->operador?->name) $doc->txt('Op: '.$passagem->operador->name, 'c');
+            $doc->txt('VIAGEM', 'l', true);
+            if ($logoBarco) $doc->img($logoBarco);
+            if ($passagem->embarcacao?->nome) $doc->lr('Embarcacao', $passagem->embarcacao->nome);
+            if ($passagem->data_viagem) $doc->lr('Saida', $passagem->data_viagem->format('d/m/Y').' '.($diaSem[(int) $passagem->data_viagem->dayOfWeek] ?? ''));
+            if ($passagem->viagem_id) $doc->lr('No da viagem', (string) $passagem->viagem_id);
             $doc->linha();
-            $doc->txt(mb_strtoupper($pz->nome ?: 'PASSAGEIRO'), 'c', true, 1);
-            if (trim((string) $pz->tipo) !== '') $doc->txt(mb_strtoupper(trim((string) $pz->tipo)), 'c', true, 2);
-            $sub = [];
-            if ($pz->poltrona) $sub[] = 'Poltrona '.$pz->poltrona;
-            if ($pz->documento) $sub[] = 'Doc '.$pz->documento;
-            if ($sub) $doc->txt(implode('  -  ', $sub), 'c');
+            $doc->txt('PASSAGEIRO', 'l', true);
+            $doc->txt(mb_strtoupper($pz->nome ?: 'PASSAGEIRO'), 'l', true, 1);
+            if (trim((string) $pz->tipo) !== '') $doc->lr('Tipo', mb_strtoupper(trim((string) $pz->tipo)));
+            if ($pz->documento) $doc->lr('Documento', $pz->documento);
+            if ($tot > 1) $doc->lr('Bilhete', ($i + 1).'/'.$tot);
             $doc->linha();
-            $doc->txt('ORIGEM  >  DESTINO', 'c');
-            $doc->txt($passagem->origem.'  >  '.$passagem->destino, 'c', true);
-            if ($passagem->data_viagem) $doc->lr('VIAGEM', $passagem->data_viagem->format('d/m/Y'));
-            if ($passagem->embarcacao?->nome) $doc->lr('BARCO', $passagem->embarcacao->nome);
-            $doc->linha();
-            $doc->lr('Transporte', $brl($pz->valor_passagem));
-            $adic = (float) (($pz->valor_alimentacao ?? 0) + ($pz->valor_taxa ?? 0));
-            if ($adic > 0) $doc->lr('Alim.+Adic.', $brl($adic));
-            $doc->lr('TOTAL', $brl($pz->valor_total), true);
-            if ((float) $passagem->devido > 0.009) $doc->txt('PASSAGEM COM VALOR EM ABERTO', 'c', true);
+            $doc->txt('PAGAMENTO', 'l', true);
+            $doc->lr('VALOR TOTAL', $brl($pz->valor_total), true);
+            $doc->lr('Situacao', (float) $passagem->devido > 0.009 ? 'EM ABERTO' : 'PAGO');
+            if ($passagem->operador?->name) $doc->lr('Vendedor', $passagem->operador->name);
+            $doc->lr('Compra', $passagem->created_at->format('d/m/Y H:i'));
             $doc->linha();
             $doc->qr($checkin, 8);
             $doc->txt('CHECK-IN - apresente no embarque', 'c');

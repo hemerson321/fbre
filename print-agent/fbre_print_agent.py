@@ -155,6 +155,37 @@ class EscPos:
         self.buf += self.GS + b"(k\x03\x00\x31\x51\x30"               # imprime
         self.buf += self.ESC + b"a\x00"                                 # volta p/ esquerda
 
+    def imagem(self, b64):
+        """Logo (base64 PNG/JPG) -> raster ESC/POS (GS v 0). Centralizado."""
+        try:
+            from PIL import Image
+            import io as _io, base64 as _b64
+            raw = _b64.b64decode(b64)
+            im = Image.open(_io.BytesIO(raw)).convert("L")
+            w, h = im.size
+            tw = min(self.colunas * 12, 384)           # largura alvo (dots)
+            th = max(1, int(h * tw / w))
+            if th > 220:
+                th = 220; tw = max(1, int(w * th / h))
+            im = im.resize((tw, th)).convert("1")       # 1-bit (dither)
+            w, h = im.size
+            wbytes = (w + 7) // 8
+            px = im.load()
+            data = bytearray()
+            for y in range(h):
+                for xb in range(wbytes):
+                    b = 0
+                    for bit in range(8):
+                        x = xb * 8 + bit
+                        if x < w and px[x, y] == 0:     # 0 = preto no modo "1"
+                            b |= (0x80 >> bit)
+                    data.append(b)
+            self.buf += self.ESC + b"a\x01"            # centraliza
+            self.buf += self.GS + b"v0\x00" + bytes([wbytes & 0xFF, (wbytes >> 8) & 0xFF, h & 0xFF, (h >> 8) & 0xFF]) + bytes(data)
+            self.buf += self.ESC + b"a\x00"            # volta p/ esquerda
+        except Exception:
+            pass
+
     def bytes(self):
         return bytes(self.buf)
 
@@ -299,6 +330,8 @@ def montar_generico(d, col):
             p.linha(ln.get("ch", "-") or "-")
         elif op == "qr":
             if ln.get("data"): p.qr(ln["data"], int(ln.get("size", 8) or 8))
+        elif op == "img":
+            if ln.get("data"): p.imagem(ln["data"])
         elif op == "feed":
             p.feed(int(ln.get("n", 3) or 3))
         elif op == "cut":

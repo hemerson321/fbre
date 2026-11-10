@@ -45,6 +45,13 @@ class Recibo
         return $this;
     }
 
+    /** Imagem (logo) em base64 (PNG/JPG) — o agente converte pra raster ESC/POS. */
+    public function img(string $base64): static
+    {
+        $this->linhas[] = ['op' => 'img', 'data' => $base64];
+        return $this;
+    }
+
     /** QR code (ex.: URL de check-in / PIX copia-e-cola). */
     public function qr(string $data, int $size = 8): static
     {
