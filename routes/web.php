@@ -128,6 +128,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/meus-filiados/salvar/{filiado?}', [AcertoController::class, 'salvarFiliado'])->name('filiados.salvar');
     Route::post('/meus-filiados/{filiado}/baixa', [AcertoController::class, 'baixaFiliado'])->name('filiados.baixa');
     Route::post('/meu/acertar-empresa', [AcertoController::class, 'pagarEmpresa'])->name('acertos.pagar-empresa');
+    Route::post('/meu/acertar-dono/{embarcacao}', [AcertoController::class, 'pagarDono'])->name('acertos.pagar-dono');
     // Dono do transporte: area "Meu transporte"
     Route::get('/meu-transporte', [\App\Http\Controllers\MeuTransporteController::class, 'index'])->name('meu-transporte');
     Route::post('/meu-transporte/{embarcacao}/baixa-balcao', [\App\Http\Controllers\MeuTransporteController::class, 'baixaBalcao'])->name('meu-transporte.baixa-balcao');

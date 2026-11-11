@@ -11,7 +11,7 @@ class Embarcacao extends Model
 
     protected $table = 'embarcacoes';
     protected $guarded = [];
-    protected $casts = ['ativo' => 'boolean', 'usa_poltrona' => 'boolean', 'poltronas_qtd' => 'integer', 'poltronas_colunas' => 'integer', 'cancel_antes_pct' => 'integer', 'cancel_depois_pct' => 'integer', 'comissao_empresa_pct' => 'integer', 'tripulantes' => 'array', 'ficha' => 'array', 'regra_idade' => 'array', 'gratuito_qtd' => 'integer', 'pcd_qtd' => 'integer', 'idoso_meia_qtd' => 'integer'];
+    protected $casts = ['ativo' => 'boolean', 'usa_poltrona' => 'boolean', 'poltronas_qtd' => 'integer', 'poltronas_colunas' => 'integer', 'cancel_antes_pct' => 'integer', 'cancel_depois_pct' => 'integer', 'comissao_empresa_pct' => 'integer', 'tripulantes' => 'array', 'ficha' => 'array', 'regra_idade' => 'array', 'gratuito_qtd' => 'integer', 'pcd_qtd' => 'integer', 'idoso_meia_qtd' => 'integer', 'repasse_pix_api_id' => 'integer'];
 
     public function dono() { return $this->belongsTo(User::class, 'dono_id'); }
 

@@ -89,6 +89,15 @@ class ConfirmaPagamento
             return true;
         }
 
+        // Repasse do DONO pago por PIX (agente): baixa acerto_dono das passagens do agente naquele barco.
+        if ($cob->referencia_tipo === 'acerto_dono' && $cob->referencia_id && $cob->user_id) {
+            Passagem::withoutGlobalScopes()->where('empresa_id', $cob->empresa_id)
+                ->where('revendedor_id', $cob->user_id)->where('embarcacao_id', $cob->referencia_id)
+                ->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+                ->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => $cob->user_id]);
+            return true;
+        }
+
         $valorFmt = number_format((float) $cob->valor, 2, ',', '.');
 
         if ($cob->referencia_tipo === Conversa::class && $cob->referencia_id) {

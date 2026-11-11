@@ -42,6 +42,7 @@ class CadastroController extends Controller
             'embarcacoes' => Embarcacao::orderBy('nome')->get(),
             'usuarios' => \App\Models\User::where('empresa_id', \App\Support\Tenant::id())->where('ativo', true)->orderBy('name')->get(),
             'tiposPassageiro' => TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'eh_normal', 'idade_min', 'idade_max']),
+            'apis' => \App\Models\PagamentoApi::orderBy('nome')->get(),
         ]);
     }
 
@@ -246,6 +247,8 @@ class CadastroController extends Controller
             'gratuito_qtd' => 'nullable|integer|min:0|max:999',
             'pcd_qtd' => 'nullable|integer|min:0|max:999',
             'idoso_meia_qtd' => 'nullable|integer|min:0|max:999',
+            'repasse_pix' => 'nullable|in:dono,empresa',
+            'repasse_pix_api_id' => 'nullable|integer|exists:pagamento_apis,id',
         ]);
         $ficha = collect($request->input('ficha', []))->map(fn ($v) => is_string($v) ? trim($v) : $v)->filter(fn ($v) => $v !== null && $v !== '')->all();
         $trip = collect($request->input('tripulantes', []))->filter(fn ($t) => trim($t['nome'] ?? '') !== '')->map(fn ($t) => [
@@ -283,6 +286,8 @@ class CadastroController extends Controller
             'gratuito_qtd' => ($data['gratuito_qtd'] ?? '') !== '' ? (int) $data['gratuito_qtd'] : null,
             'pcd_qtd' => ($data['pcd_qtd'] ?? '') !== '' ? (int) $data['pcd_qtd'] : null,
             'idoso_meia_qtd' => ($data['idoso_meia_qtd'] ?? '') !== '' ? (int) $data['idoso_meia_qtd'] : null,
+            'repasse_pix' => (($data['repasse_pix'] ?? 'dono') === 'empresa') ? 'empresa' : 'dono',
+            'repasse_pix_api_id' => (($data['repasse_pix'] ?? 'dono') === 'empresa') ? ($data['repasse_pix_api_id'] ?? null) : null,
         ]);
         if ($request->hasFile('logo')) {
             $embarcacao->logo = 'storage/'.$request->file('logo')->store('logos', 'public');

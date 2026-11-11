@@ -93,6 +93,21 @@
               <div><label class="label !text-xs">Comissão da empresa %</label><input name="comissao_empresa_pct" type="number" min="0" max="100" value="{{ $e->comissao_empresa_pct }}" class="input !min-h-[40px]" placeholder="0"></div>
             </div>
             <p class="text-[11px] text-slate-400">A empresa fica com essa % de cada passagem deste transporte; o dono recebe o resto (acerto em Acertos).</p>
+            <div class="mt-2" x-data="{ rp: @js($e->repasse_pix ?: 'dono') }">
+              <label class="label !text-xs">💠 PIX do repasse ao dono (como o agente paga)</label>
+              <select name="repasse_pix" x-model="rp" class="input !min-h-[40px]">
+                <option value="dono">PIX do próprio dono (cadastrado no usuário dele)</option>
+                <option value="empresa">PIX da empresa (uma API de pagamento)</option>
+              </select>
+              <div x-show="rp==='empresa'" x-cloak class="mt-2">
+                <label class="label !text-xs">API de pagamento da empresa</label>
+                <select name="repasse_pix_api_id" class="input !min-h-[40px]">
+                  <option value="">— escolha a API —</option>
+                  @foreach(($apis ?? []) as $api)<option value="{{ $api->id }}" @selected((string)($e->repasse_pix_api_id ?? '')===(string)$api->id)>{{ $api->rotulo() }}</option>@endforeach
+                </select>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5">O agente vê o PIX pra pagar o dono no Relatório. <b>Estático</b> (chave) = paga e avisa, empresa/dono dá baixa. <b>Dinâmico</b> (Mercado Pago) = baixa sozinho.</p>
+            </div>
             <p class="text-[11px] text-slate-400 mt-0.5">Cole o link da API de posição deste barco. Com ele, o sistema avisa o destinatário no WhatsApp ~1h antes da encomenda chegar na cidade de destino.</p>
             <div class="border-t pt-2 mt-2" x-data="{ ri: {{ ($e->regra_idade ? 'true':'false') }} }">
               @php $ovr = collect($e->regra_idade ?? [])->keyBy('tipo_id'); @endphp

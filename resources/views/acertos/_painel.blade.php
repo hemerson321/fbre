@@ -121,9 +121,12 @@ function acertoPix(ac){
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <b class="text-sky-700 whitespace-nowrap">R$ {{ number_format($d->valor,2,',','.') }}</b>
-          @if($d->pix_chave)
+          @if($d->pix_tipo === 'estatico' && $d->pix_chave)
           <button type="button" class="rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-2.5 py-1.5 whitespace-nowrap"
-            @click="mostrar(@js($d->pix_chave), @js($d->pix_nome), @js($d->pix_cidade), {{ (float) $d->valor }}, @js($d->dono ?: $d->nome))">💠 PIX</button>
+            @click="estatico(@js($d->pix_chave), @js($d->pix_nome), @js($d->pix_cidade), {{ (float) $d->valor }}, @js($d->dono ?: $d->nome))">💠 PIX</button>
+          @elseif($d->pix_tipo === 'dinamico')
+          <button type="button" class="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-2.5 py-1.5 whitespace-nowrap"
+            @click="dinamico(@js(route('acertos.pagar-dono', $d->barco_id)), {{ (float) $d->valor }}, @js($d->dono ?: $d->nome))" :disabled="carregando">💠 PIX auto</button>
           @else
           <span class="text-[10px] text-slate-400 whitespace-nowrap">dono sem PIX</span>
           @endif
@@ -139,13 +142,15 @@ function acertoPix(ac){
     {{-- modal PIX do dono (QR estático) --}}
     <div x-show="modal" x-cloak class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" @click="modal=false">
       <div class="bg-white text-slate-800 rounded-2xl p-5 max-w-sm w-full text-center" @click.stop>
-        <div class="font-bold text-lg">💠 PIX do dono</div>
-        <div class="text-xs text-slate-500 mb-3" x-text="'Pague direto a '+quem+' e mande o comprovante.'"></div>
-        <div id="qr-dono" class="inline-block p-2 bg-white rounded-xl border mx-auto"></div>
+        <div class="font-bold text-lg" x-text="auto ? '💠 PIX automático do dono' : '💠 PIX do dono'"></div>
+        <div class="text-xs text-slate-500 mb-3" x-text="auto ? ('Pague que o repasse de '+quem+' baixa sozinho.') : ('Pague direto a '+quem+' e mande o comprovante.')"></div>
+        <template x-if="qrImg"><img :src="qrImg" class="mx-auto w-52 h-52"></template>
+        <div id="qr-dono" x-show="!qrImg" class="inline-block p-2 bg-white rounded-xl border mx-auto"></div>
         <div class="font-extrabold text-xl my-2">R$ <span x-text="fmt(valor)"></span></div>
         <button type="button" @click="copiar()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
-        <div class="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2 mb-2">⚠️ Depois de pagar, <b>mande o comprovante</b> pro dono.</div>
-        <button type="button" @click="modal=false" class="btn btn-ghost btn-sm w-full text-slate-500">Fechar</button>
+        <template x-if="!auto"><div class="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2 mb-2">⚠️ Depois de pagar, <b>mande o comprovante</b> pro dono.</div></template>
+        <template x-if="auto"><div class="text-[12px] text-slate-500 mb-2">Aguardando o pagamento… assim que cair, baixa sozinho.</div></template>
+        <button type="button" @click="fechar()" class="btn btn-ghost btn-sm w-full text-slate-500">Fechar</button>
       </div>
     </div>
   </div>
@@ -153,16 +158,36 @@ function acertoPix(ac){
   <script>
   function donoPix(){
     return {
-      modal:false, valor:0, copia:'', quem:'',
+      modal:false, valor:0, copia:'', quem:'', qrImg:'', auto:false, carregando:false, cobId:null, poll:null,
       fmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
-      mostrar(chave,nome,cidade,valor,quem){
+      estatico(chave,nome,cidade,valor,quem){
         chave=(chave||'').trim();
         if(!chave){ alert('Esse dono não cadastrou chave PIX.'); return; }
-        this.valor=valor||0; this.quem=quem||'o dono';
+        this.auto=false; this.qrImg=''; this.valor=valor||0; this.quem=quem||'o dono';
         this.copia=this.payload(chave,nome,cidade,this.valor);
         this.modal=true;
         this.$nextTick(()=>{ var el=document.getElementById('qr-dono'); if(el){ el.innerHTML=''; try{ new QRCode(el,{text:this.copia,width:208,height:208}); }catch(e){} } });
       },
+      dinamico(url,valor,quem){
+        this.carregando=true; this.quem=quem||'o dono';
+        fetch(url,{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}})
+          .then(r=>r.json()).then(d=>{
+            this.carregando=false;
+            if(!d.ok){ alert(d.erro||'Falha ao gerar PIX'); return; }
+            this.auto=true; this.valor=d.valor; this.copia=d.copia_cola||''; this.cobId=d.id;
+            this.qrImg = d.qr_base64 ? ('data:image/png;base64,'+d.qr_base64) : '';
+            this.modal=true;
+            if(!this.qrImg){ this.$nextTick(()=>{ var el=document.getElementById('qr-dono'); if(el){ el.innerHTML=''; try{ new QRCode(el,{text:this.copia,width:208,height:208}); }catch(e){} } }); }
+            this.poll=setInterval(()=>this.checar(),4000);
+          }).catch(()=>{ this.carregando=false; alert('Falha de conexão'); });
+      },
+      checar(){
+        if(!this.cobId) return;
+        fetch('/cobranca/'+this.cobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
+          if(d && d.pago){ clearInterval(this.poll); alert('✅ Repasse do dono pago! Baixado automaticamente.'); location.reload(); }
+        }).catch(()=>{});
+      },
+      fechar(){ if(this.poll) clearInterval(this.poll); this.modal=false; },
       copiar(){ try{ navigator.clipboard.writeText(this.copia); }catch(e){} },
       emvF(id,v){ v=String(v); return id+String(v.length).padStart(2,'0')+v; },
       crc16(p){ let c=0xFFFF; for(let i=0;i<p.length;i++){ c^=p.charCodeAt(i)<<8; for(let j=0;j<8;j++){ c=(c&0x8000)?((c<<1)^0x1021):(c<<1); c&=0xFFFF; } } return c.toString(16).toUpperCase().padStart(4,'0'); },

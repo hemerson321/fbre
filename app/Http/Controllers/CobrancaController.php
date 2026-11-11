@@ -128,7 +128,7 @@ class CobrancaController extends Controller
         if ($cobranca->status === 'pago') {
             $resp['imprimir'] = $cobranca->imprimir;
             $resp['erro'] = $cobranca->erro;
-            if ($cobranca->referencia_id && $cobranca->referencia_tipo !== 'acerto') {
+            if ($cobranca->referencia_id && ! in_array($cobranca->referencia_tipo, ['acerto', 'acerto_dono'], true)) {
                 $resp['id'] = (int) $cobranca->referencia_id;
                 $resp['url'] = match ($cobranca->referencia_tipo) {
                     Passagem::class => route('passagens.show', $cobranca->referencia_id),

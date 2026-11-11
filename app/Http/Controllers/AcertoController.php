@@ -260,6 +260,55 @@ class AcertoController extends Controller
         return back()->with('ok', 'Baixa feita em todos os agentes ('.$n.' passagens).');
     }
 
+    /** Resolve de onde vem o PIX do repasse do dono deste barco: dono (user) ou empresa (PagamentoApi). */
+    public static function resolvePixDono(\App\Models\Embarcacao $emb): array
+    {
+        if (($emb->repasse_pix ?? 'dono') === 'empresa') {
+            $api = $emb->repasse_pix_api_id ? \App\Models\PagamentoApi::find($emb->repasse_pix_api_id) : null;
+            if ($api && ! $api->ehEstatico()) return ['tipo' => 'dinamico', 'api' => $api, 'chave' => null, 'nome' => $api->pixRecebedor(), 'cidade' => $api->pixCidade()];
+            if ($api && $api->ehEstatico() && $api->pixChave()) return ['tipo' => 'estatico', 'api' => null, 'chave' => $api->pixChave(), 'nome' => $api->pixRecebedor(), 'cidade' => $api->pixCidade()];
+            return ['tipo' => 'nenhum', 'api' => null, 'chave' => null, 'nome' => null, 'cidade' => null];
+        }
+        $dono = $emb->dono;
+        if ($dono) {
+            if (($dono->pix_modo ?? '') === 'api' && $dono->pix_api_id) {
+                $api = \App\Models\PagamentoApi::find($dono->pix_api_id);
+                if ($api && ! $api->ehEstatico()) return ['tipo' => 'dinamico', 'api' => $api, 'chave' => null, 'nome' => $dono->pix_recebedor ?: $dono->name, 'cidade' => $dono->pix_cidade];
+            }
+            if ($dono->pix_chave) return ['tipo' => 'estatico', 'api' => null, 'chave' => $dono->pix_chave, 'nome' => $dono->pix_recebedor ?: $dono->name, 'cidade' => $dono->pix_cidade];
+        }
+        return ['tipo' => 'nenhum', 'api' => null, 'chave' => null, 'nome' => null, 'cidade' => null];
+    }
+
+    /** Agente paga o repasse de UM dono por PIX dinamico (Mercado Pago); baixa acerto_dono sozinho no webhook. */
+    public function pagarDono(Request $request, \App\Models\Embarcacao $embarcacao, \App\Services\MercadoPago $mp)
+    {
+        $u = auth()->user();
+        abort_unless($u->ehRevendedor(), 403);
+        abort_unless($embarcacao->empresa_id === Tenant::id(), 404);
+        $pix = static::resolvePixDono($embarcacao);
+        if ($pix['tipo'] !== 'dinamico' || ! ($pix['api'] ?? null)) {
+            return response()->json(['ok' => false, 'erro' => 'Esse repasse nao esta no modo PIX automatico.']);
+        }
+        $valor = (float) Passagem::where('revendedor_id', $u->id)->where('embarcacao_id', $embarcacao->id)
+            ->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+            ->sum('acerto_empresa_valor');
+        $valor = round($valor, 2);
+        if ($valor <= 0) return response()->json(['ok' => false, 'erro' => 'Nao ha repasse pendente pra esse barco.']);
+        $api = $pix['api'];
+        $r = $mp->cobrarPix($api, $valor, 'Repasse dono '.$embarcacao->nome.' - '.$u->name, ['nome' => $u->name]);
+        if (! ($r['ok'] ?? false)) return response()->json(['ok' => false, 'erro' => 'Nao consegui gerar o PIX: '.($r['erro'] ?? 'erro')]);
+        $cob = \App\Models\Cobranca::create([
+            'empresa_id' => Tenant::id(), 'pagamento_api_id' => $api->id, 'user_id' => $u->id,
+            'modulo' => 'passagem', 'referencia_tipo' => 'acerto_dono', 'referencia_id' => $embarcacao->id,
+            'provider' => 'mercadopago', 'provider_payment_id' => $r['payment_id'] ?? null,
+            'valor' => $valor, 'status' => 'pendente',
+            'qr_copia_cola' => $r['copia_cola'] ?? null, 'qr_base64' => $r['qr_base64'] ?? null,
+            'ticket_url' => $r['ticket_url'] ?? null, 'cliente_nome' => $u->name,
+        ]);
+        return response()->json(['ok' => true, 'id' => $cob->id, 'valor' => $valor, 'qr_base64' => $cob->qr_base64, 'copia_cola' => $cob->qr_copia_cola]);
+    }
+
     /** Agente externo gera um PIX (Mercado Pago da empresa) pra acertar; baixa sozinho no webhook. */
     public function pagarEmpresa(Request $request, \App\Services\MercadoPago $mp)
     {
@@ -352,14 +401,17 @@ class AcertoController extends Controller
             ->map(function ($r) {
                 $emb = \App\Models\Embarcacao::with('dono')->find($r->embarcacao_id);
                 $dono = $emb?->dono;
+                $pix = $emb ? static::resolvePixDono($emb) : ['tipo' => 'nenhum', 'chave' => null, 'nome' => null, 'cidade' => null];
                 return (object) [
+                    'barco_id' => (int) $r->embarcacao_id,
                     'nome' => $emb?->nome ?? ('Barco #'.$r->embarcacao_id),
                     'dono' => $dono?->name ?? $emb?->dono_nome,
                     'qtd' => (int) $r->qtd,
                     'valor' => (float) $r->valor,
-                    'pix_chave' => $dono?->pix_chave ?: null,
-                    'pix_nome' => $dono?->pix_recebedor ?: ($dono?->name ?? $emb?->dono_nome),
-                    'pix_cidade' => $dono?->pix_cidade ?: null,
+                    'pix_tipo' => $pix['tipo'],
+                    'pix_chave' => $pix['chave'],
+                    'pix_nome' => $pix['nome'],
+                    'pix_cidade' => $pix['cidade'],
                 ];
             })->filter(fn ($x) => $x->valor > 0)->sortByDesc('valor')->values();
 
