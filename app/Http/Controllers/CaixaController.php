@@ -78,11 +78,11 @@ class CaixaController extends Controller
             ->where($semRevenda);
 
         $canalSql = Pagamento::canalSql();
-        $porMeio = (clone $base)->selectRaw("$canalSql as canal, SUM(valor) valor, COUNT(*) qtd")->groupBy('canal')->get()->keyBy('canal');
-        $porOperador = (clone $base)->selectRaw("user_id, $canalSql as canal, SUM(valor) valor")->groupBy('user_id', 'canal')->get()
+        $porMeio = (clone $base)->selectRaw("$canalSql as canal_sql, SUM(valor) valor, COUNT(*) qtd")->groupBy('canal_sql')->get()->keyBy('canal_sql');
+        $porOperador = (clone $base)->selectRaw("user_id, $canalSql as canal_sql, SUM(valor) valor")->groupBy('user_id', 'canal_sql')->get()
             ->groupBy('user_id')->map(fn ($rows) => [
                 'total' => $rows->sum('valor'),
-                'meios' => $rows->pluck('valor', 'canal'),
+                'meios' => $rows->pluck('valor', 'canal_sql'),
             ]);
         $porModulo = (clone $base)->selectRaw('modulo, SUM(valor) valor, COUNT(*) qtd')->groupBy('modulo')->get()->keyBy('modulo');
 

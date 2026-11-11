@@ -60,7 +60,7 @@ class RelatorioController extends Controller
             'entregas'        => (clone $evQ)->count(),
         ];
         $porMeio = (clone $pagQ)->where('meio', '!=', 'desconto')
-            ->selectRaw(Pagamento::canalSql().' as canal, SUM(valor) v')->groupBy('canal')->pluck('v', 'canal');
+            ->selectRaw(Pagamento::canalSql().' as canal_sql, SUM(valor) v')->groupBy('canal_sql')->pluck('v', 'canal_sql');
 
         // Listas só no analítico, limitadas (o resto é via Exportar)
         $limite = self::LIMITE;

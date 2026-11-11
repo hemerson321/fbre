@@ -320,7 +320,7 @@ class AcertoController extends Controller
             'qtd' => (int) (clone $passQ)->count(),
             'bruto' => $bruto,
             'a_passar' => round($repasseTotal, 2),
-            'comissao' => round($bruto - $repasseTotal, 2),
+            'comissao' => ((($u->modo_acerto ?? 'cheio') === 'comissao') ? round($bruto * $_pct / 100, 2) : round($bruto - $repasseTotal, 2)),
             'pct' => (int) ($u->comissao_pct ?? 0),
             'modo' => $u->modo_acerto ?? 'cheio',
             'pix_modo' => $acertoApi ? ($acertoApi->ehEstatico() ? 'estatico' : 'dinamico') : 'nenhum',
