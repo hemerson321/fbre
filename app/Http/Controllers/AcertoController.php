@@ -353,7 +353,15 @@ class AcertoController extends Controller
         $fViagem = fn ($q) => $q->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
 
         // base das vendas do agente (para bruto/comissao) com filtro de viagem
-        $passQ = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->tap($fViagem);
+        // Card azul = só as vendas AINDA NÃO acertadas (com empresa p/ barco sem dono, ou com o dono p/ barco com dono).
+        $passQ = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->tap($fViagem)
+            ->where(function ($w) {
+                $w->where(function ($x) {
+                    $x->whereNotIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'))->where('acerto_empresa', false);
+                })->orWhere(function ($x) {
+                    $x->whereIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'))->where('acerto_dono', false)->where('transferida', false);
+                });
+            });
         $bruto = (float) (clone $passQ)->sum('total');
         $devido = (float) (clone $passQ)->sum('devido');
         $repasseTotal = (float) (clone $passQ)->tap($semDono)->sum('acerto_empresa_valor');
