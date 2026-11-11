@@ -107,19 +107,27 @@ function acertoPix(ac){
 
   {{-- DÉBITO COM OS DONOS --}}
   @if($debitosDono->isNotEmpty())
-  <div class="card overflow-hidden border border-sky-200">
+  <div class="card overflow-hidden border border-sky-200" x-data="donoPix()">
     <div class="p-3 border-b bg-sky-50 flex items-center justify-between">
-      <div class="font-bold text-sm text-sky-700">🚤 Débito com os donos das lanchas</div>
-      <div class="text-[11px] text-sky-600">você paga direto o dono</div>
+      <div class="font-bold text-sm text-sky-700">🚤 O que você deve aos donos das lanchas</div>
+      <div class="text-[11px] text-sky-600">pague direto o dono</div>
     </div>
     <div class="divide-y text-sm">
       @foreach($debitosDono as $d)
-      <div class="flex items-center justify-between p-3">
+      <div class="flex items-center justify-between gap-2 p-3">
         <div class="min-w-0">
           <div class="font-semibold truncate">{{ $d->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· dono {{ $d->dono }}</span>@endif</div>
-          <div class="text-xs text-slate-400">{{ $d->qtd }} passagem(ns) · de qualquer data</div>
+          <div class="text-xs text-slate-400">{{ $d->qtd }} passagem(ns)</div>
         </div>
-        <b class="text-sky-700 whitespace-nowrap">R$ {{ number_format($d->valor,2,',','.') }}</b>
+        <div class="flex items-center gap-2 shrink-0">
+          <b class="text-sky-700 whitespace-nowrap">R$ {{ number_format($d->valor,2,',','.') }}</b>
+          @if($d->pix_chave)
+          <button type="button" class="rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-2.5 py-1.5 whitespace-nowrap"
+            @click="mostrar(@js($d->pix_chave), @js($d->pix_nome), @js($d->pix_cidade), {{ (float) $d->valor }}, @js($d->dono ?: $d->nome))">💠 PIX</button>
+          @else
+          <span class="text-[10px] text-slate-400 whitespace-nowrap">dono sem PIX</span>
+          @endif
+        </div>
       </div>
       @endforeach
     </div>
@@ -127,7 +135,50 @@ function acertoPix(ac){
       <span>Total a pagar aos donos</span>
       <span class="text-sky-700">R$ {{ number_format((float)$debitosDono->sum('valor'),2,',','.') }}</span>
     </div>
+
+    {{-- modal PIX do dono (QR estático) --}}
+    <div x-show="modal" x-cloak class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" @click="modal=false">
+      <div class="bg-white text-slate-800 rounded-2xl p-5 max-w-sm w-full text-center" @click.stop>
+        <div class="font-bold text-lg">💠 PIX do dono</div>
+        <div class="text-xs text-slate-500 mb-3" x-text="'Pague direto a '+quem+' e mande o comprovante.'"></div>
+        <div id="qr-dono" class="inline-block p-2 bg-white rounded-xl border mx-auto"></div>
+        <div class="font-extrabold text-xl my-2">R$ <span x-text="fmt(valor)"></span></div>
+        <button type="button" @click="copiar()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
+        <div class="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2 mb-2">⚠️ Depois de pagar, <b>mande o comprovante</b> pro dono.</div>
+        <button type="button" @click="modal=false" class="btn btn-ghost btn-sm w-full text-slate-500">Fechar</button>
+      </div>
+    </div>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+  function donoPix(){
+    return {
+      modal:false, valor:0, copia:'', quem:'',
+      fmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+      mostrar(chave,nome,cidade,valor,quem){
+        chave=(chave||'').trim();
+        if(!chave){ alert('Esse dono não cadastrou chave PIX.'); return; }
+        this.valor=valor||0; this.quem=quem||'o dono';
+        this.copia=this.payload(chave,nome,cidade,this.valor);
+        this.modal=true;
+        this.$nextTick(()=>{ var el=document.getElementById('qr-dono'); if(el){ el.innerHTML=''; try{ new QRCode(el,{text:this.copia,width:208,height:208}); }catch(e){} } });
+      },
+      copiar(){ try{ navigator.clipboard.writeText(this.copia); }catch(e){} },
+      emvF(id,v){ v=String(v); return id+String(v.length).padStart(2,'0')+v; },
+      crc16(p){ let c=0xFFFF; for(let i=0;i<p.length;i++){ c^=p.charCodeAt(i)<<8; for(let j=0;j<8;j++){ c=(c&0x8000)?((c<<1)^0x1021):(c<<1); c&=0xFFFF; } } return c.toString(16).toUpperCase().padStart(4,'0'); },
+      payload(chave,nome,cidade,valor){
+        var limpa=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9 ]/g,'').toUpperCase().trim();
+        var nm=(limpa(nome)||'RECEBEDOR').slice(0,25);
+        var cid=(limpa(cidade)||'CIDADE').slice(0,15);
+        var mai=this.emvF('00','BR.GOV.BCB.PIX')+this.emvF('01',chave);
+        var p=this.emvF('00','01')+this.emvF('26',mai)+this.emvF('52','0000')+this.emvF('53','986');
+        if(valor>0) p+=this.emvF('54',Number(valor).toFixed(2));
+        p+=this.emvF('58','BR')+this.emvF('59',nm)+this.emvF('60',cid)+this.emvF('62',this.emvF('05','***'))+'6304';
+        return p+this.crc16(p);
+      }
+    };
+  }
+  </script>
   @endif
 
   {{-- DÉBITOS EM ABERTO (empresa) --}}

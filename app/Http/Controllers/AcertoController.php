@@ -350,8 +350,17 @@ class AcertoController extends Controller
             ->selectRaw('embarcacao_id, COUNT(*) as qtd, COALESCE(SUM(acerto_empresa_valor),0) as valor')
             ->groupBy('embarcacao_id')->get()
             ->map(function ($r) {
-                $emb = \App\Models\Embarcacao::find($r->embarcacao_id);
-                return (object) ['nome' => $emb?->nome ?? ('Barco #'.$r->embarcacao_id), 'dono' => optional($emb?->dono)->name ?? $emb?->dono_nome, 'qtd' => (int) $r->qtd, 'valor' => (float) $r->valor];
+                $emb = \App\Models\Embarcacao::with('dono')->find($r->embarcacao_id);
+                $dono = $emb?->dono;
+                return (object) [
+                    'nome' => $emb?->nome ?? ('Barco #'.$r->embarcacao_id),
+                    'dono' => $dono?->name ?? $emb?->dono_nome,
+                    'qtd' => (int) $r->qtd,
+                    'valor' => (float) $r->valor,
+                    'pix_chave' => $dono?->pix_chave ?: null,
+                    'pix_nome' => $dono?->pix_recebedor ?: ($dono?->name ?? $emb?->dono_nome),
+                    'pix_cidade' => $dono?->pix_cidade ?: null,
+                ];
             })->filter(fn ($x) => $x->valor > 0)->sortByDesc('valor')->values();
 
         $temViagens = (bool) Tenant::empresa()?->temRecurso('viagens');
