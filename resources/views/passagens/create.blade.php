@@ -92,7 +92,6 @@
           </div>
         </div>
         </div>
-        <div class="text-[11px] text-slate-400 font-semibold flex flex-wrap items-center gap-x-3 gap-y-1 mb-1 px-0.5"><span>⌨️ Atalhos:</span><span><b class="atkbd">F1</b> Destino</span><span><b class="atkbd">F2</b> Poltrona</span><span><b class="atkbd">F3</b> Pagamento</span></div>
         <div class="grid grid-cols-2 gap-2">
           <div><label class="lbl">Origem</label>
             <select class="field" x-model="origemSel" required @change="onRota()">
@@ -100,7 +99,7 @@
               <template x-for="c in origens" :key="c"><option :value="c" x-text="c"></option></template>
             </select>
           </div>
-          <div><label class="lbl">Destino <span class="atkbd">F1</span></label>
+          <div><label class="lbl">Destino</label>
             <select class="field" x-model="destinoSel" required @change="onRota()" x-ref="fDestino">
               <option value="">—</option>
               <template x-for="c in destinos" :key="c"><option :value="c" x-text="c"></option></template>
@@ -228,7 +227,7 @@
   {{-- COLUNA 3: pagamento --}}
   <div class="lg:col-span-3 space-y-2">
     <section class="sec shrink-0">
-      <div class="sec-h"><span class="n">4</span><span class="ic">💳</span><span class="t">Pagamento</span><span class="atkbd ml-1">F3</span></div>
+      <div class="sec-h"><span class="n">4</span><span class="ic">💳</span><span class="t">Pagamento</span></div>
       <div class="sec-b">
         <div class="flex gap-1.5" x-ref="fForma">
           @foreach(\App\Models\Passagem::FORMAS as $k=>$l)
