@@ -355,6 +355,7 @@ class AcertoController extends Controller
         // base das vendas do agente (para bruto/comissao) com filtro de viagem
         $passQ = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->tap($fViagem);
         $bruto = (float) (clone $passQ)->sum('total');
+        $devido = (float) (clone $passQ)->sum('devido');
         $repasseTotal = (float) (clone $passQ)->tap($semDono)->sum('acerto_empresa_valor');
 
         $empAcerto = Tenant::empresa();
@@ -372,6 +373,8 @@ class AcertoController extends Controller
         $acerto = [
             'qtd' => (int) (clone $passQ)->count(),
             'bruto' => $bruto,
+            'devido' => round($devido, 2),
+            'recebido' => round($bruto - $devido, 2),
             'a_passar' => round($repasseTotal, 2),
             'comissao' => ((($u->modo_acerto ?? 'cheio') === 'comissao') ? round($bruto * $_pct / 100, 2) : round($bruto - $repasseTotal, 2)),
             'pct' => (int) ($u->comissao_pct ?? 0),

@@ -13,6 +13,12 @@
     <div><span class="opacity-70">Vendi:</span> <b>R$ {{ number_format($acerto['bruto'],2,',','.') }}</b></div>
     <div><span class="opacity-70">Minha comissão ({{ $acerto['pct'] }}%):</span> <b class="text-emerald-300">R$ {{ number_format($acerto['comissao'],2,',','.') }}</b></div>
   </div>
+  @if(($acerto['devido'] ?? 0) > 0.009)
+  <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm mb-3 -mt-1">
+    <div><span class="opacity-70">Recebido:</span> <b class="text-emerald-300">R$ {{ number_format($acerto['recebido'] ?? 0,2,',','.') }}</b></div>
+    <div><span class="opacity-70">Em aberto (a receber):</span> <b class="text-amber-300">R$ {{ number_format($acerto['devido'],2,',','.') }}</b></div>
+  </div>
+  @endif
   @php
     $_pm = $acerto['pix_modo'] ?? 'nenhum';
     $_podeBotao = ($acerto['total_devido'] ?? 0) > 0 && $_pm !== 'nenhum'
