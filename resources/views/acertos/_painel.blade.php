@@ -123,10 +123,10 @@ function acertoPix(ac){
       <div class="flex items-center justify-between gap-2 p-3">
         <div class="min-w-0">
           <div class="font-semibold truncate">{{ $d->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· dono {{ $d->dono }}</span>@endif</div>
-          <div class="text-xs text-slate-400">{{ $d->qtd }} passagem(ns)</div>
+          <div class="text-xs text-slate-400">{{ $d->qtd }} passagem(ns) · vendido R$ {{ number_format($d->total,2,',','.') }} · comissão R$ {{ number_format($d->comissao,2,',','.') }}</div>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          <b class="text-sky-700 whitespace-nowrap">R$ {{ number_format($d->valor,2,',','.') }}</b>
+          <div class="text-right"><div class="text-[9px] text-slate-400 uppercase leading-none">repassar</div><b class="text-sky-700 whitespace-nowrap">R$ {{ number_format($d->valor,2,',','.') }}</b></div>
           @if($d->pix_tipo === 'estatico' && $d->pix_chave)
           <button type="button" class="rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-2.5 py-1.5 whitespace-nowrap"
             @click="estatico(@js($d->pix_chave), @js($d->pix_nome), @js($d->pix_cidade), {{ (float) $d->valor }}, @js($d->dono ?: $d->nome))">💠 PIX</button>

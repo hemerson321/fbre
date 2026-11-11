@@ -399,7 +399,7 @@ class AcertoController extends Controller
         $debitosDono = Passagem::where('revendedor_id', $u->id)->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
             ->whereIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'))
             ->tap($fViagem)
-            ->selectRaw('embarcacao_id, COUNT(*) as qtd, COALESCE(SUM(acerto_empresa_valor),0) as valor')
+            ->selectRaw('embarcacao_id, COUNT(*) as qtd, COALESCE(SUM(acerto_empresa_valor),0) as valor, COALESCE(SUM(total),0) as total')
             ->groupBy('embarcacao_id')->get()
             ->map(function ($r) {
                 $emb = \App\Models\Embarcacao::with('dono')->find($r->embarcacao_id);
@@ -410,6 +410,8 @@ class AcertoController extends Controller
                     'nome' => $emb?->nome ?? ('Barco #'.$r->embarcacao_id),
                     'dono' => $dono?->name ?? $emb?->dono_nome,
                     'qtd' => (int) $r->qtd,
+                    'total' => (float) $r->total,
+                    'comissao' => round((float) $r->total - (float) $r->valor, 2),
                     'valor' => (float) $r->valor,
                     'pix_tipo' => $pix['tipo'],
                     'pix_chave' => $pix['chave'],
