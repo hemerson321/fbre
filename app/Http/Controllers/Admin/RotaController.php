@@ -43,19 +43,46 @@ class RotaController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /** Converte "Dom".."Sab" (ou nome completo) em 0..6; vazio/numero/desconhecido => null (rota aberta). */
+    private static function diaSemanaDe(string $txt): ?int
+    {
+        $t = mb_strtolower(trim($txt));
+        if ($t === '') return null;
+        $map = ['dom' => 0, 'seg' => 1, 'ter' => 2, 'qua' => 3, 'qui' => 4, 'sex' => 5, 'sab' => 6,
+                'domingo' => 0, 'segunda' => 1, 'terca' => 2, 'quarta' => 3, 'quinta' => 4, 'sexta' => 5, 'sabado' => 6];
+        $t = strtr($t, ['ç' => 'c', 'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'â' => 'a', 'ê' => 'e']);
+        return $map[\Illuminate\Support\Str::substr($t, 0, 3)] ?? ($map[$t] ?? null);
+    }
+
     public function modeloCsv()
     {
-        $csv = "embarcacao,rota,ordem,localidade,hora,dia_offset\n"
-             . "Lancha Exemplo,Manaus/Tefe,1,Manaus,06:00,0\n"
-             . "Lancha Exemplo,Manaus/Tefe,2,Codajas,11:30,0\n"
-             . "Lancha Exemplo,Manaus/Tefe,3,Coari,14:30,0\n"
-             . "Lancha Exemplo,Manaus/Tefe,4,Tefe,,\n"
-             . "Lancha Exemplo,Tefe/Manaus,1,Tefe,05:30,0\n"
-             . "Lancha Exemplo,Tefe/Manaus,2,Coari,09:30,0\n"
-             . "Lancha Exemplo,Tefe/Manaus,3,Manaus,,\n";
+        // Exporta o CADASTRO REAL de rotas (todas as paradas: localidade, hora e dia da semana),
+        // com a coluna "embarcacao" EM BRANCO: o usuario so preenche o barco e reimporta.
+        $dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+        $esc = function ($v) {
+            $v = (string) $v;
+            return (strpbrk($v, ",\"\n") !== false) ? '"'.str_replace('"', '""', $v).'"' : $v;
+        };
+        $linhas = ["embarcacao,rota,ordem,localidade,hora,dia_semana"];
+        $rotas = Rota::with(['paradas' => fn ($q) => $q->orderBy('ordem')])->orderBy('nome')->get();
+        foreach ($rotas as $rt) {
+            foreach ($rt->paradas as $p) {
+                $hora = $p->hora ? \Illuminate\Support\Str::substr((string) $p->hora, 0, 5) : '';
+                $dia = ($p->dia_semana !== null && isset($dias[(int) $p->dia_semana])) ? $dias[(int) $p->dia_semana] : '';
+                $linhas[] = implode(',', ['', $esc($rt->nome), (int) $p->ordem, $esc($p->localidade), $hora, $dia]);
+            }
+        }
+        // Sem rotas ainda: devolve um exemplo pra orientar o preenchimento.
+        if (count($linhas) === 1) {
+            $linhas[] = ',Manaus - Tabatinga,1,Manaus,05:00,Dom';
+            $linhas[] = ',Manaus - Tabatinga,2,Codajas,11:30,Dom';
+            $linhas[] = ',Manaus - Tabatinga,3,Coari,14:30,Dom';
+            $linhas[] = ',Manaus - Tabatinga,4,Tefe,,';
+        }
+        $csv = implode("\n", $linhas)."\n";
         return response("\xEF\xBB\xBF".$csv, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="modelo-rotas.csv"',
+            'Content-Disposition' => 'attachment; filename="cadastro-rotas.csv"',
         ]);
     }
 
@@ -71,7 +98,7 @@ class RotaController extends Controller
         \Illuminate\Support\Facades\DB::transaction(function () use ($linhas, &$embCache, &$rotaCache, &$nE, &$nR, &$nP) {
             foreach ($linhas as $linha) {
                 $c = array_map(fn ($x) => trim((string) $x), str_getcsv($linha));
-                [$emb, $rota, $ordem, $loc, $hora] = array_pad($c, 6, '');
+                [$emb, $rota, $ordem, $loc, $hora, $diaTxt] = array_pad($c, 6, '');
                 if ($emb === '' || $rota === '' || $loc === '') continue;
 
                 $ek = mb_strtolower($emb);
@@ -96,7 +123,7 @@ class RotaController extends Controller
                     'ordem' => (int) ($ordem ?: 0),
                     'localidade' => $loc,
                     'hora' => $hora !== '' ? $hora : null,
-                    'dia_semana' => null, // rota aberta: usuario define o dia depois
+                    'dia_semana' => self::diaSemanaDe($diaTxt), // aceita Dom..Sab (ou vazio = rota aberta)
                 ]);
                 $nP++;
             }
