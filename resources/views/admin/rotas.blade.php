@@ -19,9 +19,11 @@
 <form method="post" action="{{ route('admin.rotas.importar') }}" enctype="multipart/form-data" class="card p-3 flex flex-wrap items-center gap-2 text-sm" onsubmit="return confirm('Importar as rotas do arquivo? Rotas com o mesmo nome no mesmo transporte terão as paradas substituídas.')">@csrf
   <span class="font-semibold">📥 Importar rotas (CSV)</span>
   <input type="file" name="arquivo" accept=".csv,.txt" class="input !min-h-[38px] text-xs flex-1 min-w-[180px]" required>
+  <input type="text" name="barco" list="barcosImport" placeholder="🚤 Barco (p/ linhas sem barco)" autocomplete="off" class="input !min-h-[38px] text-xs min-w-[170px]">
+  <datalist id="barcosImport">@foreach($embarcacoes as $e)<option value="{{ $e->nome }}">@endforeach</datalist>
   <button class="btn btn-ghost btn-sm">Importar</button>
   <a href="{{ route('admin.rotas.modelo-csv') }}" class="btn btn-ghost btn-sm text-sky-600">⬇️ baixar cadastro (sem barco)</a>
-  <p class="text-[11px] text-slate-400 w-full">Colunas: <b>embarcacao, rota, ordem, localidade, hora, dia_semana</b> (Dom..Sab). O <b>baixar cadastro</b> exporta todas as rotas atuais <b>sem o barco</b> — você preenche a coluna <b>embarcacao</b> e reimporta. Preços ficam por empresa (origem→destino), então o barco novo já usa os mesmos.</p>
+  <p class="text-[11px] text-slate-400 w-full">Colunas: <b>embarcacao, rota, ordem, localidade, hora, dia_semana</b> (Dom..Sab). O <b>baixar cadastro</b> exporta todas as rotas atuais <b>sem o barco</b> — é só escolher o <b>Barco</b> acima na hora de importar (ou preencher a coluna embarcacao no arquivo). Preços ficam por empresa (origem→destino), então o barco novo já usa os mesmos.</p>
 </form>
 
 {{-- LISTA --}}

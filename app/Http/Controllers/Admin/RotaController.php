@@ -93,12 +93,14 @@ class RotaController extends Controller
         $linhas = file($request->file('arquivo')->getRealPath(), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
         if (! $linhas) return back()->with('erro', 'Arquivo vazio.');
         if (stripos($linhas[0], 'embarcacao') !== false) array_shift($linhas);
+        $barcoPadrao = trim((string) $request->input('barco', ''));
 
         $embCache = []; $rotaCache = []; $nE = 0; $nR = 0; $nP = 0;
-        \Illuminate\Support\Facades\DB::transaction(function () use ($linhas, &$embCache, &$rotaCache, &$nE, &$nR, &$nP) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($linhas, $barcoPadrao, &$embCache, &$rotaCache, &$nE, &$nR, &$nP) {
             foreach ($linhas as $linha) {
                 $c = array_map(fn ($x) => trim((string) $x), str_getcsv($linha));
                 [$emb, $rota, $ordem, $loc, $hora, $diaTxt] = array_pad($c, 6, '');
+                if ($emb === '' && $barcoPadrao !== '') $emb = $barcoPadrao; // barco escolhido no form
                 if ($emb === '' || $rota === '' || $loc === '') continue;
 
                 $ek = mb_strtolower($emb);
