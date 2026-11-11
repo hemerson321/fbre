@@ -293,8 +293,12 @@ class AcertoController extends Controller
     {
         $u = auth()->user();
         abort_unless($u->ehRevendedor(), 403);
-        $viagemId = $request->input('viagem_id') ?: null;
-        $dataViagem = $request->input('data_viagem') ?: null;
+        return view('acertos.meu-agente', static::dadosAgente($u, $request->input('viagem_id') ?: null, $request->input('data_viagem') ?: null));
+    }
+
+    /** Dados do acerto do agente (empresa + donos). Reutilizado no Relatório (minhas vendas). */
+    public static function dadosAgente($u, $viagemId = null, $dataViagem = null): array
+    {
 
         $semDono = fn ($q) => $q->whereNotIn('embarcacao_id', \App\Models\Embarcacao::whereNotNull('dono_id')->select('id'));
         $fViagem = fn ($q) => $q->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
@@ -358,7 +362,7 @@ class AcertoController extends Controller
             ->whereBetween('data_viagem', [now()->subMonthsNoOverflow(3)->toDateString(), now()->addMonthsNoOverflow(3)->toDateString()])
             ->select('data_viagem')->distinct()->orderByDesc('data_viagem')->pluck('data_viagem');
 
-        return view('acertos.meu-agente', compact('acerto', 'pendentes', 'debitosDono', 'viagemId', 'dataViagem', 'temViagens', 'viagens', 'datasViagem'));
+        return compact('acerto', 'pendentes', 'debitosDono', 'viagemId', 'dataViagem', 'temViagens', 'viagens', 'datasViagem');
     }
 
     protected function filtraTransp(?int $t): \Closure

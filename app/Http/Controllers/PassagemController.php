@@ -760,7 +760,10 @@ class PassagemController extends Controller
             ]);
         }
 
-        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal', 'limite'));
+        // Agente externo: acerto (empresa + donos) na MESMA tela do relatório.
+        $painelAgente = $u->ehRevendedor() ? \App\Http\Controllers\AcertoController::dadosAgente($u) : null;
+
+        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal', 'limite', 'painelAgente'));
     }
 
     /** Exporta as vendas de passagem do período (e forma) em CSV — sem travar a tela. */

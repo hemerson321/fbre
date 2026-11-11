@@ -24,11 +24,10 @@
     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">A receber</div><div class="text-xl font-extrabold text-amber-600">R$ {{ number_format($totais['devido'],2,',','.') }}</div></div>
   </div>
 
-  @if(auth()->user()->ehRevendedor())
-  <a href="{{ route('meus-acertos') }}" class="card p-3 flex items-center justify-between gap-2 bg-cyan-50 border-cyan-200 hover:bg-cyan-100 transition">
-    <span class="text-sm font-semibold text-cyan-800">🤝 Ver meus acertos (empresa e donos das lanchas)</span>
-    <span class="text-cyan-700 font-bold">→</span>
-  </a>
+  @if($painelAgente ?? null)
+  <div class="space-y-4">
+    @include('acertos._painel', $painelAgente)
+  </div>
   @endif
 
   @if($totais['qtd'] > $limite)
