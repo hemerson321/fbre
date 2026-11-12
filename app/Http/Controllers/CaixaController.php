@@ -185,6 +185,14 @@ class CaixaController extends Controller
                 'totais' => $tot,
                 'assinatura' => auth()->user()->name,
                 'voltar' => route('caixa.index'),
+                'canceladosLista' => \App\Models\Passagem::where('cancelada', true)
+                    ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
+                    ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+                    ->when($userId, fn ($q) => $q->where('user_id', $userId))
+                    ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+                    ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+                    ->orderByDesc('id')->limit(300)->get()
+                    ->map(fn ($p) => (object) ['data' => $p->created_at, 'numero' => $p->numeroFormatado(), 'trecho' => $p->origem.' → '.$p->destino, 'comprador' => $p->comprador_nome, 'motivo' => $p->motivo_cancelamento, 'valor' => (float) $p->total]),
             ]);
         }
 

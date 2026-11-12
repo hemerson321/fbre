@@ -165,6 +165,14 @@ class RelatorioController extends Controller
                 'totais' => $totais,
                 'assinatura' => $uu->name,
                 'voltar' => route('relatorio.meu'),
+                'canceladosLista' => \App\Models\Passagem::where('cancelada', true)
+                    ->when(! $todos, fn ($q) => $q->where('user_id', $uid))
+                    ->whereBetween('created_at', [$inicio, $fim])
+                    ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+                    ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+                    ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+                    ->orderByDesc('id')->limit(300)->get()
+                    ->map(fn ($p) => (object) ['data' => $p->created_at, 'numero' => $p->numeroFormatado(), 'trecho' => $p->origem.' → '.$p->destino, 'comprador' => $p->comprador_nome, 'motivo' => $p->motivo_cancelamento, 'valor' => (float) $p->total]),
             ]);
         }
 

@@ -79,6 +79,32 @@
     @endforeach
   </div>
 
+  @if(!empty($canceladosLista) && count($canceladosLista))
+  <div class="tit" style="margin-top:14px">❌ Cancelamentos ({{ count($canceladosLista) }})</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:95px">Data</th>
+        <th style="width:80px">Nº</th>
+        <th>Trecho / Passageiro</th>
+        <th>Motivo</th>
+        <th class="r" style="width:90px">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      @foreach($canceladosLista as $c)
+      <tr>
+        <td>{{ $c->data ? \Carbon\Carbon::parse($c->data)->format('d/m/Y H:i') : '—' }}</td>
+        <td class="muted">{{ $c->numero }}</td>
+        <td>{{ $c->trecho }}@if($c->comprador) · {{ $c->comprador }}@endif</td>
+        <td class="muted">{{ $c->motivo ?: '—' }}</td>
+        <td class="r">R$ {{ number_format((float)$c->valor,2,',','.') }}</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
+  @endif
+
   <div class="ass">
     <div class="lin">{{ $assinatura ?? 'Responsável' }}</div>
     <div class="lin">Conferido por</div>
