@@ -37,6 +37,7 @@
 <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
   @if($temEncomenda)<div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Cadastrei</div><div class="text-xl font-extrabold">{{ $totais['cadastros'] }}</div><div class="text-xs text-slate-400">R$ {{ number_format($totais['cadastros_valor'],2,',','.') }}</div></div>@endif
   <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">Recebi</div><div class="text-xl font-extrabold text-emerald-600">R$ {{ number_format($porMeio->sum(),2,',','.') }}</div></div>
+  @if(($cancelados->qtd ?? 0) > 0)<div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">❌ Cancelados</div><div class="text-xl font-extrabold text-slate-500">{{ $cancelados->qtd }}</div><div class="text-xs text-slate-400">R$ {{ number_format($cancelados->valor,2,',','.') }}</div></div>@endif
   @foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)
     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m] ?? 0,2,',','.') }}</div></div>
   @endforeach
@@ -156,7 +157,7 @@ function acertoPix(ac){
 
 @if($modo==='resumido')
   <div class="card p-4 text-sm text-slate-600">
-    Resumo do período — <b>{{ $totais['cadastros'] }}</b> cadastro(s) · recebido <b>R$ {{ number_format($porMeio->sum(),2,',','.') }}</b> · <b>{{ $totais['entregas'] }}</b> entrega(s).
+    Resumo do período — <b>{{ $totais['cadastros'] }}</b> cadastro(s) · recebido <b>R$ {{ number_format($porMeio->sum(),2,',','.') }}</b> · <b>{{ $totais['entregas'] }}</b> entrega(s)@if(($cancelados->qtd ?? 0) > 0) · <b>{{ $cancelados->qtd }}</b> cancelado(s) (R$ {{ number_format($cancelados->valor,2,',','.') }})@endif.
     <div class="text-slate-400 mt-1">Para ver item a item, use o modo <b>Analítico</b>.</div>
   </div>
 @else

@@ -52,6 +52,14 @@ class RelatorioController extends Controller
             ->when($transporteId, fn ($q) => $q->where(function ($w) use ($transporteId) { $w->where(fn ($x) => $x->where('modulo', 'passagem')->whereIn('origem_id', \App\Models\Passagem::where('embarcacao_id', $transporteId)->select('id')))->orWhere(fn ($x) => $x->where('modulo', 'encomenda')->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id'))); }))->when($viagemId, $fViagemPag)->when($dataViagem, $fDataViagemPag);
         $evQ = Evento::when(! $todos, fn ($q) => $q->where('user_id', $uid))->where('tipo', 'entrega')->whereBetween('created_at', [$inicio, $fim])->when($transporteId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('embarcacao_id', $transporteId)->select('id')))->when($viagemId, fn ($q) => $q->whereIn('encomenda_id', \App\Models\Encomenda::where('viagem_id', $viagemId)->select('id')));
 
+        $cancelados = \App\Models\Passagem::where('cancelada', true)
+            ->when(! $todos, fn ($q) => $q->where('user_id', $uid))
+            ->whereBetween('created_at', [$inicio, $fim])
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+            ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total),0) as valor')->first();
+
         // Totais somados NO BANCO (rápido mesmo com milhões de linhas)
         $totais = [
             'cadastros'       => (clone $encQ)->count(),
@@ -147,6 +155,7 @@ class RelatorioController extends Controller
             $canais = Pagamento::CANAIS;
             $totais = [['label' => 'Total recebido', 'valor' => (float) $porMeio->sum(), 'forte' => true]];
             foreach ($porMeio as $k => $v) $totais[] = ['label' => ($canais[$k] ?? $k), 'valor' => (float) $v];
+            $totais[] = ['label' => 'Cancelados ('.(int) ($cancelados->qtd ?? 0).')', 'valor' => (float) ($cancelados->valor ?? 0)];
             return view('relatorio.prestacao', [
                 'empresa' => \App\Support\Tenant::empresa(),
                 'titulo' => 'Prestação de contas',
@@ -160,7 +169,7 @@ class RelatorioController extends Controller
         }
 
         return view('caixa.meu', compact('cadastros', 'recebimentos', 'entregas', 'porMeio', 'totais', 'inicio', 'fim', 'periodo', 'todos', 'modo', 'canal', 'limite', 'transportes', 'transporteId', 'podeTransporte', 'viagens', 'viagemId', 'dataViagem', 'datasViagem'))
-            ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'pendentes' => $pendentes, 'debitosDono' => $debitosDono, 'temEncomenda' => $temEncomenda, 'podeAvulso' => $podeAvulso, 'categorias' => $categorias]);
+            ->with(['meios' => Pagamento::CANAIS, 'acerto' => $acerto, 'pendentes' => $pendentes, 'debitosDono' => $debitosDono, 'temEncomenda' => $temEncomenda, 'podeAvulso' => $podeAvulso, 'categorias' => $categorias, 'cancelados' => $cancelados]);
     }
 
     /** Exporta os recebimentos do período (e filtro de forma) em CSV — sem travar a tela. */

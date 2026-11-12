@@ -174,6 +174,7 @@ class CaixaController extends Controller
                 ['label' => 'Saídas', 'valor' => (float) $saidas],
                 ['label' => 'Líquido', 'valor' => $ent - (float) $saidas, 'forte' => true],
                 ['label' => 'Vendas (bruto)', 'valor' => (float) $vendasBruto],
+                ['label' => 'Cancelados ('.(int) ($cancelados->qtd ?? 0).')', 'valor' => (float) ($cancelados->valor ?? 0)],
             ];
             return view('relatorio.prestacao', [
                 'empresa' => Tenant::empresa(),
