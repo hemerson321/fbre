@@ -109,6 +109,14 @@ class CaixaController extends Controller
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->where($filtraRepasseDono)->when($dataViagem, $filtraDataViagem)->sum('valor');
 
+        // Cancelados do periodo (passagens canceladas) — mesmo recorte do caixa.
+        $cancelados = \App\Models\Passagem::where('cancelada', true)
+            ->when($encIds === null, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+            ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total),0) as valor')->first();
         $categorias = AvulsoCategoria::where('ativo', true)->orderBy('ordem')->orderBy('nome')->get();
         $podeAvulso = auth()->user()->podeModulo('avulso');
 
@@ -179,7 +187,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto]);
     }
 
