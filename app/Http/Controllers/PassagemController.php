@@ -95,7 +95,7 @@ class PassagemController extends Controller
             })->pluck('embarcacao_id')->unique()->values();
         $embarcacoes = Embarcacao::where('ativo', true)->whereIn('id', $embComVenda)->orderBy('nome')
             ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas', 'regra_idade']);
-        $colunas = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao', 'idade_min', 'idade_max', 'gratuito', 'pcd', 'idoso_meia'];
+        $colunas = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao', 'idade_min', 'idade_max', 'gratuito', 'pcd', 'idoso_meia', 'colo'];
         $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get($colunas);
         if ($tipos->isEmpty()) {
             // auto-reparo: cria o Normal (Adulto) e alguns tipos padrão
@@ -466,6 +466,7 @@ class PassagemController extends Controller
             'passageiros.*.nacionalidade' => 'nullable|string|max:40',
             'passageiros.*.foto_rg' => 'nullable|string|max:255',
             'passageiros.*.foto' => 'nullable|string|max:255',
+            'passageiros.*.papel' => 'nullable|string|max:20',
             'passageiros.*.documentos' => 'nullable|array|max:20',
             'passageiros.*.documentos.*' => 'nullable',
             'documentos_gerais' => 'nullable|array|max:20',

@@ -150,6 +150,7 @@ class CadastroController extends Controller
             'tipos.*.gratuito' => 'nullable',
             'tipos.*.pcd' => 'nullable',
             'tipos.*.idoso_meia' => 'nullable',
+            'tipos.*.colo' => 'nullable',
         ]);
 
         $vistos = [];
@@ -172,6 +173,7 @@ class CadastroController extends Controller
                 'gratuito' => ! empty($row['gratuito']),
                 'pcd' => ! empty($row['pcd']),
                 'idoso_meia' => ! empty($row['idoso_meia']),
+                'colo' => ! empty($row['colo']),
                 'eh_normal' => $ehNormal,
                 'ativo' => true,
                 'ordem' => $ordem++,

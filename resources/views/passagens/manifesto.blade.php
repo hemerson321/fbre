@@ -68,7 +68,7 @@
         <td>{{ $l->origem }} → {{ $l->destino }}</td>
         <td>{{ $l->data ? $l->data->format('d/m/Y') : '—' }}</td>
         <td>{{ $l->tipo }}</td>
-        <td class="c">{{ $l->poltrona ?: '—' }}</td>
+        <td class="c">{{ $l->poltrona ?: ($l->papel==='colo' ? 'colo' : '—') }}</td>
         <td class="c">@if($l->embarcou)<span class="ok">✓ embarcou</span>@elseif($l->checkin)<span class="muted">check-in</span>@else<span class="no">—</span>@endif</td>
       </tr>
       @empty
