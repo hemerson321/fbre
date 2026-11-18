@@ -150,6 +150,7 @@
       <span class="n">3</span><span class="ic">🎫</span><span class="t">Passageiros</span>
       <span class="ml-auto text-[13px] font-bold shrink-0">(<span x-text="passageiros.length"></span>)</span>
       <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold shrink-0 whitespace-nowrap" @click="addPax()">＋<span class="hidden sm:inline"> passageiro</span></button>
+      <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1 shrink-0 whitespace-nowrap" @click="addColo()" title="Adicionar bebê de colo (grátis)">👶<span class="hidden sm:inline"> colo</span></button>
       @unless(auth()->user()->ehRevendedor())<button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1 shrink-0 whitespace-nowrap" @click="abrirCaptura()">📷<span class="hidden sm:inline"> Captura</span></button>@endunless
     </div>
     <div class="sec-b">
@@ -180,13 +181,17 @@
               <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm w-full" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
             </div>
             {{-- linha 2: tipo + valor --}}
-            <div class="grid grid-cols-5 gap-2 mt-1.5 items-end">
+            <div x-show="!p.colo" class="grid grid-cols-5 gap-2 mt-1.5 items-end">
               <div class="col-span-3"><label class="lbl">Tipo</label>
                 <select class="field !min-h-0 py-1 text-sm w-full" x-model="p.tipo_id" @change="aplicarTipo(p)">
-                  @foreach($tipos as $t)@php $lbl = $t->nome.(((($t->modo ?? 'valor')==='porcentagem') && !$t->eh_normal) ? ' ('.$t->percentual.'%)' : ''); @endphp<option value="{{ $t->id }}"@if($t->gratuito || $t->idoso_meia) :disabled="gratInfo && gratInfo.restante<=0" x-text="(gratInfo && gratInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@elseif($t->pcd) :disabled="pcdInfo && pcdInfo.restante<=0" x-text="(pcdInfo && pcdInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@endif>{{ $lbl }}</option>@endforeach
+                  @foreach($tipos as $t)@if(!$t->colo)@php $lbl = $t->nome.(((($t->modo ?? 'valor')==='porcentagem') && !$t->eh_normal) ? ' ('.$t->percentual.'%)' : ''); @endphp<option value="{{ $t->id }}"@if($t->gratuito || $t->idoso_meia) :disabled="gratInfo && gratInfo.restante<=0" x-text="(gratInfo && gratInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@elseif($t->pcd) :disabled="pcdInfo && pcdInfo.restante<=0" x-text="(pcdInfo && pcdInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@endif>{{ $lbl }}</option>@endif@endforeach
                 </select></div>
               <div class="col-span-2 text-right"><label class="lbl">Valor</label>
                 <div class="text-base font-extrabold leading-tight" style="color:var(--cor1)" x-text="FBRE.moeda(paxTotal(p))"></div></div>
+            </div>
+            <div x-show="p.colo" x-cloak class="flex items-center justify-between mt-1.5 rounded-lg bg-sky-50 border border-sky-200 px-3 py-1.5">
+              <span class="text-sm font-bold text-sky-700">👶 Bebê de colo</span>
+              <span class="text-sm font-bold text-sky-600">grátis · não ocupa poltrona</span>
             </div>
             {{-- linha 3: documento + poltrona --}}
             <div class="flex items-end gap-2 mt-1.5">
@@ -550,6 +555,7 @@
       _imgToDataUrl(file){ return new Promise((res,rej)=>{ const img=new Image(); const u=URL.createObjectURL(file); img.onload=()=>{ URL.revokeObjectURL(u); const max=1280; let w=img.width,h=img.height; if(w>max||h>max){ const r=Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r); } const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); try{ res(c.toDataURL('image/jpeg',0.8)); }catch(e){ rej(e); } }; img.onerror=rej; img.src=u; }); },
       novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', doc_tipo:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', documentos:[], checkin:!!this.checkinAuto, colo:!!t.colo, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona && !p.colo){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
+      addColo(){ const ct=this.tipos.find(t=>t.colo); const p=this.novoPax(); if(ct){ p.tipo_id=ct.id; this.aplicarTipo(p); } else { p.colo=true; p.tipo='Bebê de colo'; p.percentual=0; p.paga_taxa=false; } this.passageiros.push(p); this.$nextTick(()=>{ const el=document.getElementById('pax-nome-'+(this.passageiros.length-1)); if(el) el.focus(); }); },
       paxTotal(p){ return Math.round(((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))*100)/100; },
       setPaxTotal(p,v){ const total=Math.max(Number(v)||0,0); const fixo=(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0); p.valor_passagem=Math.round(Math.max(total-fixo,0)*100)/100; },
       // ---- captura por foto (QR -> celular -> IA -> autofill) ----
