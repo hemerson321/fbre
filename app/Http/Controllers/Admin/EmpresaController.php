@@ -39,6 +39,7 @@ class EmpresaController extends Controller
             'cor_primaria' => 'required|string|max:9',
             'cor_secundaria' => 'required|string|max:9',
             'rodape_comprovante' => 'nullable|string|max:500',
+            'aviso_comprovante' => 'nullable|string|max:300',
             'logo' => 'nullable|image|max:2048',
             'label_taxa_embarque' => 'nullable|string|max:40',
             'label_alimentacao' => 'nullable|string|max:40',

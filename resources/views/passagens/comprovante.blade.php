@@ -67,6 +67,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @if($e?->endereco || $e?->cidade)<div class="cnpj">{{ $e->endereco }}{{ ($e->endereco && $e->cidade) ? ' · ' : '' }}{{ $e->cidade }}{{ $e->uf ? '/'.$e->uf : '' }}</div>@endif
   </div>
   <div class="band">{{ $titulo }}</div>
+  @if($e?->aviso_comprovante)<div style="text-align:center;font-weight:800;font-size:10.5px;line-height:1.25;text-transform:uppercase;letter-spacing:.02em;color:var(--cor);border:1.5px dashed var(--cor);border-radius:8px;padding:5px 7px;margin:5px 2px 2px">⚠️ {{ $e->aviso_comprovante }}</div>@endif
 
   <div class="hero">
     <div class="tk"><div class="l">Bilhete nº</div><div class="v">{{ $p->numeroFormatado() }}</div></div>
