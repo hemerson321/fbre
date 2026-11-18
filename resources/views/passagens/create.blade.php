@@ -522,11 +522,11 @@
         // garante tipo_id inicial nos passageiros
         if(this.tipos.length && this.normalId==null) this.normalId=this.tipos[0].id;
         try{ const o=localStorage.getItem('fbre_origem'); if(o) this.origemSel=o; }catch(e){}
-        if(!this.origemSel && this.cidades.length) this.origemSel=this.cidades[0];
+        if(!this.origemSel){ const ogs=this.origens; this.origemSel=(ogs&&ogs.length)?ogs[0]:(this.cidades[0]||''); }
         // destino NÃO é lembrado: muda a cada venda, começa sempre em branco
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
-        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhasTransporte.length){ const n=x=>String(x||'').trim().toLowerCase(); if(this.origemSel && !this.origens.some(c=>n(c)===n(this.origemSel))) this.origemSel=''; if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); this.passageiros.forEach(p=>{ if(p.nascimento) this.aplicarIdade(p); }); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
+        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhasTransporte.length){ const n=x=>String(x||'').trim().toLowerCase(); if(this.origemSel && !this.origens.some(c=>n(c)===n(this.origemSel))) this.origemSel=''; if(!this.origemSel){ const ogs=this.origens; if(ogs.length) this.origemSel=ogs[0]; } if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); this.passageiros.forEach(p=>{ if(p.nascimento) this.aplicarIdade(p); }); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
         this.$watch('origemSel', ()=>this.carregarGratuidade());
         this.$watch('destinoSel', ()=>this.carregarGratuidade());
         this.$watch('viagemData', ()=>this.carregarGratuidade());
