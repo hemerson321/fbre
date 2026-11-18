@@ -120,7 +120,7 @@ class PassagemService
                 $va = round((float) ($pax['valor_alimentacao'] ?? 0), 2);
                 $vi = round((float) ($pax['valor_integral'] ?? ($vp + $vt + $va)), 2);
                 $docs = $this->salvarDocs($pax['documentos'] ?? []);
-                $p->passageiros()->create([
+                $paxRow = $p->passageiros()->create([
                     'nome' => $pax['nome'],
                     'tipo' => $pax['tipo'] ?? 'Adulto',
                     'papel' => $pax['papel'] ?? null,
@@ -144,6 +144,34 @@ class PassagemService
                     'observacao' => $pax['observacao'] ?? null,
                 ]);
                 $this->lembrarPessoa($pax['nome'], null, $pax['documento'] ?? null);
+
+                // Bebe de colo: vira um passageiro gratuito ligado a mesma passagem (nao ocupa poltrona)
+                $bc = $pax['bebe_colo'] ?? null;
+                if (is_array($bc) && trim((string) ($bc['nome'] ?? '')) !== '') {
+                    $p->passageiros()->create([
+                        'nome' => trim($bc['nome']),
+                        'tipo' => 'Bebê de colo',
+                        'papel' => 'colo',
+                        'percentual' => 0,
+                        'documento' => ($bc['documento'] ?? null) ?: null,
+                        'doc_tipo' => null,
+                        'nascimento' => ($bc['nascimento'] ?? null) ?: null,
+                        'sexo' => null,
+                        'telefone' => null,
+                        'nacionalidade' => $pax['nacionalidade'] ?? null,
+                        'checkin' => (bool) ($pax['checkin'] ?? true),
+                        'foto_rg' => null,
+                        'foto' => null,
+                        'documentos' => null,
+                        'poltrona' => null,
+                        'valor_passagem' => 0,
+                        'valor_taxa' => 0,
+                        'valor_alimentacao' => 0,
+                        'valor_integral' => 0,
+                        'valor_total' => 0,
+                        'observacao' => 'Colo de '.trim((string)($pax['nome'] ?? '')),
+                    ]);
+                }
             }
 
             foreach ($data['pagamentos'] ?? [] as $pag) {

@@ -150,7 +150,6 @@
       <span class="n">3</span><span class="ic">🎫</span><span class="t">Passageiros</span>
       <span class="ml-auto text-[13px] font-bold shrink-0">(<span x-text="passageiros.length"></span>)</span>
       <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold shrink-0 whitespace-nowrap" @click="addPax()">＋<span class="hidden sm:inline"> passageiro</span></button>
-      <button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1 shrink-0 whitespace-nowrap" @click="addColo()" title="Adicionar bebê de colo (grátis)">👶<span class="hidden sm:inline"> colo</span></button>
       @unless(auth()->user()->ehRevendedor())<button type="button" class="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[12px] font-bold ml-1 shrink-0 whitespace-nowrap" @click="abrirCaptura()">📷<span class="hidden sm:inline"> Captura</span></button>@endunless
     </div>
     <div class="sec-b">
@@ -181,17 +180,13 @@
               <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm w-full" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
             </div>
             {{-- linha 2: tipo + valor --}}
-            <div x-show="!p.colo" class="grid grid-cols-5 gap-2 mt-1.5 items-end">
+            <div class="grid grid-cols-5 gap-2 mt-1.5 items-end">
               <div class="col-span-3"><label class="lbl">Tipo</label>
                 <select class="field !min-h-0 py-1 text-sm w-full" x-model="p.tipo_id" @change="aplicarTipo(p)">
                   @foreach($tipos->where('colo', false) as $t)@php $lbl = $t->nome.(((($t->modo ?? 'valor')==='porcentagem') && !$t->eh_normal) ? ' ('.$t->percentual.'%)' : ''); @endphp<option value="{{ $t->id }}"@if($t->gratuito || $t->idoso_meia) :disabled="gratInfo && gratInfo.restante<=0" x-text="(gratInfo && gratInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@elseif($t->pcd) :disabled="pcdInfo && pcdInfo.restante<=0" x-text="(pcdInfo && pcdInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@endif>{{ $lbl }}</option>@endforeach
                 </select></div>
               <div class="col-span-2 text-right"><label class="lbl">Valor</label>
                 <div class="text-base font-extrabold leading-tight" style="color:var(--cor1)" x-text="FBRE.moeda(paxTotal(p))"></div></div>
-            </div>
-            <div x-show="p.colo" x-cloak class="flex items-center justify-between mt-1.5 rounded-lg bg-sky-50 border border-sky-200 px-3 py-1.5">
-              <span class="text-sm font-bold text-sky-700">👶 Bebê de colo</span>
-              <span class="text-sm font-bold text-sky-600">grátis · não ocupa poltrona</span>
             </div>
             {{-- linha 3: documento + poltrona --}}
             <div class="flex items-end gap-2 mt-1.5">
@@ -208,16 +203,26 @@
                   <input class="field !min-h-0 py-1 text-sm flex-1 w-full" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(p.documento)}" placeholder="número (opcional)" x-model="p.documento" title="Número do documento. Se for CPF, precisa ser válido.">
                 </div>
                 <div x-show="!FBRE.docOk(p.documento)" x-cloak class="text-[10px] text-red-500 mt-0.5">CPF inválido</div></div>
-              <button type="button" x-show="usaPoltrona && !p.colo" x-cloak class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)" title="Poltrona (F2)">
+              <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)" title="Poltrona (F2)">
                 <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑'"></span>
               </button>
-              <span x-show="usaPoltrona && p.colo" x-cloak class="rounded-lg border-2 border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-bold text-slate-500 whitespace-nowrap">👶 colo</span>
             </div>
             {{-- linha 4: acoes --}}
             <div class="flex items-center justify-between gap-2 mt-2 pt-1.5 border-t border-slate-100">
-              <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
+              <div class="flex items-center gap-3 flex-wrap">
+                <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
+                <label class="flex items-center gap-1.5 text-xs font-semibold text-sky-700"><input type="checkbox" x-model="p.temColo" class="w-4 h-4 rounded"> 👶 Bebê de colo</label>
+              </div>
               <div class="flex items-center gap-3">
                 <label class="text-[12px] font-semibold flex items-center gap-1 cursor-pointer" style="color:var(--cor1)">📎 Anexos<input type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple class="hidden" @change="anexarDocs(i,$event)"></label>
+              </div>
+            </div>
+            <div x-show="p.temColo" x-cloak class="mt-2 rounded-xl border border-sky-200 bg-sky-50 p-2.5 space-y-1.5">
+              <div class="text-[12px] font-bold text-sky-700">👶 Bebê de colo (grátis · não ocupa poltrona · não é passageiro separado)</div>
+              <input class="field !min-h-0 py-1 text-sm w-full" x-model="p.bebeColo.nome" placeholder="Nome do bebê">
+              <div class="grid grid-cols-2 gap-2">
+                <input class="field !min-h-0 py-1 text-sm w-full" x-model="p.bebeColo.documento" placeholder="Documento (opcional)">
+                <input class="field !min-h-0 py-1 text-sm w-full" inputmode="numeric" maxlength="10" x-model="p.bebeColo.nasc_br" @input="mascaraNascColo(p)" placeholder="Nascimento dd/mm/aaaa">
               </div>
             </div>
             <div x-show="p.documentos && p.documentos.length" x-cloak class="flex flex-wrap gap-1.5 mt-1.5">
@@ -553,9 +558,8 @@
       iconeDoc(d){ if(this.ehImgDoc(d))return'🖼️'; const o=(d&&typeof d==='object'); const s=(o?((d.t||'')+' '+(d.n||d.u||'')):String(d||'')).toLowerCase(); if(s.includes('pdf'))return'📄'; if(/word|\.docx?/.test(s))return'📝'; if(/sheet|excel|\.xlsx?|csv/.test(s))return'📊'; return'📎'; },
       abrirDoc(d){ const src=this.docSrc(d); if(!src)return; const w=window.open('','_blank'); if(!w){ try{ window.open(src,'_blank'); }catch(e){} return; } const nome=this.docNome(d); if(this.ehImgDoc(d)){ w.document.write('<title>'+nome+'</title><body style="margin:0;background:#111"><img src="'+src+'" style="max-width:100%;display:block;margin:auto"></body>'); } else { w.document.write('<title>'+nome+'</title><body style="margin:0"><iframe src="'+src+'" style="border:0;position:fixed;inset:0;width:100%;height:100%"></iframe></body>'); } w.document.close(); },
       _imgToDataUrl(file){ return new Promise((res,rej)=>{ const img=new Image(); const u=URL.createObjectURL(file); img.onload=()=>{ URL.revokeObjectURL(u); const max=1280; let w=img.width,h=img.height; if(w>max||h>max){ const r=Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r); } const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); try{ res(c.toDataURL('image/jpeg',0.8)); }catch(e){ rej(e); } }; img.onerror=rej; img.src=u; }); },
-      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', doc_tipo:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', documentos:[], checkin:!!this.checkinAuto, colo:!!t.colo, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
-      addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona && !p.colo){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
-      addColo(){ const ct=this.tipos.find(t=>t.colo); const p=this.novoPax(); if(ct){ p.tipo_id=ct.id; this.aplicarTipo(p); } else { p.colo=true; p.tipo='Bebê de colo'; p.percentual=0; p.paga_taxa=false; } this.passageiros.push(p); this.$nextTick(()=>{ const el=document.getElementById('pax-nome-'+(this.passageiros.length-1)); if(el) el.focus(); }); },
+      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', doc_tipo:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', documentos:[], checkin:!!this.checkinAuto, temColo:false, bebeColo:{nome:'',documento:'',nascimento:'',nasc_br:''}, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
+      addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       paxTotal(p){ return Math.round(((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))*100)/100; },
       setPaxTotal(p,v){ const total=Math.max(Number(v)||0,0); const fixo=(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0); p.valor_passagem=Math.round(Math.max(total-fixo,0)*100)/100; },
       // ---- captura por foto (QR -> celular -> IA -> autofill) ----
@@ -642,7 +646,7 @@
       rmPax(i){ const pol=this.passageiros[i]?.poltrona; this.passageiros.splice(i,1); if(pol && !this.passageiros.some(p=>String(p.poltrona)===String(pol))) this.soltar([pol]); },
       aplicarTipo(p){
         const t=this.tipos.find(x=>String(x.id)===String(p.tipo_id)) || this.tipos[0];
-        if(t){ p.tipo_id=t.id; p.tipo=t.nome; p.percentual=t.percentual; p.paga_taxa=!!t.paga_taxa; p.modo=t.modo||'valor'; p.colo=!!t.colo; if(p.colo) p.poltrona=''; }
+        if(t){ p.tipo_id=t.id; p.tipo=t.nome; p.percentual=t.percentual; p.paga_taxa=!!t.paga_taxa; p.modo=t.modo||'valor'; }
         const pr=this.precoDoTipo(t);
         const _tar=Number(pr.tarifa)||0, _alim=this.usaAlim?(Number(pr.alim)||0):0, _integ=Number(pr.integral)||0;
         // regra: "com desconto" vazio => cobra o INTEGRAL (preco normal); com desconto preenchido => cobra o com desconto
@@ -665,6 +669,7 @@
           const tok=++this._gratTok; fetch(u,{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.ok?r.json():null).then(j=>{ if(tok!==this._gratTok) return; this.gratInfo=(j&&j.idoso&&j.idoso.ativo)?j.idoso:null; this.pcdInfo=(j&&j.pcd&&j.pcd.ativo)?j.pcd:null; this.idosoMeiaInfo=null; }).catch(()=>{}); }catch(e){} },
       isoToBr(iso){ if(!iso) return ''; const a=(''+iso).slice(0,10).split('-'); return a.length===3 ? a[2]+'/'+a[1]+'/'+a[0] : ''; },
       mascaraNasc(p){ let v=(p.nasc_br||'').replace(/[^0-9]/g,'').slice(0,8); let o=v; if(v.length>4) o=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4); else if(v.length>2) o=v.slice(0,2)+'/'+v.slice(2); p.nasc_br=o; if(v.length===8){ const d=+v.slice(0,2), m=+v.slice(2,4), a=+v.slice(4,8); if(d>=1&&d<=31&&m>=1&&m<=12&&a>=1900&&a<=2100){ p.nascimento=v.slice(4,8)+'-'+v.slice(2,4)+'-'+v.slice(0,2); this.aplicarIdade(p); return; } } p.nascimento=''; },
+      mascaraNascColo(p){ let v=(p.bebeColo.nasc_br||'').replace(/[^0-9]/g,'').slice(0,8); let o=v; if(v.length>4) o=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4); else if(v.length>2) o=v.slice(0,2)+'/'+v.slice(2); p.bebeColo.nasc_br=o; if(v.length===8){ const d=+v.slice(0,2), m=+v.slice(2,4), a=+v.slice(4,8); if(d>=1&&d<=31&&m>=1&&m<=12&&a>=1900&&a<=2100){ p.bebeColo.nascimento=v.slice(4,8)+'-'+v.slice(2,4)+'-'+v.slice(0,2); return; } } p.bebeColo.nascimento=''; },
       aplicarIdade(p){ const t=this.tipoPorIdade(p.nascimento); if(t){ p.tipo_id=t.id; this.aplicarTipo(p); } },
       trechoGet(tipoId){ const o=(this.origemSel||'').trim().toLowerCase(), d=(this.destinoSel||'').trim().toLowerCase();
         return this.trechoMap[o+'|'+d+'|'+tipoId] || this.trechoMap[d+'|'+o+'|'+tipoId] || null; },
@@ -703,7 +708,7 @@
       teclaAtalho(e){
         const k=e.key; if(k!=='F1'&&k!=='F2'&&k!=='F3') return; e.preventDefault();
         if(k==='F1'){ const el=this.$refs.fDestino; if(el){ el.focus(); try{ el.showPicker&&el.showPicker(); }catch(_){} } }
-        else if(k==='F2'){ if(this.usaPoltrona){ let i=this.passageiros.findIndex(p=>!p.colo && !p.poltrona); if(i<0)i=0; this.abrirMapa(i); } else { const el=this.$refs.fForma&&this.$refs.fForma.querySelector('input'); if(el) el.focus(); } }
+        else if(k==='F2'){ if(this.usaPoltrona){ let i=this.passageiros.findIndex(p=>!p.poltrona); if(i<0)i=0; this.abrirMapa(i); } else { const el=this.$refs.fForma&&this.$refs.fForma.querySelector('input'); if(el) el.focus(); } }
         else if(k==='F3'){ const w=this.$refs.fForma; if(w){ const r=w.querySelector('input'); if(r) r.focus(); w.scrollIntoView({block:'center',behavior:'smooth'}); } }
       },
 
@@ -919,7 +924,7 @@
         const pxErr=this.passageiros.find(p=>!FBRE.docOk(p.documento));
         if(pxErr){ alert('CPF inválido no passageiro "'+((pxErr.nome||'').trim()||'sem nome')+'". Confira os números ou deixe em branco.'); return false; }
         if(!FBRE.docOk(this.compradorDoc)){ alert('CPF do comprador inválido. Confira os números ou deixe em branco.'); return false; }
-        if(this.usaPoltrona){ const semPol=this.passageiros.find(p=>!p.colo && !p.poltrona); if(semPol){ alert('Este transporte usa poltrona. Escolha a poltrona de "'+((semPol.nome||'').trim()||'sem nome')+'" antes de salvar.'); return false; } const ass=this.passageiros.filter(p=>!p.colo).map(p=>p.poltrona).filter(Boolean); if(new Set(ass).size!==ass.length){ alert('Há poltronas repetidas.'); return false; } }
+        if(this.usaPoltrona){ const semPol=this.passageiros.find(p=>!p.poltrona); if(semPol){ alert('Este transporte usa poltrona. Escolha a poltrona de "'+((semPol.nome||'').trim()||'sem nome')+'" antes de salvar.'); return false; } const ass=this.passageiros.map(p=>p.poltrona).filter(Boolean); if(new Set(ass).size!==ass.length){ alert('Há poltronas repetidas.'); return false; } }
         return true;
       },
       // ---- autocomplete de passageiro (busca em pessoas já cadastradas) ----
@@ -942,7 +947,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.colo?'colo':(p.papel||null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.papel||null, bebe_colo:((p.temColo && (p.bebeColo.nome||'').trim()) ? {nome:p.bebeColo.nome.trim(), documento:(p.bebeColo.documento||'').trim()||null, nascimento:p.bebeColo.nascimento||null} : null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
