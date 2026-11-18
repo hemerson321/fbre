@@ -693,6 +693,32 @@ class PassagemController extends Controller
         return redirect()->route('passagens.show', $passagem)->with('ok', 'Embarque confirmado.');
     }
 
+    /** Check-in individual de um passageiro (embarque por passageiro, não a compra inteira). */
+    public function checkinPax(Request $request, Passagem $passagem, $pax)
+    {
+        abort_unless($passagem->empresa_id === Tenant::id(), 404);
+        abort_if($passagem->cancelada, 422, 'Passagem cancelada.');
+        abort_if($passagem->devido > 0.009 && $passagem->forma !== 'faturado', 422, 'Registre o pagamento antes do embarque.');
+
+        $p = $passagem->passageiros()->findOrFail($pax);
+        $novo = ! $p->checkin;
+        $p->forceFill([
+            'checkin' => $novo,
+            'checkin_em' => $novo ? now() : null,
+            'checkin_por' => $novo ? auth()->id() : null,
+        ])->save();
+
+        $total = $passagem->passageiros()->count();
+        $feitos = $passagem->passageiros()->where('checkin', true)->count();
+
+        // quando todos embarcaram, marca a compra como embarcada (p/ relatórios)
+        if ($feitos >= $total && $total > 0 && ! $passagem->embarcou) {
+            app(\App\Services\PassagemService::class)->baixa($passagem, ['embarcar' => true], auth()->id());
+        }
+
+        return response()->json(['ok' => true, 'checkin' => $novo, 'feitos' => $feitos, 'total' => $total, 'embarcou' => ($feitos >= $total)]);
+    }
+
     /** Comprovante 80mm (impressão/PDF) com QR de check-in. */
     /** Minhas vendas (revendedor/vendedor): resumo do que vendeu no periodo + o que falta acertar. */
     public function minhasVendas(Request $request)

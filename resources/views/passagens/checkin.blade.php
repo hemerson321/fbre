@@ -10,15 +10,20 @@
     @if($p->embarcacao)<div class="text-xs opacity-80">{{ $p->embarcacao->nome }}</div>@endif
   </div>
 
+  @php $podeBaixa = $u->permite('passagem','baixa') && ! $p->cancelada && ($p->devido <= 0.009 || $p->forma === 'faturado'); @endphp
   <div class="card p-4">
-    <div class="font-semibold mb-2">Passageiros ({{ $p->passageiros->count() }})</div>
+    <div class="font-semibold mb-2">Passageiros (<span data-chkcount>{{ $p->passageiros->where('checkin',true)->count() }}/{{ $p->passageiros->count() }}</span>)</div>
     <div class="divide-y">
       @foreach($p->passageiros as $pax)
         <div class="flex items-center gap-2 py-2 text-sm">
           @php $mini = $pax->foto ?: $pax->foto_rg; @endphp
           @if($mini)<img src="/{{ $mini }}" class="h-9 w-9 object-cover rounded border shrink-0">@endif
-          <div class="flex-1">{{ $pax->nome }}<div class="text-xs text-slate-500">{{ $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div></div>
+          <div class="flex-1">{{ $pax->nome }}@if($pax->papel==='colo')<span class="text-[10px] font-bold text-sky-600"> · 👶 colo</span>@endif<div class="text-xs text-slate-500">{{ $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div></div>
+          @if($podeBaixa)
+          <button type="button" class="chkbtn rounded-lg px-3 py-1.5 text-[13px] font-bold {{ $pax->checkin ? 'bg-emerald-600 text-white border border-emerald-600' : 'bg-white text-slate-600 border border-slate-300' }}" onclick="FBRE.checkinPax(this,'{{ route('passagens.show',$p) }}/checkin-pax/{{ $pax->id }}')">{{ $pax->checkin ? '✓ embarcou' : 'Check-in' }}</button>
+          @else
           <span class="text-[10px] font-bold px-1.5 py-0.5 rounded {{ $pax->checkin ? 'bg-emerald-100 text-emerald-700':'bg-slate-200 text-slate-600' }}">{{ $pax->checkin ? 'check-in ✓':'sem check-in' }}</span>
+          @endif
         </div>
       @endforeach
     </div>
@@ -27,16 +32,17 @@
   <div class="card p-4 text-center space-y-2">
     @if($p->cancelada)
       <div class="text-red-600 font-bold">Passagem cancelada.</div>
-    @elseif($p->embarcou)
-      <div class="text-emerald-600 font-extrabold text-lg">✅ Embarque já confirmado</div>
-      <div class="text-xs text-slate-500">{{ optional($p->embarcou_em)->format('d/m/Y H:i') }}</div>
     @elseif($p->devido > 0.009 && $p->forma !== 'faturado')
       <div class="text-amber-700 font-semibold">Falta pagamento: R$ {{ number_format($p->devido,2,',','.') }}</div>
       <a href="{{ route('passagens.show',$p) }}" class="btn btn-ghost w-full">Abrir p/ receber</a>
     @elseif($u->permite('passagem','baixa'))
-      <form method="post" action="{{ route('passagens.embarcar',$p) }}">@csrf
-        <button class="btn w-full text-white text-lg py-3" style="background:{{ $cor }}">✅ Confirmar embarque</button>
+      <div data-chkfull style="display:{{ $p->passageiros->where('checkin',true)->count() >= $p->passageiros->count() ? 'block':'none' }}" class="text-emerald-600 font-extrabold text-lg">✅ Todos embarcaram</div>
+      <div class="text-xs text-slate-500">Faça o check-in de cada passageiro acima, individualmente.</div>
+      @if($p->passageiros->count() > 1)
+      <form method="post" action="{{ route('passagens.embarcar',$p) }}" onsubmit="return confirm('Marcar TODOS os passageiros como embarcados de uma vez?')">@csrf
+        <button class="text-xs text-slate-400 underline">ou confirmar todos de uma vez</button>
       </form>
+      @endif
     @else
       <div class="text-slate-500 text-sm">Você não tem permissão para validar embarque.</div>
     @endif

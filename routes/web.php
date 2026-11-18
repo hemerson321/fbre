@@ -154,6 +154,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/cobranca/{cobranca}/imprimir-direto', [CobrancaController::class, 'imprimirDireto'])->name('cobranca.pix.direto');
     Route::post('/cobranca/{cobranca}/cancelar', [CobrancaController::class, 'cancelar'])->name('cobranca.pix.cancelar');
     Route::post('/passagens/{passagem}/embarcar', [\App\Http\Controllers\PassagemController::class, 'embarcar'])->name('passagens.embarcar')->middleware('perm:passagem.baixa');
+    Route::post('/passagens/{passagem}/checkin-pax/{pax}', [\App\Http\Controllers\PassagemController::class, 'checkinPax'])->name('passagens.checkin-pax')->middleware('perm:passagem.baixa');
     Route::post('/passagens/{passagem}/cancelar', [\App\Http\Controllers\PassagemController::class, 'cancelar'])->name('passagens.cancelar')->middleware('perm:admin');
     Route::post('/passagens/{passagem}/transferir', [\App\Http\Controllers\PassagemController::class, 'transferir'])->name('passagens.transferir')->middleware('perm:admin');
     Route::post('/passagens/{passagem}/trocar-viagem', [\App\Http\Controllers\PassagemController::class, 'trocarViagem'])->name('passagens.trocar-viagem')->middleware('perm:admin');

@@ -15,6 +15,8 @@ class PassagemPassageiro extends Model
         'valor_integral' => 'decimal:2',
         'valor_total' => 'decimal:2',
         'documentos' => 'array',
+        'checkin' => 'boolean',
+        'checkin_em' => 'datetime',
     ];
 
     /** Nascimento tolerante: nunca estoura com valor vazio ou 0000-00-00. */

@@ -414,6 +414,22 @@ document.addEventListener('alpine:init', () => {
       return await new Promise(res => cv.toBlob(res, 'image/png'));
     },
     _baixarPng: (blob, nome) => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = nome || 'bilhete.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); },
+    // Check-in individual de 1 passageiro (toggle). Atualiza o botão e o contador na tela.
+    checkinPax: async (btn, url) => {
+      if (btn.dataset.busy) return; btn.dataset.busy = '1'; btn.style.opacity = '.5';
+      const ON = 'chkbtn rounded-lg px-3 py-1.5 text-[13px] font-bold bg-emerald-600 text-white border border-emerald-600';
+      const OFF = 'chkbtn rounded-lg px-3 py-1.5 text-[13px] font-bold bg-white text-slate-600 border border-slate-300';
+      try {
+        const r = await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': FBRE.csrf, 'Accept': 'application/json' } });
+        const d = await r.json().catch(() => null);
+        if (!r.ok || !d || !d.ok) { alert((d && (d.message || d.erro)) || 'Nao consegui registrar o check-in.'); return; }
+        const on = !!d.checkin;
+        btn.className = on ? ON : OFF; btn.textContent = on ? '✓ embarcou' : 'Check-in';
+        document.querySelectorAll('[data-chkcount]').forEach(el => el.textContent = d.feitos + '/' + d.total);
+        document.querySelectorAll('[data-chkfull]').forEach(el => el.style.display = (d.feitos >= d.total) ? '' : 'none');
+      } catch (e) { alert('Falha de conexao ao registrar o check-in.'); }
+      finally { btn.style.opacity = ''; delete btn.dataset.busy; }
+    },
     // true se for um CPF válido (11 dígitos + dígitos verificadores). Documento vazio ou que não tenha 11 dígitos (ex.: RG) não é CPF.
     soDigitos: s => String(s||'').replace(/\D/g,''),
     pareceCpf: s => FBRE.soDigitos(s).length === 11,

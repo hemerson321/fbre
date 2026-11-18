@@ -20,7 +20,8 @@
   </div>
 
   <div class="card p-4">
-    <div class="font-semibold mb-2">Passageiros</div>
+    @php $podeBaixa = $u->permite('passagem','baixa') && ! $p->cancelada && ($p->devido <= 0.009 || $p->forma === 'faturado'); @endphp
+    <div class="font-semibold mb-2">Passageiros <span class="text-[11px] font-normal text-slate-400">(embarcados: <span data-chkcount>{{ $p->passageiros->where('checkin',true)->count() }}/{{ $p->passageiros->count() }}</span>)</span></div>
     <div class="divide-y">
       @foreach($p->passageiros as $pax)
         <div class="flex justify-between py-2 text-sm">
@@ -29,7 +30,7 @@
             <div>{{ $pax->nome }}
             <span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded {{ $pax->checkin ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600' }}">{{ $pax->checkin ? 'check-in ✓' : 'sem check-in' }}</span>@if($pax->papel==='colo')<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-700">👶 colo</span>@endif
             <div class="text-xs text-slate-500">{{ $pax->tipo }} ({{ $pax->percentual }}%)@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif @if($pax->documento)· {{ $pax->doc_tipo ? $pax->doc_tipo.' ' : '' }}{{ $pax->documento }}@endif</div>@if($pax->valor_integral > $pax->valor_total + 0.009)<div class="text-xs text-amber-600">Preço normal R$ {{ number_format($pax->valor_integral,2,',','.') }} · Pago R$ {{ number_format($pax->valor_total,2,',','.') }}</div>@endif<div class="text-xs text-slate-400">Transp. R$ {{ number_format($pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. R$ {{ number_format($pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div>@if($pax->documentos)<div class="mt-1.5">@include('passagens._docs', ['docs'=>$pax->documentos, 'size'=>44])</div>@endif</div></div>
-          <div class="text-right font-semibold">R$ {{ number_format($pax->valor_total,2,',','.') }}</div>
+          <div class="text-right shrink-0"><div class="font-semibold">R$ {{ number_format($pax->valor_total,2,',','.') }}</div>@if($podeBaixa)<button type="button" class="chkbtn mt-1 rounded-lg px-2.5 py-1 text-[12px] font-bold {{ $pax->checkin ? 'bg-emerald-600 text-white border border-emerald-600' : 'bg-white text-slate-600 border border-slate-300' }}" onclick="FBRE.checkinPax(this,'{{ route('passagens.show',$p) }}/checkin-pax/{{ $pax->id }}')">{{ $pax->checkin ? '✓ embarcou' : 'Check-in' }}</button>@endif</div>
         </div>
       @endforeach
     </div>
@@ -188,11 +189,13 @@
   </div>
   {{-- EMBARQUE — separado das impressões pra não clicar por engano --}}
   @if(!$p->cancelada && !$p->embarcou && ($p->devido<=0.009 || $p->forma==='faturado') && $u->permite('passagem','baixa'))
-  <div class="border-t border-slate-200 pt-3 mt-2">
-    <form method="post" action="{{ route('passagens.embarcar',$p) }}">@csrf
-      <button class="btn w-full text-white" style="background:#059669">✅ Confirmar embarque (check-in)</button>
+  <div class="border-t border-slate-200 pt-3 mt-2 text-center">
+    <p class="text-[12px] text-slate-500">Faça o <b>check-in de cada passageiro</b> na lista acima, individualmente.</p>
+    @if($p->passageiros->count() > 1)
+    <form method="post" action="{{ route('passagens.embarcar',$p) }}" onsubmit="return confirm('Marcar TODOS os passageiros como embarcados de uma vez?')" class="mt-1">@csrf
+      <button class="text-xs text-slate-400 underline">ou confirmar todos de uma vez</button>
     </form>
-    <p class="text-[11px] text-slate-400 text-center mt-1">Use só na hora do embarque do passageiro — não é pra imprimir.</p>
+    @endif
   </div>
   @endif
   @if($p->transferida)<div class="card p-3 text-center text-indigo-600 text-sm font-semibold">↪ Transferida @if($p->transferida_para_id)para <a href="{{ route('passagens.show',$p->transferida_para_id) }}" class="underline">nova passagem</a>@endif · {{ $p->motivo_cancelamento }}</div>
