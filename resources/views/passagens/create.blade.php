@@ -135,7 +135,7 @@
             </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
-            <input class="field" inputmode="tel" placeholder="WhatsApp" x-model="compradorTel">
+            <input class="field" inputmode="tel" maxlength="16" placeholder="WhatsApp" x-model="compradorTel" @input="compradorTel=FBRE.foneMask($event.target.value)">
             <input class="field" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(compradorDoc)}" inputmode="numeric" placeholder="CPF" x-model="compradorDoc" title="Se digitar um CPF, precisa ser válido.">
           </div>
         </div>
@@ -232,7 +232,7 @@
             </div>
             {{-- linha 5: telefone + nacionalidade --}}
             <div class="grid grid-cols-2 gap-2 mt-1.5">
-              <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" inputmode="tel" placeholder="(00) 00000-0000"></div>
+              <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" @input="p.telefone=FBRE.foneMask($event.target.value)" inputmode="tel" maxlength="16" placeholder="(00) 00000-0000"></div>
               <div><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.nacionalidade" placeholder="Brasileira"></div>
             </div>
           </div>
@@ -927,7 +927,7 @@
       escolherPax(i,p){ const px=this.passageiros[i]; if(!px) return; px.nome=p.nome;
         if(p.documento && !FBRE.pareceCpf(p.documento)) px.documento=p.documento; // documento so se for RG (CPF nao)
         if(p.doc_tipo) px.doc_tipo=p.doc_tipo;
-        if(p.telefone) px.telefone=p.telefone;
+        if(p.telefone) px.telefone=FBRE.foneMask(p.telefone);
         if(p.sexo) px.sexo=p.sexo;
         if(p.nacionalidade) px.nacionalidade=p.nacionalidade;
         if(p.nascimento){ px.nascimento=p.nascimento; px.nasc_br=this.isoToBr(p.nascimento); }
