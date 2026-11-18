@@ -76,12 +76,17 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 
   <div class="trecho">{{ $p->origem }} <span class="ar">→</span> {{ $p->destino }}</div>
 
+  @if($p->data_viagem || $hora)
+  <div style="text-align:center;background:var(--cor);color:#fff;border-radius:9px;padding:5px 8px;margin:5px 0 2px;font-weight:800;letter-spacing:.02em">
+    🕒 SAÍDA @if($p->data_viagem){{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@endif@if($hora) · <span style="font-size:17px">{{ $hora }}</span>@endif
+  </div>@endif
+
   <div class="sec">
     <div class="sec-h">Viagem</div>
     @if($p->embarcacao?->logo)<div style="text-align:center;margin:2px 0 4px"><img src="/{{ $p->embarcacao->logo }}" alt="barco" style="height:30px;max-width:46mm;object-fit:contain"></div>@endif
     @if($p->embarcacao)<div class="row"><span class="k">Embarcação</span><span class="vv">{{ $p->embarcacao->nome }}</span></div>@endif
     @if($p->camarote)<div class="row"><span class="k">Suíte / Camarote</span><span class="vv">{{ $p->camarote->nome }}</span></div>@endif
-    @if($p->data_viagem)<div class="row"><span class="k">Saída</span><span class="vv">{{ $p->data_viagem->format('d/m/Y') }}{{ $hora ? ' · '.$hora : '' }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}</span></div>@endif
+    @if($p->data_viagem)<div class="row"><span class="k">Saída</span><span class="vv">{{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@if($hora) · <b style="color:var(--cor);font-size:13px">🕒 {{ $hora }}</b>@endif</span></div>@endif
     @if($nrViagem)<div class="row"><span class="k">Nº da viagem</span><span class="vv">{{ $nrViagem }}</span></div>@endif
   </div>
 
@@ -95,16 +100,20 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @if($pax->nascimento)<div class="row"><span class="k">Nascimento</span><span class="vv">{{ $pax->nascimento->format('d/m/Y') }}</span></div>@endif
     @if($pax->nacionalidade)<div class="row"><span class="k">Nacionalidade</span><span class="vv">{{ $pax->nacionalidade }}</span></div>@endif
     @if($pax->telefone)<div class="row"><span class="k">Telefone</span><span class="vv">{{ $pax->telefone }}</span></div>@endif
-    @if($pax->observacao)<div class="row"><span class="k">Observação</span><span class="vv">{{ $pax->observacao }}</span></div>@endif
+    @if($pax->observacao)<div style="margin-top:5px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:5px 8px;font-size:11px;line-height:1.3"><span class="b" style="color:#92400e">📌 Observação:</span> {{ $pax->observacao }}</div>@endif
   </div>
 
   <div class="sec pay">
     <div class="sec-h">Pagamento</div>
     <div class="total"><span class="tl">Valor total</span><span class="tv">R$ {{ number_format((float) $pax->valor_total,2,',','.') }}</span></div>
     <div class="row"><span class="k">Situação</span><span class="vv">@if($p->devido > 0.009)<span class="pg no">EM ABERTO</span>@else<span class="pg ok">PAGO</span>@endif</span></div>
-    @if($formas)<div class="row"><span class="k">Forma</span><span class="vv">{{ $formas }}</span></div>@endif
+    @php $pgs = $p->pagamentos->groupBy('meio')->map(fn ($g) => (float) $g->sum('valor'))->filter(fn ($v) => $v > 0.009); @endphp
+    @if($pgs->count())
+      @foreach($pgs as $meio => $val)<div class="row"><span class="k">{{ \App\Models\Pagamento::MEIOS[$meio] ?? ucfirst($meio) }}</span><span class="vv">R$ {{ number_format($val,2,',','.') }}</span></div>@endforeach
+    @elseif($formas)<div class="row"><span class="k">Forma</span><span class="vv">{{ $formas }}</span></div>@endif
     <div class="row"><span class="k">Vendedor</span><span class="vv">{{ $p->operador?->name ?? '—' }}</span></div>
     <div class="row"><span class="k">Compra</span><span class="vv">{{ $p->created_at->format('d/m/Y H:i') }}</span></div>
+    <div class="row"><span class="k">Impressão</span><span class="vv">{{ now()->format('d/m/Y H:i:s') }}</span></div>
     @if($pax->valor_integral > $pax->valor_total + 0.009)<div class="row"><span class="k">Preço normal</span><span class="vv">R$ {{ number_format((float) $pax->valor_integral,2,',','.') }}</span></div>@endif
   </div>
 
