@@ -455,6 +455,7 @@ class PassagemController extends Controller
             'passageiros.*.tipo' => 'required|string|max:60',
             'passageiros.*.percentual' => 'nullable|integer|min:0|max:100',
             'passageiros.*.documento' => 'nullable|string|max:20',
+            'passageiros.*.doc_tipo' => 'nullable|string|max:20',
             'passageiros.*.nascimento' => 'nullable|date',
             'passageiros.*.poltrona' => 'nullable|string|max:10',
             'passageiros.*.valor_passagem' => 'required|numeric|min:0',

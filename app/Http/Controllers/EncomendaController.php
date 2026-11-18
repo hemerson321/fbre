@@ -241,29 +241,41 @@ class EncomendaController extends Controller
 
         $empresaId = \App\Support\Tenant::id();
 
-        // Enriquece cada pessoa com o ultimo cadastro dela nas passagens (sexo, nascimento, foto...).
+        // Enriquece cada pessoa com o cadastro dela nas passagens (sexo, nascimento, foto...).
+        // Pega o valor mais recente NAO-VAZIO de cada campo (um cadastro antigo pode ter o que o ultimo nao tem).
         return $pessoas->map(function ($p) use ($empresaId) {
-            $pax = \Illuminate\Support\Facades\DB::table('passagem_passageiros as pp')
+            $rows = \Illuminate\Support\Facades\DB::table('passagem_passageiros as pp')
                 ->join('passagens as ps', 'ps.id', '=', 'pp.passagem_id')
                 ->where('ps.empresa_id', $empresaId)
                 ->when($p->documento, fn ($w) => $w->where('pp.documento', $p->documento), fn ($w) => $w->where('pp.nome', $p->nome))
                 ->orderByDesc('pp.id')
-                ->first(['pp.sexo', 'pp.nascimento', 'pp.nacionalidade', 'pp.telefone', 'pp.documento', 'pp.foto', 'pp.foto_rg']);
+                ->limit(20)
+                ->get(['pp.sexo', 'pp.nascimento', 'pp.nacionalidade', 'pp.telefone', 'pp.documento', 'pp.doc_tipo', 'pp.foto', 'pp.foto_rg']);
 
+            $pick = function (string $campo) use ($rows) {
+                foreach ($rows as $r) {
+                    $v = $r->$campo ?? null;
+                    if ($v !== null && $v !== '' && $v !== '0000-00-00' && $v !== '0000-00-00 00:00:00') return $v;
+                }
+                return null;
+            };
+
+            $nascRaw = $pick('nascimento');
             $nasc = null;
-            if ($pax && $pax->nascimento && ! str_starts_with((string) $pax->nascimento, '0000')) {
-                try { $nasc = \Carbon\Carbon::parse($pax->nascimento)->format('Y-m-d'); } catch (\Throwable $e) {}
+            if ($nascRaw && ! str_starts_with((string) $nascRaw, '0000')) {
+                try { $nasc = \Carbon\Carbon::parse($nascRaw)->format('Y-m-d'); } catch (\Throwable $e) {}
             }
 
             return [
                 'nome' => $p->nome,
-                'telefone' => $p->telefone ?: ($pax->telefone ?? null),
-                'documento' => $p->documento ?: ($pax->documento ?? null),
-                'sexo' => $pax->sexo ?? null,
+                'telefone' => $p->telefone ?: $pick('telefone'),
+                'documento' => $p->documento ?: $pick('documento'),
+                'doc_tipo' => $pick('doc_tipo'),
+                'sexo' => $pick('sexo'),
                 'nascimento' => $nasc,
-                'nacionalidade' => $pax->nacionalidade ?? null,
-                'foto' => $pax->foto ?? null,
-                'foto_rg' => $pax->foto_rg ?? null,
+                'nacionalidade' => $pick('nacionalidade'),
+                'foto' => $pick('foto'),
+                'foto_rg' => $pick('foto_rg'),
             ];
         });
     }

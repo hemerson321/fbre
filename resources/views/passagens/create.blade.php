@@ -185,8 +185,18 @@
             </div>
             {{-- linha 3: documento + poltrona --}}
             <div class="flex items-end gap-2 mt-1.5">
-              <div class="flex-1"><label class="lbl">Documento (RG/CPF)</label>
-                <input class="field !min-h-0 py-1 text-sm w-full" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(p.documento)}" placeholder="opcional" x-model="p.documento" title="RG ou CPF. Se digitar um CPF, precisa ser válido.">
+              <div class="flex-1"><label class="lbl">Documento</label>
+                <div class="flex gap-1.5">
+                  <select class="field !min-h-0 py-1 text-sm !w-auto shrink-0" x-model="p.doc_tipo" title="Tipo de documento">
+                    <option value="">Tipo</option>
+                    <option value="RG">RG</option>
+                    <option value="CPF">CPF</option>
+                    <option value="CNH">CNH</option>
+                    <option value="Certidão">Certidão nasc.</option>
+                    <option value="Passaporte">Passaporte</option>
+                  </select>
+                  <input class="field !min-h-0 py-1 text-sm flex-1 w-full" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(p.documento)}" placeholder="número (opcional)" x-model="p.documento" title="Número do documento. Se for CPF, precisa ser válido.">
+                </div>
                 <div x-show="!FBRE.docOk(p.documento)" x-cloak class="text-[10px] text-red-500 mt-0.5">CPF inválido</div></div>
               <button type="button" x-show="usaPoltrona && !p.colo" x-cloak class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)" title="Poltrona (F2)">
                 <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑'"></span>
@@ -535,7 +545,7 @@
       iconeDoc(d){ if(this.ehImgDoc(d))return'🖼️'; const o=(d&&typeof d==='object'); const s=(o?((d.t||'')+' '+(d.n||d.u||'')):String(d||'')).toLowerCase(); if(s.includes('pdf'))return'📄'; if(/word|\.docx?/.test(s))return'📝'; if(/sheet|excel|\.xlsx?|csv/.test(s))return'📊'; return'📎'; },
       abrirDoc(d){ const src=this.docSrc(d); if(!src)return; const w=window.open('','_blank'); if(!w){ try{ window.open(src,'_blank'); }catch(e){} return; } const nome=this.docNome(d); if(this.ehImgDoc(d)){ w.document.write('<title>'+nome+'</title><body style="margin:0;background:#111"><img src="'+src+'" style="max-width:100%;display:block;margin:auto"></body>'); } else { w.document.write('<title>'+nome+'</title><body style="margin:0"><iframe src="'+src+'" style="border:0;position:fixed;inset:0;width:100%;height:100%"></iframe></body>'); } w.document.close(); },
       _imgToDataUrl(file){ return new Promise((res,rej)=>{ const img=new Image(); const u=URL.createObjectURL(file); img.onload=()=>{ URL.revokeObjectURL(u); const max=1280; let w=img.width,h=img.height; if(w>max||h>max){ const r=Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r); } const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); try{ res(c.toDataURL('image/jpeg',0.8)); }catch(e){ rej(e); } }; img.onerror=rej; img.src=u; }); },
-      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', documentos:[], checkin:!!this.checkinAuto, colo:!!t.colo, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
+      novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', doc_tipo:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', documentos:[], checkin:!!this.checkinAuto, colo:!!t.colo, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona && !p.colo){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
       paxTotal(p){ return Math.round(((Number(p.valor_passagem)||0)+(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0))*100)/100; },
       setPaxTotal(p,v){ const total=Math.max(Number(v)||0,0); const fixo=(Number(p.valor_taxa)||0)+(Number(p.valor_alimentacao)||0); p.valor_passagem=Math.round(Math.max(total-fixo,0)*100)/100; },
@@ -907,6 +917,7 @@
       async buscarPax(i){ const q=(this.passageiros[i]?.nome||'').trim(); if(q.length<2){ this.paxLista=[]; this.paxAberto=-1; return; } try{ const r=await fetch(`{{ route('pessoas.buscar') }}?q=${encodeURIComponent(q)}`); this.paxLista=await r.json(); this.paxAberto=i; }catch(e){} },
       escolherPax(i,p){ const px=this.passageiros[i]; if(!px) return; px.nome=p.nome;
         if(p.documento && !FBRE.pareceCpf(p.documento)) px.documento=p.documento; // documento so se for RG (CPF nao)
+        if(p.doc_tipo) px.doc_tipo=p.doc_tipo;
         if(p.telefone) px.telefone=p.telefone;
         if(p.sexo) px.sexo=p.sexo;
         if(p.nacionalidade) px.nacionalidade=p.nacionalidade;
@@ -922,7 +933,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.colo?'colo':(p.papel||null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.colo?'colo':(p.papel||null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };

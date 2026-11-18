@@ -91,7 +91,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
       <div class="paxnome">{{ strtoupper($pax->nome ?: 'PASSAGEIRO') }}</div>
       <span class="chip">{{ strtoupper($pax->papel ?: $pax->tipo) }}</span>
     </div>
-    @if($pax->documento)<div class="row"><span class="k">RG / CPF</span><span class="vv">{{ $pax->documento }}</span></div>@endif
+    @if($pax->documento)<div class="row"><span class="k">{{ $pax->doc_tipo ?: 'Documento' }}</span><span class="vv">{{ $pax->documento }}</span></div>@endif
     @if($pax->nascimento)<div class="row"><span class="k">Nascimento</span><span class="vv">{{ $pax->nascimento->format('d/m/Y') }}</span></div>@endif
     @if($pax->nacionalidade)<div class="row"><span class="k">Nacionalidade</span><span class="vv">{{ $pax->nacionalidade }}</span></div>@endif
     @if($pax->telefone)<div class="row"><span class="k">Telefone</span><span class="vv">{{ $pax->telefone }}</span></div>@endif
