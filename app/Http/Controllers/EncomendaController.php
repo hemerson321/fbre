@@ -247,7 +247,10 @@ class EncomendaController extends Controller
             $rows = \Illuminate\Support\Facades\DB::table('passagem_passageiros as pp')
                 ->join('passagens as ps', 'ps.id', '=', 'pp.passagem_id')
                 ->where('ps.empresa_id', $empresaId)
-                ->when($p->documento, fn ($w) => $w->where('pp.documento', $p->documento), fn ($w) => $w->where('pp.nome', $p->nome))
+                ->where(function ($w) use ($p) {
+                    $w->where('pp.nome', $p->nome);
+                    if ($p->documento) $w->orWhere('pp.documento', $p->documento);
+                })
                 ->orderByDesc('pp.id')
                 ->limit(20)
                 ->get(['pp.sexo', 'pp.nascimento', 'pp.nacionalidade', 'pp.telefone', 'pp.documento', 'pp.doc_tipo', 'pp.foto', 'pp.foto_rg']);
