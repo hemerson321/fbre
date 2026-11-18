@@ -105,8 +105,10 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @if($pax->nacionalidade)<div class="row"><span class="k">Nacionalidade</span><span class="vv">{{ $pax->nacionalidade }}</span></div>@endif
     @if($pax->telefone)<div class="row"><span class="k">Telefone</span><span class="vv">{{ $pax->telefone }}</span></div>@endif
     @if($pax->observacao)<div style="margin-top:5px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:5px 8px;font-size:11px;line-height:1.3"><span class="b" style="color:#92400e">📌 Observação:</span> {{ $pax->observacao }}</div>@endif
-    @if($i===0 && $colos->count())@foreach($colos as $b)<div class="row"><span class="k">Colo</span><span class="vv b">{{ strtoupper($b->nome ?: 'BEBÊ') }}</span></div>@endforeach
-    @endif
+    @php $meusColos = $colos->filter(fn ($b) => $b->colo_de_id ? ((int) $b->colo_de_id === (int) $pax->id) : ($i === 0)); @endphp
+    @foreach($meusColos as $b)
+      <div class="row"><span class="k">👶 Colo</span><span class="vv b">{{ strtoupper($b->nome ?: 'BEBÊ') }}@if($b->nascimento)<span style="font-weight:400;color:#555"> · nasc. {{ \Illuminate\Support\Carbon::parse($b->nascimento)->format('d/m/Y') }}</span>@endif</span></div>
+    @endforeach
   </div>
 
   <div class="sec pay">

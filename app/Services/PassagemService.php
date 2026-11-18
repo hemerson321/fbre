@@ -152,6 +152,7 @@ class PassagemService
                         'nome' => trim($bc['nome']),
                         'tipo' => 'Bebê de colo',
                         'papel' => 'colo',
+                        'colo_de_id' => $paxRow->id,
                         'percentual' => 0,
                         'documento' => ($bc['documento'] ?? null) ?: null,
                         'doc_tipo' => null,
