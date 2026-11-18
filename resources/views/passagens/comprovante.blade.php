@@ -37,6 +37,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .qrp{display:inline-block}.qrp img,.qrp canvas{margin:0 auto}
 .info{margin-top:7px;font-size:10px;color:#4b5563;background:#f9fafb;border:1px solid #eef0f2;border-radius:8px;padding:6px 8px;line-height:1.35}
 .foot{text-align:center;font-size:9px;color:#9ca3af;margin-top:8px;border-top:1px dashed #d1d5db;padding-top:5px}
+@media print{#pdfbar{display:none!important}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -60,6 +61,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     <div class="emp">{{ strtoupper($e?->nomeExibicao() ?? 'FBRE') }}</div>
     @if($e?->cnpj)<div class="cnpj">CNPJ {{ $e->cnpj }}</div>@endif
     @if($e?->telefone || $e?->whatsapp)<div class="cnpj">{{ $e->telefone }}{{ ($e->telefone && $e->whatsapp) ? ' · ' : '' }}{{ $e->whatsapp }}</div>@endif
+    @if($e?->endereco || $e?->cidade)<div class="cnpj">{{ $e->endereco }}{{ ($e->endereco && $e->cidade) ? ' · ' : '' }}{{ $e->cidade }}{{ $e->uf ? '/'.$e->uf : '' }}</div>@endif
   </div>
   <div class="band">{{ $titulo }}</div>
 
@@ -128,7 +130,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @endif
   </div>
 
-  @if($e?->rodape_comprovante)<div class="info">{{ $e->rodape_comprovante }}</div>@endif
+  @if($e?->rodape_comprovante)<div class="info"><div class="b" style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#374151;margin-bottom:2px">ℹ️ Informações importantes</div>{{ $e->rodape_comprovante }}</div>@endif
   @if($e && $e->config('usa_cancel_transporte'))<div class="info">Devolução: antes da saída retém {{ $p->embarcacao?->cancel_antes_pct ?? $e->config('cancel_antes_pct',10) }}%, depois da saída retém {{ $p->embarcacao?->cancel_depois_pct ?? $e->config('cancel_depois_pct',30) }}%.</div>@endif
 
   <div class="foot">Bilhete {{ $i+1 }}/{{ $tot }} · Emitido {{ now()->format('d/m/Y H:i') }} · {{ $p->operador?->name }}</div>

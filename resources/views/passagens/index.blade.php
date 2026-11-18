@@ -74,17 +74,21 @@
   {{-- lista --}}
   <div class="card divide-y">
     @forelse($passagens as $p)
-      <a href="{{ route('passagens.show',$p) }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 row-{{ $p->cor() }}">
-        <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-3 p-3 hover:bg-slate-50 row-{{ $p->cor() }}">
+        <a href="{{ route('passagens.show',$p) }}" class="flex-1 min-w-0 block">
           <div class="font-semibold">@if($p->tipo==='camarote')🛏️ @endif#{{ $p->numeroFormatado() }} · {{ $p->origem }} → {{ $p->destino }}</div>
           <div class="text-[11px] text-slate-400 truncate">🚤 {{ $p->embarcacao?->nome ?? '—' }}@if($p->data_viagem) · 📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</div>
           <div class="text-xs text-slate-500 truncate">{{ $p->qtd_passageiros }} pax · {{ $p->comprador_nome ?: '—' }} · vendeu: {{ $p->operador?->name }}@if($p->embarcou) · <span class="text-emerald-600 font-semibold">✅ check-in{{ $p->embarcouPor ? ': '.$p->embarcouPor->name : '' }}</span>@elseif(!$p->cancelada) · <span class="text-amber-600 font-semibold">⏳ sem check-in</span>@endif</div>
-        </div>
-        <div class="text-right">
+        </a>
+        <div class="text-right shrink-0">
           <div class="font-bold">R$ {{ number_format($p->total,2,',','.') }}</div>
           <span class="chip st-{{ $p->cor() }}">{{ $p->statusTexto() }}</span>
+          <div class="flex gap-1 mt-1.5 justify-end">
+            <button type="button" onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}')" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Imprimir comprovante">🖨</button>
+            <button type="button" onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap" title="Baixar PDF / enviar no WhatsApp">📲 PDF</button>
+          </div>
         </div>
-      </a>
+      </div>
     @empty
       <div class="p-6 text-center text-slate-400">Nenhuma passagem no filtro.</div>
     @endforelse
