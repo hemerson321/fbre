@@ -81,7 +81,8 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 
   @if($p->data_viagem || $hora)
   <div style="text-align:center;background:var(--cor);color:#fff;border-radius:9px;padding:5px 8px;margin:5px 0 2px;font-weight:800;letter-spacing:.02em">
-    🕒 SAÍDA @if($p->data_viagem){{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@endif@if($hora) · <span style="font-size:17px">{{ $hora }}</span>@endif
+    🕒 SAÍDA @if($p->data_viagem){{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@endif
+    @if($hora) · <span style="font-size:17px">{{ $hora }}</span>@endif
   </div>@endif
 
   <div class="sec">
@@ -104,7 +105,8 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @if($pax->nacionalidade)<div class="row"><span class="k">Nacionalidade</span><span class="vv">{{ $pax->nacionalidade }}</span></div>@endif
     @if($pax->telefone)<div class="row"><span class="k">Telefone</span><span class="vv">{{ $pax->telefone }}</span></div>@endif
     @if($pax->observacao)<div style="margin-top:5px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:5px 8px;font-size:11px;line-height:1.3"><span class="b" style="color:#92400e">📌 Observação:</span> {{ $pax->observacao }}</div>@endif
-    @if($i===0 && $colos->count())@foreach($colos as $b)<div class="row"><span class="k">Colo</span><span class="vv b">{{ strtoupper($b->nome ?: 'BEBÊ') }}</span></div>@endforeach@endif
+    @if($i===0 && $colos->count())@foreach($colos as $b)<div class="row"><span class="k">Colo</span><span class="vv b">{{ strtoupper($b->nome ?: 'BEBÊ') }}</span></div>@endforeach
+    @endif
   </div>
 
   <div class="sec pay">
