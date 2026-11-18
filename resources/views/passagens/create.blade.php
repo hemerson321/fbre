@@ -293,7 +293,7 @@
     <section class="sec shrink-0">
       <div class="p-2.5 space-y-2">
         <div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-slate-600">
-          <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="navegador" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>
+          <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="direto" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
         <div class="hidden lg:block">
@@ -459,7 +459,7 @@
 
   function novaPassagem(){
     return {
-      salvando:false, forma:'avista', imprimir:'navegador',
+      salvando:false, forma:'avista', imprimir:'direto',
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
       pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
@@ -852,7 +852,8 @@
         }
         this.salvando=true;
         if(this.imprimir==='pix'){ window.location.href='/imprimir/pix-passagem/'+d.id; return; }
-        window.location.href = d.url + (this.imprimir==='navegador' ? '?print=1' : '');
+        if(this.imprimir==='direto'){ this.imprimirDiretoENovo(d.id); return; }
+        window.location.href = d.url;
       },
       cancelarPix(){
         if(!confirm('Cancelar esta cobrança? Se o cliente já pagou, a venda será registrada normalmente.')) return;
@@ -866,6 +867,33 @@
       },
       copiarPix(){ try{ navigator.clipboard.writeText(this.pixCopia); }catch(e){} },
     imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
+      // Imprime o bilhete direto na térmica (via estação) e já libera a tela p/ o próximo passageiro.
+      async imprimirDiretoENovo(id){
+        let ok=false;
+        try{
+          const imagens = await this._rasterComprovante('/passagens/'+id+'/comprovante');
+          if(imagens && imagens.length){
+            const dd = await fetch('/passagens/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({imagens})}).then(r=>r.json()).catch(()=>null);
+            ok = !!(dd && dd.ok);
+            if(!ok) alert((dd && dd.erro) || 'Não consegui imprimir direto. Vou abrir a passagem pra você imprimir.');
+          }
+        }catch(e){}
+        if(ok){ window.location.href='{{ route('passagens.create') }}'; }  // imprimiu: libera p/ novo cadastro
+        else { window.location.href='/passagens/'+id; }                    // falhou: abre a passagem p/ imprimir manual
+      },
+      // Renderiza o comprovante em iframe oculto (raster) e devolve as imagens dos bilhetes.
+      _rasterComprovante(url){
+        return new Promise((resolve)=>{
+          let done=false; const ifr=document.createElement('iframe');
+          ifr.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:10px;border:0;opacity:0';
+          const fim=(imgs)=>{ if(done)return; done=true; window.removeEventListener('message',onMsg); try{ifr.remove();}catch(e){} resolve(imgs||[]); };
+          const onMsg=(ev)=>{ const d=ev.data; if(!d||!d.fbreRaster)return; fim(d.imagens||[]); };
+          window.addEventListener('message',onMsg);
+          document.body.appendChild(ifr);
+          ifr.src = url + (url.indexOf('?')>=0?'&':'?') + 'raster=1';
+          setTimeout(()=>fim([]), 20000);
+        });
+      },
       validarPassageiros(){
         if(!this.passageiros.length){ alert('Adicione ao menos um passageiro.'); return false; }
         if(this.passageiros.some(p=>!p.nome.trim())){ alert('Informe o nome de todos os passageiros.'); return false; }
@@ -909,7 +937,7 @@
         dados.pix_cobranca_id=this.pixCobId||null;
         try{
           const r=await FBREOffline.salvarModulo('passagem', dados);
-          if(r.servidor && r.servidor.ok){ if(this.imprimir==='pix'){ window.location.href='/imprimir/pix-passagem/'+r.servidor.id; return; } window.location.href=r.servidor.url+(this.imprimir==='navegador'?'?print=1':''); return; }
+          if(r.servidor && r.servidor.ok){ if(this.imprimir==='pix'){ window.location.href='/imprimir/pix-passagem/'+r.servidor.id; return; } if(this.imprimir==='direto'){ await this.imprimirDiretoENovo(r.servidor.id); return; } window.location.href=r.servidor.url; return; }
           if(this.imprimir!=='nao') await FBREOffline.imprimirModuloLocal(r.local);
           alert('Sem conexão: passagem '+r.local.dados.numero_completo+' guardada neste aparelho. Sobe sozinha quando a internet voltar.');
           window.location.href='{{ route('passagens.create') }}';
