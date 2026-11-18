@@ -109,11 +109,11 @@
         <div x-show="precoInfo" class="text-[11px] font-semibold" style="color:var(--cor1)" x-cloak>
           💲 Preço do trecho carregado
         </div>
-        <div x-show="gratInfo" x-cloak class="text-[11px] font-semibold flex items-center gap-1 mt-0.5" :class="(gratInfo && gratInfo.restante<=0) ? 'text-red-500' : 'text-slate-400'" title="Idoso (gratuito + meia) dividem a MESMA cota neste trecho">
-          🧓 <span x-text="gratInfo ? ('Idoso (grátis+½) neste trecho: '+gratInfo.usados+'/'+gratInfo.cota) : ''"></span><span x-show="gratInfo && gratInfo.restante<=0"> · esgotado</span>
+        <div x-show="gratInfo" x-cloak class="text-[11px] font-semibold flex items-center gap-1 mt-0.5" :class="(gratInfo && gratInfo.restante<=0) ? 'text-red-500' : 'text-slate-400'" title="Idoso (gratuito + meia) dividem a MESMA cota por VIAGEM completa">
+          🧓 <span x-text="gratInfo ? ('Idoso (grátis+½) nesta viagem: '+gratInfo.usados+'/'+gratInfo.cota) : ''"></span><span x-show="gratInfo && gratInfo.restante<=0"> · esgotado</span>
         </div>
-        <div x-show="pcdInfo" x-cloak class="text-[11px] font-semibold flex items-center gap-1 mt-0.5" :class="(pcdInfo && pcdInfo.restante<=0) ? 'text-red-500' : 'text-slate-400'" title="Vagas PCD já usadas neste trecho desta viagem">
-          ♿ <span x-text="pcdInfo ? ('PCD neste trecho: '+pcdInfo.usados+'/'+pcdInfo.cota) : ''"></span><span x-show="pcdInfo && pcdInfo.restante<=0"> · esgotado</span>
+        <div x-show="pcdInfo" x-cloak class="text-[11px] font-semibold flex items-center gap-1 mt-0.5" :class="(pcdInfo && pcdInfo.restante<=0) ? 'text-red-500' : 'text-slate-400'" title="Vagas PCD já usadas nesta VIAGEM completa">
+          ♿ <span x-text="pcdInfo ? ('PCD nesta viagem: '+pcdInfo.usados+'/'+pcdInfo.cota) : ''"></span><span x-show="pcdInfo && pcdInfo.restante<=0"> · esgotado</span>
         </div>
       </div>
     </section>

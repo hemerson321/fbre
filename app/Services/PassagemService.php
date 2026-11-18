@@ -66,7 +66,7 @@ class PassagemService
             }
         }
 
-        // Cotas por trecho (gratuidade / PCD) — soma por segmento da viagem, como as poltronas.
+        // Cotas de gratuidade / PCD — por VIAGEM COMPLETA (não por trecho).
         if ($viagemId || ! empty($data['data_viagem'])) {
             $rotulos = ['pcd' => 'PCD', 'idoso' => 'idoso (gratuito/meia)'];
             foreach (['pcd', 'idoso'] as $grupo) {
@@ -74,7 +74,7 @@ class PassagemService
                 if (! $gi['ativo']) continue;
                 $novos = collect($data['passageiros'] ?? [])->filter(fn ($px) => in_array(mb_strtolower((string) ($px['tipo'] ?? '')), $gi['nomes'], true))->count();
                 if ($novos > 0 && $gi['usados'] + $novos > $gi['cota']) {
-                    throw new \App\Exceptions\VendaRecusada('Cota de '.$rotulos[$grupo].' atingida neste trecho ('.$gi['cota'].' por viagem). Já emitidas aqui: '.$gi['usados'].'.');
+                    throw new \App\Exceptions\VendaRecusada('Cota de '.$rotulos[$grupo].' já atingida nesta viagem ('.$gi['cota'].' por viagem completa). Já emitidas: '.$gi['usados'].'.');
                 }
             }
         }
@@ -217,41 +217,16 @@ class PassagemService
         }
         if (! $viagemId && ! $dataViagem) return ['ativo' => true, 'cota' => $cota, 'usados' => 0, 'restante' => $cota, 'nomes' => $nomes];
 
-        $rota = $rotaId ? \App\Models\Rota::find($rotaId) : null;
-        if (! $rota) {
-            $rota = \App\Models\Rota::with('paradas')->get()->first(function ($r) use ($origem, $destino) {
-                $locs = array_map('mb_strtolower', $r->localidades());
-                return in_array(mb_strtolower($origem), $locs, true) && in_array(mb_strtolower($destino), $locs, true);
-            });
-        }
-        $ordem = $rota ? array_map('mb_strtolower', $rota->localidades()) : [];
-        $idx = fn ($c) => array_search(mb_strtolower((string) $c), $ordem, true);
-        $reqS = $idx($origem); $reqD = $idx($destino);
-        $temTrecho = $ordem && $reqS !== false && $reqD !== false;
-
-        $rows = DB::table('passagens as p')
+        // Gratuidade/PCD por VIAGEM COMPLETA (não por trecho): conta o total de
+        // gratuidades já emitidas na viagem inteira, independente de origem/destino.
+        $usados = (int) DB::table('passagens as p')
             ->join('passagem_passageiros as pp', 'p.id', '=', 'pp.passagem_id')
             ->where('p.empresa_id', $empresaId)->where('p.cancelada', false)
             ->when($viagemId, fn ($q) => $q->where('p.viagem_id', $viagemId))
             ->when(! $viagemId && $dataViagem, fn ($q) => $q->whereDate('p.data_viagem', $dataViagem))
             ->whereIn(DB::raw('LOWER(pp.tipo)'), $nomes)
-            ->select('p.origem', 'p.destino', DB::raw('COUNT(*) as n'))
-            ->groupBy('p.origem', 'p.destino')->get();
+            ->count();
 
-        if (! $temTrecho) {
-            $tot = (int) $rows->sum('n');
-            return ['ativo' => true, 'cota' => $cota, 'usados' => $tot, 'restante' => max(0, $cota - $tot), 'nomes' => $nomes];
-        }
-        [$reqMin, $reqMax] = [min($reqS, $reqD), max($reqS, $reqD)];
-        $seg = [];
-        foreach ($rows as $r) {
-            $c = $idx($r->origem); $d = $idx($r->destino);
-            if ($c === false || $d === false) { for ($k = $reqMin; $k < $reqMax; $k++) $seg[$k] = ($seg[$k] ?? 0) + (int) $r->n; continue; }
-            [$cMin, $cMax] = [min($c, $d), max($c, $d)];
-            for ($k = $cMin; $k < $cMax; $k++) $seg[$k] = ($seg[$k] ?? 0) + (int) $r->n;
-        }
-        $usados = 0;
-        for ($k = $reqMin; $k < $reqMax; $k++) $usados = max($usados, $seg[$k] ?? 0);
         return ['ativo' => true, 'cota' => $cota, 'usados' => $usados, 'restante' => max(0, $cota - $usados), 'nomes' => $nomes];
     }
 
