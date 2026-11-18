@@ -184,7 +184,7 @@
             <div x-show="!p.colo" class="grid grid-cols-5 gap-2 mt-1.5 items-end">
               <div class="col-span-3"><label class="lbl">Tipo</label>
                 <select class="field !min-h-0 py-1 text-sm w-full" x-model="p.tipo_id" @change="aplicarTipo(p)">
-                  @foreach($tipos as $t)@if(!$t->colo)@php $lbl = $t->nome.(((($t->modo ?? 'valor')==='porcentagem') && !$t->eh_normal) ? ' ('.$t->percentual.'%)' : ''); @endphp<option value="{{ $t->id }}"@if($t->gratuito || $t->idoso_meia) :disabled="gratInfo && gratInfo.restante<=0" x-text="(gratInfo && gratInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@elseif($t->pcd) :disabled="pcdInfo && pcdInfo.restante<=0" x-text="(pcdInfo && pcdInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@endif>{{ $lbl }}</option>@endif@endforeach
+                  @foreach($tipos->where('colo', false) as $t)@php $lbl = $t->nome.(((($t->modo ?? 'valor')==='porcentagem') && !$t->eh_normal) ? ' ('.$t->percentual.'%)' : ''); @endphp<option value="{{ $t->id }}"@if($t->gratuito || $t->idoso_meia) :disabled="gratInfo && gratInfo.restante<=0" x-text="(gratInfo && gratInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@elseif($t->pcd) :disabled="pcdInfo && pcdInfo.restante<=0" x-text="(pcdInfo && pcdInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@endif>{{ $lbl }}</option>@endforeach
                 </select></div>
               <div class="col-span-2 text-right"><label class="lbl">Valor</label>
                 <div class="text-base font-extrabold leading-tight" style="color:var(--cor1)" x-text="FBRE.moeda(paxTotal(p))"></div></div>
