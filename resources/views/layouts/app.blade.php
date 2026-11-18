@@ -374,6 +374,46 @@ document.addEventListener('alpine:init', () => {
     fmtMoney: v => (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
     parseMoney: s => { const d=String(s||'').replace(/\D/g,''); return d ? parseInt(d,10)/100 : 0; },
     abrirImpressao: url => { const w = window.open(url, 'fbre_print', 'width=420,height=640'); if (w) w.focus(); },
+    // Copia o bilhete (comprovante) como IMAGEM PNG pra colar no WhatsApp/outros.
+    copiarBilheteImg: (btn, baseUrl) => {
+      const prev = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳';
+      let done = false, resolveBlob, rejectBlob;
+      const blobPromise = new Promise((res, rej) => { resolveBlob = res; rejectBlob = rej; });
+      const ifr = document.createElement('iframe');
+      ifr.style.cssText = 'position:fixed;left:-10000px;top:0;width:360px;height:10px;border:0;opacity:0';
+      const cleanup = () => { window.removeEventListener('message', onMsg); try { ifr.remove(); } catch (e) {} };
+      const restore = (t) => { btn.innerHTML = t; setTimeout(() => { btn.innerHTML = prev; btn.disabled = false; }, 1700); };
+      const fail = (msg) => { if (done) return; done = true; cleanup(); try { rejectBlob(new Error('x')); } catch (e) {} restore('✖'); if (msg) alert(msg); };
+      const ok = () => { if (done) return; done = true; cleanup(); restore('✅'); };
+      const canCopy = !!(navigator.clipboard && window.ClipboardItem);
+      const onMsg = async (ev) => {
+        const d = ev.data; if (!d || !d.fbreRaster) return;
+        const imgs = d.imagens || [];
+        if (!imgs.length) { fail('Não consegui gerar a imagem do bilhete.'); return; }
+        try { const blob = await FBRE._bilhetesPng(imgs); resolveBlob(blob); if (!canCopy) { FBRE._baixarPng(blob, 'bilhete.png'); ok(); } }
+        catch (e) { fail('Falha ao montar a imagem.'); }
+      };
+      window.addEventListener('message', onMsg);
+      if (canCopy) {
+        try {
+          navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]).then(ok).catch(() => { blobPromise.then(b => { FBRE._baixarPng(b, 'bilhete.png'); ok(); }).catch(() => {}); });
+        } catch (e) { blobPromise.then(b => { FBRE._baixarPng(b, 'bilhete.png'); ok(); }).catch(() => {}); }
+      }
+      document.body.appendChild(ifr);
+      ifr.src = baseUrl + (baseUrl.indexOf('?') >= 0 ? '&' : '?') + 'raster=1';
+      setTimeout(() => fail('Tempo esgotado ao gerar a imagem.'), 20000);
+    },
+    _bilhetesPng: async (imgs) => {
+      const loaded = await Promise.all(imgs.map(src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; })));
+      const w = Math.max.apply(null, loaded.map(im => im.width));
+      const gap = 16;
+      const h = loaded.reduce((s, im) => s + im.height, 0) + gap * Math.max(0, loaded.length - 1);
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+      let y = 0; for (const im of loaded) { ctx.drawImage(im, 0, y, im.width, im.height); y += im.height + gap; }
+      return await new Promise(res => cv.toBlob(res, 'image/png'));
+    },
+    _baixarPng: (blob, nome) => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = nome || 'bilhete.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); },
     // true se for um CPF válido (11 dígitos + dígitos verificadores). Documento vazio ou que não tenha 11 dígitos (ex.: RG) não é CPF.
     soDigitos: s => String(s||'').replace(/\D/g,''),
     pareceCpf: s => FBRE.soDigitos(s).length === 11,

@@ -174,6 +174,11 @@
               <img :src="'/'+(p.foto||p.foto_rg)" x-show="p.foto||p.foto_rg" x-cloak class="h-9 w-9 object-cover rounded-lg border shrink-0 cursor-pointer" @click="window.open('/'+(p.foto_rg||p.foto),'_blank')" title="Foto (clique p/ ver o documento)">
               <button type="button" class="w-8 h-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none shrink-0" @click="rmPax(i)" x-show="passageiros.length>1" title="Remover">×</button>
             </div>
+            {{-- nascimento + sexo (antes do tipo: a idade define o tipo) --}}
+            <div class="grid grid-cols-2 gap-2 mt-1.5 items-start">
+              <div><label class="lbl">Nascimento</label><input type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" class="field !min-h-0 py-1 text-sm w-full" x-model="p.nasc_br" @input="mascaraNasc(p)"><div x-show="idadeTxt(p)" x-cloak class="text-[10px] font-bold mt-0.5" style="color:var(--cor1)" x-text="'\ud83c\udf82 '+idadeTxt(p)"></div></div>
+              <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm w-full" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+            </div>
             {{-- linha 2: tipo + valor --}}
             <div class="grid grid-cols-5 gap-2 mt-1.5 items-end">
               <div class="col-span-3"><label class="lbl">Tipo</label>
@@ -220,10 +225,8 @@
                 </div>
               </template>
             </div>
-            {{-- linha 5: dados extras (sempre visíveis) --}}
+            {{-- linha 5: telefone + nacionalidade --}}
             <div class="grid grid-cols-2 gap-2 mt-1.5">
-              <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm w-full" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
-              <div><label class="lbl">Nascimento</label><input type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" class="field !min-h-0 py-1 text-sm w-full" x-model="p.nasc_br" @input="mascaraNasc(p)"><div x-show="idadeTxt(p)" x-cloak class="text-[10px] font-bold mt-0.5" style="color:var(--cor1)" x-text="'\ud83c\udf82 '+idadeTxt(p)"></div></div>
               <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" inputmode="tel" placeholder="(00) 00000-0000"></div>
               <div><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.nacionalidade" placeholder="Brasileira"></div>
             </div>
