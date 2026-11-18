@@ -200,7 +200,7 @@
                     <option value="Certidão">Certidão nasc.</option>
                     <option value="Passaporte">Passaporte</option>
                   </select>
-                  <input class="field !min-h-0 py-1 text-sm flex-1 w-full" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(p.documento)}" placeholder="número (opcional)" x-model="p.documento" title="Número do documento. Se for CPF, precisa ser válido.">
+                  <input class="field !min-h-0 py-1 text-sm flex-1 w-full" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(p.documento)}" placeholder="número do documento" x-model="p.documento" title="Número do documento. Se for CPF, precisa ser válido.">
                 </div>
                 <div x-show="!FBRE.docOk(p.documento)" x-cloak class="text-[10px] text-red-500 mt-0.5">CPF inválido</div></div>
               <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)" title="Poltrona (F2)">
@@ -522,11 +522,11 @@
         // garante tipo_id inicial nos passageiros
         if(this.tipos.length && this.normalId==null) this.normalId=this.tipos[0].id;
         try{ const o=localStorage.getItem('fbre_origem'); if(o) this.origemSel=o; }catch(e){}
-        if(!this.origemSel){ const ogs=this.origens; this.origemSel=(ogs&&ogs.length)?ogs[0]:(this.cidades[0]||''); }
+        // origem fica na ultima escolha do operador (restaurada do localStorage acima); sem default fixo
         // destino NÃO é lembrado: muda a cada venda, começa sempre em branco
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
-        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhasTransporte.length){ const n=x=>String(x||'').trim().toLowerCase(); if(this.origemSel && !this.origens.some(c=>n(c)===n(this.origemSel))) this.origemSel=''; if(!this.origemSel){ const ogs=this.origens; if(ogs.length) this.origemSel=ogs[0]; } if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); this.passageiros.forEach(p=>{ if(p.nascimento) this.aplicarIdade(p); }); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
+        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhasTransporte.length){ const n=x=>String(x||'').trim().toLowerCase(); if(this.origemSel && !this.origens.some(c=>n(c)===n(this.origemSel))) this.origemSel=''; if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); this.passageiros.forEach(p=>{ if(p.nascimento) this.aplicarIdade(p); }); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
         this.$watch('origemSel', ()=>this.carregarGratuidade());
         this.$watch('destinoSel', ()=>this.carregarGratuidade());
         this.$watch('viagemData', ()=>this.carregarGratuidade());
@@ -921,6 +921,13 @@
       validarPassageiros(){
         if(!this.passageiros.length){ alert('Adicione ao menos um passageiro.'); return false; }
         if(this.passageiros.some(p=>!p.nome.trim())){ alert('Informe o nome de todos os passageiros.'); return false; }
+        for(const p of this.passageiros){
+          const _nm=(p.nome||'').trim()||'sem nome';
+          if(!p.nascimento){ alert('Informe a data de nascimento de "'+_nm+'".'); return false; }
+          if(!p.sexo){ alert('Selecione o sexo de "'+_nm+'".'); return false; }
+          if(!p.doc_tipo){ alert('Selecione o tipo de documento de "'+_nm+'".'); return false; }
+          if(!(p.documento||'').trim()){ alert('Informe o número do documento de "'+_nm+'".'); return false; }
+        }
         const pxErr=this.passageiros.find(p=>!FBRE.docOk(p.documento));
         if(pxErr){ alert('CPF inválido no passageiro "'+((pxErr.nome||'').trim()||'sem nome')+'". Confira os números ou deixe em branco.'); return false; }
         if(!FBRE.docOk(this.compradorDoc)){ alert('CPF do comprador inválido. Confira os números ou deixe em branco.'); return false; }
