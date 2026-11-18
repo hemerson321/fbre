@@ -237,7 +237,7 @@ class EncomendaController extends Controller
         if (strlen($q) < 2) return [];
 
         $pessoas = Pessoa::where(fn ($w) => $w->where('nome', 'like', "%$q%")->orWhere('telefone', 'like', "%$q%"))
-            ->orderBy('nome')->limit(8)->get(['nome', 'telefone', 'documento']);
+            ->orderBy('nome')->limit(8)->get(['nome', 'telefone', 'documento', 'doc_tipo', 'sexo', 'nascimento', 'nacionalidade', 'foto', 'foto_rg']);
 
         $empresaId = \App\Support\Tenant::id();
 
@@ -269,16 +269,21 @@ class EncomendaController extends Controller
                 try { $nasc = \Carbon\Carbon::parse($nascRaw)->format('Y-m-d'); } catch (\Throwable $e) {}
             }
 
+            $nascPessoa = null;
+            if ($p->nascimento && ! str_starts_with((string) $p->nascimento, '0000')) {
+                try { $nascPessoa = \Carbon\Carbon::parse($p->nascimento)->format('Y-m-d'); } catch (\Throwable $e) {}
+            }
+
             return [
                 'nome' => $p->nome,
                 'telefone' => $p->telefone ?: $pick('telefone'),
                 'documento' => $p->documento ?: $pick('documento'),
-                'doc_tipo' => $pick('doc_tipo'),
-                'sexo' => $pick('sexo'),
-                'nascimento' => $nasc,
-                'nacionalidade' => $pick('nacionalidade'),
-                'foto' => $pick('foto'),
-                'foto_rg' => $pick('foto_rg'),
+                'doc_tipo' => $p->doc_tipo ?: $pick('doc_tipo'),
+                'sexo' => $p->sexo ?: $pick('sexo'),
+                'nascimento' => $nascPessoa ?: $nasc,
+                'nacionalidade' => $p->nacionalidade ?: $pick('nacionalidade'),
+                'foto' => $p->foto ?: $pick('foto'),
+                'foto_rg' => $p->foto_rg ?: $pick('foto_rg'),
             ];
         });
     }

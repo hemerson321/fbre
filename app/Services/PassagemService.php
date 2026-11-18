@@ -143,7 +143,14 @@ class PassagemService
                     'valor_total' => round($vp + $vt + $va, 2),
                     'observacao' => $pax['observacao'] ?? null,
                 ]);
-                $this->lembrarPessoa($pax['nome'], null, $pax['documento'] ?? null);
+                $this->lembrarPessoa($pax['nome'], $pax['telefone'] ?? null, $pax['documento'] ?? null, [
+                    'sexo' => $pax['sexo'] ?? null,
+                    'doc_tipo' => $pax['doc_tipo'] ?? null,
+                    'nascimento' => ($pax['nascimento'] ?? null) ?: null,
+                    'nacionalidade' => $pax['nacionalidade'] ?? null,
+                    'foto' => $pax['foto'] ?? null,
+                    'foto_rg' => $pax['foto_rg'] ?? null,
+                ]);
 
                 // Bebe de colo: vira um passageiro gratuito ligado a mesma passagem (nao ocupa poltrona)
                 $bc = $pax['bebe_colo'] ?? null;
@@ -355,12 +362,27 @@ class PassagemService
         return 'storage/'.$nome;
     }
 
-    protected function lembrarPessoa(string $nome, ?string $tel, ?string $doc): void
+    protected function lembrarPessoa(string $nome, ?string $tel, ?string $doc, array $extra = []): void
     {
         $nome = trim($nome);
         if ($nome === '') return;
+
+        // só guarda no cadastro o que veio preenchido (não apaga o que já existe)
+        $campos = ['sexo', 'doc_tipo', 'nascimento', 'nacionalidade', 'foto', 'foto_rg'];
+        $novos = [];
+        foreach ($campos as $c) {
+            $v = $extra[$c] ?? null;
+            if ($v !== null && $v !== '') $novos[$c] = $v;
+        }
+
         $p = Pessoa::where('nome', $nome)->when($tel, fn ($q) => $q->where('telefone', $tel))->first();
-        if ($p) $p->update(['telefone' => $tel ?: $p->telefone, 'documento' => $doc ?: $p->documento]);
-        else Pessoa::create(['nome' => $nome, 'telefone' => $tel, 'documento' => $doc]);
+        if ($p) {
+            $p->update(array_merge([
+                'telefone' => $tel ?: $p->telefone,
+                'documento' => $doc ?: $p->documento,
+            ], $novos));
+        } else {
+            Pessoa::create(array_merge(['nome' => $nome, 'telefone' => $tel, 'documento' => $doc], $novos));
+        }
     }
 }
