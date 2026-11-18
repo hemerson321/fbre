@@ -104,17 +104,8 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @if($pax->nacionalidade)<div class="row"><span class="k">Nacionalidade</span><span class="vv">{{ $pax->nacionalidade }}</span></div>@endif
     @if($pax->telefone)<div class="row"><span class="k">Telefone</span><span class="vv">{{ $pax->telefone }}</span></div>@endif
     @if($pax->observacao)<div style="margin-top:5px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:5px 8px;font-size:11px;line-height:1.3"><span class="b" style="color:#92400e">📌 Observação:</span> {{ $pax->observacao }}</div>@endif
+    @if($i===0 && $colos->count())@foreach($colos as $b)<div class="row"><span class="k">Colo</span><span class="vv b">{{ strtoupper($b->nome ?: 'BEBÊ') }}</span></div>@endforeach@endif
   </div>
-
-  @if($i===0 && $colos->count())
-  <div class="sec">
-    <div class="sec-h">👶 Bebê(s) de colo</div>
-    @foreach($colos as $b)
-    <div class="row"><span class="k b">{{ strtoupper($b->nome ?: 'BEBÊ') }}</span><span class="vv">@if($b->nascimento){{ $b->nascimento->format('d/m/Y') }}@endif@if($b->documento) · {{ $b->doc_tipo ? $b->doc_tipo.' ' : '' }}{{ $b->documento }}@endif</span></div>
-    @endforeach
-    <div class="muted" style="font-size:8.5px;margin-top:2px">Não ocupa poltrona · sem bilhete próprio</div>
-  </div>
-  @endif
 
   <div class="sec pay">
     <div class="sec-h">Pagamento</div>
