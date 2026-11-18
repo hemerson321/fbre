@@ -30,6 +30,7 @@ class Passagem extends Model
         'total' => 'decimal:2',
         'pago' => 'decimal:2',
         'devido' => 'decimal:2',
+        'documentos_gerais' => 'array',
     ];
 
     public const FORMAS = [

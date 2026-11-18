@@ -196,14 +196,16 @@
             <div class="flex items-center justify-between gap-2 mt-2 pt-1.5 border-t border-slate-100">
               <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
               <div class="flex items-center gap-3">
-                <label class="text-[12px] font-semibold flex items-center gap-1 cursor-pointer" style="color:var(--cor1)">📎 Anexos<input type="file" accept="image/*" multiple capture="environment" class="hidden" @change="anexarDocs(i,$event)"></label>
+                <label class="text-[12px] font-semibold flex items-center gap-1 cursor-pointer" style="color:var(--cor1)">📎 Anexos<input type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple class="hidden" @change="anexarDocs(i,$event)"></label>
               </div>
             </div>
             <div x-show="p.documentos && p.documentos.length" x-cloak class="flex flex-wrap gap-1.5 mt-1.5">
               <template x-for="(d,j) in p.documentos" :key="j">
-                <div class="relative">
-                  <img :src="d" class="h-12 w-12 object-cover rounded-lg border cursor-pointer" @click="window.open(d,'_blank')" title="documento anexado">
-                  <button type="button" @click="removerDoc(i,j)" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 text-[11px] leading-none flex items-center justify-center">×</button>
+                <div class="relative inline-flex items-center gap-1.5 rounded-lg border bg-white pl-1 pr-2 py-1">
+                  <template x-if="ehImgDoc(d)"><img :src="docSrc(d)" class="h-10 w-10 object-cover rounded-md cursor-pointer" @click="abrirDoc(d)" title="ver"></template>
+                  <template x-if="!ehImgDoc(d)"><span class="h-10 w-10 rounded-md bg-slate-100 flex items-center justify-center text-lg cursor-pointer" @click="abrirDoc(d)" x-text="iconeDoc(d)"></span></template>
+                  <span class="text-[11px] font-semibold text-slate-600 truncate max-w-[84px]" x-text="docNome(d)" :title="docNome(d)"></span>
+                  <button type="button" @click="removerDoc(i,j)" class="bg-red-500 text-white rounded-full w-4 h-4 text-[11px] leading-none flex items-center justify-center shrink-0">×</button>
                 </div>
               </template>
             </div>
@@ -221,6 +223,23 @@
         </div>
       </div>
       <input class="field" placeholder="Observação (opcional)" x-model="observacao">
+      <div class="mt-2 rounded-xl border border-slate-200 p-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-[12px] font-bold" style="color:var(--cor1)">🗂️ Documento geral (da passagem)</div>
+          <label class="text-[12px] font-semibold flex items-center gap-1 cursor-pointer shrink-0" style="color:var(--cor1)">📎 Anexar<input type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple class="hidden" @change="anexarGerais($event)"></label>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-0.5">Foto, PDF ou arquivo que vale pra viagem toda (lista, autorização, manifesto...).</p>
+        <div x-show="documentosGerais.length" x-cloak class="flex flex-wrap gap-1.5 mt-1.5">
+          <template x-for="(d,j) in documentosGerais" :key="j">
+            <div class="relative inline-flex items-center gap-1.5 rounded-lg border bg-white pl-1 pr-2 py-1">
+              <template x-if="ehImgDoc(d)"><img :src="docSrc(d)" class="h-10 w-10 object-cover rounded-md cursor-pointer" @click="abrirDoc(d)" title="ver"></template>
+              <template x-if="!ehImgDoc(d)"><span class="h-10 w-10 rounded-md bg-slate-100 flex items-center justify-center text-lg cursor-pointer" @click="abrirDoc(d)" x-text="iconeDoc(d)"></span></template>
+              <span class="text-[11px] font-semibold text-slate-600 truncate max-w-[90px]" x-text="docNome(d)" :title="docNome(d)"></span>
+              <button type="button" @click="documentosGerais.splice(j,1)" class="bg-red-500 text-white rounded-full w-4 h-4 text-[11px] leading-none flex items-center justify-center shrink-0">×</button>
+            </div>
+          </template>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -457,7 +476,7 @@
       trechoMap:{}, taxaMap:{},
       origemSel:@js($ultimaOrigem ?? ''), destinoSel:'',
       embarcacaoSel:@js((string) old('embarcacao_id', $embarcacaoPrincipal)),
-      compradorNome:'', compradorTel:'', compradorDoc:'', observacao:'',
+      compradorNome:'', compradorTel:'', compradorDoc:'', observacao:'', documentosGerais:[],
       lancamentoEm:@js(now()->toDateString()),
       desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
       meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
@@ -504,8 +523,16 @@
       botaoMeio(k){ this.preencher(k); if(k==='pix'){ if(this.pixEstatico){ this.gerarPixEstatico(); } else if(this.pixDinamico){ this.gerarPixDinamico(); } } },
 
       // ---- passageiros ----
-      anexarDocs(i, ev){ const files=Array.from(ev.target.files||[]); const run=async()=>{ for(const fl of files){ try{ const d=await this._imgToDataUrl(fl); if(d && (this.passageiros[i].documentos=this.passageiros[i].documentos||[]).length<12) this.passageiros[i].documentos.push(d); }catch(e){} } }; run(); ev.target.value=''; },
+      _fileToDataUrl(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); },
+      async _lerArquivo(fl){ const isImg=(fl.type||'').startsWith('image/'); let d=null; try{ d= isImg ? await this._imgToDataUrl(fl) : await this._fileToDataUrl(fl); }catch(e){ d=null; } if(!d) return null; return {d:d, n:(fl.name||'arquivo'), t:(fl.type || (isImg?'image/jpeg':'application/octet-stream'))}; },
+      anexarDocs(i, ev){ const files=Array.from(ev.target.files||[]); const arr=(this.passageiros[i].documentos=this.passageiros[i].documentos||[]); const run=async()=>{ for(const fl of files){ if(arr.length>=20) break; const o=await this._lerArquivo(fl); if(o) arr.push(o); } }; run(); ev.target.value=''; },
       removerDoc(i,j){ this.passageiros[i].documentos.splice(j,1); },
+      anexarGerais(ev){ const files=Array.from(ev.target.files||[]); const run=async()=>{ for(const fl of files){ if(this.documentosGerais.length>=20) break; const o=await this._lerArquivo(fl); if(o) this.documentosGerais.push(o); } }; run(); ev.target.value=''; },
+      docSrc(d){ if(d && typeof d==='object'){ return d.d || (d.u ? '/'+d.u : ''); } return d ? '/'+d : ''; },
+      docNome(d){ if(d && typeof d==='object'){ return d.n || (d.u? String(d.u).split('/').pop() : 'arquivo'); } return String(d||'').split('/').pop(); },
+      ehImgDoc(d){ const o=(d&&typeof d==='object'); const t=o?(d.t||''):''; const u=o?(d.u||d.d||''):String(d||''); if(String(t).startsWith('image/'))return true; if(String(u).startsWith('data:image/'))return true; return /\.(jpe?g|png|webp|gif|bmp|heic|heif)(\?|$)/i.test(String(u)); },
+      iconeDoc(d){ if(this.ehImgDoc(d))return'🖼️'; const o=(d&&typeof d==='object'); const s=(o?((d.t||'')+' '+(d.n||d.u||'')):String(d||'')).toLowerCase(); if(s.includes('pdf'))return'📄'; if(/word|\.docx?/.test(s))return'📝'; if(/sheet|excel|\.xlsx?|csv/.test(s))return'📊'; return'📎'; },
+      abrirDoc(d){ const src=this.docSrc(d); if(!src)return; const w=window.open('','_blank'); if(!w){ try{ window.open(src,'_blank'); }catch(e){} return; } const nome=this.docNome(d); if(this.ehImgDoc(d)){ w.document.write('<title>'+nome+'</title><body style="margin:0;background:#111"><img src="'+src+'" style="max-width:100%;display:block;margin:auto"></body>'); } else { w.document.write('<title>'+nome+'</title><body style="margin:0"><iframe src="'+src+'" style="border:0;position:fixed;inset:0;width:100%;height:100%"></iframe></body>'); } w.document.close(); },
       _imgToDataUrl(file){ return new Promise((res,rej)=>{ const img=new Image(); const u=URL.createObjectURL(file); img.onload=()=>{ URL.revokeObjectURL(u); const max=1280; let w=img.width,h=img.height; if(w>max||h>max){ const r=Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r); } const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); try{ res(c.toDataURL('image/jpeg',0.8)); }catch(e){ rej(e); } }; img.onerror=rej; img.src=u; }); },
       novoPax(){ const t=this.tipos[0]||{id:this.normalId,nome:'Adulto',percentual:100,paga_taxa:true,modo:'valor',eh_normal:true}; return {id:Date.now()+Math.random(), nome:'', tipo_id:t.id, tipo:t.nome, percentual:t.percentual, paga_taxa:!!t.paga_taxa, modo:t.modo||'valor', documento:'', poltrona:'', sexo:'', telefone:'', nacionalidade:'Brasileira', nascimento:'', nasc_br:'', foto_rg:'', foto:'', documentos:[], checkin:!!this.checkinAuto, _mais:false, valor_passagem:0, valor_taxa:0, valor_alimentacao:0, valor_integral:0}; },
       addPax(){ const p=this.novoPax(); this.aplicarTipo(p); this.passageiros.push(p); if(this.usaPoltrona){ this.$nextTick(()=>this.abrirMapa(this.passageiros.length-1)); } },
@@ -856,7 +883,8 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:(p.documentos||[]).map(x=>String(x)), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:(p.documentos||[]), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
+          documentos_gerais:this.documentosGerais||[],
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
       },

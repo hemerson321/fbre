@@ -108,6 +108,7 @@ class PassagemService
                 'forma' => $data['forma'] ?? 'avista',
                 'observacao' => $data['observacao'] ?? null,
                 'desconto' => $data['desconto'] ?? 0,
+                'documentos_gerais' => $this->salvarDocs($data['documentos_gerais'] ?? []) ?: null,
                 'user_id' => $userId,
                 'origem_offline' => $offline,
                 'criada_no_aparelho_em' => ! empty($data['criada_em']) ? \Carbon\Carbon::parse($data['criada_em'])->setTimezone(config('app.timezone')) : null,
@@ -118,12 +119,7 @@ class PassagemService
                 $vt = round((float) ($pax['valor_taxa'] ?? 0), 2);
                 $va = round((float) ($pax['valor_alimentacao'] ?? 0), 2);
                 $vi = round((float) ($pax['valor_integral'] ?? ($vp + $vt + $va)), 2);
-                $docs = [];
-                foreach ((array) ($pax['documentos'] ?? []) as $d) {
-                    if (! is_string($d) || $d === '') continue;
-                    $docs[] = str_starts_with($d, 'data:') ? ($this->salvarDataUrl($d) ?? null) : $d;
-                }
-                $docs = array_values(array_filter($docs));
+                $docs = $this->salvarDocs($pax['documentos'] ?? []);
                 $p->passageiros()->create([
                     'nome' => $pax['nome'],
                     'tipo' => $pax['tipo'] ?? 'Adulto',
@@ -302,13 +298,53 @@ class PassagemService
         ])->save();
     }
 
-    /** Salva uma imagem data-URL (base64) no storage publico e devolve o caminho relativo. */
-    protected function salvarDataUrl(string $dataUrl): ?string
+    /**
+     * Normaliza a lista de anexos de documentos: aceita string legada (caminho),
+     * data-URL (qualquer tipo: imagem, PDF, etc.) ou objeto {d:dataUrl, n:nome, t:tipo}
+     * e devolve uma lista de objetos ['u'=>caminho, 'n'=>nome, 't'=>mime].
+     */
+    protected function salvarDocs($raw): array
     {
-        if (! preg_match('/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/', $dataUrl, $m)) return null;
-        $ext = strtolower($m[1]) === 'jpeg' ? 'jpg' : strtolower($m[1]);
-        $bin = base64_decode($m[2], true);
-        if ($bin === false || strlen($bin) < 32) return null;
+        $out = [];
+        foreach ((array) $raw as $d) {
+            if (is_string($d)) {
+                $d = trim($d);
+                if ($d === '') continue;
+                if (str_starts_with($d, 'data:')) {
+                    $u = $this->salvarArquivoDataUrl($d);
+                    if ($u) $out[] = ['u' => $u, 'n' => basename($u), 't' => \App\Support\Docs::mimePorPath($u)];
+                } else {
+                    $out[] = ['u' => $d, 'n' => basename($d), 't' => \App\Support\Docs::mimePorPath($d)];
+                }
+                continue;
+            }
+            if (is_array($d)) {
+                $nome = isset($d['n']) ? mb_substr((string) $d['n'], 0, 120) : null;
+                $tipo = $d['t'] ?? null;
+                $dataUrl = $d['d'] ?? null;
+                if (is_string($dataUrl) && str_starts_with($dataUrl, 'data:')) {
+                    $u = $this->salvarArquivoDataUrl($dataUrl, $tipo);
+                    if ($u) $out[] = ['u' => $u, 'n' => $nome ?: basename($u), 't' => $tipo ?: \App\Support\Docs::mimePorPath($u)];
+                } elseif (! empty($d['u'])) {
+                    $out[] = ['u' => $d['u'], 'n' => $nome ?: basename($d['u']), 't' => $tipo ?: \App\Support\Docs::mimePorPath($d['u'])];
+                }
+            }
+        }
+        return array_slice($out, 0, 20);
+    }
+
+    /** Salva um data-URL (qualquer mime) no storage publico e devolve o caminho relativo. */
+    protected function salvarArquivoDataUrl(string $dataUrl, ?string $mimeHint = null): ?string
+    {
+        if (! preg_match('#^data:([^;,]*)(;[^,]*)?;base64,(.+)$#s', $dataUrl, $m)) {
+            if (! preg_match('#^data:([^;,]*);base64,(.+)$#s', $dataUrl, $m)) return null;
+            $m = [$m[0], $m[1], '', $m[2]];
+        }
+        $mime = $m[1] !== '' ? $m[1] : ($mimeHint ?: 'application/octet-stream');
+        $bin = base64_decode($m[3], true);
+        if ($bin === false || strlen($bin) < 16) return null;
+        if (strlen($bin) > 12 * 1024 * 1024) return null; // teto 12MB por anexo
+        $ext = \App\Support\Docs::extPorMime($mime);
         $nome = 'documentos/'.date('Y/m/d').'/'.\Illuminate\Support\Str::random(28).'.'.$ext;
         \Illuminate\Support\Facades\Storage::disk('public')->put($nome, $bin);
         return 'storage/'.$nome;

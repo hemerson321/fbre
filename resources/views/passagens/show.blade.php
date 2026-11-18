@@ -28,7 +28,7 @@
 @php $miniatura = $pax->foto ?: $pax->foto_rg; @endphp @if($miniatura)<a href="/{{ $pax->foto_rg ?: $pax->foto }}" target="_blank" title="Ver documento"><img src="/{{ $miniatura }}" class="h-10 w-10 object-cover rounded border shrink-0"></a>@endif
             <div>{{ $pax->nome }}
             <span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded {{ $pax->checkin ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600' }}">{{ $pax->checkin ? 'check-in ✓' : 'sem check-in' }}</span>
-            <div class="text-xs text-slate-500">{{ $pax->tipo }} ({{ $pax->percentual }}%)@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif @if($pax->documento)· {{ $pax->documento }}@endif</div>@if($pax->valor_integral > $pax->valor_total + 0.009)<div class="text-xs text-amber-600">Preço normal R$ {{ number_format($pax->valor_integral,2,',','.') }} · Pago R$ {{ number_format($pax->valor_total,2,',','.') }}</div>@endif<div class="text-xs text-slate-400">Transp. R$ {{ number_format($pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. R$ {{ number_format($pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div>@if($pax->documentos)<div class="flex flex-wrap gap-1 mt-1">@foreach($pax->documentos as $doc)<a href="/{{ $doc }}" target="_blank" title="documento anexado"><img src="/{{ $doc }}" class="h-9 w-9 object-cover rounded border shrink-0"></a>@endforeach</div>@endif</div></div>
+            <div class="text-xs text-slate-500">{{ $pax->tipo }} ({{ $pax->percentual }}%)@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif @if($pax->documento)· {{ $pax->documento }}@endif</div>@if($pax->valor_integral > $pax->valor_total + 0.009)<div class="text-xs text-amber-600">Preço normal R$ {{ number_format($pax->valor_integral,2,',','.') }} · Pago R$ {{ number_format($pax->valor_total,2,',','.') }}</div>@endif<div class="text-xs text-slate-400">Transp. R$ {{ number_format($pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. R$ {{ number_format($pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div>@if($pax->documentos)<div class="mt-1.5">@include('passagens._docs', ['docs'=>$pax->documentos, 'size'=>44])</div>@endif</div></div>
           <div class="text-right font-semibold">R$ {{ number_format($pax->valor_total,2,',','.') }}</div>
         </div>
       @endforeach
@@ -42,6 +42,14 @@
       <div class="flex justify-between {{ $p->devido>0.009?'text-red-600 font-semibold':'text-emerald-600' }}"><span>Devido</span><span>R$ {{ number_format($p->devido,2,',','.') }}</span></div>
     </div>
   </div>
+
+  @php $__docsGerais = \App\Support\Docs::lista($p->documentos_gerais ?? []); @endphp
+  @if(count($__docsGerais))
+  <div class="card p-4">
+    <div class="font-semibold mb-2 flex items-center gap-2">🗂️ Documentos gerais <span class="text-[11px] font-normal text-slate-400">({{ count($__docsGerais) }})</span></div>
+    @include('passagens._docs', ['docs'=>$p->documentos_gerais, 'size'=>56])
+  </div>
+  @endif
 
   {{-- baixa de pagamento --}}
   @if(!$p->cancelada && $p->devido>0.009 && $u->permite('passagem','baixa'))
