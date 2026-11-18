@@ -886,14 +886,16 @@
         if(p.foto) px.foto=p.foto; if(p.foto_rg) px.foto_rg=p.foto_rg;
         px._mais=true; this.aplicarIdade(px);
         this.paxAberto=-1; this.paxLista=[]; },
+      // Converte anexos (proxies reativos do Alpine) em objetos puros p/ o IndexedDB clonar sem erro.
+      _docsPlanos(lista){ return (lista||[]).map(d=> (d && typeof d==='object') ? {d:(d.d||null), u:(d.u||null), n:(d.n||null), t:(d.t||null)} : (d!=null?String(d):null)).filter(x=>x && (x===Object(x) ? (x.d||x.u) : true)); },
       montarDados(){
         return {
           origem:this.origemSel, destino:this.destinoSel,
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:(p.documentos||[]), papel:p.colo?'colo':(p.papel||null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
-          documentos_gerais:this.documentosGerais||[],
+          passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.colo?'colo':(p.papel||null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
+          documentos_gerais:this._docsPlanos(this.documentosGerais),
           pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
         };
       },
