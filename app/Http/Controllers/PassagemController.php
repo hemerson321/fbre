@@ -95,7 +95,10 @@ class PassagemController extends Controller
             })->pluck('embarcacao_id')->unique()->values();
         $embarcacoes = Embarcacao::where('ativo', true)->whereIn('id', $embComVenda)->orderBy('nome')
             ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas', 'regra_idade']);
-        $colunas = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao', 'idade_min', 'idade_max', 'gratuito', 'pcd', 'idoso_meia', 'colo'];
+        $colBase = ['id', 'nome', 'cor', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao', 'idade_min', 'idade_max', 'gratuito', 'pcd', 'idoso_meia', 'colo'];
+        // resiliente: só seleciona colunas que existem (evita 500 se uma migration ainda não rodou no banco do cliente)
+        $existentes = \Illuminate\Support\Facades\Schema::getColumnListing('tipos_passageiro');
+        $colunas = array_values(array_intersect($colBase, $existentes)) ?: ['id', 'nome', 'percentual', 'paga_taxa', 'modo', 'eh_normal'];
         $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get($colunas);
         if ($tipos->isEmpty()) {
             // auto-reparo: cria o Normal (Adulto) e alguns tipos padrão
