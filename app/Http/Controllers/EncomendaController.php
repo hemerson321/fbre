@@ -235,8 +235,37 @@ class EncomendaController extends Controller
     {
         $q = trim((string) $request->query('q'));
         if (strlen($q) < 2) return [];
-        return Pessoa::where(fn ($w) => $w->where('nome', 'like', "%$q%")->orWhere('telefone', 'like', "%$q%"))
+
+        $pessoas = Pessoa::where(fn ($w) => $w->where('nome', 'like', "%$q%")->orWhere('telefone', 'like', "%$q%"))
             ->orderBy('nome')->limit(8)->get(['nome', 'telefone', 'documento']);
+
+        $empresaId = \App\Support\Tenant::id();
+
+        // Enriquece cada pessoa com o ultimo cadastro dela nas passagens (sexo, nascimento, foto...).
+        return $pessoas->map(function ($p) use ($empresaId) {
+            $pax = \Illuminate\Support\Facades\DB::table('passagem_passageiros as pp')
+                ->join('passagens as ps', 'ps.id', '=', 'pp.passagem_id')
+                ->where('ps.empresa_id', $empresaId)
+                ->when($p->documento, fn ($w) => $w->where('pp.documento', $p->documento), fn ($w) => $w->where('pp.nome', $p->nome))
+                ->orderByDesc('pp.id')
+                ->first(['pp.sexo', 'pp.nascimento', 'pp.nacionalidade', 'pp.telefone', 'pp.documento', 'pp.foto', 'pp.foto_rg']);
+
+            $nasc = null;
+            if ($pax && $pax->nascimento && ! str_starts_with((string) $pax->nascimento, '0000')) {
+                try { $nasc = \Carbon\Carbon::parse($pax->nascimento)->format('Y-m-d'); } catch (\Throwable $e) {}
+            }
+
+            return [
+                'nome' => $p->nome,
+                'telefone' => $p->telefone ?: ($pax->telefone ?? null),
+                'documento' => $p->documento ?: ($pax->documento ?? null),
+                'sexo' => $pax->sexo ?? null,
+                'nascimento' => $nasc,
+                'nacionalidade' => $pax->nacionalidade ?? null,
+                'foto' => $pax->foto ?? null,
+                'foto_rg' => $pax->foto_rg ?? null,
+            ];
+        });
     }
 
     // ------------------------------------------------------------------

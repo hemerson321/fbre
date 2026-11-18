@@ -877,7 +877,15 @@
       },
       // ---- autocomplete de passageiro (busca em pessoas já cadastradas) ----
       async buscarPax(i){ const q=(this.passageiros[i]?.nome||'').trim(); if(q.length<2){ this.paxLista=[]; this.paxAberto=-1; return; } try{ const r=await fetch(`{{ route('pessoas.buscar') }}?q=${encodeURIComponent(q)}`); this.paxLista=await r.json(); this.paxAberto=i; }catch(e){} },
-      escolherPax(i,p){ const px=this.passageiros[i]; if(!px) return; px.nome=p.nome; if(p.documento) px.documento=p.documento; if(p.telefone) px.telefone=p.telefone; this.paxAberto=-1; this.paxLista=[]; },
+      escolherPax(i,p){ const px=this.passageiros[i]; if(!px) return; px.nome=p.nome;
+        if(p.documento && !FBRE.pareceCpf(p.documento)) px.documento=p.documento; // documento so se for RG (CPF nao)
+        if(p.telefone) px.telefone=p.telefone;
+        if(p.sexo) px.sexo=p.sexo;
+        if(p.nacionalidade) px.nacionalidade=p.nacionalidade;
+        if(p.nascimento){ px.nascimento=p.nascimento; px.nasc_br=this.isoToBr(p.nascimento); }
+        if(p.foto) px.foto=p.foto; if(p.foto_rg) px.foto_rg=p.foto_rg;
+        px._mais=true; this.aplicarIdade(px);
+        this.paxAberto=-1; this.paxLista=[]; },
       montarDados(){
         return {
           origem:this.origemSel, destino:this.destinoSel,
