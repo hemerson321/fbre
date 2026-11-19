@@ -4,7 +4,7 @@
 <div class="max-w-3xl mx-auto space-y-4">
   <div>
     <h1 class="text-xl font-bold">Transportes / embarcações</h1>
-    <p class="text-xs text-slate-500">Cadastre os barcos/lanchas: poltronas, dono, comissão da empresa, política de cancelamento e rastreio.</p>
+    <p class="text-xs text-slate-500">Cadastre os barcos/lanchas: poltronas, proprietário, comissão da empresa, política de cancelamento e rastreio.</p>
   </div>
   {{-- TRANSPORTES / EMBARCAÇÕES com config de poltrona --}}
   <div class="card p-4 space-y-2 md:col-span-2">
@@ -24,7 +24,7 @@
       @forelse($embarcacoes as $e)
         <form method="post" action="{{ route('admin.embarcacoes.salvar',$e) }}" enctype="multipart/form-data" class="rounded-xl border border-slate-200 p-3 {{ $e->ativo?'':'opacity-50' }}" x-data="{ aberto:false, pol: {{ $e->usa_poltrona?'true':'false' }}, qtd: {{ $e->poltronas_qtd ?: 0 }}, colunas: {{ $e->poltronas_colunas ?: 4 }}, avancado: {{ trim((string)($e->poltronas_lista ?? '')) !== '' ? 'true':'false' }}, layout: {{ \Illuminate\Support\Js::from($e->poltronas_lista ?? '') }}, nomes: [], init(){ if(String(this.layout).trim()){ this.nomes=String(this.layout).split(/[\s|]+/).map(s=>s.trim()).filter(s=>s!==''); this.qtd=this.nomes.length; } else { this.sincronizar(); } }, sincronizar(){ const n=Math.max(0,Math.min(500,parseInt(this.qtd)||0)); const nv=[]; for(let i=0;i<n;i++){ nv.push((this.nomes[i]!==undefined&&String(this.nomes[i]).trim()!=='')?this.nomes[i]:String(i+1)); } this.nomes=nv; }, get esq(){ return Math.ceil(this.colunas/2); }, montar(){ if(this.avancado&&String(this.layout).trim()) return this.layout; let L=[]; for(let i=0;i<this.nomes.length;i+=this.colunas){ const f=this.nomes.slice(i,i+this.colunas); const e=f.slice(0,this.esq).join(' '); const d=f.slice(this.esq).join(' '); L.push(d?(e+' | '+d):e); } return L.join('\n'); } }">@csrf
           <div class="flex items-center justify-between cursor-pointer gap-2" @click="aberto=!aberto">
-            <div class="font-bold text-slate-700">🚤 {{ $e->nome }}@if(!$e->ativo) <span class="chip st-cinza text-xs">inativo</span>@endif @if($e->dono_id || $e->dono_nome)<span class="text-[11px] text-slate-400 font-normal"> · {{ $e->dono_id ? "👤 dono: " : "dono " }}{{ optional($e->dono)->name ?? $e->dono_nome }}</span>@endif</div>
+            <div class="font-bold text-slate-700">🚤 {{ $e->nome }}@if(!$e->ativo) <span class="chip st-cinza text-xs">inativo</span>@endif @if($e->dono_id || $e->dono_nome)<span class="text-[11px] text-slate-400 font-normal"> · {{ $e->dono_id ? "👤 proprietário: " : "proprietário " }}{{ optional($e->dono)->name ?? $e->dono_nome }}</span>@endif</div>
             <span class="text-slate-400 text-sm select-none" x-text="(aberto||todos)?'▲':'▼'"></span>
           </div>
           <div x-show="aberto || todos" x-cloak class="mt-2 space-y-0">
@@ -80,32 +80,32 @@
               <p class="text-[11px] text-slate-400 mt-0.5">Usada na devolução pra saber se a lancha <b>já saiu</b> (retém a % de depois) ou <b>não</b> (retém a de antes). Sem hora, só vira "depois" quando o dia da viagem acaba.</p>
             </div>
             <div class="mt-2">
-              <label class="label !text-xs">👤 Dono (usuário do sistema)</label>
+              <label class="label !text-xs">👤 Proprietário (usuário do sistema)</label>
               <select name="dono_id" class="input !min-h-[40px]">
-                <option value="">— sem usuário dono —</option>
+                <option value="">— sem usuário proprietário —</option>
                 @foreach(($usuarios ?? []) as $u)<option value="{{ $u->id }}" @selected((string)($e->dono_id ?? '')===(string)$u->id)>{{ $u->name }}</option>@endforeach
               </select>
-              <p class="text-[11px] text-slate-400 mt-0.5">O dono entra no sistema e vê a tela <b>Meu transporte</b>: vendas do balcão e dos agentes desta lancha, e dá baixa ele mesmo.</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">O proprietário entra no sistema e vê a tela <b>Meu transporte</b>: vendas do balcão e dos agentes desta lancha, e dá baixa ele mesmo.</p>
             </div>
             <div class="mt-2 rounded-xl border border-sky-200 bg-sky-50 p-2.5" x-data="{ab:false}">
-              <button type="button" class="text-[12px] font-bold text-sky-700" @click="ab=!ab"><span x-text="ab?'▾':'▸'"></span> ➕ Criar login do dono aqui</button>
+              <button type="button" class="text-[12px] font-bold text-sky-700" @click="ab=!ab"><span x-text="ab?'▾':'▸'"></span> ➕ Criar login do proprietário aqui</button>
               <div x-show="ab" x-cloak class="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div><label class="label !text-xs">Nome do dono</label><input name="novo_dono_nome" class="input !min-h-[38px]" placeholder="nome completo" maxlength="100" autocomplete="off"></div>
+                <div><label class="label !text-xs">Nome do proprietário</label><input name="novo_dono_nome" class="input !min-h-[38px]" placeholder="nome completo" maxlength="100" autocomplete="off"></div>
                 <div><label class="label !text-xs">Login</label><input name="novo_dono_login" class="input !min-h-[38px]" placeholder="ex: joao.silva" maxlength="40" autocomplete="off"></div>
                 <div><label class="label !text-xs">Senha</label><input name="novo_dono_senha" type="text" class="input !min-h-[38px]" placeholder="mínimo 6 caracteres" autocomplete="off"></div>
               </div>
-              <p x-show="ab" x-cloak class="text-[11px] text-slate-500 mt-1">Deixe o seletor acima em “— sem usuário dono —”. Se o <b>login já existir</b>, usa o mesmo dono (serve pra pôr o mesmo dono em vários barcos). Senão, cria um usuário novo com papel <b>Dono de Transporte</b>.</p>
+              <p x-show="ab" x-cloak class="text-[11px] text-slate-500 mt-1">Deixe o seletor acima em “— sem usuário proprietário —”. Se o <b>login já existir</b>, usa o mesmo proprietário (serve pra pôr o mesmo proprietário em vários barcos). Senão, cria um usuário novo com papel <b>Proprietário de Transporte</b>.</p>
             </div>
             <div class="grid grid-cols-2 gap-2 mt-2">
-              <div><label class="label !text-xs">Nome do dono (se não tiver usuário)</label>
-                <input name="dono_nome" class="input !min-h-[40px]" value="{{ $e->dono_nome }}" placeholder="nome do dono da lancha" maxlength="120"></div>
+              <div><label class="label !text-xs">Nome do proprietário (se não tiver usuário)</label>
+                <input name="dono_nome" class="input !min-h-[40px]" value="{{ $e->dono_nome }}" placeholder="nome do proprietário da lancha" maxlength="120"></div>
               <div><label class="label !text-xs">Comissão da empresa %</label><input name="comissao_empresa_pct" type="number" min="0" max="100" value="{{ $e->comissao_empresa_pct }}" class="input !min-h-[40px]" placeholder="0"></div>
             </div>
-            <p class="text-[11px] text-slate-400">A empresa fica com essa % de cada passagem deste transporte; o dono recebe o resto (acerto em Acertos).</p>
+            <p class="text-[11px] text-slate-400">A empresa fica com essa % de cada passagem deste transporte; o proprietário recebe o resto (acerto em Acertos).</p>
             <div class="mt-2" x-data="{ rp: @js($e->repasse_pix ?: 'dono') }">
-              <label class="label !text-xs">💠 PIX do repasse ao dono (como o agente paga)</label>
+              <label class="label !text-xs">💠 PIX do repasse ao proprietário (como o agente paga)</label>
               <select name="repasse_pix" x-model="rp" class="input !min-h-[40px]">
-                <option value="dono">PIX do próprio dono (cadastrado no usuário dele)</option>
+                <option value="dono">PIX do próprio proprietário (cadastrado no usuário dele)</option>
                 <option value="empresa">PIX da empresa (uma API de pagamento)</option>
               </select>
               <div x-show="rp==='empresa'" x-cloak class="mt-2">
@@ -115,7 +115,7 @@
                   @foreach(($apis ?? []) as $api)<option value="{{ $api->id }}" @selected((string)($e->repasse_pix_api_id ?? '')===(string)$api->id)>{{ $api->rotulo() }}</option>@endforeach
                 </select>
               </div>
-              <p class="text-[11px] text-slate-400 mt-0.5">O agente vê o PIX pra pagar o dono no Relatório. <b>Estático</b> (chave) = paga e avisa, empresa/dono dá baixa. <b>Dinâmico</b> (Mercado Pago) = baixa sozinho.</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">O agente vê o PIX pra pagar o proprietário no Relatório. <b>Estático</b> (chave) = paga e avisa, empresa/proprietário dá baixa. <b>Dinâmico</b> (Mercado Pago) = baixa sozinho.</p>
             </div>
             <p class="text-[11px] text-slate-400 mt-0.5">Cole o link da API de posição deste barco. Com ele, o sistema avisa o destinatário no WhatsApp ~1h antes da encomenda chegar na cidade de destino.</p>
             <div class="border-t pt-2 mt-2" x-data="{ ri: {{ ($e->regra_idade ? 'true':'false') }} }">

@@ -87,7 +87,7 @@
       </div>
     </div>
 
-    {{-- BALCAO: a empresa deve ao dono --}}
+    {{-- BALCAO: a empresa deve ao proprietário --}}
     <div class="rounded-xl border border-slate-200 p-3">
       <div class="flex items-center justify-between gap-2 flex-wrap">
         <div>
@@ -101,7 +101,7 @@
       </div>
     </div>
 
-    {{-- AGENTES: pagam direto ao dono --}}
+    {{-- AGENTES: pagam direto ao proprietário --}}
     <div class="rounded-xl border border-slate-200 p-3 space-y-2">
       <div class="font-semibold text-slate-700">🤝 Agentes <span class="text-[11px] text-slate-400 font-normal">· pagam direto a você</span></div>
       @forelse($agentesList as $ag)

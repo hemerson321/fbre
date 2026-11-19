@@ -6,7 +6,7 @@
     ['admin',    '🛡️ Administrador', 'desktop', $admins],
     ['operador', '💼 Operador',       'desktop', $operadores],
     ['agente',   '🤝 Agente',         'mobile',  $agentes],
-    ['dono',     '🚤 Dono',           'mobile',  $donos],
+    ['dono',     '🚤 Proprietário',           'mobile',  $donos],
   ];
   $frameHtml = function ($f) {
     [$role,$label,$tipo,$lista] = $f;

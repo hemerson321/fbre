@@ -40,7 +40,7 @@
     <div>
       <h1>Prestação de contas — {{ $embarcacao->nome }}</h1>
       <div class="muted">
-        Dono: <b>{{ $embarcacao->dono_nome ?: '—' }}</b> · Comissão da empresa: {{ $pct }}%<br>
+        Proprietário: <b>{{ $embarcacao->dono_nome ?: '—' }}</b> · Comissão da empresa: {{ $pct }}%<br>
         Emitido em {{ now()->format('d/m/Y H:i') }}@if($empresa) · {{ $empresa->nomeExibicao() }}@endif
       </div>
     </div>
@@ -53,13 +53,13 @@
   <div class="resumo">
     <div><div class="b">Total vendido</div><div class="v">R$ {{ $moeda($bruto) }}</div></div>
     <div><div class="b">Comissão da empresa ({{ $pct }}%)</div><div class="v">R$ {{ $moeda($comissao) }}</div></div>
-    <div><div class="b">A pagar ao dono</div><div class="v pagar">R$ {{ $moeda($dono) }}</div></div>
+    <div><div class="b">A pagar ao proprietário</div><div class="v pagar">R$ {{ $moeda($dono) }}</div></div>
   </div>
 
   {{-- BALCÃO --}}
-  <h2><span>🏬 Vendas de balcão (empresa) — {{ $balcao->count() }}</span><span>Dono: R$ {{ $moeda($donoBalcao) }}</span></h2>
+  <h2><span>🏬 Vendas de balcão (empresa) — {{ $balcao->count() }}</span><span>Proprietário: R$ {{ $moeda($donoBalcao) }}</span></h2>
   <table>
-    <thead><tr><th>Nº</th><th>Passagem</th><th>Trecho</th><th>Data</th><th>Operador</th><th class="r">Valor</th><th class="r">Com. empresa</th><th class="r">Dono</th></tr></thead>
+    <thead><tr><th>Nº</th><th>Passagem</th><th>Trecho</th><th>Data</th><th>Operador</th><th class="r">Valor</th><th class="r">Com. empresa</th><th class="r">Proprietário</th></tr></thead>
     <tbody>
       @forelse($balcao as $i => $p)
       <tr>
@@ -70,21 +70,21 @@
         <td>{{ $p->operador?->name ?: '—' }}</td>
         <td class="r">R$ {{ $moeda($p->total) }}</td>
         <td class="r">R$ {{ $moeda($p->total - $p->dono_valor) }}</td>
-        <td class="r dono">R$ {{ $moeda($p->dono_valor) }}</td>
+        <td class="r proprietário">R$ {{ $moeda($p->dono_valor) }}</td>
       </tr>
       @empty
       <tr><td colspan="8" style="text-align:center;color:#999">Sem vendas de balcão.</td></tr>
       @endforelse
     </tbody>
     @if($balcao->isNotEmpty())
-    <tfoot><tr><td colspan="5">Subtotal balcão</td><td class="r">R$ {{ $moeda($brutoBalcao) }}</td><td class="r">R$ {{ $moeda($brutoBalcao - $donoBalcao) }}</td><td class="r dono">R$ {{ $moeda($donoBalcao) }}</td></tr></tfoot>
+    <tfoot><tr><td colspan="5">Subtotal balcão</td><td class="r">R$ {{ $moeda($brutoBalcao) }}</td><td class="r">R$ {{ $moeda($brutoBalcao - $donoBalcao) }}</td><td class="r proprietário">R$ {{ $moeda($donoBalcao) }}</td></tr></tfoot>
     @endif
   </table>
 
   {{-- AGENTES --}}
-  <h2><span>🤝 Vendas de agentes (repasse) — {{ $agentes->count() }}</span><span>Dono: R$ {{ $moeda($donoAgentes) }}</span></h2>
+  <h2><span>🤝 Vendas de agentes (repasse) — {{ $agentes->count() }}</span><span>Proprietário: R$ {{ $moeda($donoAgentes) }}</span></h2>
   <table>
-    <thead><tr><th>Nº</th><th>Passagem</th><th>Trecho</th><th>Data</th><th>Agente</th><th class="r">Valor</th><th class="r">Com. agente</th><th class="r">Dono</th></tr></thead>
+    <thead><tr><th>Nº</th><th>Passagem</th><th>Trecho</th><th>Data</th><th>Agente</th><th class="r">Valor</th><th class="r">Com. agente</th><th class="r">Proprietário</th></tr></thead>
     <tbody>
       @forelse($agentes as $i => $p)
       <tr>
@@ -95,21 +95,21 @@
         <td>{{ $p->operador?->name ?: '—' }}</td>
         <td class="r">R$ {{ $moeda($p->total) }}</td>
         <td class="r">R$ {{ $moeda($p->total - $p->dono_valor) }}</td>
-        <td class="r dono">R$ {{ $moeda($p->dono_valor) }}</td>
+        <td class="r proprietário">R$ {{ $moeda($p->dono_valor) }}</td>
       </tr>
       @empty
       <tr><td colspan="8" style="text-align:center;color:#999">Sem vendas de agentes.</td></tr>
       @endforelse
     </tbody>
     @if($agentes->isNotEmpty())
-    <tfoot><tr><td colspan="5">Subtotal agentes</td><td class="r">R$ {{ $moeda($brutoAgentes) }}</td><td class="r">R$ {{ $moeda($brutoAgentes - $donoAgentes) }}</td><td class="r dono">R$ {{ $moeda($donoAgentes) }}</td></tr></tfoot>
+    <tfoot><tr><td colspan="5">Subtotal agentes</td><td class="r">R$ {{ $moeda($brutoAgentes) }}</td><td class="r">R$ {{ $moeda($brutoAgentes - $donoAgentes) }}</td><td class="r proprietário">R$ {{ $moeda($donoAgentes) }}</td></tr></tfoot>
     @endif
   </table>
 
   <div class="obs">
-    <b>Como é calculado:</b> em vendas de <b>balcão</b> (feitas pela empresa) o dono recebe o valor da passagem menos a comissão da empresa ({{ $pct }}%).
-    Em vendas de <b>agentes de repasse</b>, a empresa apenas intermedia: o dono recebe o repasse integral e o agente fica com a comissão dele.
-    Total a pagar ao dono: <b>R$ {{ $moeda($dono) }}</b>.
+    <b>Como é calculado:</b> em vendas de <b>balcão</b> (feitas pela empresa) o proprietário recebe o valor da passagem menos a comissão da empresa ({{ $pct }}%).
+    Em vendas de <b>agentes de repasse</b>, a empresa apenas intermedia: o proprietário recebe o repasse integral e o agente fica com a comissão dele.
+    Total a pagar ao proprietário: <b>R$ {{ $moeda($dono) }}</b>.
   </div>
 </body>
 </html>

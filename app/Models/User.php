@@ -64,7 +64,7 @@ class User extends Authenticatable
         'operador_barco' => 'Operador de Balcão',
         'agencia_externa' => 'Agência Externa',
         'gerente' => 'Gerente',
-        'dono_transporte' => 'Dono de Transporte',
+        'dono_transporte' => 'Proprietário de Transporte',
     ];
 
     protected static function booted(): void

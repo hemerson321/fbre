@@ -266,7 +266,7 @@ class CadastroController extends Controller
             } else {
                 $nSenha = (string) $request->input('novo_dono_senha');
                 if (strlen($nSenha) < 6) {
-                    return back()->withErrors(['novo_dono_senha' => 'Para criar o dono, informe uma senha de pelo menos 6 caracteres.'])->withInput();
+                    return back()->withErrors(['novo_dono_senha' => 'Para criar o proprietário, informe uma senha de pelo menos 6 caracteres.'])->withInput();
                 }
                 $novo = \App\Models\User::create([
                     'empresa_id' => $tid,

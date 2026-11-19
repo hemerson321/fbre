@@ -8,14 +8,14 @@
 @endphp
 <div class="max-w-3xl mx-auto space-y-4">
   <div><h1 class="text-xl font-bold">Acertos</h1>
-    <p class="text-xs text-slate-500">Confira o caixa dos operadores, dê baixa no que os agentes repassam e acerte com os donos dos transportes.</p></div>
+    <p class="text-xs text-slate-500">Confira o caixa dos operadores, dê baixa no que os agentes repassam e acerte com os proprietários dos transportes.</p></div>
 
   {{-- abas --}}
   <div class="flex flex-wrap gap-2">
     <a href="{{ $qs(null) }}" class="btn btn-sm {{ !$aba ? 'text-white' : 'btn-ghost' }}" @if(!$aba) style="background:var(--cor1)" @endif>Tudo</a>
     <a href="{{ $qs('operadores') }}" class="btn btn-sm {{ $aba==='operadores' ? 'text-white' : 'btn-ghost' }}" @if($aba==='operadores') style="background:var(--cor1)" @endif>💵 Operadores</a>
     @if($usaRev)<a href="{{ $qs('agentes') }}" class="btn btn-sm {{ $aba==='agentes' ? 'text-white' : 'btn-ghost' }}" @if($aba==='agentes') style="background:var(--cor1)" @endif>🤝 Agentes</a>@endif
-    <a href="{{ $qs('transportes') }}" class="btn btn-sm {{ $aba==='transportes' ? 'text-white' : 'btn-ghost' }}" @if($aba==='transportes') style="background:var(--cor1)" @endif>🚤 Transportes — Donos</a>
+    <a href="{{ $qs('transportes') }}" class="btn btn-sm {{ $aba==='transportes' ? 'text-white' : 'btn-ghost' }}" @if($aba==='transportes') style="background:var(--cor1)" @endif>🚤 Transportes — Proprietários</a>
   </div>
 
   {{-- período (afeta o conferir dos operadores) --}}
@@ -128,15 +128,15 @@
   <div>
     <div class="flex items-center gap-2 mb-2">
       <span class="text-base">🚤</span>
-      <h2 class="font-bold">Transportes — Donos</h2>
-      <span class="text-xs text-slate-400">— a empresa fica com a comissão e paga o resto pro dono</span>
+      <h2 class="font-bold">Transportes — Proprietários</h2>
+      <span class="text-xs text-slate-400">— a empresa fica com a comissão e paga o resto pro proprietário</span>
     </div>
     @forelse($donos as $l)
       <div class="card p-4 flex items-center gap-3 mb-2">
         <div class="flex-1 min-w-0">
-          <div class="font-semibold">🚤 {{ $l['emb']->nome }}@if($l['emb']->dono_nome) <span class="text-xs text-slate-400 font-normal">· dono: {{ $l['emb']->dono_nome }}</span>@endif</div>
+          <div class="font-semibold">🚤 {{ $l['emb']->nome }}@if($l['emb']->dono_nome) <span class="text-xs text-slate-400 font-normal">· proprietário: {{ $l['emb']->dono_nome }}</span>@endif</div>
           <div class="text-xs text-slate-500">
-            <span class="font-bold {{ $l['dono']>0 ? 'text-red-600':'text-emerald-600' }}">A pagar ao dono: R$ {{ number_format($l['dono'],2,',','.') }}</span>
+            <span class="font-bold {{ $l['dono']>0 ? 'text-red-600':'text-emerald-600' }}">A pagar ao proprietário: R$ {{ number_format($l['dono'],2,',','.') }}</span>
             <span class="ml-1">({{ $l['qtd'] }} passagens · comissão {{ $l['pct'] }}%)</span>
             @if($l['pago']>0)· já pago R$ {{ number_format($l['pago'],2,',','.') }}@endif
           </div>
@@ -144,8 +144,8 @@
         <div class="flex items-center gap-2">
           <a href="{{ route('admin.acertos.dono-relatorio',$l['emb']) }}{{ $dataViagem ? '?data_viagem='.$dataViagem : '' }}" class="btn btn-ghost btn-sm whitespace-nowrap">📄 Relatório</a>
           @if($l['qtd']>0)
-          <form method="post" action="{{ route('admin.acertos.baixa-dono',$l['emb']) }}" onsubmit="return confirm('Pagar o dono de {{ $l['emb']->nome }}? Marca {{ $l['qtd'] }} passagens como acertadas com o dono.')">@csrf @if($dataViagem)<input type="hidden" name="data_viagem" value="{{ $dataViagem }}">@endif
-            <button class="btn btn-accent btn-sm whitespace-nowrap">Pagar dono</button>
+          <form method="post" action="{{ route('admin.acertos.baixa-dono',$l['emb']) }}" onsubmit="return confirm('Pagar o proprietário de {{ $l['emb']->nome }}? Marca {{ $l['qtd'] }} passagens como acertadas com o proprietário.')">@csrf @if($dataViagem)<input type="hidden" name="data_viagem" value="{{ $dataViagem }}">@endif
+            <button class="btn btn-accent btn-sm whitespace-nowrap">Pagar proprietário</button>
           </form>
           @else
           <span class="text-emerald-600 text-sm font-semibold whitespace-nowrap">✓ em dia</span>
@@ -153,7 +153,7 @@
         </div>
       </div>
     @empty
-      <div class="card p-6 text-center text-slate-400 text-sm">Nenhum transporte com dono cadastrado. Cadastre o nome do dono no transporte (Administração → Transportes).</div>
+      <div class="card p-6 text-center text-slate-400 text-sm">Nenhum transporte com proprietário cadastrado. Cadastre o nome do proprietário no transporte (Administração → Transportes).</div>
     @endforelse
   </div>
   @endif

@@ -139,8 +139,8 @@ document.addEventListener('alpine:init', () => {
   if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰'];
   if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
   if ($u->podeAcerto() && $u->temModulo('passagem')) {
-      // Acerto Agentes/Transporte sairam do menu: agente paga direto o dono e o dono acerta sozinho no "Meu transporte".
-      $g[] = ['r'=>route('admin.acertos', ['aba'=>'operadores']), 'l'=>'Acerto Operadores', 'i'=>'💵'];
+      // Acerto Agentes/Transporte sairam do menu: agente paga direto o proprietário e o proprietário acerta sozinho no "Meu transporte".
+      $g[] = ['r'=>route('admin.acertos', ['aba'=>'operadores']), 'l'=>'Acerto Operadores / Proprietário', 'i'=>'💵'];
   }
   if ($g) $grupos['Caixa'] = $g;
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];

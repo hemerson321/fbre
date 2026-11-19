@@ -1,4 +1,4 @@
-  {{-- ACERTO COM A EMPRESA (barcos sem dono) --}}
+  {{-- ACERTO COM A EMPRESA (barcos sem proprietário) --}}
 @if(!empty($acerto))
 <div class="card p-4" style="background:linear-gradient(135deg,#0b1a33,#13294d);color:#fff" x-data="acertoPix(@js($acerto))">
   <div class="text-[11px] font-bold uppercase opacity-70 mb-2">Acerto com a empresa · {{ $acerto['qtd'] }} passagem(ns)</div>
@@ -115,14 +115,14 @@ function acertoPix(ac){
   @if($debitosDono->isNotEmpty())
   <div class="card overflow-hidden border border-sky-200" x-data="donoPix()">
     <div class="p-3 border-b bg-sky-50 flex items-center justify-between">
-      <div class="font-bold text-sm text-sky-700">🚤 O que você deve aos donos das lanchas</div>
-      <div class="text-[11px] text-sky-600">pague direto o dono</div>
+      <div class="font-bold text-sm text-sky-700">🚤 O que você deve aos proprietários das lanchas</div>
+      <div class="text-[11px] text-sky-600">pague direto o proprietário</div>
     </div>
     <div class="divide-y text-sm">
       @foreach($debitosDono as $d)
       <div class="flex items-center justify-between gap-2 p-3">
         <div class="min-w-0">
-          <div class="font-semibold truncate">{{ $d->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· dono {{ $d->dono }}</span>@endif</div>
+          <div class="font-semibold truncate">{{ $d->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· proprietário {{ $d->dono }}</span>@endif</div>
           <div class="text-xs text-slate-400">{{ $d->qtd }} passagem(ns) · vendido R$ {{ number_format($d->total,2,',','.') }} · comissão R$ {{ number_format($d->comissao,2,',','.') }}</div>
         </div>
         <div class="flex items-center gap-2 shrink-0">
@@ -134,27 +134,27 @@ function acertoPix(ac){
           <button type="button" class="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-2.5 py-1.5 whitespace-nowrap"
             @click="dinamico(@js(route('acertos.pagar-dono', $d->barco_id)), {{ (float) $d->valor }}, @js($d->dono ?: $d->nome))" :disabled="carregando">💠 PIX auto</button>
           @else
-          <span class="text-[10px] text-slate-400 whitespace-nowrap">dono sem PIX</span>
+          <span class="text-[10px] text-slate-400 whitespace-nowrap">proprietário sem PIX</span>
           @endif
         </div>
       </div>
       @endforeach
     </div>
     <div class="flex items-center justify-between p-3 border-t bg-sky-50 font-bold text-sm">
-      <span>Total a pagar aos donos</span>
+      <span>Total a pagar aos proprietários</span>
       <span class="text-sky-700">R$ {{ number_format((float)$debitosDono->sum('valor'),2,',','.') }}</span>
     </div>
 
-    {{-- modal PIX do dono (QR estático) --}}
+    {{-- modal PIX do proprietário (QR estático) --}}
     <div x-show="modal" x-cloak class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" @click="modal=false">
       <div class="bg-white text-slate-800 rounded-2xl p-5 max-w-sm w-full text-center" @click.stop>
-        <div class="font-bold text-lg" x-text="auto ? '💠 PIX automático do dono' : '💠 PIX do dono'"></div>
+        <div class="font-bold text-lg" x-text="auto ? '💠 PIX automático do proprietário' : '💠 PIX do proprietário'"></div>
         <div class="text-xs text-slate-500 mb-3" x-text="auto ? ('Pague que o repasse de '+quem+' baixa sozinho.') : ('Pague direto a '+quem+' e mande o comprovante.')"></div>
         <template x-if="qrImg"><img :src="qrImg" class="mx-auto w-52 h-52"></template>
         <div id="qr-dono" x-show="!qrImg" class="inline-block p-2 bg-white rounded-xl border mx-auto"></div>
         <div class="font-extrabold text-xl my-2">R$ <span x-text="fmt(valor)"></span></div>
         <button type="button" @click="copiar()" class="btn btn-ghost btn-sm w-full mb-2">📋 Copiar código PIX</button>
-        <template x-if="!auto"><div class="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2 mb-2">⚠️ Depois de pagar, <b>mande o comprovante</b> pro dono.</div></template>
+        <template x-if="!auto"><div class="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2 mb-2">⚠️ Depois de pagar, <b>mande o comprovante</b> pro proprietário.</div></template>
         <template x-if="auto"><div class="text-[12px] text-slate-500 mb-2">Aguardando o pagamento… assim que cair, baixa sozinho.</div></template>
         <button type="button" @click="fechar()" class="btn btn-ghost btn-sm w-full text-slate-500">Fechar</button>
       </div>
@@ -168,14 +168,14 @@ function acertoPix(ac){
       fmt(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
       estatico(chave,nome,cidade,valor,quem){
         chave=(chave||'').trim();
-        if(!chave){ alert('Esse dono não cadastrou chave PIX.'); return; }
-        this.auto=false; this.qrImg=''; this.valor=valor||0; this.quem=quem||'o dono';
+        if(!chave){ alert('Esse proprietário não cadastrou chave PIX.'); return; }
+        this.auto=false; this.qrImg=''; this.valor=valor||0; this.quem=quem||'o proprietário';
         this.copia=this.payload(chave,nome,cidade,this.valor);
         this.modal=true;
         this.$nextTick(()=>{ var el=document.getElementById('qr-dono'); if(el){ el.innerHTML=''; try{ new QRCode(el,{text:this.copia,width:208,height:208}); }catch(e){} } });
       },
       dinamico(url,valor,quem){
-        this.carregando=true; this.quem=quem||'o dono';
+        this.carregando=true; this.quem=quem||'o proprietário';
         fetch(url,{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}})
           .then(r=>r.json()).then(d=>{
             this.carregando=false;
@@ -190,7 +190,7 @@ function acertoPix(ac){
       checar(){
         if(!this.cobId) return;
         fetch('/cobranca/'+this.cobId+'/status',{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(d=>{
-          if(d && d.pago){ clearInterval(this.poll); alert('✅ Repasse do dono pago! Baixado automaticamente.'); location.reload(); }
+          if(d && d.pago){ clearInterval(this.poll); alert('✅ Repasse do proprietário pago! Baixado automaticamente.'); location.reload(); }
         }).catch(()=>{});
       },
       fechar(){ if(this.poll) clearInterval(this.poll); this.modal=false; },

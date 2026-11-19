@@ -97,9 +97,9 @@
     <div class="font-bold text-sm mb-1">↩ Devolução ao passageiro</div>
     <div class="rounded-lg bg-slate-50 border p-2.5 text-[12px] text-slate-600 mb-2 space-y-2">
       <div class="flex gap-2"><span class="shrink-0">🟢</span><span><b>Antes</b> da lancha sair — devolve <b>{{ 100-$pa }}%</b> ao passageiro e retém <b>{{ $pa }}%</b>, que vai pro <b>caixa local</b> (não entra no caixa da empresa).</span></div>
-      <div class="flex gap-2"><span class="shrink-0">🔴</span><span><b>Depois</b> que a lancha saiu — devolve <b>{{ 100-$pd }}%</b> ao passageiro e retém <b>{{ $pd }}%</b>, que fica pro <b>dono</b> da lancha.</span></div>
+      <div class="flex gap-2"><span class="shrink-0">🔴</span><span><b>Depois</b> que a lancha saiu — devolve <b>{{ 100-$pd }}%</b> ao passageiro e retém <b>{{ $pd }}%</b>, que fica pro <b>proprietário</b> da lancha.</span></div>
       @if($p->acerto_dono && ! $p->revendedor_id)
-      <div class="flex gap-2 text-rose-600"><span class="shrink-0">⚠️</span><span>Esta passagem <b>já foi acertada com o dono</b>. Ele vai ficar <b>devendo o repasse à empresa</b> — descontado no próximo acerto.</span></div>
+      <div class="flex gap-2 text-rose-600"><span class="shrink-0">⚠️</span><span>Esta passagem <b>já foi acertada com o proprietário</b>. Ele vai ficar <b>devendo o repasse à empresa</b> — descontado no próximo acerto.</span></div>
       @endif
       <div class="pt-0.5"><span class="inline-block rounded px-2 py-1 text-white font-bold text-[11px]" style="background:{{ $jaSaiu ? '#e11d48' : '#16a34a' }}">Esta passagem agora: {{ $jaSaiu ? 'DEPOIS — retém '.$pd.'%' : 'ANTES — retém '.$pa.'%' }}</span></div>
     </div>
@@ -203,7 +203,7 @@
     <div class="card p-3 border border-rose-200 bg-rose-50 text-center text-sm">
       <div class="font-bold text-rose-700">↩ Devolução{{ $p->cancel_fase==='depois' ? ' · depois da viagem' : ($p->cancel_fase==='antes' ? ' · antes da viagem' : '') }}</div>
       @if($p->cancel_retido !== null)
-        <div class="text-rose-600 text-[12px] mt-0.5">Retido R$ {{ number_format((float)$p->cancel_retido,2,',','.') }}{{ $p->cancel_fase==='depois' ? ' (dono)' : ($p->cancel_fase==='antes' ? ' (caixa local)' : '') }} · Devolvido R$ {{ number_format((float)$p->cancel_reembolso,2,',','.') }}</div>
+        <div class="text-rose-600 text-[12px] mt-0.5">Retido R$ {{ number_format((float)$p->cancel_retido,2,',','.') }}{{ $p->cancel_fase==='depois' ? ' (proprietário)' : ($p->cancel_fase==='antes' ? ' (caixa local)' : '') }} · Devolvido R$ {{ number_format((float)$p->cancel_reembolso,2,',','.') }}</div>
       @endif
       @if($p->motivo_cancelamento)<div class="text-slate-500 text-[12px] mt-0.5">{{ $p->motivo_cancelamento }}</div>@endif
     </div>

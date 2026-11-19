@@ -13,7 +13,7 @@
         'admin'    => ['🛡️ Administrador', $admins],
         'operador' => ['💼 Operador (balcão)', $operadores],
         'agente'   => ['🤝 Agente externo', $agentes],
-        'dono'     => ['🚤 Dono do transporte', $donos],
+        'dono'     => ['🚤 Proprietário do transporte', $donos],
       ];
     @endphp
     @foreach($papeis as $k=>$p)

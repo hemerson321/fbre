@@ -88,16 +88,16 @@
 @if($donosBalcao->isNotEmpty())
 <div class="card overflow-hidden border border-amber-200">
   <div class="p-3 border-b bg-amber-50 flex items-center justify-between flex-wrap gap-2">
-    <div class="font-bold text-sm text-amber-700">🚤 Acerto com donos (balcão)</div>
-    <div class="text-[11px] text-amber-600">pague o dono do balcão vendido pra lancha dele; fica só a comissão da empresa</div>
+    <div class="font-bold text-sm text-amber-700">🚤 Acerto com proprietários (balcão)</div>
+    <div class="text-[11px] text-amber-600">pague o proprietário do balcão vendido pra lancha dele; fica só a comissão da empresa</div>
   </div>
   <div class="divide-y text-sm">
     @foreach($donosBalcao as $d)
     <div class="flex items-center justify-between gap-2 p-3 flex-wrap">
       <div class="min-w-0">
-        <div class="font-semibold truncate">🚤 {{ $d->emb->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· dono {{ $d->dono }}</span>@endif</div>
+        <div class="font-semibold truncate">🚤 {{ $d->emb->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· proprietário {{ $d->dono }}</span>@endif</div>
         <div class="text-xs text-slate-400">{{ $d->qtd }} passagem(ns) de balcão · comissão empresa {{ (int)$d->emb->comissao_empresa_pct }}%</div>
-        @if($d->debito > 0)<div class="text-[11px] text-rose-600 font-semibold mt-0.5">↩ dono deve R$ {{ number_format($d->debito,2,',','.') }} (devolução já acertada) — abate no acerto</div>@endif
+        @if($d->debito > 0)<div class="text-[11px] text-rose-600 font-semibold mt-0.5">↩ proprietário deve R$ {{ number_format($d->debito,2,',','.') }} (devolução já acertada) — abate no acerto</div>@endif
       </div>
       <div class="flex items-center gap-2">
         <div class="text-right">
@@ -105,9 +105,9 @@
           @if($d->debito > 0)<div class="text-[10px] text-slate-400">bruto {{ number_format($d->valor,2,',','.') }} − dívida {{ number_format($d->debito,2,',','.') }}</div>@endif
         </div>
         @if($d->valor > 0)
-        <form method="post" action="{{ route('meu-transporte.baixa-balcao', $d->emb) }}" onsubmit="return confirm('Pagar o dono de {{ $d->emb->nome }}? Paga R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}@if($d->debito > 0) (já abatendo R$ {{ number_format(min($d->debito,$d->valor),2,',','.') }} de devolução)@endif e fica só a comissão da empresa.')">
+        <form method="post" action="{{ route('meu-transporte.baixa-balcao', $d->emb) }}" onsubmit="return confirm('Pagar o proprietário de {{ $d->emb->nome }}? Paga R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}@if($d->debito > 0) (já abatendo R$ {{ number_format(min($d->debito,$d->valor),2,',','.') }} de devolução)@endif e fica só a comissão da empresa.')">
           @csrf
-          <button class="btn btn-accent btn-sm whitespace-nowrap">Pagar dono</button>
+          <button class="btn btn-accent btn-sm whitespace-nowrap">Pagar proprietário</button>
         </form>
         @endif
       </div>

@@ -127,7 +127,7 @@ class AcertoController extends Controller
                 'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false,
             ]);
         }
-        return back()->with('ok', 'Acerto do dono de '.$embarcacao->nome.' pago ('.$n.' passagens) - saida de R$ '.number_format($valorDono, 2, ',', '.').' no caixa.');
+        return back()->with('ok', 'Acerto do proprietário de '.$embarcacao->nome.' pago ('.$n.' passagens) - saida de R$ '.number_format($valorDono, 2, ',', '.').' no caixa.');
     }
 
     /** Relatorio do acerto de um transporte pra mandar pro dono (admin compartilha no WhatsApp). */

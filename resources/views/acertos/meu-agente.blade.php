@@ -6,7 +6,7 @@
     <h1 class="text-xl font-bold">🤝 Acertos <span class="text-slate-400 font-normal text-base">· {{ auth()->user()->name }}</span></h1>
     <a href="{{ route('passagens.minhas-vendas') }}" class="btn btn-ghost btn-sm">📊 Minhas vendas</a>
   </div>
-  <p class="text-xs text-slate-500">O que você deve repassar para a empresa e o que deve pagar direto aos donos das lanchas.</p>
+  <p class="text-xs text-slate-500">O que você deve repassar para a empresa e o que deve pagar direto aos proprietários das lanchas.</p>
 
   {{-- filtro opcional por viagem --}}
   @if($datasViagem->count() || ($temViagens && $viagens->count()))
