@@ -19,7 +19,7 @@
           @php $mini = $pax->foto ?: $pax->foto_rg; @endphp
           @if($mini)<img src="/{{ $mini }}" class="h-9 w-9 object-cover rounded border shrink-0">@endif
           <div class="flex-1">{{ $pax->nome }}@if($pax->papel==='colo')<span class="text-[10px] font-bold text-sky-600"> · 👶 colo</span>@endif<div class="text-xs text-slate-500">{{ $pax->tipo }}@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif</div></div>
-          <button type="button" title="Imprimir etiqueta de bagagem" class="rounded-lg px-2.5 py-1.5 text-[15px] font-bold bg-white text-slate-600 border border-slate-300 shrink-0" onclick="var n=prompt('Quantos volumes de bagagem?','1'); if(n && +n>0){ window.open('{{ route('passagens.etiqueta',[$p,$pax]) }}?volumes='+Math.min(99,Math.max(1,parseInt(n)||1)),'_blank'); }">🏷️</button>
+          <button type="button" title="Imprimir etiqueta de bagagem" class="rounded-lg px-2.5 py-1.5 text-[15px] font-bold bg-white text-slate-600 border border-slate-300 shrink-0" onclick="var n=prompt('Quantos volumes de bagagem?','1'); if(n && +n>0){ window.open('{{ route('passagens.etiqueta',[$p,$pax]) }}?volumes='+Math.min(99,Math.max(1,parseInt(n)||1)),'_blank'); }">🏷️<span class="hidden sm:inline text-[12px]"> Etiqueta</span></button>
           @if($podeBaixa)
           <button type="button" class="chkbtn rounded-lg px-3 py-1.5 text-[13px] font-bold {{ $pax->checkin ? 'bg-emerald-600 text-white border border-emerald-600' : 'bg-white text-slate-600 border border-slate-300' }}" onclick="FBRE.checkinPax(this,'{{ route('passagens.show',$p) }}/checkin-pax/{{ $pax->id }}')">{{ $pax->checkin ? '✓ embarcou' : 'Check-in' }}</button>
           @else
@@ -37,13 +37,7 @@
       <div class="text-amber-700 font-semibold">Falta pagamento: R$ {{ number_format($p->devido,2,',','.') }}</div>
       <a href="{{ route('passagens.show',$p) }}" class="btn btn-ghost w-full">Abrir p/ receber</a>
     @elseif($u->permite('passagem','baixa'))
-      <div data-chkfull style="display:{{ $p->passageiros->where('checkin',true)->count() >= $p->passageiros->count() ? 'block':'none' }}" class="text-emerald-600 font-extrabold text-lg">✅ Todos embarcaram</div>
-      <div class="text-xs text-slate-500">Faça o check-in de cada passageiro acima, individualmente.</div>
-      @if($p->passageiros->count() > 1)
-      <form method="post" action="{{ route('passagens.embarcar',$p) }}" onsubmit="return confirm('Marcar TODOS os passageiros como embarcados de uma vez?')">@csrf
-        <button class="text-xs text-slate-400 underline">ou confirmar todos de uma vez</button>
-      </form>
-      @endif
+      <div class="text-xs text-slate-500">Check-in individual — toque em cada passageiro acima.</div>
     @else
       <div class="text-slate-500 text-sm">Você não tem permissão para validar embarque.</div>
     @endif
