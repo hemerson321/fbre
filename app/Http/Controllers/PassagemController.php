@@ -1000,6 +1000,18 @@ class PassagemController extends Controller
         }
     }
 
+    /** Etiqueta de bagagem do passageiro: N volumes + via do passageiro. */
+    public function etiqueta(Passagem $passagem, PassagemPassageiro $pax)
+    {
+        abort_unless($passagem->empresa_id === Tenant::id(), 404);
+        abort_unless((int) $pax->passagem_id === (int) $passagem->id, 404);
+        $vol = max(1, min(99, (int) request('volumes', 1)));
+        $passagem->load('embarcacao');
+        return view('passagens.etiqueta', [
+            'p' => $passagem, 'pax' => $pax, 'volumes' => $vol, 'empresa' => Tenant::empresa(),
+        ]);
+    }
+
     /** Tela de check-in (vinda do QR do comprovante) — valida embarque, só operador logado. */
     public function checkin(Passagem $passagem)
     {
