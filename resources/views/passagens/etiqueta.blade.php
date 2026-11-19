@@ -1,5 +1,22 @@
-@extends('impressao._base', ['titulo' => 'Etiqueta '.$p->numeroFormatado(), 'pagina' => $pagina ?? '80mm auto'])
-@section('corpo')
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Etiqueta {{ $p->numeroFormatado() }}</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  @page { margin: 0; size: {{ $pagina ?? '80mm auto' }}; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; width: {{ $largura ?? '80mm' }}; font-family: "Courier New", Courier, monospace; font-size: 11.5px; color: #000; background: #fff; }
+  .lbl { padding: 3mm 4mm; page-break-after: always; }
+  .lbl:last-child { page-break-after: auto; }
+  .c { text-align: center; } .r { text-align: right; } .b { font-weight: bold; }
+  .xl { font-size: 18px; } .lg { font-size: 14px; } .sm { font-size: 10px; }
+  table { width: 100%; border-collapse: collapse; } td { padding: 1px 0; vertical-align: top; }
+  @media screen { .lbl { border-bottom: 1px dashed #bbb; } body { margin: 10px auto; max-width: 360px; box-shadow: 0 0 8px #0003; } }
+</style>
+</head>
+<body>
 @php
   $lancha = $p->embarcacao?->nome ?: ($empresa->nomeExibicao() ?? '');
   $rota   = $p->origem.' x '.$p->destino;
@@ -9,7 +26,7 @@
 @endphp
 @if(!($soVia ?? false))
 @for($v = 1; $v <= $volumes; $v++)
-<div class="quebra">
+<div class="lbl">
   <table><tr>
     <td style="width:60%">
       <div class="sm">Lancha:</div>
@@ -30,11 +47,33 @@
 </div>
 @endfor
 @endif
-<div>
+<div class="lbl">
   <div class="b lg">Via do Passageiro</div>
   <div class="b">{{ strtoupper($lancha) }} · Data: {{ $data }}</div>
   <div class="b lg">{{ strtoupper($pax->nome) }}</div>
   <div class="sm">{{ $rota }} · Ticket: {{ $ticket }} · Pol. {{ $pol }}</div>
-  <div class="b">{{ $volumes }} Volume(s)</div>
+  <div class="b">{{ $soVia ?? false ? '' : $volumes.' Volume(s)' }}</div>
 </div>
-@endsection
+<script>
+(function(){
+  var RASTER = new URLSearchParams(location.search).has('raster');
+  function raster(){
+    var h2c = window.html2canvas;
+    if(!h2c){ try{ parent.postMessage({fbreRaster:true, imagens:[], erro:'sem html2canvas'}, '*'); }catch(e){} return; }
+    var els = [].slice.call(document.querySelectorAll('.lbl'));
+    var out = [];
+    (function next(i){
+      if(i>=els.length){ try{ parent.postMessage({fbreRaster:true, imagens:out}, '*'); }catch(e){} return; }
+      h2c(els[i], {scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false}).then(function(cv){
+        try{ out.push(cv.toDataURL('image/png')); }catch(e){} next(i+1);
+      }).catch(function(){ next(i+1); });
+    })(0);
+  }
+  window.addEventListener('load', function(){
+    if(RASTER){ setTimeout(raster, 350); return; }
+    setTimeout(function(){ window.print(); }, 300);
+  });
+})();
+</script>
+</body>
+</html>

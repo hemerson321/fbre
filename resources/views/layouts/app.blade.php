@@ -414,6 +414,33 @@ document.addEventListener('alpine:init', () => {
       return await new Promise(res => cv.toBlob(res, 'image/png'));
     },
     _baixarPng: (blob, nome) => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = nome || 'bilhete.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); },
+    // Impressão DIRETA de uma página (etiqueta/via): rasteriza e manda pra fila da estação.
+    // Se não houver estação ativa (ou erro), abre a janela de impressão como fallback.
+    imprimirDiretoUrl: (btn, viewUrl, postUrl) => {
+      const prev = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳';
+      let done = false;
+      const ifr = document.createElement('iframe');
+      ifr.style.cssText = 'position:fixed;left:-10000px;top:0;width:360px;height:10px;border:0;opacity:0';
+      const cleanup = () => { window.removeEventListener('message', onMsg); try { ifr.remove(); } catch (e) {} };
+      const restore = (t) => { btn.innerHTML = t; setTimeout(() => { btn.innerHTML = prev; btn.disabled = false; }, 1600); };
+      const abrir = () => { btn.innerHTML = prev; btn.disabled = false; FBRE.abrirImpressao(viewUrl); };
+      const onMsg = async (ev) => {
+        const d = ev.data; if (!d || !d.fbreRaster) return;
+        if (done) return; done = true;
+        const imgs = d.imagens || [];
+        cleanup();
+        if (!imgs.length) { abrir(); return; }
+        try {
+          const r = await fetch(postUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': FBRE.csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ imagens: imgs }) });
+          const j = await r.json().catch(() => null);
+          if (r.ok && j && j.ok) { restore('✅'); } else { abrir(); }
+        } catch (e) { abrir(); }
+      };
+      window.addEventListener('message', onMsg);
+      document.body.appendChild(ifr);
+      ifr.src = viewUrl + (viewUrl.indexOf('?') >= 0 ? '&' : '?') + 'raster=1';
+      setTimeout(() => { if (!done) { done = true; cleanup(); abrir(); } }, 15000);
+    },
     // Check-in individual de 1 passageiro (toggle). Atualiza o botão e o contador na tela.
     checkinPax: async (btn, url) => {
       if (btn.dataset.busy) return; btn.dataset.busy = '1'; btn.style.opacity = '.5';

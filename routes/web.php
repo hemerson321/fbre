@@ -144,6 +144,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/simulacao/tela/{user}', [\App\Http\Controllers\SimulacaoController::class, 'tela'])->name('simulacao.tela');
     Route::get('/passagens/{passagem}/comprovante', [\App\Http\Controllers\PassagemController::class, 'comprovante'])->name('passagens.comprovante')->middleware('perm:passagem.ver');
     Route::get('/passagens/{passagem}/etiqueta/{pax}', [\App\Http\Controllers\PassagemController::class, 'etiqueta'])->name('passagens.etiqueta')->middleware('perm:passagem.ver');
+    Route::post('/passagens/{passagem}/etiqueta/{pax}/direto', [\App\Http\Controllers\PassagemController::class, 'etiquetaDireto'])->name('passagens.etiqueta-direto')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/imprimir-direto', [\App\Http\Controllers\PassagemController::class, 'imprimirDireto'])->name('passagens.imprimir-direto')->middleware('perm:passagem.ver');
     Route::get('/passagens/{passagem}', [\App\Http\Controllers\PassagemController::class, 'show'])->name('passagens.show')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/pagar', [\App\Http\Controllers\PassagemController::class, 'pagar'])->name('passagens.pagar')->middleware('perm:passagem.baixa');

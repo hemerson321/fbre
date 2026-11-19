@@ -1015,6 +1015,44 @@ class PassagemController extends Controller
         ]);
     }
 
+    /** Impressão direta da etiqueta/via: recebe as imagens rasterizadas e enfileira na estação. */
+    public function etiquetaDireto(Request $request, Passagem $passagem, PassagemPassageiro $pax)
+    {
+        abort_unless($passagem->empresa_id === Tenant::id(), 404);
+        abort_unless((int) $pax->passagem_id === (int) $passagem->id, 404);
+        $estacao = \App\Models\Estacao::resolver();
+        if (! $estacao) {
+            return response()->json(['ok' => false, 'erro' => 'Nenhuma estação de impressão ativa.'], 422);
+        }
+        $imagens = $request->input('imagens');
+        if (! is_array($imagens) || ! count($imagens)) {
+            return response()->json(['ok' => false, 'erro' => 'Sem conteúdo para imprimir.'], 422);
+        }
+        $n = 0;
+        foreach ($imagens as $img) {
+            if (! is_string($img) || $img === '') continue;
+            if (str_contains($img, ',')) $img = substr($img, strpos($img, ',') + 1);
+            \App\Models\FilaImpressao::create([
+                'estacao_id' => $estacao->id,
+                'encomenda_id' => null,
+                'tipo' => 'generico',
+                'dados' => [
+                    'linhas' => [
+                        ['op' => 'img', 'data' => $img, 'w' => 576],
+                        ['op' => 'feed', 'n' => 3],
+                        ['op' => 'cut'],
+                    ],
+                    'impressora' => 'comprovante',
+                    'ref' => 'Etiqueta '.$passagem->numeroFormatado(),
+                ],
+            ]);
+            $n++;
+        }
+        return $n > 0
+            ? ['ok' => true, 'jobs' => $n, 'estacao' => $estacao->nome]
+            : response()->json(['ok' => false, 'erro' => 'Sem conteúdo para imprimir.'], 422);
+    }
+
     /** Tela de check-in (vinda do QR do comprovante) — valida embarque, só operador logado. */
     public function checkin(Passagem $passagem)
     {
