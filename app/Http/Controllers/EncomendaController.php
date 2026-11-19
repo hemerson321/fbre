@@ -243,7 +243,7 @@ class EncomendaController extends Controller
 
         // Enriquece cada pessoa com o cadastro dela nas passagens (sexo, nascimento, foto...).
         // Pega o valor mais recente NAO-VAZIO de cada campo (um cadastro antigo pode ter o que o ultimo nao tem).
-        return $pessoas->map(function ($p) use ($empresaId) {
+        $out = $pessoas->map(function ($p) use ($empresaId) {
             $rows = \Illuminate\Support\Facades\DB::table('passagem_passageiros as pp')
                 ->join('passagens as ps', 'ps.id', '=', 'pp.passagem_id')
                 ->where('ps.empresa_id', $empresaId)
@@ -285,7 +285,56 @@ class EncomendaController extends Controller
                 'foto' => $p->foto ?: $pick('foto'),
                 'foto_rg' => $p->foto_rg ?: $pick('foto_rg'),
             ];
-        });
+        })->values();
+
+        // Fallback: passageiros JA vendidos que ainda nao estao no cadastro "pessoas".
+        // Garante que qualquer nome ja digitado antes apareca no autocomplete.
+        $vistos = $out->map(fn ($r) => mb_strtolower(trim((string) $r['nome'])))->all();
+        if ($out->count() < 8) {
+            $rows = \Illuminate\Support\Facades\DB::table('passagem_passageiros as pp')
+                ->join('passagens as ps', 'ps.id', '=', 'pp.passagem_id')
+                ->where('ps.empresa_id', $empresaId)
+                ->where(function ($w) use ($q) {
+                    $w->where('pp.nome', 'like', "%$q%")->orWhere('pp.documento', 'like', "%$q%");
+                })
+                ->where(fn ($w) => $w->whereNull('pp.papel')->orWhere('pp.papel', '!=', 'colo'))
+                ->orderByDesc('pp.id')
+                ->limit(120)
+                ->get(['pp.nome', 'pp.telefone', 'pp.documento', 'pp.doc_tipo', 'pp.sexo', 'pp.nascimento', 'pp.nacionalidade', 'pp.foto', 'pp.foto_rg']);
+
+            $grupos = [];
+            foreach ($rows as $r) {
+                $key = mb_strtolower(trim((string) $r->nome));
+                if ($key === '' || in_array($key, $vistos, true)) continue;
+                $grupos[$key][] = $r;
+            }
+            foreach ($grupos as $key => $g) {
+                if ($out->count() >= 8) break;
+                $pick = function (string $campo) use ($g) {
+                    foreach ($g as $r) {
+                        $v = $r->$campo ?? null;
+                        if ($v !== null && $v !== '' && ! str_starts_with((string) $v, '0000')) return $v;
+                    }
+                    return null;
+                };
+                $nasc = null; $nraw = $pick('nascimento');
+                if ($nraw) { try { $nasc = \Carbon\Carbon::parse($nraw)->format('Y-m-d'); } catch (\Throwable $e) {} }
+                $out->push([
+                    'nome' => $g[0]->nome,
+                    'telefone' => $pick('telefone'),
+                    'documento' => $pick('documento'),
+                    'doc_tipo' => $pick('doc_tipo'),
+                    'sexo' => $pick('sexo'),
+                    'nascimento' => $nasc,
+                    'nacionalidade' => $pick('nacionalidade'),
+                    'foto' => $pick('foto'),
+                    'foto_rg' => $pick('foto_rg'),
+                ]);
+                $vistos[] = $key;
+            }
+        }
+
+        return $out->values();
     }
 
     // ------------------------------------------------------------------
