@@ -4,59 +4,83 @@
 <meta charset="utf-8">
 <title>Etiqueta {{ $p->numeroFormatado() }}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<style>
-  @page { margin: 0; size: {{ ($labW ?? 90) }}mm {{ ($labH ?? 29) }}mm; }
-  * { box-sizing: border-box; }
-  body { margin: 0; padding: 0; width: {{ ($labW ?? 90) }}mm; font-family: "Courier New", Courier, monospace; font-size: 11.5px; color: #000; background: #fff; }
-  .lbl { width: {{ ($labW ?? 90) }}mm; height: {{ ($labH ?? 29) }}mm; overflow: hidden; padding: 1.5mm 2mm; page-break-after: always; display:flex; flex-direction:column; justify-content:center; }
-  .lbl:last-child { page-break-after: auto; }
-  .c { text-align: center; } .r { text-align: right; } .b { font-weight: bold; }
-  .xl { font-size: 18px; } .lg { font-size: 14px; } .sm { font-size: 10px; }
-  table { width: 100%; border-collapse: collapse; } td { padding: 1px 0; vertical-align: top; }
-  @media screen { .lbl { border-bottom: 1px dashed #bbb; } body { margin: 10px auto; max-width: 360px; box-shadow: 0 0 8px #0003; } }
-</style>
-</head>
-<body>
 @php
+  $labW = $labW ?? 90; $labH = $labH ?? 29;
+  $k = max(0.6, $labH / 29);                 // escala relativa ao papel base (29mm). Aumenta o papel -> tudo cresce junto.
+  $px = fn ($n) => (int) round($n * $k);
+  $bd = max(1, (int) round(1.3 * $k));
   $lancha = $p->embarcacao?->nome ?: ($empresa->nomeExibicao() ?? '');
-  $rota   = $p->origem.' x '.$p->destino;
   $data   = $p->data_viagem ? $p->data_viagem->format('d/m/Y') : $p->created_at->format('d/m/Y');
   $ticket = $p->numeroFormatado();
   $pol    = $pax->poltrona ?: '—';
+  $nome   = strtoupper($pax->nome);
+  $orig   = strtoupper($p->origem); $dest = strtoupper($p->destino);
 @endphp
+<style>
+  @page { margin: 0; size: {{ $labW }}mm {{ $labH }}mm; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:0; width:{{ $labW }}mm; font-family: Arial, Helvetica, sans-serif; color:#000; background:#fff; -webkit-font-smoothing:none; }
+  .lbl { width:{{ $labW }}mm; height:{{ $labH }}mm; overflow:hidden; page-break-after:always;
+         border:{{ $bd }}px solid #000; display:flex; flex-direction:column; background:#fff; }
+  .lbl:last-child { page-break-after:auto; }
+  .hdr { display:flex; align-items:center; justify-content:space-between; background:#000; color:#fff;
+         padding:{{ $px(2) }}px {{ $px(5) }}px; }
+  .hdr .lch { font-weight:800; font-size:{{ $px(10) }}px; letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hdr .bdg { font-weight:800; font-size:{{ $px(9) }}px; border:{{ max(1,(int)round($k)) }}px solid #fff; border-radius:3px; padding:0 {{ $px(4) }}px; white-space:nowrap; margin-left:{{ $px(4) }}px; }
+  .bdy { flex:1; display:flex; min-height:0; }
+  .info { flex:1; padding:{{ $px(3) }}px {{ $px(5) }}px; display:flex; flex-direction:column; justify-content:center; min-width:0; }
+  .nome { font-weight:800; font-size:{{ $px(13) }}px; line-height:1.03; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rota { font-weight:700; font-size:{{ $px(11) }}px; margin-top:{{ $px(1) }}px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rota .seta { font-weight:400; }
+  .meta { font-size:{{ $px(8) }}px; margin-top:{{ $px(2) }}px; line-height:1.3; }
+  .meta b { font-weight:700; }
+  .seat { width:33%; border-left:{{ $bd }}px solid #000; display:flex; flex-direction:column;
+          align-items:center; justify-content:center; padding:{{ $px(2) }}px; text-align:center; }
+  .seat .cap { font-size:{{ $px(7) }}px; font-weight:700; letter-spacing:.5px; }
+  .seat .num { font-size:{{ $px(23) }}px; font-weight:800; line-height:.95; }
+  .seat .vol { font-size:{{ $px(8) }}px; font-weight:700; margin-top:{{ $px(1) }}px; }
+  @media screen { body { margin:12px auto; max-width:420px; } .lbl { margin-bottom:12px; box-shadow:0 0 10px #0004; } }
+</style>
+</head>
+<body>
 @if(!($soVia ?? false))
 @for($v = 1; $v <= $volumes; $v++)
 <div class="lbl">
-  <table><tr>
-    <td style="width:62%;vertical-align:top">
-      <div><span class="sm">Lancha:</span> <span class="b lg">{{ strtoupper($lancha) }}</span></div>
-      <div class="b lg">{{ strtoupper($pax->nome) }}</div>
-      @if($pax->telefone)<div class="b">Tel.: {{ $pax->telefone }}</div>@endif
-      <div><span class="b">Data: {{ $data }}</span> <span class="sm">Ticket:</span> <span class="b">{{ $ticket }}</span></div>
-    </td>
-    <td class="c" style="width:38%;vertical-align:middle">
-      <div class="b xl">{{ $p->origem }} x {{ $p->destino }}</div>
-      <div class="b xl">{{ $pol }}</div>
-      <div><span class="sm">QTD.:</span> <span class="b lg">{{ $v }}/{{ $volumes }}</span></div>
-    </td>
-  </tr></table>
+  <div class="hdr">
+    <span class="lch">{{ strtoupper($lancha) }}</span>
+    <span class="bdg">VOL {{ $v }}/{{ $volumes }}</span>
+  </div>
+  <div class="bdy">
+    <div class="info">
+      <div class="nome">{{ $nome }}</div>
+      <div class="rota">{{ $orig }} <span class="seta">&rsaquo;</span> {{ $dest }}</div>
+      <div class="meta"><b>Data:</b> {{ $data }} &nbsp; <b>Ticket:</b> {{ $ticket }}@if($pax->telefone)<br><b>Tel.:</b> {{ $pax->telefone }}@endif</div>
+    </div>
+    <div class="seat">
+      <div class="cap">POLTRONA</div>
+      <div class="num">{{ $pol }}</div>
+      <div class="vol">{{ $v }}/{{ $volumes }}</div>
+    </div>
+  </div>
 </div>
 @endfor
 @endif
 <div class="lbl">
-  <table><tr>
-    <td style="width:62%;vertical-align:top">
-      <div class="b">Via do Passageiro</div>
-      <div><span class="sm">Lancha:</span> <span class="b">{{ strtoupper($lancha) }}</span></div>
-      <div class="b lg">{{ strtoupper($pax->nome) }}</div>
-      <div><span class="b">Data: {{ $data }}</span> <span class="sm">Ticket:</span> <span class="b">{{ $ticket }}</span></div>
-    </td>
-    <td class="c" style="width:38%;vertical-align:middle">
-      <div class="b xl">{{ $p->origem }} x {{ $p->destino }}</div>
-      <div class="b xl">{{ $pol }}</div>
-      @if(!($soVia ?? false))<div><span class="sm">Vol.:</span> <span class="b lg">{{ $volumes }}</span></div>@endif
-    </td>
-  </tr></table>
+  <div class="hdr">
+    <span class="lch">{{ strtoupper($lancha) }}</span>
+    <span class="bdg">VIA DO PASSAGEIRO</span>
+  </div>
+  <div class="bdy">
+    <div class="info">
+      <div class="nome">{{ $nome }}</div>
+      <div class="rota">{{ $orig }} <span class="seta">&rsaquo;</span> {{ $dest }}</div>
+      <div class="meta"><b>Data:</b> {{ $data }} &nbsp; <b>Ticket:</b> {{ $ticket }}@if(!($soVia ?? false)) &nbsp; <b>Vol.:</b> {{ $volumes }} @endif @if($pax->telefone)<br><b>Tel.:</b> {{ $pax->telefone }}@endif</div>
+    </div>
+    <div class="seat">
+      <div class="cap">POLTRONA</div>
+      <div class="num">{{ $pol }}</div>
+    </div>
+  </div>
 </div>
 <script>
 (function(){
