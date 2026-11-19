@@ -87,6 +87,15 @@
               </select>
               <p class="text-[11px] text-slate-400 mt-0.5">O dono entra no sistema e vê a tela <b>Meu transporte</b>: vendas do balcão e dos agentes desta lancha, e dá baixa ele mesmo.</p>
             </div>
+            <div class="mt-2 rounded-xl border border-sky-200 bg-sky-50 p-2.5" x-data="{ab:false}">
+              <button type="button" class="text-[12px] font-bold text-sky-700" @click="ab=!ab"><span x-text="ab?'▾':'▸'"></span> ➕ Criar login do dono aqui</button>
+              <div x-show="ab" x-cloak class="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div><label class="label !text-xs">Nome do dono</label><input name="novo_dono_nome" class="input !min-h-[38px]" placeholder="nome completo" maxlength="100" autocomplete="off"></div>
+                <div><label class="label !text-xs">Login</label><input name="novo_dono_login" class="input !min-h-[38px]" placeholder="ex: joao.silva" maxlength="40" autocomplete="off"></div>
+                <div><label class="label !text-xs">Senha</label><input name="novo_dono_senha" type="text" class="input !min-h-[38px]" placeholder="mínimo 6 caracteres" autocomplete="off"></div>
+              </div>
+              <p x-show="ab" x-cloak class="text-[11px] text-slate-500 mt-1">Deixe o seletor acima em “— sem usuário dono —”. Se o <b>login já existir</b>, usa o mesmo dono (serve pra pôr o mesmo dono em vários barcos). Senão, cria um usuário novo com papel <b>Dono de Transporte</b>.</p>
+            </div>
             <div class="grid grid-cols-2 gap-2 mt-2">
               <div><label class="label !text-xs">Nome do dono (se não tiver usuário)</label>
                 <input name="dono_nome" class="input !min-h-[40px]" value="{{ $e->dono_nome }}" placeholder="nome do dono da lancha" maxlength="120"></div>

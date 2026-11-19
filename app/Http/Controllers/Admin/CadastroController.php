@@ -239,6 +239,9 @@ class CadastroController extends Controller
             'cancel_depois_pct' => 'nullable|integer|min:0|max:100',
             'dono_id' => 'nullable|integer|exists:users,id',
             'dono_nome' => 'nullable|string|max:120',
+            'novo_dono_nome' => 'nullable|string|max:100',
+            'novo_dono_login' => ['nullable', 'string', 'min:3', 'max:40', 'regex:/^[a-z0-9._-]+$/'],
+            'novo_dono_senha' => 'nullable|string|min:6',
             'comissao_empresa_pct' => 'nullable|integer|min:0|max:100',
             'hora_saida' => 'nullable|date_format:H:i',
             'ficha' => 'nullable|array',
@@ -252,6 +255,32 @@ class CadastroController extends Controller
             'repasse_pix' => 'nullable|in:dono,empresa',
             'repasse_pix_api_id' => 'nullable|integer|exists:pagamento_apis,id',
         ]);
+        // Dono do transporte: usa o usuario escolhido, OU cria/reaproveita pelo login informado aqui.
+        $donoId = ($data['dono_id'] ?? null) ?: null;
+        $nLogin = strtolower(trim((string) $request->input('novo_dono_login')));
+        if (! $donoId && $nLogin !== '') {
+            $tid = \App\Support\Tenant::id();
+            $existente = \App\Models\User::where('empresa_id', $tid)->where('login', $nLogin)->first();
+            if ($existente) {
+                $donoId = $existente->id; // mesmo dono em varios transportes
+            } else {
+                $nSenha = (string) $request->input('novo_dono_senha');
+                if (strlen($nSenha) < 6) {
+                    return back()->withErrors(['novo_dono_senha' => 'Para criar o dono, informe uma senha de pelo menos 6 caracteres.'])->withInput();
+                }
+                $novo = \App\Models\User::create([
+                    'empresa_id' => $tid,
+                    'name' => trim((string) $request->input('novo_dono_nome')) ?: $nLogin,
+                    'login' => $nLogin,
+                    'password' => $nSenha,
+                    'papel' => 'dono_transporte',
+                    'perm_transporte' => true,
+                    'ativo' => true,
+                ]);
+                $donoId = $novo->id;
+            }
+        }
+
         $ficha = collect($request->input('ficha', []))->map(fn ($v) => is_string($v) ? trim($v) : $v)->filter(fn ($v) => $v !== null && $v !== '')->all();
         $trip = collect($request->input('tripulantes', []))->filter(fn ($t) => trim($t['nome'] ?? '') !== '')->map(fn ($t) => [
             'nome' => trim($t['nome']), 'funcao' => trim($t['funcao'] ?? ''), 'nascimento' => ($t['nascimento'] ?? '') ?: null,
@@ -278,8 +307,8 @@ class CadastroController extends Controller
             'gps_url' => trim((string) ($data['gps_url'] ?? '')) ?: null,
             'cancel_antes_pct' => ($data['cancel_antes_pct'] ?? '') !== '' ? (int) $data['cancel_antes_pct'] : null,
             'cancel_depois_pct' => ($data['cancel_depois_pct'] ?? '') !== '' ? (int) $data['cancel_depois_pct'] : null,
-            'dono_id' => ($data['dono_id'] ?? null) ?: null,
-            'dono_nome' => (trim((string) ($data['dono_nome'] ?? '')) ?: (($data['dono_id'] ?? null) ? optional(\App\Models\User::find($data['dono_id']))->name : null)) ?: null,
+            'dono_id' => $donoId,
+            'dono_nome' => (trim((string) ($data['dono_nome'] ?? '')) ?: ($donoId ? optional(\App\Models\User::find($donoId))->name : null)) ?: null,
             'comissao_empresa_pct' => (int) ($data['comissao_empresa_pct'] ?? 0),
             'hora_saida' => ($data['hora_saida'] ?? '') !== '' ? $data['hora_saida'] : null,
             'ficha' => $ficha ?: null,
