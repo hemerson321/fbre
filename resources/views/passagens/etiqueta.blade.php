@@ -7,6 +7,7 @@
   $ticket = $p->numeroFormatado();
   $pol    = $pax->poltrona ?: '—';
 @endphp
+@if(!($soVia ?? false))
 @for($v = 1; $v <= $volumes; $v++)
 <div class="quebra">
   <table><tr>
@@ -28,6 +29,7 @@
   </tr></table>
 </div>
 @endfor
+@endif
 <div>
   <div class="b lg">Via do Passageiro</div>
   <div class="b">{{ strtoupper($lancha) }} · Data: {{ $data }}</div>

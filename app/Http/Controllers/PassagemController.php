@@ -1011,7 +1011,7 @@ class PassagemController extends Controller
         $vol = max(1, min(99, (int) request('volumes', 1)));
         $passagem->load('embarcacao');
         return view('passagens.etiqueta', [
-            'p' => $passagem, 'pax' => $pax, 'volumes' => $vol, 'empresa' => Tenant::empresa(),
+            'p' => $passagem, 'pax' => $pax, 'volumes' => $vol, 'soVia' => request()->boolean('so_via'), 'empresa' => Tenant::empresa(),
         ]);
     }
 
