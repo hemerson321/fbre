@@ -5,10 +5,10 @@
 <title>Etiqueta {{ $p->numeroFormatado() }}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
-  @page { margin: 0; size: {{ $pagina ?? '80mm auto' }}; }
+  @page { margin: 0; size: {{ ($labW ?? 90) }}mm {{ ($labH ?? 29) }}mm; }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 0; width: {{ $largura ?? '80mm' }}; font-family: "Courier New", Courier, monospace; font-size: 11.5px; color: #000; background: #fff; }
-  .lbl { padding: 3mm 4mm; page-break-after: always; }
+  body { margin: 0; padding: 0; width: {{ ($labW ?? 90) }}mm; font-family: "Courier New", Courier, monospace; font-size: 11.5px; color: #000; background: #fff; }
+  .lbl { width: {{ ($labW ?? 90) }}mm; height: {{ ($labH ?? 29) }}mm; overflow: hidden; padding: 1.5mm 2mm; page-break-after: always; display:flex; flex-direction:column; justify-content:center; }
   .lbl:last-child { page-break-after: auto; }
   .c { text-align: center; } .r { text-align: right; } .b { font-weight: bold; }
   .xl { font-size: 18px; } .lg { font-size: 14px; } .sm { font-size: 10px; }

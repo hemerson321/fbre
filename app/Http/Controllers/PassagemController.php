@@ -1015,10 +1015,12 @@ class PassagemController extends Controller
         $mmH = max(20, min(300, (int) $empresa->config('etiqueta_mm_h', 90)));   // comprimento (avanço)
         $girar = (bool) $empresa->config('etiqueta_girar', true);                 // texto na horizontal (gira 90°)
         // No horizontal o conteúdo é diagramado ao longo do comprimento (mm_h) e depois girado p/ caber na largura (mm_w).
-        $layoutW = $girar ? $mmH : $mmW;
+        // Horizontal: diagrama ao longo do comprimento (mm_h) e gira; label com tamanho EXATO do papel.
+        $labW = $girar ? $mmH : $mmW;   // largura do conteúdo (mm)
+        $labH = $girar ? $mmW : $mmH;   // altura do conteúdo (mm)
         return view('passagens.etiqueta', [
             'p' => $passagem, 'pax' => $pax, 'volumes' => $vol, 'soVia' => request()->boolean('so_via'),
-            'empresa' => $empresa, 'largura' => $layoutW.'mm', 'pagina' => $layoutW.'mm auto', 'girar' => $girar,
+            'empresa' => $empresa, 'labW' => $labW, 'labH' => $labH, 'girar' => $girar,
         ]);
     }
 
