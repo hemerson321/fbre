@@ -4,8 +4,10 @@
 @page{margin:0;size:80mm auto}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#111}
-.ticket{page-break-after:always;padding:4mm 4mm 5mm}
+.ticket{page-break-after:always;padding:4mm 4mm 5mm;position:relative;overflow:hidden}
 .ticket:last-child{page-break-after:auto}
+.cwm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:60}
+.cwm b{transform:rotate(-30deg);font-size:30px;font-weight:900;letter-spacing:3px;color:rgba(0,0,0,.24);border:3px solid rgba(0,0,0,.24);border-radius:6px;padding:3px 14px;white-space:nowrap}
 .c{text-align:center}.muted{color:#6b7280}.b{font-weight:700}
 .hdr{text-align:center;margin-bottom:4px}
 .hdr img{height:80px;max-width:72mm;object-fit:contain;margin-bottom:4px}
@@ -58,7 +60,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 @endphp
 
 @foreach($pagantes as $i => $pax)
-<div class="ticket" style="--cor:{{ $cor }}">
+<div class="ticket" style="--cor:{{ $cor }}">@if($p->cancelada)<div class="cwm"><b>CANCELADO</b></div>@endif
   <div class="hdr">
     @if($e?->logo)<img src="/{{ $e->logo }}" alt="logo">@endif
     <div class="emp">{{ strtoupper($e?->nomeExibicao() ?? 'FBRE') }}</div>
@@ -115,7 +117,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   <div class="sec pay">
     <div class="sec-h">Pagamento</div>
     <div class="total"><span class="tl">Valor total</span><span class="tv">R$ {{ number_format((float) $pax->valor_total,2,',','.') }}</span></div>
-    <div class="row"><span class="k">Situação</span><span class="vv">@if($p->devido > 0.009)<span class="pg no">EM ABERTO</span>@else<span class="pg ok">PAGO</span>@endif</span></div>
+    <div class="row"><span class="k">Situação</span><span class="vv">@if($p->cancelada)<span class="pg no">CANCELADA</span>@elseif($p->devido > 0.009)<span class="pg no">EM ABERTO</span>@else<span class="pg ok">PAGO</span>@endif</span></div>
     @php $pgs = $p->pagamentos->groupBy('meio')->map(fn ($g) => (float) $g->sum('valor'))->filter(fn ($v) => $v > 0.009); @endphp
     @if($pgs->count())
       @foreach($pgs as $meio => $val)<div class="row"><span class="k">{{ \App\Models\Pagamento::MEIOS[$meio] ?? ucfirst($meio) }}</span><span class="vv">R$ {{ number_format($val,2,',','.') }}</span></div>@endforeach
