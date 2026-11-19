@@ -540,6 +540,10 @@
         this.addPax();
         this.mudarEmbarcacao();
         this.onRota();
+        // Re-sincroniza o <select> da origem com o valor restaurado: as opções (x-for)
+        // podem renderizar depois do x-model ligar, deixando o select em "—" mesmo com o
+        // modelo correto. Limpa e re-aplica no próximo tick, quando as opções já existem.
+        this.$nextTick(()=>{ const _o=this.origemSel; if(_o){ this.origemSel=''; this.$nextTick(()=>{ this.origemSel=_o; }); } });
         this.iniciarCaptura();
         // Pagamento: o operador escolhe o meio; nada vem preenchido por padrao.
       },
