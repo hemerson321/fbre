@@ -48,6 +48,15 @@ nome_windows = padrao
 [impressora_etiqueta]
 tipo = windows
 nome_windows = padrao
+# modo: raw (termica ESC/POS, ex. Epson) | driver (etiquetadora pelo driver do Windows, ex. Brother QL-810W, Argox)
+modo = raw
+
+[impressora_passagem]
+# etiqueta do BILHETE de passagem — pode ser outra impressora/tamanho que a de encomenda
+tipo = windows
+nome_windows = padrao
+# modo recomendado: driver (Brother QL-810W etc.)
+modo = driver
 
 [escpos]
 colunas = 48
@@ -350,6 +359,55 @@ def montar_generico(d, col):
     return p.bytes()
 
 
+# ---------------------------------------------------------------- saída por DRIVER (GDI)
+def _img_from_b64(b64):
+    """base64 (PNG/JPG) -> imagem PIL RGB (fundo branco)."""
+    from PIL import Image
+    import io as _io, base64 as _b64
+    raw = _b64.b64decode(b64)
+    im = Image.open(_io.BytesIO(raw))
+    if im.mode in ("RGBA", "LA", "P"):
+        im = im.convert("RGBA")
+        bg = Image.new("RGB", im.size, "white")
+        bg.paste(im, mask=im.split()[-1])
+        im = bg
+    return im.convert("RGB")
+
+
+def imprimir_imagem_driver(nome_windows, imagens, titulo="FBRE Etiqueta"):
+    """Imprime imagens (1 por etiqueta/pagina) pelo DRIVER do Windows (GDI).
+    Pra etiquetadoras que NAO falam ESC/POS: Brother QL-810W, Argox, Zebra GDI...
+    O driver ja conhece a midia (ex. DK-1201 29x90). A imagem e orientada p/ casar
+    com a pagina e encaixada preservando proporcao."""
+    import win32ui, win32print
+    from PIL import ImageWin
+    nome = (nome_windows or "").strip()
+    if not nome or nome.lower() in ("padrao", "padr\u00e3o", "default", "auto"):
+        nome = win32print.GetDefaultPrinter()
+    HORZRES, VERTRES = 8, 10
+    hDC = win32ui.CreateDC()
+    hDC.CreatePrinterDC(nome)
+    try:
+        pw = hDC.GetDeviceCaps(HORZRES); ph = hDC.GetDeviceCaps(VERTRES)
+        if pw <= 0 or ph <= 0:
+            pw, ph = 870, 2700
+        hDC.StartDoc(titulo)
+        for im in imagens:
+            hDC.StartPage()
+            iw, ih = im.size
+            if (pw >= ph) != (iw >= ih):
+                im = im.rotate(90, expand=True); iw, ih = im.size
+            r = min(pw / iw, ph / ih)
+            w = max(1, int(iw * r)); h = max(1, int(ih * r))
+            x = (pw - w) // 2; y = (ph - h) // 2
+            ImageWin.Dib(im).draw(hDC.GetHandleOutput(), (x, y, x + w, y + h))
+            hDC.EndPage()
+        hDC.EndDoc()
+    finally:
+        try: hDC.DeleteDC()
+        except Exception: pass
+
+
 # ---------------------------------------------------------------- saída
 def enviar(cfg_sec, dados: bytes):
     tipo = cfg_sec.get("tipo", "windows")
@@ -446,8 +504,23 @@ def loop(parar: threading.Event):
                         raw = montar_passagem(dados, col); enviar(cfg["impressora_comprovante"], raw)
                     elif job["tipo"] == "generico":
                         imp = (dados.get("impressora") or "comprovante")
-                        sec = cfg["impressora_etiqueta"] if imp == "etiqueta" else cfg["impressora_comprovante"]
-                        raw = montar_generico(dados, col); enviar(sec, raw)
+                        if imp in ("etiqueta", "passagem"):
+                            secname = "impressora_passagem" if imp == "passagem" else "impressora_etiqueta"
+                            sec = cfg[secname] if cfg.has_section(secname) else cfg["impressora_etiqueta"]
+                            if (sec.get("nome_windows", "") or "").upper() == "NAO_IMPRIMIR":
+                                api.done(job["id"]); log(f"{imp} ignorada (desativada)"); continue
+                            modo_pad = "driver" if imp == "passagem" else "raw"
+                            if (sec.get("modo", modo_pad) or modo_pad).lower() == "driver":
+                                imgs = [_img_from_b64(ln["data"]) for ln in dados.get("linhas", [])
+                                        if ln.get("op") == "img" and ln.get("data")]
+                                if imgs:
+                                    imprimir_imagem_driver(sec.get("nome_windows", "padrao"), imgs)
+                                else:
+                                    enviar(sec, montar_generico(dados, col))
+                            else:
+                                enviar(sec, montar_generico(dados, col))
+                        else:
+                            enviar(cfg["impressora_comprovante"], montar_generico(dados, col))
                     else:
                         raise RuntimeError("tipo não suportado: " + job["tipo"])
                     num = (dados.get("encomenda") or {}).get("numero", "") or (dados.get("passagem") or {}).get("numero", "") or dados.get("ref", "") or (dados.get("pix") and brl(dados["pix"].get("valor",0))) or ""
@@ -475,6 +548,11 @@ def salvar_config(v):
     for sec, key in (("impressora_comprovante", "comprovante"), ("impressora_etiqueta", "etiqueta")):
         cfg[sec]["tipo"] = "windows"
         cfg[sec]["nome_windows"] = v.get(key, "padrao")
+    cfg["impressora_etiqueta"]["modo"] = (v.get("etiqueta_modo") or "raw")
+    if not cfg.has_section("impressora_passagem"): cfg.add_section("impressora_passagem")
+    cfg["impressora_passagem"]["tipo"] = "windows"
+    cfg["impressora_passagem"]["nome_windows"] = v.get("passagem", "padrao")
+    cfg["impressora_passagem"]["modo"] = (v.get("passagem_modo") or "driver")
     if not cfg["escpos"].get("colunas"): cfg["escpos"]["colunas"] = "48"
     if not cfg["escpos"].get("cortar"): cfg["escpos"]["cortar"] = "1"
     with open(INI, "w", encoding="utf-8") as f: cfg.write(f)
@@ -497,6 +575,13 @@ def janela_config():
     srv = g("fbre", "servidor", "https://fbre.com.br")
     comp = g("impressora_comprovante", "nome_windows", "padrao")
     etq = g("impressora_etiqueta", "nome_windows", "padrao")
+    etq_modo = g("impressora_etiqueta", "modo", "raw")
+    MODO_RAW = "T\u00e9rmica ESC/POS (Epson, Elgin...)"
+    MODO_DRV = "Driver do Windows (Brother QL, Argox...)"
+    def sel_modo(m): return MODO_DRV if (m or "raw").lower() == "driver" else MODO_RAW
+    def val_modo(c): return "driver" if c.get() == MODO_DRV else "raw"
+    pas = g("impressora_passagem", "nome_windows", "padrao")
+    pas_modo = g("impressora_passagem", "modo", "driver")
 
     def sel(atual):
         if (atual or "padrao").lower() == "padrao": return PADRAO
@@ -525,13 +610,20 @@ def janela_config():
 
     ttk.Label(frm, text="Impressora do comprovante:").grid(column=0, row=4, sticky="w", pady=4)
     c_comp = ttk.Combobox(frm, width=45, values=opcoes, state="readonly"); c_comp.set(sel(comp)); c_comp.grid(column=1, row=4, pady=4)
-    ttk.Label(frm, text="Impressora da etiqueta:").grid(column=0, row=5, sticky="w", pady=4)
+    ttk.Label(frm, text="Etiqueta de ENCOMENDA:").grid(column=0, row=5, sticky="w", pady=4)
     c_etq = ttk.Combobox(frm, width=45, values=opcoes_etq, state="readonly"); c_etq.set(sel_etq(etq)); c_etq.grid(column=1, row=5, pady=4)
-    ttk.Label(frm, text="Sem etiquetadora? Escolha \"(não imprimir)\" na etiqueta.", foreground="#888").grid(column=1, row=6, sticky="w")
+    ttk.Label(frm, text="   └ tipo:").grid(column=0, row=6, sticky="w", pady=2)
+    c_modo = ttk.Combobox(frm, width=45, values=[MODO_RAW, MODO_DRV], state="readonly"); c_modo.set(sel_modo(etq_modo)); c_modo.grid(column=1, row=6, pady=2)
+    ttk.Label(frm, text="Etiqueta de PASSAGEM (bilhete):").grid(column=0, row=7, sticky="w", pady=4)
+    c_pas = ttk.Combobox(frm, width=45, values=opcoes_etq, state="readonly"); c_pas.set(sel_etq(pas)); c_pas.grid(column=1, row=7, pady=4)
+    ttk.Label(frm, text="   └ tipo:").grid(column=0, row=8, sticky="w", pady=2)
+    c_pas_modo = ttk.Combobox(frm, width=45, values=[MODO_RAW, MODO_DRV], state="readonly"); c_pas_modo.set(sel_modo(pas_modo)); c_pas_modo.grid(column=1, row=8, pady=2)
+    ttk.Label(frm, text="Brother QL / Argox = Driver do Windows. T\u00e9rmica de cupom = ESC/POS.", foreground="#888").grid(column=1, row=9, sticky="w")
 
     def coletar():
         return {"token": e_tok.get().strip(), "servidor": e_srv.get().strip(),
-                "comprovante": val(c_comp), "etiqueta": val_etq(c_etq)}
+                "comprovante": val(c_comp), "etiqueta": val_etq(c_etq), "etiqueta_modo": val_modo(c_modo),
+                "passagem": val_etq(c_pas), "passagem_modo": val_modo(c_pas_modo)}
 
     def salvar():
         if not e_tok.get().strip():
@@ -541,16 +633,43 @@ def janela_config():
         messagebox.showinfo("Agente de Impressão", "Configuração salva! O agente já passa a usar essas impressoras.")
         root.destroy()
 
+    def _teste_img_driver(cfg2, secname):
+        from PIL import Image, ImageDraw
+        im = Image.new("RGB", (945, 305), "white")
+        d = ImageDraw.Draw(im); d.rectangle((6, 6, 938, 298), outline="black", width=4)
+        d.text((26, 40), "TESTE " + ("PASSAGEM" if "passagem" in secname else "ETIQUETA"), fill="black")
+        d.text((26, 90), "Agente - driver OK", fill="black")
+        d.text((26, 140), "Brother QL / DK-1201", fill="black")
+        imprimir_imagem_driver(cfg2[secname].get("nome_windows", "padrao"), [im])
+
     def testar(qual):
         try:
             salvar_config(coletar())
             cfg2 = configparser.ConfigParser(); cfg2.read(INI, encoding="utf-8")
-            if qual == "etiqueta":
+            if qual == "passagem":
+                sec = cfg2["impressora_passagem"]
+                if (sec.get("nome_windows", "") or "").upper() == "NAO_IMPRIMIR":
+                    messagebox.showinfo("Agente de Impressão", "Passagem está em \"(não imprimir)\". Escolha uma impressora."); return
+                if (sec.get("modo", "driver") or "driver").lower() == "driver":
+                    _teste_img_driver(cfg2, "impressora_passagem")
+                else:
+                    p = EscPos(48); p.txt("TESTE PASSAGEM", "c", True, 2); p.feed(2); p.cortar()
+                    enviar(sec, p.bytes())
+            elif qual == "etiqueta":
                 if (cfg2["impressora_etiqueta"].get("nome_windows", "") or "").upper() == "NAO_IMPRIMIR":
                     messagebox.showinfo("Agente de Impressão", "Etiqueta está em \"(não imprimir)\". Escolha uma impressora pra testar.")
                     return
-                p = EscPos(48); p.txt("TESTE ETIQUETA", "c", True, 2); p.txt("Agente de Impressão", "c"); p.feed(2); p.cortar()
-                enviar(cfg2["impressora_etiqueta"], p.bytes())
+                if (cfg2["impressora_etiqueta"].get("modo", "raw") or "raw").lower() == "driver":
+                    from PIL import Image, ImageDraw
+                    im = Image.new("RGB", (945, 305), "white")  # ~90x29mm paisagem
+                    d = ImageDraw.Draw(im); d.rectangle((6, 6, 938, 298), outline="black", width=4)
+                    d.text((26, 40), "TESTE ETIQUETA", fill="black")
+                    d.text((26, 90), "Agente de Impressao - driver OK", fill="black")
+                    d.text((26, 140), "Brother QL / DK-1201", fill="black")
+                    imprimir_imagem_driver(cfg2["impressora_etiqueta"].get("nome_windows", "padrao"), [im])
+                else:
+                    p = EscPos(48); p.txt("TESTE ETIQUETA", "c", True, 2); p.txt("Agente de Impressão", "c"); p.feed(2); p.cortar()
+                    enviar(cfg2["impressora_etiqueta"], p.bytes())
             else:
                 p = EscPos(48); p.txt("TESTE COMPROVANTE", "c", True, 2); p.txt("Agente de Impressão OK", "c"); p.feed(3); p.cortar()
                 enviar(cfg2["impressora_comprovante"], p.bytes())
@@ -558,10 +677,11 @@ def janela_config():
         except Exception as ex:
             messagebox.showerror("Agente de Impressão", f"Falha no teste: {ex}")
 
-    bar = ttk.Frame(frm); bar.grid(column=0, row=7, columnspan=2, pady=(14, 0), sticky="e")
+    bar = ttk.Frame(frm); bar.grid(column=0, row=10, columnspan=2, pady=(14, 0), sticky="e")
     ttk.Button(bar, text="Testar comprovante", command=lambda: testar("comprovante")).grid(column=0, row=0, padx=4)
     ttk.Button(bar, text="Testar etiqueta", command=lambda: testar("etiqueta")).grid(column=1, row=0, padx=4)
-    ttk.Button(bar, text="Salvar", command=salvar).grid(column=2, row=0, padx=4)
+    ttk.Button(bar, text="Testar passagem", command=lambda: testar("passagem")).grid(column=2, row=0, padx=4)
+    ttk.Button(bar, text="Salvar", command=salvar).grid(column=3, row=0, padx=4)
     try: root.eval('tk::PlaceWindow . center')
     except Exception: pass
     root.mainloop()

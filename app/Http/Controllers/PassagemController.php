@@ -1053,7 +1053,7 @@ class PassagemController extends Controller
                         ['op' => 'feed', 'n' => 2],
                         ['op' => 'cut'],
                     ],
-                    'impressora' => 'etiqueta',
+                    'impressora' => 'passagem',
                     'ref' => 'Etiqueta '.$passagem->numeroFormatado(),
                 ],
             ]);
