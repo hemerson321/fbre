@@ -43,7 +43,10 @@ class PassagemController extends Controller
             ->where('meio', '!=', 'desconto')->selectRaw('meio, SUM(valor) as valor')
             ->groupBy('meio')->pluck('valor', 'meio');
 
-        $passagens = (clone $base)->with(['embarcacao', 'operador', 'embarcouPor'])->orderByDesc('id')->paginate(50)->withQueryString();
+        // Lista mostra ativas + canceladas juntas (os totais acima continuam só com ativas).
+        $fLista = $f;
+        if (($fLista['cancelada'] ?? '') === '') $fLista['cancelada'] = 'todas';
+        $passagens = Passagem::filtrar($fLista)->with(['embarcacao', 'operador', 'embarcouPor'])->orderByDesc('id')->paginate(50)->withQueryString();
 
         return view('passagens.index', [
             'passagens' => $passagens,

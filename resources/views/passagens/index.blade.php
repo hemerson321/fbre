@@ -74,7 +74,7 @@
   {{-- lista --}}
   <div class="card divide-y">
     @forelse($passagens as $p)
-      <div class="flex items-center gap-3 p-3 hover:bg-slate-50 row-{{ $p->cor() }}">
+      <div class="flex items-center gap-3 p-3 hover:bg-slate-50 row-{{ $p->cor() }}@if($p->cancelada) relative overflow-hidden @endif">@if($p->cancelada)<div class="pointer-events-none absolute inset-0 flex items-center justify-center" style="z-index:5"><span style="transform:rotate(-7deg);font-size:30px;font-weight:900;letter-spacing:5px;color:rgba(185,28,28,.16);white-space:nowrap">CANCELADO</span></div>@endif
         <a href="{{ route('passagens.show',$p) }}" class="flex-1 min-w-0 block">
           <div class="font-semibold">@if($p->tipo==='camarote')🛏️ @endif#{{ $p->numeroFormatado() }} · {{ $p->origem }} → {{ $p->destino }}</div>
           <div class="text-[11px] text-slate-400 truncate">🚤 {{ $p->embarcacao?->nome ?? '—' }}@if($p->data_viagem) · 📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</div>
