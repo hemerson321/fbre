@@ -26,6 +26,12 @@
   <div class="sm:col-span-2"><label class="label">Aviso em destaque no topo do bilhete</label><textarea name="aviso_comprovante" rows="2" class="input !min-h-[60px] py-2" placeholder="Ex.: Passageiro no porto com 1 hora de antecedência à saída da embarcação">{{ old('aviso_comprovante',$empresa->aviso_comprovante) }}</textarea></div>
   <div><label class="label">🏷️ Etiqueta — largura (mm)</label><input name="etiqueta_mm_w" type="number" min="10" max="120" class="input !min-h-[40px]" value="{{ old('etiqueta_mm_w', $empresa->config('etiqueta_mm_w', 29)) }}" placeholder="29"><p class="text-[11px] text-slate-400 mt-0.5">Tamanho do papel da impressora de etiqueta (Brother QL: DK-1201 = 29 × 90). Mude aqui quando trocar o papel — o agente não precisa mexer.</p></div>
   <div><label class="label">🏷️ Etiqueta — altura (mm)</label><input name="etiqueta_mm_h" type="number" min="20" max="300" class="input !min-h-[40px]" value="{{ old('etiqueta_mm_h', $empresa->config('etiqueta_mm_h', 90)) }}" placeholder="90"></div>
+  <div class="sm:col-span-2"><label class="label">🏷️ Etiqueta — orientação do texto</label>
+    <select name="etiqueta_girar" class="input !min-h-[40px]">
+      <option value="1" @selected($empresa->config('etiqueta_girar', true))>Horizontal (texto deitado ao longo do comprimento) — recomendado p/ DK-1201</option>
+      <option value="0" @selected(! $empresa->config('etiqueta_girar', true))>Vertical (texto em pé)</option>
+    </select>
+    <p class="text-[11px] text-slate-400 mt-0.5">Na DK-1201 (29×90) o papel é estreito: no horizontal o sistema gira o conteúdo 90° pra caber e o texto sair deitado.</p></div>
   <div><label class="label">Cor principal</label><input name="cor_primaria" type="color" class="input !p-1 h-12" value="{{ old('cor_primaria',$empresa->cor_primaria) }}"></div>
   <div><label class="label">Cor de destaque</label><input name="cor_secundaria" type="color" class="input !p-1 h-12" value="{{ old('cor_secundaria',$empresa->cor_secundaria) }}"></div>
   <div class="sm:col-span-2 flex items-center gap-4"><div>@if($empresa->logo)<img src="/{{ $empresa->logo }}" class="h-16 rounded-lg border">@endif</div><div class="flex-1"><label class="label">Logo (PNG/JPG)</label><input name="logo" type="file" accept="image/*" class="input !py-2.5"></div></div>

@@ -27,28 +27,41 @@
 @if(!($soVia ?? false))
 @for($v = 1; $v <= $volumes; $v++)
 <div class="lbl">
-  <div class="sm">Lancha</div>
-  <div class="b lg">{{ strtoupper($lancha) }}</div>
-  <div class="b lg" style="margin-top:2px">{{ strtoupper($pax->nome) }}</div>
-  <div class="b lg" style="margin-top:3px">{{ $p->origem }} x {{ $p->destino }}</div>
-  <div class="b lg">Pol. {{ $pol }} · QTD {{ $v }}/{{ $volumes }}</div>
-  @if($pax->telefone)<div class="sm" style="margin-top:3px">Tel.: {{ $pax->telefone }}</div>@endif
-  <div class="sm">Data: {{ $data }} · Ticket: {{ $ticket }}</div>
+  <table><tr>
+    <td style="width:62%;vertical-align:top">
+      <div><span class="sm">Lancha:</span> <span class="b lg">{{ strtoupper($lancha) }}</span></div>
+      <div class="b lg">{{ strtoupper($pax->nome) }}</div>
+      @if($pax->telefone)<div class="b">Tel.: {{ $pax->telefone }}</div>@endif
+      <div><span class="b">Data: {{ $data }}</span> <span class="sm">Ticket:</span> <span class="b">{{ $ticket }}</span></div>
+    </td>
+    <td class="c" style="width:38%;vertical-align:middle">
+      <div class="b xl">{{ $p->origem }} x {{ $p->destino }}</div>
+      <div class="b xl">{{ $pol }}</div>
+      <div><span class="sm">QTD.:</span> <span class="b lg">{{ $v }}/{{ $volumes }}</span></div>
+    </td>
+  </tr></table>
 </div>
 @endfor
 @endif
 <div class="lbl">
-  <div class="b">— Via do Passageiro —</div>
-  <div class="sm" style="margin-top:2px">{{ strtoupper($lancha) }}</div>
-  <div class="b lg">{{ strtoupper($pax->nome) }}</div>
-  <div class="b lg">{{ $p->origem }} x {{ $p->destino }}</div>
-  <div class="b">Pol. {{ $pol }}</div>
-  <div class="sm" style="margin-top:3px">Data: {{ $data }} · Ticket: {{ $ticket }}</div>
-  @if(!($soVia ?? false))<div class="b" style="margin-top:2px">{{ $volumes }} Volume(s)</div>@endif
+  <table><tr>
+    <td style="width:62%;vertical-align:top">
+      <div class="b">Via do Passageiro</div>
+      <div><span class="sm">Lancha:</span> <span class="b">{{ strtoupper($lancha) }}</span></div>
+      <div class="b lg">{{ strtoupper($pax->nome) }}</div>
+      <div><span class="b">Data: {{ $data }}</span> <span class="sm">Ticket:</span> <span class="b">{{ $ticket }}</span></div>
+    </td>
+    <td class="c" style="width:38%;vertical-align:middle">
+      <div class="b xl">{{ $p->origem }} x {{ $p->destino }}</div>
+      <div class="b xl">{{ $pol }}</div>
+      @if(!($soVia ?? false))<div><span class="sm">Vol.:</span> <span class="b lg">{{ $volumes }}</span></div>@endif
+    </td>
+  </tr></table>
 </div>
 <script>
 (function(){
   var RASTER = new URLSearchParams(location.search).has('raster');
+  var GIRAR = {{ ($girar ?? true) ? 'true' : 'false' }};
   function raster(){
     var h2c = window.html2canvas;
     if(!h2c){ try{ parent.postMessage({fbreRaster:true, imagens:[], erro:'sem html2canvas'}, '*'); }catch(e){} return; }
@@ -57,7 +70,14 @@
     (function next(i){
       if(i>=els.length){ try{ parent.postMessage({fbreRaster:true, imagens:out}, '*'); }catch(e){} return; }
       h2c(els[i], {scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false}).then(function(cv){
-        try{ out.push(cv.toDataURL('image/png')); }catch(e){} next(i+1);
+        try{
+          if(GIRAR){
+            var rc=document.createElement('canvas'); rc.width=cv.height; rc.height=cv.width;
+            var rx=rc.getContext('2d'); rx.translate(rc.width/2, rc.height/2); rx.rotate(Math.PI/2);
+            rx.drawImage(cv, -cv.width/2, -cv.height/2);
+            out.push(rc.toDataURL('image/png'));
+          } else { out.push(cv.toDataURL('image/png')); }
+        }catch(e){} next(i+1);
       }).catch(function(){ next(i+1); });
     })(0);
   }

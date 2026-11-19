@@ -1011,11 +1011,14 @@ class PassagemController extends Controller
         $vol = max(1, min(99, (int) request('volumes', 1)));
         $passagem->load('embarcacao');
         $empresa = Tenant::empresa();
-        $mmW = max(10, min(120, (int) $empresa->config('etiqueta_mm_w', 29)));
-        $mmH = max(20, min(300, (int) $empresa->config('etiqueta_mm_h', 90)));
+        $mmW = max(10, min(120, (int) $empresa->config('etiqueta_mm_w', 29)));   // largura do papel (cabeçote)
+        $mmH = max(20, min(300, (int) $empresa->config('etiqueta_mm_h', 90)));   // comprimento (avanço)
+        $girar = (bool) $empresa->config('etiqueta_girar', true);                 // texto na horizontal (gira 90°)
+        // No horizontal o conteúdo é diagramado ao longo do comprimento (mm_h) e depois girado p/ caber na largura (mm_w).
+        $layoutW = $girar ? $mmH : $mmW;
         return view('passagens.etiqueta', [
             'p' => $passagem, 'pax' => $pax, 'volumes' => $vol, 'soVia' => request()->boolean('so_via'),
-            'empresa' => $empresa, 'largura' => $mmW.'mm', 'pagina' => $mmW.'mm '.$mmH.'mm',
+            'empresa' => $empresa, 'largura' => $layoutW.'mm', 'pagina' => $layoutW.'mm auto', 'girar' => $girar,
         ]);
     }
 
