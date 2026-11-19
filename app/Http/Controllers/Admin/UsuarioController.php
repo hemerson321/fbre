@@ -21,7 +21,7 @@ class UsuarioController extends Controller
     public function index()
     {
         return view('admin.usuarios', [
-            'usuarios' => $this->query()->orderBy('name')->get(),
+            'usuarios' => $this->query()->where(fn ($q) => $q->whereNull('papel')->orWhere('papel', '!=', 'dono_transporte'))->orderBy('name')->get(),
             'setores' => Setor::orderBy('nome')->pluck('nome'),
         ]);
     }
