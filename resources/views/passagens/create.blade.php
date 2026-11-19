@@ -942,8 +942,8 @@
       // ---- autocomplete de passageiro (busca em pessoas já cadastradas) ----
       async buscarPax(i){ const q=(this.passageiros[i]?.nome||'').trim(); if(q.length<2){ this.paxLista=[]; this.paxAberto=-1; return; } try{ const r=await fetch(`{{ route('pessoas.buscar') }}?q=${encodeURIComponent(q)}`); this.paxLista=await r.json(); this.paxAberto=i; }catch(e){} },
       escolherPax(i,p){ const px=this.passageiros[i]; if(!px) return; px.nome=p.nome;
-        if(p.documento && !FBRE.pareceCpf(p.documento)) px.documento=p.documento; // documento so se for RG (CPF nao)
         if(p.doc_tipo) px.doc_tipo=p.doc_tipo;
+        if(p.documento){ px.documento=p.documento; if(!px.doc_tipo && FBRE.pareceCpf(p.documento)) px.doc_tipo='CPF'; }
         if(p.telefone) px.telefone=FBRE.foneMask(p.telefone);
         if(p.sexo) px.sexo=p.sexo;
         if(p.nacionalidade) px.nacionalidade=p.nacionalidade;
