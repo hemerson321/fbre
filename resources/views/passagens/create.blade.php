@@ -125,7 +125,7 @@
         <div class="pessoa" x-data="pessoaBusca()">
           <div class="relative">
             <label class="lbl">Nome</label>
-            <input class="field" autocomplete="off" x-model="compradorNome" @input.debounce.300ms="buscar" @focus="aberto=true" @click.outside="aberto=false" placeholder="Quem está comprando">
+            <input class="field" :name="'cn'+nonce" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" x-model="compradorNome" @input.debounce.300ms="buscar" @focus="aberto=true" @click.outside="aberto=false" placeholder="Quem está comprando">
             <div x-show="aberto && lista.length" x-cloak class="absolute z-20 mt-1 w-full bg-white rounded-xl border shadow-xl max-h-48 overflow-auto">
               <template x-for="p in lista" :key="p.nome+p.telefone">
                 <button type="button" @click="escolher(p)" class="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b last:border-0">
@@ -161,7 +161,7 @@
             <div class="flex items-center gap-2">
               <span class="w-6 h-6 rounded-full text-white text-[11px] font-bold flex items-center justify-center shrink-0" style="background:var(--cor1)" x-text="i+1"></span>
               <div class="relative flex-1">
-                <input :id="'pax-nome-'+i" class="field !min-h-0 py-1 w-full" placeholder="Nome do passageiro" x-model="p.nome" autocomplete="off" @input.debounce.300ms="buscarPax(i)" @focus="paxAberto=i" @click.outside="paxAberto===i && (paxAberto=-1)" required>
+                <input :id="'pax-nome-'+i" :name="'pn'+nonce+i" class="field !min-h-0 py-1 w-full" placeholder="Nome do passageiro" x-model="p.nome" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" @input.debounce.300ms="buscarPax(i)" @focus="paxAberto=i" @click.outside="paxAberto===i && (paxAberto=-1)" required>
                 <div x-show="paxAberto===i && paxLista.length" x-cloak class="absolute z-30 mt-1 w-full bg-white rounded-xl border shadow-xl max-h-48 overflow-auto">
                   <template x-for="pp in paxLista" :key="pp.nome+pp.telefone">
                     <button type="button" @click="escolherPax(i,pp)" class="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b last:border-0">
@@ -507,6 +507,7 @@
       passageiros:[],
       precoInfo:false,
       paxLista:[], paxAberto:-1,
+      nonce: Math.random().toString(36).slice(2,10),  // nome de campo aleatorio -> mata o autofill do Chrome
       // viagem
       rotaId:'', linhaNome:'', paradasInfo:[], viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
       diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
