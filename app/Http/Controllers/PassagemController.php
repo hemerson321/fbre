@@ -1010,8 +1010,12 @@ class PassagemController extends Controller
         abort_unless((int) $pax->passagem_id === (int) $passagem->id, 404);
         $vol = max(1, min(99, (int) request('volumes', 1)));
         $passagem->load('embarcacao');
+        $empresa = Tenant::empresa();
+        $mmW = max(10, min(120, (int) $empresa->config('etiqueta_mm_w', 29)));
+        $mmH = max(20, min(300, (int) $empresa->config('etiqueta_mm_h', 90)));
         return view('passagens.etiqueta', [
-            'p' => $passagem, 'pax' => $pax, 'volumes' => $vol, 'soVia' => request()->boolean('so_via'), 'empresa' => Tenant::empresa(),
+            'p' => $passagem, 'pax' => $pax, 'volumes' => $vol, 'soVia' => request()->boolean('so_via'),
+            'empresa' => $empresa, 'largura' => $mmW.'mm', 'pagina' => $mmW.'mm '.$mmH.'mm',
         ]);
     }
 
@@ -1028,6 +1032,8 @@ class PassagemController extends Controller
         if (! is_array($imagens) || ! count($imagens)) {
             return response()->json(['ok' => false, 'erro' => 'Sem conteúdo para imprimir.'], 422);
         }
+        $mmW = max(10, min(120, (int) Tenant::empresa()->config('etiqueta_mm_w', 29)));
+        $wDots = (int) round($mmW / 25.4 * 300); // Brother QL = 300 dpi
         $n = 0;
         foreach ($imagens as $img) {
             if (! is_string($img) || $img === '') continue;
@@ -1038,11 +1044,11 @@ class PassagemController extends Controller
                 'tipo' => 'generico',
                 'dados' => [
                     'linhas' => [
-                        ['op' => 'img', 'data' => $img, 'w' => 576],
-                        ['op' => 'feed', 'n' => 3],
+                        ['op' => 'img', 'data' => $img, 'w' => $wDots],
+                        ['op' => 'feed', 'n' => 2],
                         ['op' => 'cut'],
                     ],
-                    'impressora' => 'comprovante',
+                    'impressora' => 'etiqueta',
                     'ref' => 'Etiqueta '.$passagem->numeroFormatado(),
                 ],
             ]);

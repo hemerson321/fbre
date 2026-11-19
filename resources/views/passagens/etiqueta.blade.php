@@ -27,32 +27,24 @@
 @if(!($soVia ?? false))
 @for($v = 1; $v <= $volumes; $v++)
 <div class="lbl">
-  <table><tr>
-    <td style="width:60%">
-      <div class="sm">Lancha:</div>
-      <div class="b lg">{{ strtoupper($lancha) }}</div>
-      <div class="b lg">{{ strtoupper($pax->nome) }}</div>
-      @if($pax->telefone)<div class="sm">Tel.: {{ $pax->telefone }}</div>@endif
-      <div class="sm">Data: {{ $data }}</div>
-      <div class="sm">Ticket: {{ $ticket }}</div>
-    </td>
-    <td class="c" style="width:40%;vertical-align:middle">
-      <div class="b xl">{{ $p->origem }}</div>
-      <div class="b">x</div>
-      <div class="b xl">{{ $p->destino }}</div>
-      <div class="b lg" style="margin-top:4px">Pol. {{ $pol }}</div>
-      <div class="b lg">QTD.: {{ $v }}/{{ $volumes }}</div>
-    </td>
-  </tr></table>
+  <div class="sm">Lancha</div>
+  <div class="b lg">{{ strtoupper($lancha) }}</div>
+  <div class="b lg" style="margin-top:2px">{{ strtoupper($pax->nome) }}</div>
+  <div class="b lg" style="margin-top:3px">{{ $p->origem }} x {{ $p->destino }}</div>
+  <div class="b lg">Pol. {{ $pol }} · QTD {{ $v }}/{{ $volumes }}</div>
+  @if($pax->telefone)<div class="sm" style="margin-top:3px">Tel.: {{ $pax->telefone }}</div>@endif
+  <div class="sm">Data: {{ $data }} · Ticket: {{ $ticket }}</div>
 </div>
 @endfor
 @endif
 <div class="lbl">
-  <div class="b lg">Via do Passageiro</div>
-  <div class="b">{{ strtoupper($lancha) }} · Data: {{ $data }}</div>
+  <div class="b">— Via do Passageiro —</div>
+  <div class="sm" style="margin-top:2px">{{ strtoupper($lancha) }}</div>
   <div class="b lg">{{ strtoupper($pax->nome) }}</div>
-  <div class="sm">{{ $rota }} · Ticket: {{ $ticket }} · Pol. {{ $pol }}</div>
-  <div class="b">{{ $soVia ?? false ? '' : $volumes.' Volume(s)' }}</div>
+  <div class="b lg">{{ $p->origem }} x {{ $p->destino }}</div>
+  <div class="b">Pol. {{ $pol }}</div>
+  <div class="sm" style="margin-top:3px">Data: {{ $data }} · Ticket: {{ $ticket }}</div>
+  @if(!($soVia ?? false))<div class="b" style="margin-top:2px">{{ $volumes }} Volume(s)</div>@endif
 </div>
 <script>
 (function(){
