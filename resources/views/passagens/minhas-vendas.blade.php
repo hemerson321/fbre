@@ -6,7 +6,7 @@
     <h1 class="text-xl font-bold">Minhas vendas <span class="text-slate-400 font-normal text-base">· {{ auth()->user()->name }}</span></h1>
     <div class="flex items-center gap-2 no-print">
       <a href="{{ route('passagens.minhas-vendas.exportar', request()->query()) }}" class="btn btn-ghost btn-sm">⬇️ Exportar CSV</a>
-      <a href="{{ request()->fullUrlWithQuery(['pdf'=>1]) }}" target="_blank" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a>
+      <a href="{{ route('passagens.caixa-viagem', array_merge(request()->only(['inicio','fim']), ['user_id'=>auth()->id()])) }}" target="_blank" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a>
       <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>
     </div>
   </div>
@@ -37,7 +37,14 @@
     <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Vendas no período ({{ $totais['qtd'] }})</div>
     <div class="divide-y text-sm">
       @forelse($vendas as $p)
-        <a href="{{ route('passagens.show',$p) }}" class="flex justify-between gap-3 p-3 hover:bg-slate-50">
+        @php
+          $corV = null;
+          if ($p->cancelada) $corV = '#fee2e2';
+          elseif ($p->forma === 'faturado') $corV = '#dbeafe';
+          elseif ($p->passageiros->contains(fn($x)=> mb_stripos((string)$x->tipo,'pcd')!==false || mb_stripos((string)$x->tipo,'defic')!==false)) $corV = '#fef9c3';
+          elseif ($p->passageiros->contains(fn($x)=> mb_stripos((string)$x->tipo,'idoso')!==false)) $corV = '#dcfce7';
+        @endphp
+        <a href="{{ route('passagens.show',$p) }}" class="flex justify-between gap-3 p-3 hover:brightness-95"@if($corV) style="background:{{ $corV }}"@endif>
           <div class="min-w-0">
             <b>#{{ $p->numeroFormatado() }}</b> · {{ $p->origem }} → {{ $p->destino }}
             <div class="text-xs text-slate-400">{{ $p->created_at->format('d/m H:i') }} · {{ $p->passageiros->count() }} pax{{ $p->embarcacao ? ' · '.$p->embarcacao->nome : '' }}</div>
@@ -49,6 +56,12 @@
         </a>
       @empty <div class="p-6 text-center text-slate-400">Nenhuma venda no período.</div> @endforelse
     </div>
+  </div>
+  <div class="text-[11px] text-slate-500 flex flex-wrap gap-2 px-1">Legenda:
+    <span style="background:#dbeafe;padding:1px 7px;border-radius:4px">Agente/Município</span>
+    <span style="background:#dcfce7;padding:1px 7px;border-radius:4px">Idoso</span>
+    <span style="background:#fef9c3;padding:1px 7px;border-radius:4px">PCD</span>
+    <span style="background:#fee2e2;color:#b91c1c;padding:1px 7px;border-radius:4px">Cancelado</span>
   </div>
 </div>
 @endsection

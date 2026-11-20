@@ -754,67 +754,13 @@ class PassagemController extends Controller
             ->with(['passageiros', 'operador', 'pagamentos', 'embarcacao', 'camarote'])
             ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
 
-        $linhas = collect();
-        $totForma = [];      // meio => soma recebida
-        $totDesconto = 0.0;  // desconto total
-        $totGeral = 0.0;     // soma dos totais (vendas nao canceladas)
-        $totDevolvido = 0.0; // soma das canceladas/devolvidas
-        $nPax = 0; $nIdosos = 0; $nColos = 0; $nDevolvidas = 0;
-        $nr = 0;
-
-        foreach ($passagens as $p) {
-            $cancelada = (bool) $p->cancelada;
-            $meios = $p->pagamentos->where('meio', '!=', 'desconto')->groupBy('meio');
-            $formaTxt = $meios->isNotEmpty()
-                ? $meios->keys()->map(fn ($m) => \App\Models\Pagamento::MEIOS[$m] ?? ucfirst($m))->implode(', ')
-                : (\App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma));
-            $ehMunicipio = $p->forma === 'faturado';
-
-            foreach ($p->passageiros as $pax) {
-                $ehColo = ($pax->papel ?? '') === 'colo';
-                $cancPax = $cancelada || (bool) ($pax->cancelado ?? false);
-                $nr++;
-                $tipoTxt = (string) ($pax->papel ?: $pax->tipo);
-                $ehIdoso = mb_stripos($tipoTxt, 'idoso') !== false;
-                $ehPcd = mb_stripos($tipoTxt, 'pcd') !== false || mb_stripos($tipoTxt, 'defic') !== false;
-                $linhas->push((object) [
-                    'nr' => $nr,
-                    'ticket' => $p->numeroFormatado(),
-                    'trecho' => $p->origem.'/'.$p->destino,
-                    'nome' => $pax->nome,
-                    'colo' => $ehColo,
-                    'cancelado' => $cancPax,
-                    'data_compra' => $p->created_at,
-                    'vendedor' => $p->operador?->name ?? '—',
-                    'valor' => (float) $pax->valor_total,
-                    'tipo' => $tipoTxt,
-                    'p' => $ehColo ? 'C' : mb_strtoupper(mb_substr(trim($tipoTxt) ?: 'A', 0, 1)),
-                    'agencia' => '',
-                    'status' => $cancPax ? 'Devolvida' : ((float) $p->devido > 0.009 ? 'Em aberto' : 'Paga'),
-                    'forma' => $formaTxt,
-                    'idoso' => $ehIdoso && ! $cancPax,
-                    'pcd' => $ehPcd && ! $cancPax,
-                    'municipio' => $ehMunicipio && ! $cancPax,
-                    'cliente' => (string) ($p->comprador_nome ?? ''),
-                    'poltrona' => (string) ($pax->poltrona ?? ''),
-                ]);
-                if (! $cancPax && ! $ehColo) { $nPax++; if ($ehIdoso) $nIdosos++; }
-                if ($ehColo && ! $cancPax) $nColos++;
-            }
-
-            if ($cancelada) {
-                $nDevolvidas++;
-                $totDevolvido += (float) $p->total;
-            } else {
-                foreach ($p->pagamentos as $pg) {
-                    if ($pg->meio === 'desconto') { $totDesconto += (float) $pg->valor; continue; }
-                    if ((float) $pg->valor <= 0) continue;
-                    $totForma[$pg->meio] = ($totForma[$pg->meio] ?? 0) + (float) $pg->valor;
-                }
-                $totDesconto += (float) $p->desconto;
-                $totGeral += (float) $p->total;
-            }
-        }
+        $m = \App\Support\ManifestoCaixa::dados($passagens);
+        $linhas = $m['linhas'];
+        $totForma = $m['totForma'];
+        $totDesconto = $m['totDesconto'];
+        $totGeral = $m['totGeral'];
+        $totDevolvido = $m['totDevolvido'];
+        $nPax = $m['nPax']; $nIdosos = $m['nIdosos']; $nColos = $m['nColos']; $nDevolvidas = $m['nDevolvidas'];
 
         $totRecebido = array_sum($totForma);
         $embs = $passagens->map(fn ($p) => $p->embarcacao?->nome)->filter()->unique()->values();

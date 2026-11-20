@@ -41,33 +41,7 @@
   {{ $linhas->count() }} linha(s) · Emitido {{ now()->format('d/m/Y H:i') }}@if($e) · {{ $e->nomeExibicao() }}@endif
 </div>
 
-<table>
-  <thead><tr>
-    <th>Nr</th><th>Ticket</th><th>Trecho</th><th>Nome completo</th><th>Data compra</th>
-    <th>Vendedor</th><th class="r">Valor</th><th>P</th><th>Status</th><th>Forma</th><th>Cliente</th><th>Agência</th><th>Lugar</th>
-  </tr></thead>
-  <tbody>
-    @forelse($linhas as $l)
-    <tr class="@if($l->cancelado)canc @elseif($l->pcd)pcd @elseif($l->idoso)idoso @elseif($l->municipio)mun @endif">
-      <td>{{ $l->nr }}</td>
-      <td>{{ $l->ticket }}</td>
-      <td>{{ $l->trecho }}</td>
-      <td class="nome">{{ strtoupper($l->nome ?: 'PASSAGEIRO') }}@if($l->cancelado) <span class="tag" style="background:#b91c1c;color:#fff">DEVOLVIDA</span>@elseif($l->colo) <span class="tag" style="background:#e0f2fe;color:#075985">COLO</span>@endif</td>
-      <td>{{ $l->data_compra?->format('d/m/Y') }}</td>
-      <td>{{ $l->vendedor }}</td>
-      <td class="r">R$ {{ number_format($l->valor,2,',','.') }}</td>
-      <td style="font-weight:700">{{ $l->p }}</td>
-      <td>{{ $l->status }}</td>
-      <td>{{ $l->forma }}</td>
-      <td>{{ $l->cliente }}</td>
-      <td>{{ $l->agencia }}</td>
-      <td>{{ $l->poltrona }}</td>
-    </tr>
-    @empty
-    <tr><td colspan="13" style="text-align:center;color:#94a3b8;padding:20px">Nenhuma venda no filtro selecionado.</td></tr>
-    @endforelse
-  </tbody>
-</table>
+@include('passagens._manifesto_tabela', ['linhas' => $linhas])
 
 <div class="totais">
   <div class="bloco">

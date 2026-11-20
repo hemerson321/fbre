@@ -146,7 +146,11 @@ class Passagem extends Model
                 $q->where(function ($q) use ($v) {
                     $q->where('comprador_nome', 'like', "%$v%")
                       ->orWhere('comprador_telefone', 'like', "%$v%")
-                      ->orWhere('numero_completo', 'like', "%$v%");
+                      ->orWhere('numero_completo', 'like', "%$v%")
+                      ->orWhereHas('passageiros', function ($w) use ($v) {
+                          $w->where('nome', 'like', "%$v%")
+                            ->orWhere('poltrona', 'like', "%$v%");
+                      });
                     if (ctype_digit($v)) $q->orWhere('numero', (int) $v);
                 });
             })
