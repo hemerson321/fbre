@@ -72,7 +72,9 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   <div class="hdr">
     @if($e?->logo)<img src="/{{ $e->logo }}" alt="logo">@endif
     <div class="emp">{{ strtoupper($e?->nomeExibicao() ?? 'FBRE') }}</div>
-    @if($e?->cnpj)<div class="cnpj">CNPJ {{ $e->cnpj }}</div>@endif
+    @if($e && $e->nome && mb_strtoupper(trim($e->nome)) !== mb_strtoupper(trim($e->nomeExibicao())))<div class="cnpj">{{ strtoupper($e->nome) }}</div>@endif
+    @php $__fisc = trim(($e?->cnpj ? 'CNPJ '.$e->cnpj : '').($e?->config('ie') ? ($e?->cnpj ? ' · ' : '').'IE '.$e->config('ie') : '')); @endphp
+    @if($__fisc)<div class="cnpj">{{ $__fisc }}</div>@endif
     @if($e?->telefone || $e?->whatsapp)<div class="cnpj">{{ $e->telefone }}{{ ($e->telefone && $e->whatsapp) ? ' · ' : '' }}{{ $e->whatsapp }}</div>@endif
     @if($e?->endereco || $e?->cidade)<div class="cnpj">{{ $e->endereco }}{{ ($e->endereco && $e->cidade) ? ' · ' : '' }}{{ $e->cidade }}{{ $e->uf ? '/'.$e->uf : '' }}</div>@endif
   </div>
@@ -97,10 +99,11 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @if($hora)<div style="font-size:32px;font-weight:900;line-height:1.05;margin-top:3px;letter-spacing:.03em">⏰ {{ $hora }}</div>@endif
   </div>@endif
 
-  @if($p->embarcacao?->logo || $p->camarote)
+  @if($p->rota || $p->embarcacao?->logo || $p->camarote)
   <div class="sec">
     <div class="sec-h">Viagem</div>
     @if($p->embarcacao?->logo)<div style="text-align:center;margin:2px 0 4px"><img src="/{{ $p->embarcacao->logo }}" alt="barco" style="height:30px;max-width:46mm;object-fit:contain"></div>@endif
+    @if($p->rota)<div class="row"><span class="k">Linha autorizada</span><span class="vv">{{ strtoupper($p->rota->nome) }}</span></div>@endif
     @if($p->camarote)<div class="row"><span class="k">Suíte / Camarote</span><span class="vv">{{ $p->camarote->nome }}</span></div>@endif
   </div>
   @endif
@@ -123,7 +126,10 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   </div>
 
   <div class="sec pay">
-    <div class="sec-h">Pagamento</div>
+    <div class="sec-h">Pagamento &amp; discriminação de valores</div>
+    <div class="row"><span class="k">Tarifa</span><span class="vv">R$ {{ number_format((float) ($pax->valor_passagem ?? 0),2,',','.') }}</span></div>
+    <div class="row"><span class="k">Taxas</span><span class="vv">R$ {{ number_format((float) ($pax->valor_taxa ?? 0),2,',','.') }}</span></div>
+    @if(($pax->valor_alimentacao ?? 0) > 0.009)<div class="row"><span class="k">Alimentação e serviço</span><span class="vv">R$ {{ number_format((float) $pax->valor_alimentacao,2,',','.') }}</span></div>@endif
     <div class="total"><span class="tl">Valor total</span><span class="tv">R$ {{ number_format((float) $pax->valor_total,2,',','.') }}</span></div>
     <div class="row"><span class="k">Situação</span><span class="vv">@if($p->cancelada)<span class="pg no">CANCELADA</span>@elseif($p->devido > 0.009)<span class="pg no">EM ABERTO</span>@else<span class="pg ok">PAGO</span>@endif</span></div>
     <div class="row"><span class="k">Forma de pagamento</span><span class="vv b">{{ \App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma) }}</span></div>
@@ -133,6 +139,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @elseif($formas)<div class="row"><span class="k">Forma</span><span class="vv">{{ $formas }}</span></div>@endif
     <div class="row"><span class="k">Vendedor</span><span class="vv">{{ $p->operador?->name ?? '—' }}</span></div>
     <div class="row"><span class="k">Compra</span><span class="vv">{{ $p->created_at->format('d/m/Y H:i') }}</span></div>
+    @if($e?->cidade)<div class="row"><span class="k">Local de emissão</span><span class="vv">{{ $e->cidade }}{{ $e->uf ? ' - '.$e->uf : '' }}</span></div>@endif
     <div class="row"><span class="k">Impressão</span><span class="vv">{{ now()->format('d/m/Y H:i:s') }}</span></div>
     @if($pax->valor_integral > $pax->valor_total + 0.009)<div class="row"><span class="k">Preço normal</span><span class="vv">R$ {{ number_format((float) $pax->valor_integral,2,',','.') }}</span></div>@endif
   </div>
