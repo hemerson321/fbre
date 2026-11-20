@@ -911,7 +911,8 @@
         let ok=false;
         try{
           const vias = FBRE.perguntarVias();
-          const imagens = await this._rasterComprovante('/passagens/'+id+'/comprovante?vias='+vias);
+          let imagens = await this._rasterComprovante('/passagens/'+id+'/comprovante');
+          if(imagens && imagens.length && vias>1){ let __t=[]; for(let __v=0; __v<vias; __v++) __t=__t.concat(imagens); imagens=__t; }
           if(imagens && imagens.length){
             const dd = await fetch('/passagens/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({imagens})}).then(r=>r.json()).catch(()=>null);
             ok = !!(dd && dd.ok);

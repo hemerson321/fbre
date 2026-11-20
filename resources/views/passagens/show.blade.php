@@ -217,7 +217,7 @@ function imprimirDiretoPassagem(btn){
   const txt = btn.textContent;
   const vias = FBRE.perguntarVias();
   const POST = '{{ route('passagens.imprimir-direto',$p) }}';
-  const RURL = '{{ route('passagens.comprovante',$p) }}?raster=1&vias='+vias;
+  const RURL = '{{ route('passagens.comprovante',$p) }}?raster=1';
   btn.disabled = true; btn.textContent = 'Gerando bilhete...';
   let done = false;
   const ifr = document.createElement('iframe');
@@ -232,7 +232,8 @@ function imprimirDiretoPassagem(btn){
     const d = ev.data; if(!d || !d.fbreRaster) return;
     if(!d.imagens || !d.imagens.length){ fim(false, 'Não consegui gerar o bilhete.'); return; }
     btn.textContent = 'Enviando pra impressora...';
-    fetch(POST, {method:'POST', headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'}, body: JSON.stringify({imagens:d.imagens})})
+    let imgs = d.imagens; if(vias>1){ let t=[]; for(let v=0;v<vias;v++) t=t.concat(d.imagens); imgs=t; }
+    fetch(POST, {method:'POST', headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'}, body: JSON.stringify({imagens:imgs})})
       .then(r=>r.json())
       .then(dd=>{ if(dd && dd.ok){ fim(true, dd.jobs+' bilhete'+(dd.jobs>1?'s':'')); } else { fim(false, (dd && dd.erro) || 'Erro na impressora.'); } })
       .catch(()=>fim(false, 'Falha de conexão ao enviar.'));

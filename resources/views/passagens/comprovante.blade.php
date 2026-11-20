@@ -12,7 +12,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .hdr{text-align:center;margin-bottom:4px}
 .hdr img{height:80px;max-width:72mm;object-fit:contain;margin-bottom:4px}
 .emp{font-weight:800;font-size:14px;letter-spacing:.02em;line-height:1.1}
-.cnpj{font-size:10px;color:#6b7280}
+.cnpj{font-size:10.5px;color:#1f2937}
 .band{margin:6px -4mm 0;padding:5px 0;text-align:center;color:#fff;font-weight:800;font-size:12px;letter-spacing:.09em;background:var(--cor)}
 .hero{display:flex;align-items:stretch;gap:6px;margin:9px 0 5px}
 .tk{flex:1;border:1.5px solid var(--cor);border-radius:10px;padding:5px 9px}
@@ -28,8 +28,8 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .sec-h{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--cor);font-weight:800;margin-bottom:4px}
 .paxnome{font-size:15px;font-weight:800;line-height:1.15}
 .chip{display:inline-block;background:var(--cor);color:#fff;border-radius:20px;padding:2px 9px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
-.row{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:1.5px 0}
-.row .k{color:#6b7280}.row .vv{font-weight:600;text-align:right}
+.row{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0}
+.row .k{color:#374151;font-weight:600}.row .vv{font-weight:700;color:#000;text-align:right}
 .total{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 .total .tl{font-size:10px;text-transform:uppercase;color:#6b7280;font-weight:700}
 .total .tv{font-size:20px;font-weight:800;color:var(--cor)}

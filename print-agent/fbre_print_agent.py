@@ -183,7 +183,8 @@ class EscPos:
             tw = int(w) if w else maxw
             tw = max(1, min(tw, maxw))
             th = max(1, int(h0 * tw / w0))
-            im = im.resize((tw, th)).convert("1")       # 1-bit (dither)
+            im = im.resize((tw, th), Image.LANCZOS)                 # redimensiona nitido
+            im = im.point(lambda x: 0 if x < 176 else 255, mode="1")  # limiar -> texto SOLIDO (sem dither), nitido na termica
             iw, ih = im.size
             wbytes = (iw + 7) // 8
             px = im.load()
