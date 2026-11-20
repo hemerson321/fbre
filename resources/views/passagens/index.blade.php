@@ -63,7 +63,7 @@
   {{-- totais --}}
   @php $verCanc = ($f['cancelada'] ?? '')==='1'; @endphp
   <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-    <div class="card p-3"><div class="text-xs text-slate-500">Passagens</div><div class="text-lg font-bold">{{ $totais['qtd'] }}</div></div>
+    <div class="card p-3"><div class="text-xs text-slate-500">Vendas</div><div class="text-lg font-bold">{{ $totais['qtd'] }}</div></div>
     <div class="card p-3"><div class="text-xs text-slate-500">Passageiros</div><div class="text-lg font-bold">{{ $totais['passageiros'] }}</div></div>
     <div class="card p-3"><div class="text-xs text-slate-500">Recebido</div><div class="text-lg font-bold text-emerald-600">R$ {{ number_format($totais['recebido'],2,',','.') }}</div></div>
     <div class="card p-3"><div class="text-xs text-slate-500">A receber</div><div class="text-lg font-bold text-red-600">R$ {{ number_format($totais['a_receber'],2,',','.') }}</div></div>
@@ -175,8 +175,8 @@
                   <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2 min-w-0">
                       <span class="text-xs font-bold text-slate-400" x-text="(i+1)+'.'"></span>
-                      <select x-show="px.papel!=='colo'" x-model="px.tipo" class="input !min-h-0 h-8 py-0 text-xs font-semibold" style="width:auto">
-                        <template x-for="t in (px.tipo && !tiposPax.includes(px.tipo) ? [px.tipo].concat(tiposPax) : tiposPax)" :key="t"><option :value="t" x-text="t"></option></template>
+                      <select x-show="px.papel!=='colo'" x-model="px.tipo" x-init="$nextTick(()=>{ $el.value=px.tipo; })" class="input !min-h-0 h-8 py-0 text-xs font-semibold" style="width:auto">
+                        <template x-for="t in (px._tipos||tiposPax)" :key="t"><option :value="t" x-text="t"></option></template>
                       </select>
                       <span x-show="px.papel==='colo'" class="text-xs font-bold text-slate-500">Bebê de colo</span>
                     </div>
@@ -221,7 +221,7 @@
           try{
             const r=await fetch('/passagens/'+id+'/editar-dados',{headers:{'Accept':'application/json','X-CSRF-TOKEN':FBRE.csrf}});
             const j=await r.json().catch(()=>null);
-            if(r.ok && j && j.ok){ this.ed=j; } else { alert((j&&j.erro)||'Nao foi possivel carregar.'); this.edModal=false; }
+            if(r.ok && j && j.ok){ this.ed=j; (this.ed.passageiros||[]).forEach(p=>{ p._tipos = (p.tipo && !this.tiposPax.includes(p.tipo)) ? [p.tipo].concat(this.tiposPax) : this.tiposPax.slice(); }); } else { alert((j&&j.erro)||'Nao foi possivel carregar.'); this.edModal=false; }
           }catch(e){ alert('Erro: '+e.message); this.edModal=false; }
           this.edLoading=false;
         },
