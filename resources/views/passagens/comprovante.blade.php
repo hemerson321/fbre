@@ -86,16 +86,16 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 
   <div class="trecho">{{ $p->origem }} <span class="ar">→</span> {{ $p->destino }}</div>
 
-  @if($p->data_viagem || $hora)
-  <div style="text-align:center;background:var(--cor);color:#fff;border-radius:9px;padding:5px 8px;margin:5px 0 2px;font-weight:800;letter-spacing:.02em">
-    🕒 SAÍDA @if($p->data_viagem){{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@endif
-    @if($hora)<div style="font-size:30px;line-height:1.05;margin-top:3px;letter-spacing:.03em">⏰ {{ $hora }}</div>@endif
+  @if($p->data_viagem || $hora || $p->embarcacao)
+  <div style="text-align:center;background:var(--cor);color:#fff;border-radius:11px;padding:7px 10px;margin:7px 0 3px">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.05em">🕒 SAÍDA @if($p->data_viagem){{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@endif</div>
+    @if($hora)<div style="font-size:30px;font-weight:900;line-height:1.05;margin-top:2px;letter-spacing:.03em">⏰ {{ $hora }}</div>@endif
+    @if($p->embarcacao)<div style="font-size:16px;font-weight:800;margin-top:4px;border-top:1px solid rgba(255,255,255,.35);padding-top:4px">🚤 {{ strtoupper($p->embarcacao->nome) }}</div>@endif
   </div>@endif
 
   <div class="sec">
     <div class="sec-h">Viagem</div>
     @if($p->embarcacao?->logo)<div style="text-align:center;margin:2px 0 4px"><img src="/{{ $p->embarcacao->logo }}" alt="barco" style="height:30px;max-width:46mm;object-fit:contain"></div>@endif
-    @if($p->embarcacao)<div class="row"><span class="k">Transporte</span><span class="vv b" style="font-size:15px;color:var(--cor);text-transform:uppercase">{{ $p->embarcacao->nome }}</span></div>@endif
     @if($p->camarote)<div class="row"><span class="k">Suíte / Camarote</span><span class="vv">{{ $p->camarote->nome }}</span></div>@endif
     @if($nrViagem)<div class="row"><span class="k">Nº da viagem</span><span class="vv">{{ $nrViagem }}</span></div>@endif
   </div>
