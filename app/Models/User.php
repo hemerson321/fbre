@@ -103,7 +103,7 @@ class User extends Authenticatable
     {
         $emp = \App\Support\Tenant::empresa();
         if ($emp && ! $emp->config('usa_desconto', true)) return false;
-        return ! $this->is_revendedor && ($this->super_admin || (bool) $this->pode_desconto);
+        return ! $this->is_revendedor && ($this->super_admin || $this->admin || $this->gerente() || (bool) $this->pode_desconto);
     }
 
     /** O revendedor "dono" deste usuário: ele mesmo (se revendedor), ou o pai (se vendedor), ou null. */

@@ -169,6 +169,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     <div class="fpg">
     <div class="fpg-h">💳 Pagamento</div>
     <div class="row"><span class="k">Forma de pagamento</span><span class="vv b">{{ $formaLabel }}</span></div>
+    @if($p->desconto > 0.009)<div class="row"><span class="k">Desconto na venda</span><span class="vv">- R$ {{ number_format((float) $p->desconto,2,',','.') }}</span></div>@endif
     @php $pgs = $p->pagamentos->groupBy('meio')->map(fn ($g) => (float) $g->sum('valor'))->filter(fn ($v) => $v > 0.009); @endphp
     @if($pgs->count())
       @foreach($pgs as $meio => $val)<div class="row"><span class="k">{{ \App\Models\Pagamento::MEIOS[$meio] ?? ucfirst($meio) }}</span><span class="vv">R$ {{ number_format($val,2,',','.') }}</span></div>@endforeach
@@ -238,6 +239,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     <div class="rz-payrow"><span class="k">💳 Forma</span><span>{{ $formaLabel }}</span></div>
     @if($formas)<div class="rz-payrow"><span class="k">Pago em</span><span>{{ $formas }}</span></div>@endif
   </div>
+  @if($p->desconto > 0.009)<div class="rz-row"><span class="k">Desconto</span><span class="vv">- R$ {{ number_format((float) $p->desconto,2,',','.') }}</span></div>@endif
   <div class="rz-row"><span class="k">Recebido</span><span class="vv">R$ {{ number_format($rzPag,2,',','.') }}</span></div>
   <div class="rz-row"><span class="k">Em aberto</span><span class="vv">R$ {{ number_format($rzDev,2,',','.') }}</span></div>
   <div class="rz-tot"><span>TOTAL</span><span>R$ {{ number_format((float) $p->total,2,',','.') }}</span></div>
