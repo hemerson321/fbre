@@ -93,12 +93,13 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @if($p->embarcacao)<div style="font-size:16px;font-weight:800;margin-top:4px;border-top:1px solid rgba(255,255,255,.35);padding-top:4px">🚤 {{ strtoupper($p->embarcacao->nome) }}</div>@endif
   </div>@endif
 
+  @if($p->embarcacao?->logo || $p->camarote)
   <div class="sec">
     <div class="sec-h">Viagem</div>
     @if($p->embarcacao?->logo)<div style="text-align:center;margin:2px 0 4px"><img src="/{{ $p->embarcacao->logo }}" alt="barco" style="height:30px;max-width:46mm;object-fit:contain"></div>@endif
     @if($p->camarote)<div class="row"><span class="k">Suíte / Camarote</span><span class="vv">{{ $p->camarote->nome }}</span></div>@endif
-    @if($nrViagem)<div class="row"><span class="k">Nº da viagem</span><span class="vv">{{ $nrViagem }}</span></div>@endif
   </div>
+  @endif
 
   <div class="sec">
     <div class="sec-h">Passageiro</div>
