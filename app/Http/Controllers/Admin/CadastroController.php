@@ -40,7 +40,7 @@ class CadastroController extends Controller
     {
         return view('admin.transportes', [
             'embarcacoes' => Embarcacao::orderBy('nome')->get(),
-            'usuarios' => \App\Models\User::where('empresa_id', \App\Support\Tenant::id())->where('ativo', true)->where('papel', 'dono_transporte')->orderBy('name')->get(),
+            'usuarios' => \App\Models\User::where('empresa_id', \App\Support\Tenant::id())->where('ativo', true)->where('super_admin', false)->orderBy('name')->get(),
             'tiposPassageiro' => TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(['id', 'nome', 'eh_normal', 'idade_min', 'idade_max']),
             'apis' => \App\Models\PagamentoApi::orderBy('nome')->get(),
         ]);
