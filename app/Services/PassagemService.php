@@ -211,6 +211,7 @@ class PassagemService
             $this->lembrarPessoa($data['comprador_nome'] ?? '', $data['comprador_telefone'] ?? null, $data['comprador_documento'] ?? null);
             $p->recalcular();
             $this->definirRevendedor($p, $userId);
+            $this->atribuirAgenteExterno($p, $data);
 
             if ($seq > 0) {
                 \App\Models\User::where('id', $userId)->where('proximo_seq', '<=', $seq)
@@ -317,6 +318,28 @@ class PassagemService
             'revendedor_id' => $revId,
             'acerto_empresa_valor' => $rev ? $rev->repasseDe($total) : $total,
             'acerto_revendedor_valor' => $seller->revendedor_id ? $seller->repasseDe($total) : 0,
+        ])->save();
+    }
+
+    /**
+     * Operador lançou a venda EM NOME de um agente externo (interior), que manda as vendas pelo WhatsApp.
+     * Atribui a passagem ao agente (p/ aparecer na coluna Agência e sair do caixa da empresa).
+     * com acerto = gera pendência pra acertar depois | sem acerto = já quitado, não gera pendência.
+     */
+    protected function atribuirAgenteExterno(\App\Models\Passagem $p, array $data): void
+    {
+        $agenteId = (int) ($data['agente_id'] ?? 0);
+        if ($agenteId <= 0) return;
+        $ag = \App\Models\User::where('is_revendedor', true)->find($agenteId);
+        if (! $ag) return;
+
+        $total = (float) $p->total;
+        $comAcerto = (bool) ($data['agente_acerto'] ?? true);
+        $p->forceFill([
+            'revendedor_id' => $ag->id,
+            'acerto_empresa_valor' => $ag->repasseDe($total),
+            'acerto_empresa' => ! $comAcerto, // sem acerto = já acertado (não fica pendente)
+            'acerto_revendedor_valor' => 0,
         ])->save();
     }
 

@@ -283,6 +283,27 @@
           <label class="lbl !mb-0">Parcelado em</label>
           <select x-model.number="parcelas" class="field w-auto font-semibold"><template x-for="n in 12" :key="n"><option :value="n" x-text="n+'x'"></option></template></select>
         </div>
+
+        @if(($agentes ?? collect())->count())
+        {{-- Venda lançada em nome de AGENTE EXTERNO (interior) — ele manda pelo WhatsApp e o operador cadastra --}}
+        <div class="mt-1 rounded-xl border border-indigo-200 bg-indigo-50/60 p-2">
+          <label class="flex items-center gap-2 text-[13px] font-semibold text-indigo-800 cursor-pointer">
+            <input type="checkbox" x-model="agenteOn" class="w-4 h-4 rounded shrink-0"> 🧑‍💼 Venda de agente externo (interior)
+          </label>
+          <div x-show="agenteOn" x-cloak class="mt-1.5 space-y-1.5">
+            <select x-model="agenteId" class="field w-full">
+              <option value="">— escolha o agente —</option>
+              @foreach($agentes as $ag)<option value="{{ $ag->id }}">{{ $ag->name }}</option>@endforeach
+            </select>
+            <div class="flex gap-2">
+              <button type="button" class="forma flex-1" :class="agenteAcerto && 'on'" @click="agenteAcerto=true">Com acerto</button>
+              <button type="button" class="forma flex-1" :class="!agenteAcerto && 'on'" @click="agenteAcerto=false">Sem acerto</button>
+            </div>
+            <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="agenteAcerto">Com acerto: gera pendência pra acertar com o agente depois.</p>
+            <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="!agenteAcerto">Sem acerto: só registra a venda no nome do agente, sem pendência.</p>
+          </div>
+        </div>
+        @endif
         @if(!empty($soAvista))
         <p class="text-xs text-slate-500 -mt-1">Revendedor: venda à vista. O acerto (parcelado/faturado) é entre você e a empresa.</p>
         @endif
@@ -495,6 +516,7 @@
   function novaPassagem(){
     return {
       salvando:false, forma:@js($formaInicial ?? 'avista'), parcelas:1, imprimir:'direto',
+      agenteOn:false, agenteId:'', agenteAcerto:true,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
       pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
@@ -977,6 +999,7 @@
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, parcelas:(this.forma==='areceber'?(Number(this.parcelas)||1):1), desconto:Number(this.desconto)||0, observacao:this.observacao||null,
+          agente_id:(this.agenteOn && this.agenteId)?Number(this.agenteId):null, agente_acerto:(this.agenteOn && this.agenteAcerto)?1:0,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.papel||null, bebe_colo:((p.temColo && (p.bebeColo.nome||'').trim()) ? {nome:p.bebeColo.nome.trim(), documento:(p.bebeColo.documento||'').trim()||null, nascimento:p.bebeColo.nascimento||null} : null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
           pagamentos:this.forma==='faturado'?[]:(this.forma==='online'?[{meio:this.onlineMeio, valor:this.total}]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])}))),

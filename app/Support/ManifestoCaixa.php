@@ -48,7 +48,7 @@ class ManifestoCaixa
                     'valor' => (float) $pax->valor_total,
                     'tipo' => $tipoTxt,
                     'p' => $ehColo ? 'C' : mb_strtoupper(mb_substr(trim($tipoTxt) ?: 'A', 0, 1)),
-                    'agencia' => '',
+                    'agencia' => (string) ($p->revendedor?->name ?? ''),
                     'status' => $cancPax ? 'Devolvida' : ((float) $p->devido > 0.009 ? 'Em aberto' : 'Paga'),
                     'forma' => $formaTxt,
                     'idoso' => $ehIdoso && ! $cancPax,
