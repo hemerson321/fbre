@@ -68,7 +68,10 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 
 @for($__via = 0; $__via < $vias; $__via++)
 @foreach($pagantes as $i => $pax)
-<div class="ticket" style="--cor:{{ $cor }}">@if($p->cancelada)<div class="cwm"><b>CANCELADO</b></div>@endif
+<div class="ticket" style="--cor:{{ $cor }}">
+@php $ehGrat = (($pax->papel ?? '') !== 'colo') && ((float) ($pax->valor_passagem ?? 0) <= 0.009) && ((float) ($pax->valor_integral ?? 0) > 0.009); @endphp
+@if($p->cancelada)<div class="cwm"><b>CANCELADO</b></div>@endif
+@if($ehGrat && !$p->cancelada)<div style="position:absolute;top:0;bottom:0;right:0.5mm;display:flex;align-items:center;pointer-events:none;z-index:1"><span style="writing-mode:vertical-rl;font-size:15px;font-weight:900;letter-spacing:3px;color:rgba(0,0,0,.22)">GRATUIDADE</span></div>@endif
   <div class="hdr">
     @if($e?->logo)<img src="/{{ $e->logo }}" alt="logo">@endif
     <div class="emp">{{ strtoupper($e?->nomeExibicao() ?? 'FBRE') }}</div>
@@ -129,9 +132,10 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     <div class="sec-h">Pagamento &amp; discriminação de valores</div>
     <div class="row"><span class="k">Tarifa</span><span class="vv">R$ {{ number_format((float) ($pax->valor_passagem ?? 0),2,',','.') }}</span></div>
     <div class="row"><span class="k">Taxas</span><span class="vv">R$ {{ number_format((float) ($pax->valor_taxa ?? 0),2,',','.') }}</span></div>
-    @if(($pax->valor_alimentacao ?? 0) > 0.009)<div class="row"><span class="k">Alimentação e serviço</span><span class="vv">R$ {{ number_format((float) $pax->valor_alimentacao,2,',','.') }}</span></div>@endif
+    <div class="row"><span class="k">Seguro</span><span class="vv">R$ {{ number_format((float) ($pax->valor_seguro ?? 0),2,',','.') }}</span></div>
+    <div class="row"><span class="k">Alimentação e serviço</span><span class="vv">R$ {{ number_format((float) ($pax->valor_alimentacao ?? 0),2,',','.') }}</span></div>
     <div class="total"><span class="tl">Valor total</span><span class="tv">R$ {{ number_format((float) $pax->valor_total,2,',','.') }}</span></div>
-    <div class="row"><span class="k">Situação</span><span class="vv">@if($p->cancelada)<span class="pg no">CANCELADA</span>@elseif($p->devido > 0.009)<span class="pg no">EM ABERTO</span>@else<span class="pg ok">PAGO</span>@endif</span></div>
+    <div class="row"><span class="k">Situação</span><span class="vv">@if($p->cancelada)<span class="pg no">CANCELADA</span>@elseif($ehGrat)<span class="pg" style="background:#dbeafe;color:#1e40af">Gratuidade ({{ $pax->tipo ?: 'Idoso' }})</span>@elseif($p->devido > 0.009)<span class="pg no">EM ABERTO</span>@else<span class="pg ok">PAGO</span>@endif</span></div>
     <div class="row"><span class="k">Forma de pagamento</span><span class="vv b">{{ \App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma) }}</span></div>
     @php $pgs = $p->pagamentos->groupBy('meio')->map(fn ($g) => (float) $g->sum('valor'))->filter(fn ($v) => $v > 0.009); @endphp
     @if($pgs->count())
