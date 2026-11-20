@@ -53,7 +53,9 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   $e=$empresa; $ehCam = $p->tipo==='camarote';
   $cor = $e?->cor_primaria ?: '#0b1a33';
   $dias = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-  $hora = $p->embarcacao?->hora_saida ? \Illuminate\Support\Str::substr($p->embarcacao->hora_saida,0,5) : null;
+  $horaRota = null;
+  if ($p->rota) { $par = $p->rota->paradas->firstWhere('localidade', $p->origem); $horaRota = ($par && $par->hora) ? \Illuminate\Support\Str::substr($par->hora, 0, 5) : null; }
+  $hora = $horaRota ?: ($p->embarcacao?->hora_saida ? \Illuminate\Support\Str::substr($p->embarcacao->hora_saida, 0, 5) : null);
   $formas = $p->pagamentos->map(fn ($pg) => \App\Models\Pagamento::MEIOS[$pg->meio] ?? $pg->meio)->filter()->unique()->implode(', ');
   $nrViagem = $p->viagem?->id;
   $pagantes = $p->passageiros->filter(fn ($x) => (($x->papel ?? '') !== 'colo'))->values();
