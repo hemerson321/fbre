@@ -155,7 +155,14 @@
     @endforeach
   </div>
   @endif
+
+  {{-- Passagens do periodo no modelo da prestacao (sem agente externo) --}}
+  @include('passagens._manifesto_tabela', ['linhas' => $linhasCaixa])
+
+  @php $temOutros = collect($movimentos->items())->contains(fn($m)=>($m->modulo ?? '')!=='passagem'); @endphp
+  @if($temOutros)<div class="px-3 pt-3 font-bold text-[11px] text-slate-400 uppercase">Encomendas / avulsos / outros</div>@endif
   @foreach($movimentos as $m)
+    @if(($m->modulo ?? '')==='passagem') @continue @endif
     @php
       $rf = $m->resumoFonte();
       $pz = ($m->modulo === 'passagem') ? (($passMov ?? collect())[$m->origem_id] ?? null) : null;

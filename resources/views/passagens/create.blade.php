@@ -297,7 +297,7 @@
             </div>
           </template>
           @if(auth()->user()?->podeDesconto())
-          <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+          <div x-show="forma!=='areceber'"><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           @endif
         </div>
         <div x-show="forma==='online'" class="space-y-1.5">

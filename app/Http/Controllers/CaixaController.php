@@ -145,6 +145,14 @@ class CaixaController extends Controller
             ? \App\Models\Passagem::whereIn('id', $passIdsMov)->with(['passageiros:id,passagem_id,papel,tipo,cancelado'])->get(['id', 'origem', 'destino', 'forma', 'cancelada'])->keyBy('id')
             : collect();
 
+        // Manifesto (modelo prestacao) das PASSAGENS do filtro do caixa — SEM agente externo (nao entra no caixa).
+        $passIdsCx = (clone $base)->where('modulo', 'passagem')->distinct()->pluck('origem_id')->filter()->all();
+        $passCx = $passIdsCx
+            ? \App\Models\Passagem::whereIn('id', $passIdsCx)->whereNull('revendedor_id')
+                ->with(['passageiros', 'operador', 'pagamentos'])->orderByDesc('id')->get()
+            : collect();
+        $linhasCaixa = \App\Support\ManifestoCaixa::dados($passCx)['linhas'];
+
         // VENDAS (BRUTO): valor total vendido no filtro, independente de ter entrado no caixa (ex.: venda de agente ainda nao repassada)
         $filtroData = function ($q) use ($inicio, $fim, $userId, $transporteId) {
             return $q->whereBetween('created_at', [$inicio, $fim])
@@ -222,7 +230,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto]);
     }
 
