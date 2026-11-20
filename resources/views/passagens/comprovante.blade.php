@@ -51,10 +51,11 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .chip{display:inline-block;background:var(--cor);color:#fff;border-radius:20px;padding:2px 9px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
 .row{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0}
 .row .k{color:#374151;font-weight:600}.row .vv{font-weight:700;color:#000;text-align:right}
-.fpg{background:#f1f5f9;border:1.5px solid #cbd5e1;border-radius:9px;padding:4px 9px;margin:5px 0}
-.fpg .row{font-size:15px;padding:2.5px 0}
-.fpg .row .vv{font-weight:900}
-.fpg .row .k{font-weight:700;color:#1f2937}
+.fpg{background:#f1f5f9;border:2px solid var(--cor);border-radius:10px;padding:6px 10px;margin:6px 0}
+.fpg .fpg-h{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--cor);margin-bottom:3px}
+.fpg .row{font-size:17px;padding:3px 0}
+.fpg .row .vv{font-weight:900;color:#000}
+.fpg .row .k{font-weight:700;color:#111}
 .total{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 .total .tl{font-size:10px;text-transform:uppercase;color:#6b7280;font-weight:700}
 .total .tv{font-size:20px;font-weight:800;color:var(--cor)}
@@ -162,6 +163,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     <div class="total"><span class="tl">Valor total</span><span class="tv">R$ {{ number_format((float) $pax->valor_total,2,',','.') }}</span></div>
     <div class="row"><span class="k">Situação</span><span class="vv">@if($p->cancelada)<span class="pg no">CANCELADA</span>@elseif($ehGrat)<span class="pg" style="background:#dbeafe;color:#1e40af">Gratuidade ({{ $pax->tipo ?: 'Idoso' }})</span>@elseif($p->devido > 0.009)<span class="pg no">EM ABERTO</span>@else<span class="pg ok">PAGO</span>@endif</span></div>
     <div class="fpg">
+    <div class="fpg-h">💳 Pagamento</div>
     <div class="row"><span class="k">Forma de pagamento</span><span class="vv b">{{ \App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma) }}</span></div>
     @php $pgs = $p->pagamentos->groupBy('meio')->map(fn ($g) => (float) $g->sum('valor'))->filter(fn ($v) => $v > 0.009); @endphp
     @if($pgs->count())
