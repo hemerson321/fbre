@@ -75,18 +75,18 @@
 
   <button type="button" onclick="imprimirDiretoPassagem(this)" class="btn btn-ghost w-full">⚡ Imprimir direto (1 por passageiro)</button>
   <div x-data="{ painel:'' }">
-  <div class="flex gap-2">
-    <button onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost flex-1">🖨 Comprovante</button>
-    <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost flex-1">📲 Enviar PDF (WhatsApp)</button>
-    <button onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost flex-1">🖼️ Copiar imagem</button>
+  <div class="flex gap-2 overflow-x-auto pb-1">
+    <button onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost shrink-0 whitespace-nowrap">🖨 Comprovante</button>
+    <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost shrink-0 whitespace-nowrap">📲 Enviar PDF (WhatsApp)</button>
+    <button onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost shrink-0 whitespace-nowrap">🖼️ Copiar imagem</button>
     @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
-    <button type="button" class="btn btn-danger" @click="painel = painel==='cancel' ? '' : 'cancel'">↩ Devolução</button>
+    <button type="button" class="btn btn-danger shrink-0 whitespace-nowrap" @click="painel = painel==='cancel' ? '' : 'cancel'">↩ Devolução</button>
     @endif
     @if(!$p->cancelada && !$p->transferida && ($empP?->config('usa_cancel_transporte')) && ($u->isAdmin()||$u->isSuper()))
-    <button type="button" class="btn btn-ghost" style="border:1px solid #6366f1;color:#4f46e5" @click="painel = painel==='transf' ? '' : 'transf'">↪ Transferir</button>
+    <button type="button" class="btn btn-ghost shrink-0 whitespace-nowrap" style="border:1px solid #6366f1;color:#4f46e5" @click="painel = painel==='transf' ? '' : 'transf'">↪ Transferir</button>
     @endif
     @if(!$p->cancelada && !$p->transferida && ($u->isAdmin()||$u->isSuper()))
-    <button type="button" class="btn btn-ghost" style="border:1px solid #06b6d4;color:#0891b2" @click="painel = painel==='troca' ? '' : 'troca'">📅 Trocar viagem</button>
+    <button type="button" class="btn btn-ghost shrink-0 whitespace-nowrap" style="border:1px solid #06b6d4;color:#0891b2" @click="painel = painel==='troca' ? '' : 'troca'">📅 Trocar viagem</button>
     @endif
   </div>
   @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
