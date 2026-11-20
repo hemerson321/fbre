@@ -35,27 +35,7 @@
   @endif
   <div class="card overflow-hidden">
     <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Vendas no período ({{ $totais['qtd'] }})</div>
-    <div class="divide-y text-sm">
-      @forelse($vendas as $p)
-        @php
-          $corV = null;
-          if ($p->cancelada) $corV = '#fee2e2';
-          elseif ($p->forma === 'faturado') $corV = '#dbeafe';
-          elseif ($p->passageiros->contains(fn($x)=> mb_stripos((string)$x->tipo,'pcd')!==false || mb_stripos((string)$x->tipo,'defic')!==false)) $corV = '#fef9c3';
-          elseif ($p->passageiros->contains(fn($x)=> mb_stripos((string)$x->tipo,'idoso')!==false)) $corV = '#dcfce7';
-        @endphp
-        <a href="{{ route('passagens.show',$p) }}" class="flex justify-between gap-3 p-3 hover:brightness-95"@if($corV) style="background:{{ $corV }}"@endif>
-          <div class="min-w-0">
-            <b>#{{ $p->numeroFormatado() }}</b> · {{ $p->origem }} → {{ $p->destino }}
-            <div class="text-xs text-slate-400">{{ $p->created_at->format('d/m H:i') }} · {{ $p->passageiros->count() }} pax{{ $p->embarcacao ? ' · '.$p->embarcacao->nome : '' }}</div>
-          </div>
-          <div class="text-right whitespace-nowrap">
-            <b>R$ {{ number_format((float)$p->total,2,',','.') }}</b>
-            @if($p->devido > 0.009)<div class="text-xs text-amber-600">deve R$ {{ number_format((float)$p->devido,2,',','.') }}</div>@else<div class="text-xs text-emerald-600">pago</div>@endif
-          </div>
-        </a>
-      @empty <div class="p-6 text-center text-slate-400">Nenhuma venda no período.</div> @endforelse
-    </div>
+    @include('passagens._manifesto_tabela', ['linhas' => $linhas])
   </div>
   <div class="text-[11px] text-slate-500 flex flex-wrap gap-2 px-1">Legenda:
     <span style="background:#dbeafe;padding:1px 7px;border-radius:4px">Agente/Município</span>

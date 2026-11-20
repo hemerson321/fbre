@@ -802,7 +802,7 @@ class PassagemController extends Controller
         ];
         $totais['recebido'] = $totais['total'] - $totais['devido'];
 
-        $vendas = (clone $base)->with(['passageiros:id,passagem_id', 'embarcacao:id,nome'])
+        $vendas = (clone $base)->with(['passageiros', 'operador', 'pagamentos', 'embarcacao:id,nome'])
             ->orderByDesc('id')->limit($limite)->get();
 
         // o que falta acertar (revendedor -> empresa | vendedor -> revendedor)
@@ -851,7 +851,9 @@ class PassagemController extends Controller
         // Agente externo: acerto (empresa + donos) na MESMA tela do relatório.
         $painelAgente = $u->ehRevendedor() ? \App\Http\Controllers\AcertoController::dadosAgente($u) : null;
 
-        return view('passagens.minhas-vendas', compact('vendas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal', 'limite', 'painelAgente'));
+        $linhas = \App\Support\ManifestoCaixa::dados($vendas)['linhas'];
+
+        return view('passagens.minhas-vendas', compact('vendas', 'linhas', 'totais', 'acerto', 'inicio', 'fim', 'periodo', 'canal', 'limite', 'painelAgente'));
     }
 
     /** Exporta as vendas de passagem do período (e forma) em CSV — sem travar a tela. */
