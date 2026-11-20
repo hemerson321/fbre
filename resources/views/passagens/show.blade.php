@@ -80,7 +80,7 @@
     <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost shrink-0 whitespace-nowrap">📲 Enviar PDF (WhatsApp)</button>
     <button onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost shrink-0 whitespace-nowrap">🖼️ Copiar imagem</button>
     @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
-    <button type="button" class="btn btn-danger shrink-0 whitespace-nowrap" @click="painel = painel==='cancel' ? '' : 'cancel'">↩ Devolução</button>
+    <button type="button" class="btn btn-danger shrink-0 whitespace-nowrap" @click="painel = painel==='cancel' ? '' : 'cancel'">↩ Cancelamento / Devolução</button>
     @endif
     @if(!$p->cancelada && !$p->transferida && ($empP?->config('usa_cancel_transporte')) && ($u->isAdmin()||$u->isSuper()))
     <button type="button" class="btn btn-ghost shrink-0 whitespace-nowrap" style="border:1px solid #6366f1;color:#4f46e5" @click="painel = painel==='transf' ? '' : 'transf'">↪ Transferir</button>
@@ -95,14 +95,19 @@
     @php $embc = $p->embarcacao; $pa = $embc?->cancelAntes() ?? 10; $pd = $embc?->cancelDepois() ?? 30;
          $jaSaiu = $p->jaSaiu();
          $pagC = $p->passageiros->filter(fn($x)=>($x->papel ?? '')!=='colo')->values(); @endphp
-    <div class="font-bold text-sm mb-1">↩ Devolução ao passageiro</div>
+    <div class="font-bold text-sm mb-1">↩ Cancelamento / Devolução</div>
     <div class="rounded-lg bg-slate-50 border p-2.5 text-[12px] text-slate-600 mb-2 space-y-2">
       <div class="flex gap-2"><span class="shrink-0">🟢</span><span><b>Antes</b> da lancha sair — devolve <b>{{ 100-$pa }}%</b> ao passageiro e retém <b>{{ $pa }}%</b>, que vai pro <b>caixa local</b> (não entra no caixa da empresa).</span></div>
       <div class="flex gap-2"><span class="shrink-0">🔴</span><span><b>Depois</b> que a lancha saiu — devolve <b>{{ 100-$pd }}%</b> ao passageiro e retém <b>{{ $pd }}%</b>, que fica pro <b>proprietário</b> da lancha.</span></div>
       @if($p->acerto_dono && ! $p->revendedor_id)
       <div class="flex gap-2 text-rose-600"><span class="shrink-0">⚠️</span><span>Esta passagem <b>já foi acertada com o proprietário</b>. Ele vai ficar <b>devendo o repasse à empresa</b> — descontado no próximo acerto.</span></div>
       @endif
-      <div class="pt-0.5"><span class="inline-block rounded px-2 py-1 text-white font-bold text-[11px]" style="background:{{ $jaSaiu ? '#e11d48' : '#16a34a' }}">Esta passagem agora: {{ $jaSaiu ? 'DEPOIS — retém '.$pd.'%' : 'ANTES — retém '.$pa.'%' }}</span></div>
+      <div class="pt-1 border-t mt-1">
+        <div class="font-bold text-slate-700 mb-1">Quanto devolver? (o operador escolhe)</div>
+        <label class="flex items-center gap-2 py-0.5 cursor-pointer font-semibold"><input type="radio" name="retencao" value="integral" class="w-4 h-4"> Devolução INTEGRAL — devolve 100% (retém 0%)</label>
+        <label class="flex items-center gap-2 py-0.5 cursor-pointer font-semibold"><input type="radio" name="retencao" value="antes" class="w-4 h-4" @checked(!$jaSaiu)> Retém {{ $pa }}% — devolve {{ 100-$pa }}% (vai pro caixa local)</label>
+        <label class="flex items-center gap-2 py-0.5 cursor-pointer font-semibold"><input type="radio" name="retencao" value="depois" class="w-4 h-4" @checked($jaSaiu)> Retém {{ $pd }}% — devolve {{ 100-$pd }}% (fica pro proprietário)</label>
+      </div>
     </div>
     @if($pagC->count() > 1)
     <div x-data="{escopo:'todos'}" class="mb-3 rounded-lg border p-2.5 bg-white">

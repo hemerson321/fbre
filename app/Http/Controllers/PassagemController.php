@@ -1247,8 +1247,12 @@ class PassagemController extends Controller
         if ($empresa && $empresa->config('usa_cancel_transporte')) {
             // Politica por transporte: empresa retem uma % e reembolsa o resto (saida no caixa).
             $emb = $passagem->embarcacao;
-            $depois = $passagem->jaSaiu();
-            $pct = $depois ? ($emb ? $emb->cancelDepois() : 30) : ($emb ? $emb->cancelAntes() : 10);
+            // O operador escolhe manualmente quanto devolver: integral (0%), antes (ex. 10%) ou depois (ex. 30%).
+            $escolha = (string) $request->input('retencao', '');
+            if ($escolha === 'integral') { $pct = 0; $depois = false; }
+            elseif ($escolha === 'depois') { $pct = $emb ? $emb->cancelDepois() : 30; $depois = true; }
+            elseif ($escolha === 'antes') { $pct = $emb ? $emb->cancelAntes() : 10; $depois = false; }
+            else { $depois = $passagem->jaSaiu(); $pct = $depois ? ($emb ? $emb->cancelDepois() : 30) : ($emb ? $emb->cancelAntes() : 10); }
             $pago = (float) $passagem->pago;
             $retido = round($pago * $pct / 100, 2);
             $reembolso = round($pago - $retido, 2);
