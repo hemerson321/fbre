@@ -282,7 +282,7 @@
         @if(!empty($soAvista))
         <p class="text-xs text-slate-500 -mt-1">Revendedor: venda à vista. O acerto (a receber/faturado) é entre você e a empresa.</p>
         @endif
-        <div x-show="forma!=='faturado'" class="grid grid-cols-2 gap-2">
+        <div x-show="forma!=='faturado' && forma!=='online'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
             <div x-show="(m.k!=='dinheiro' || forma!=='online') && (m.k!=='pix' || pixManual || pixEstatico || pixDinamico)">
               <label class="lbl" x-text="m.k==='pix' ? (pixEstatico ? 'PIX Estático' : (pixDinamico ? 'PIX Dinâmico' : 'PIX Manual')) : m.l"></label>
@@ -295,6 +295,14 @@
           @if(auth()->user()?->podeDesconto())
           <div><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
           @endif
+        </div>
+        <div x-show="forma==='online'" class="space-y-1.5">
+          <label class="lbl">Recebido por</label>
+          <div class="grid grid-cols-3 gap-2">
+            <template x-for="m in meiosOnline" :key="m.k">
+              <button type="button" class="forma" :class="onlineMeio===m.k && 'on'" @click="onlineMeio=m.k" x-text="m.l"></button>
+            </template>
+          </div>
         </div>
         <p x-show="forma==='faturado'" class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">Faturado: nada é recebido agora.</p>
 
@@ -504,6 +512,7 @@
       lancamentoEm:@js(now()->toDateString()),
       desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
       meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
+      meiosOnline:[{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}], onlineMeio:'pix',
       passageiros:[],
       precoInfo:false,
       paxLista:[], paxAberto:-1,
@@ -837,7 +846,7 @@
       get subTaxa(){ return this.passageiros.reduce((s,p)=>s+(Number(p.valor_taxa)||0),0); },
       get subAlim(){ return this.passageiros.reduce((s,p)=>s+(Number(p.valor_alimentacao)||0),0); },
       get total(){ return Math.max(this.subPassagem+this.subTaxa+this.subAlim-(Number(this.desconto)||0),0); },
-      get pago(){ if(this.forma==='faturado') return 0; return this.meios.reduce((s,m)=> s + ((this.forma==='online' && m.k==='dinheiro') ? 0 : (Number(this.pag[m.k])||0)), 0); },
+      get pago(){ if(this.forma==='faturado') return 0; if(this.forma==='online') return this.total; return this.meios.reduce((s,m)=> s + (Number(this.pag[m.k])||0), 0); },
       get pagoSemDinheiro(){ return (Number(this.pag.pix)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0); },
       get devido(){ return Math.max(this.total-this.pago,0); },
 
@@ -962,7 +971,7 @@
           forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.papel||null, bebe_colo:((p.temColo && (p.bebeColo.nome||'').trim()) ? {nome:p.bebeColo.nome.trim(), documento:(p.bebeColo.documento||'').trim()||null, nascimento:p.bebeColo.nascimento||null} : null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
-          pagamentos:this.forma==='faturado'?[]:this.meios.filter(m=>Number(this.pag[m.k])>0 && !(this.forma==='online' && m.k==='dinheiro')).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})),
+          pagamentos:this.forma==='faturado'?[]:(this.forma==='online'?[{meio:this.onlineMeio, valor:this.total}]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])}))),
         };
       },
       async salvar(ev){
