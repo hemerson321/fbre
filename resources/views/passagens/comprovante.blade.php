@@ -39,12 +39,16 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .qrp{display:inline-block}.qrp img,.qrp canvas{margin:0 auto}
 .info{margin-top:7px;font-size:10px;color:#4b5563;background:#f9fafb;border:1px solid #eef0f2;border-radius:8px;padding:6px 8px;line-height:1.35}
 .foot{text-align:center;font-size:9px;color:#9ca3af;margin-top:8px;border-top:1px dashed #d1d5db;padding-top:5px}
-@media print{#pdfbar{display:none!important}}
+@media print{#pdfbar,#topbar{display:none!important}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script></head>
 <body onload="qrImprimir()">
+<div id="topbar" style="padding:8px 10px;background:#0b1a33;position:sticky;top:0;z-index:100">
+  <button type="button" onclick="voltarComprovante()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;font-size:14px;font-weight:700;border:0;border-radius:10px;background:#fff;color:#0b1a33;cursor:pointer">&larr; Voltar</button>
+</div>
+<script>function voltarComprovante(){ try{ if(window.opener && !window.opener.closed){ window.close(); return; } }catch(e){} if(history.length>1){ history.back(); return; } location.href='/passagens'; }</script>
 @php
   $e=$empresa; $ehCam = $p->tipo==='camarote';
   $cor = $e?->cor_primaria ?: '#0b1a33';
@@ -85,13 +89,13 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   @if($p->data_viagem || $hora)
   <div style="text-align:center;background:var(--cor);color:#fff;border-radius:9px;padding:5px 8px;margin:5px 0 2px;font-weight:800;letter-spacing:.02em">
     🕒 SAÍDA @if($p->data_viagem){{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@endif
-    @if($hora) · <span style="font-size:17px">{{ $hora }}</span>@endif
+    @if($hora)<div style="font-size:23px;line-height:1.05;margin-top:2px">⏰ {{ $hora }}</div>@endif
   </div>@endif
 
   <div class="sec">
     <div class="sec-h">Viagem</div>
     @if($p->embarcacao?->logo)<div style="text-align:center;margin:2px 0 4px"><img src="/{{ $p->embarcacao->logo }}" alt="barco" style="height:30px;max-width:46mm;object-fit:contain"></div>@endif
-    @if($p->embarcacao)<div class="row"><span class="k">Embarcação</span><span class="vv">{{ $p->embarcacao->nome }}</span></div>@endif
+    @if($p->embarcacao)<div class="row"><span class="k">Transporte</span><span class="vv b" style="font-size:15px;color:var(--cor);text-transform:uppercase">{{ $p->embarcacao->nome }}</span></div>@endif
     @if($p->camarote)<div class="row"><span class="k">Suíte / Camarote</span><span class="vv">{{ $p->camarote->nome }}</span></div>@endif
     @if($p->data_viagem)<div class="row"><span class="k">Saída</span><span class="vv">{{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@if($hora) · <b style="color:var(--cor);font-size:13px">🕒 {{ $hora }}</b>@endif</span></div>@endif
     @if($nrViagem)<div class="row"><span class="k">Nº da viagem</span><span class="vv">{{ $nrViagem }}</span></div>@endif
