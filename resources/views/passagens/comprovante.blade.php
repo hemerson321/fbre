@@ -21,7 +21,9 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .rz-px .nm{font-weight:700}
 .rz-px .pl{font-weight:800;white-space:nowrap}
 .rz-sech{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#374151;margin:4px 0 2px}
-.rz-pay{display:flex;justify-content:space-between;gap:8px;font-size:16px;font-weight:900;padding:4px 7px;margin:3px 0;background:#f1f5f9;border:1.5px solid #cbd5e1;border-radius:8px}
+.rz-pay{font-size:15.5px;padding:5px 9px;margin:4px 0;background:#f1f5f9;border:1.5px solid #cbd5e1;border-radius:9px}
+.rz-payrow{display:flex;justify-content:space-between;gap:8px;font-weight:900;padding:2px 0}
+.rz-payrow .k{font-weight:700;color:#1f2937}
 .rz-tot{display:flex;justify-content:space-between;font-weight:900;font-size:18px;border-top:2px solid #000;margin-top:4px;padding-top:4px}
 .rz-pg{display:inline-block;font-weight:900;font-size:11px;padding:1px 8px;border-radius:6px}
 .rz-ass{margin-top:10px;font-size:11px}
@@ -230,7 +232,10 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   @endforeach
   @if($colos->count())<div class="rz-row" style="margin-top:3px"><span class="k">+ bebês de colo</span><span class="vv">{{ $colos->count() }}</span></div>@endif
   <div class="rz-line"></div>
-  <div class="rz-pay"><span>💳 Pagamento</span><span>{{ $formas ?: (\App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma)) }}</span></div>
+  <div class="rz-pay">
+    <div class="rz-payrow"><span class="k">💳 Forma</span><span>{{ \App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma) }}</span></div>
+    @if($formas)<div class="rz-payrow"><span class="k">Pago em</span><span>{{ $formas }}</span></div>@endif
+  </div>
   <div class="rz-row"><span class="k">Recebido</span><span class="vv">R$ {{ number_format($rzPag,2,',','.') }}</span></div>
   <div class="rz-row"><span class="k">Em aberto</span><span class="vv">R$ {{ number_format($rzDev,2,',','.') }}</span></div>
   <div class="rz-tot"><span>TOTAL</span><span>R$ {{ number_format((float) $p->total,2,',','.') }}</span></div>
