@@ -118,6 +118,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     <div class="sec-h">Pagamento</div>
     <div class="total"><span class="tl">Valor total</span><span class="tv">R$ {{ number_format((float) $pax->valor_total,2,',','.') }}</span></div>
     <div class="row"><span class="k">Situação</span><span class="vv">@if($p->cancelada)<span class="pg no">CANCELADA</span>@elseif($p->devido > 0.009)<span class="pg no">EM ABERTO</span>@else<span class="pg ok">PAGO</span>@endif</span></div>
+    <div class="row"><span class="k">Forma de pagamento</span><span class="vv b">{{ \App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma) }}</span></div>
     @php $pgs = $p->pagamentos->groupBy('meio')->map(fn ($g) => (float) $g->sum('valor'))->filter(fn ($v) => $v > 0.009); @endphp
     @if($pgs->count())
       @foreach($pgs as $meio => $val)<div class="row"><span class="k">{{ \App\Models\Pagamento::MEIOS[$meio] ?? ucfirst($meio) }}</span><span class="vv">R$ {{ number_format($val,2,',','.') }}</span></div>@endforeach
