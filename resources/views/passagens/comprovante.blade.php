@@ -84,13 +84,13 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @endif
   </div>
 
+  @if($p->embarcacao)<div style="text-align:center;font-size:17px;font-weight:800;color:var(--cor);text-transform:uppercase;margin:2px 0 0">🚤 {{ strtoupper($p->embarcacao->nome) }}</div>@endif
   <div class="trecho">{{ $p->origem }} <span class="ar">→</span> {{ $p->destino }}</div>
 
-  @if($p->data_viagem || $hora || $p->embarcacao)
+  @if($p->data_viagem || $hora)
   <div style="text-align:center;background:var(--cor);color:#fff;border-radius:11px;padding:7px 10px;margin:7px 0 3px">
     <div style="font-size:12px;font-weight:800;letter-spacing:.05em">🕒 SAÍDA @if($p->data_viagem){{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@endif</div>
-    @if($hora)<div style="font-size:30px;font-weight:900;line-height:1.05;margin-top:2px;letter-spacing:.03em">⏰ {{ $hora }}</div>@endif
-    @if($p->embarcacao)<div style="font-size:16px;font-weight:800;margin-top:4px;border-top:1px solid rgba(255,255,255,.35);padding-top:4px">🚤 {{ strtoupper($p->embarcacao->nome) }}</div>@endif
+    @if($hora)<div style="font-size:32px;font-weight:900;line-height:1.05;margin-top:3px;letter-spacing:.03em">⏰ {{ $hora }}</div>@endif
   </div>@endif
 
   @if($p->embarcacao?->logo || $p->camarote)
