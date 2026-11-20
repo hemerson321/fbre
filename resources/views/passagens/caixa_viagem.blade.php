@@ -12,8 +12,9 @@
   td.r,th.r{text-align:right;white-space:nowrap}
   tr.canc{background:#fee2e2}
   tr.canc td{color:#b91c1c}
-  tr.dinheiro{background:#dcfce7}
-  tr.fat{background:#dbeafe}
+  tr.idoso{background:#dcfce7}
+  tr.pcd{background:#fef9c3}
+  tr.mun{background:#dbeafe}
   .nome{font-weight:600}
   .tag{font-size:9px;font-weight:800;padding:0 4px;border-radius:4px}
   .totais{margin-top:16px;display:flex;gap:34px;flex-wrap:wrap}
@@ -47,7 +48,7 @@
   </tr></thead>
   <tbody>
     @forelse($linhas as $l)
-    <tr class="@if($l->cancelado)canc @elseif($l->faturado)fat @elseif($l->dinheiro)dinheiro @endif">
+    <tr class="@if($l->cancelado)canc @elseif($l->pcd)pcd @elseif($l->idoso)idoso @elseif($l->municipio)mun @endif">
       <td>{{ $l->nr }}</td>
       <td>{{ $l->ticket }}</td>
       <td>{{ $l->trecho }}</td>
@@ -86,9 +87,11 @@
 </div>
 
 <div class="leg">
-  Legenda: <span style="background:#dcfce7">Dinheiro</span>
-  <span style="background:#dbeafe">Faturado / a receber</span>
-  <span style="background:#fee2e2;color:#b91c1c">Devolvida</span>
+  Legenda:
+  <span style="background:#dbeafe">Agente / Município</span>
+  <span style="background:#dcfce7">Idoso</span>
+  <span style="background:#fef9c3">PCD</span>
+  <span style="background:#fee2e2;color:#b91c1c">Cancelado / Devolvido</span>
 </div>
 
 @if($auto ?? false)<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>@endif

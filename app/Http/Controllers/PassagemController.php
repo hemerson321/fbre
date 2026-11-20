@@ -768,8 +768,7 @@ class PassagemController extends Controller
             $formaTxt = $meios->isNotEmpty()
                 ? $meios->keys()->map(fn ($m) => \App\Models\Pagamento::MEIOS[$m] ?? ucfirst($m))->implode(', ')
                 : (\App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma));
-            $temDinheiro = $p->pagamentos->where('meio', 'dinheiro')->where('valor', '>', 0)->isNotEmpty();
-            $ehFaturado = in_array($p->forma, ['faturado', 'areceber'], true);
+            $ehMunicipio = $p->forma === 'faturado';
 
             foreach ($p->passageiros as $pax) {
                 $ehColo = ($pax->papel ?? '') === 'colo';
@@ -777,6 +776,7 @@ class PassagemController extends Controller
                 $nr++;
                 $tipoTxt = (string) ($pax->papel ?: $pax->tipo);
                 $ehIdoso = mb_stripos($tipoTxt, 'idoso') !== false;
+                $ehPcd = mb_stripos($tipoTxt, 'pcd') !== false || mb_stripos($tipoTxt, 'defic') !== false;
                 $linhas->push((object) [
                     'nr' => $nr,
                     'ticket' => $p->numeroFormatado(),
@@ -790,8 +790,9 @@ class PassagemController extends Controller
                     'tipo' => $tipoTxt,
                     'status' => $cancPax ? 'Devolvida' : ((float) $p->devido > 0.009 ? 'Em aberto' : 'Paga'),
                     'forma' => $formaTxt,
-                    'dinheiro' => $temDinheiro,
-                    'faturado' => $ehFaturado,
+                    'idoso' => $ehIdoso && ! $cancPax,
+                    'pcd' => $ehPcd && ! $cancPax,
+                    'municipio' => $ehMunicipio && ! $cancPax,
                     'cliente' => (string) ($p->comprador_nome ?? ''),
                     'poltrona' => (string) ($pax->poltrona ?? ''),
                 ]);
