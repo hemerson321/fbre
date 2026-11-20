@@ -48,7 +48,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 <div id="topbar" style="padding:8px 10px;background:#0b1a33;position:sticky;top:0;z-index:100">
   <button type="button" onclick="voltarComprovante()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;font-size:14px;font-weight:700;border:0;border-radius:10px;background:#fff;color:#0b1a33;cursor:pointer">&larr; Voltar</button>
 </div>
-<script>function voltarComprovante(){ try{ if(window.opener && !window.opener.closed){ window.close(); return; } }catch(e){} if(history.length>1){ history.back(); return; } location.href='/passagens'; }</script>
+<script>function voltarComprovante(){ location.href='/passagens'; }</script>
 @php
   $e=$empresa; $ehCam = $p->tipo==='camarote';
   $cor = $e?->cor_primaria ?: '#0b1a33';
@@ -97,7 +97,6 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @if($p->embarcacao?->logo)<div style="text-align:center;margin:2px 0 4px"><img src="/{{ $p->embarcacao->logo }}" alt="barco" style="height:30px;max-width:46mm;object-fit:contain"></div>@endif
     @if($p->embarcacao)<div class="row"><span class="k">Transporte</span><span class="vv b" style="font-size:15px;color:var(--cor);text-transform:uppercase">{{ $p->embarcacao->nome }}</span></div>@endif
     @if($p->camarote)<div class="row"><span class="k">Suíte / Camarote</span><span class="vv">{{ $p->camarote->nome }}</span></div>@endif
-    @if($p->data_viagem)<div class="row"><span class="k">Saída</span><span class="vv">{{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@if($hora) · <b style="color:var(--cor);font-size:13px">🕒 {{ $hora }}</b>@endif</span></div>@endif
     @if($nrViagem)<div class="row"><span class="k">Nº da viagem</span><span class="vv">{{ $nrViagem }}</span></div>@endif
   </div>
 
