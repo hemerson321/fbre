@@ -512,9 +512,11 @@ class PassagemController extends Controller
      */
     protected function ocupadas($embarcacaoId, $dataViagem, $viagemId, $rotaId = null, $origem = null, $destino = null, $ignorarId = null): \Illuminate\Support\Collection
     {
+        $viagemAberta = false;
+        if ($viagemId) { $vg = \App\Models\Viagem::find($viagemId); $viagemAberta = ! $vg || $vg->data_partida === null; }
         $q = Passagem::where('embarcacao_id', $embarcacaoId)->where('cancelada', false)
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
-            ->when(! $viagemId && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+            ->when(($viagemAberta || ! $viagemId) && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
             ->when($ignorarId, fn ($q) => $q->where('id', '!=', $ignorarId));
 
         $ordem = [];
@@ -579,9 +581,11 @@ class PassagemController extends Controller
     /** Poltronas RESERVADAS (hold temporário) por OUTROS operadores/agentes, no mesmo trecho. */
     protected function reservadas($embarcacaoId, $dataViagem, $viagemId, $rotaId = null, $origem = null, $destino = null, $exceptUserId = null): \Illuminate\Support\Collection
     {
+        $viagemAberta = false;
+        if ($viagemId) { $vg = \App\Models\Viagem::find($viagemId); $viagemAberta = ! $vg || $vg->data_partida === null; }
         $q = \App\Models\PoltronaHold::ativo()->where('embarcacao_id', $embarcacaoId)
             ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
-            ->when(! $viagemId && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+            ->when(($viagemAberta || ! $viagemId) && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
             ->when($exceptUserId, fn ($q) => $q->where('user_id', '!=', $exceptUserId));
 
         $ordem = [];
