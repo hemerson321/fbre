@@ -102,6 +102,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/camarotes', [\App\Http\Controllers\PassagemController::class, 'camarotesMapa'])->name('passagens.camarotes')->middleware('perm:camarote');
     Route::get('/passagens/camarote-lista', [\App\Http\Controllers\PassagemController::class, 'camaroteLista'])->name('passagens.camarote.lista')->middleware('perm:camarote');
     Route::get('/passagens/lista', [\App\Http\Controllers\PassagemController::class, 'manifesto'])->name('passagens.manifesto')->middleware('perm:passagem.ver');
+    Route::get('/passagens/caixa-viagem', [\App\Http\Controllers\PassagemController::class, 'caixaViagem'])->name('passagens.caixa-viagem')->middleware('perm:passagem.ver');
     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos')->middleware('perm:passagem.ver');
     Route::get('/passagens/gratuidade', [\App\Http\Controllers\PassagemController::class, 'gratuidade'])->name('passagens.gratuidade')->middleware('perm:passagem');
     Route::post('/passagens/poltrona-hold', [\App\Http\Controllers\PassagemController::class, 'poltronaHold'])->name('passagens.poltrona-hold')->middleware('perm:passagem');

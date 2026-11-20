@@ -14,6 +14,7 @@
         <a href="{{ route('passagens.manifesto', array_merge(request()->query(), ['tipo'=>'poltrona','print'=>1])) }}" target="_blank" class="block px-3 py-2 text-sm hover:bg-slate-50 border-b">💺 Por poltrona <div class="text-[11px] text-slate-400">mapa de assentos · checkin</div></a>
         <a href="{{ route('passagens.manifesto', array_merge(request()->query(), ['tipo'=>'federal','print'=>1])) }}" target="_blank" class="block px-3 py-2 text-sm hover:bg-slate-50 border-b">🛂 Órgão federal <div class="text-[11px] text-slate-400">nome · nascimento · sexo (bilíngue)</div></a>
         <a href="{{ route('passagens.manifesto', array_merge(request()->query(), ['print'=>1])) }}" target="_blank" class="block px-3 py-2 text-sm hover:bg-slate-50">📋 Lista geral</a>
+        <a href="{{ route('passagens.caixa-viagem', request()->query()) }}" target="_blank" class="block px-3 py-2 text-sm hover:bg-slate-50 border-t bg-emerald-50">💰 Caixa por viagem <div class="text-[11px] text-slate-500">vendedor · valor · forma · totais do caixa</div></a>
       </div>
     </div>
     <a href="{{ route('passagens.create') }}" class="btn btn-sm bg-white/20 text-white">+ Nova</a>
