@@ -1227,20 +1227,7 @@ class PassagemController extends Controller
             }
 
             $passagem->recalcular();
-
-            // Se o valor caiu na edição e ficou pago A MAIS, reduz o pagamento pra bater com o novo total.
-            $passagem->refresh();
-            $excesso = round((float) $passagem->pago - (float) $passagem->total, 2);
-            if ($excesso > 0.009) {
-                foreach ($passagem->pagamentos()->where('meio', '!=', 'desconto')->orderByDesc('id')->get() as $pg) {
-                    if ($excesso <= 0.009) break;
-                    $corte = min((float) $pg->valor, $excesso);
-                    $novo = round((float) $pg->valor - $corte, 2);
-                    if ($novo <= 0.009) $pg->delete(); else $pg->forceFill(['valor' => $novo])->save();
-                    $excesso = round($excesso - $corte, 2);
-                }
-                $passagem->recalcular();
-            }
+            $this->ajustarPagamentoAoTotal($passagem); // pago desce pra bater com o novo total
         });
 
         return ['ok' => true];
@@ -1369,6 +1356,22 @@ class PassagemController extends Controller
         return redirect()->route('passagens.show', $passagem)->with('ok', 'Passagem cancelada.');
     }
 
+    /** Se o pago ficou MAIOR que o total (edição baixou valor ou cancelou passageiro), reduz o pagamento registrado pra bater. */
+    protected function ajustarPagamentoAoTotal(Passagem $passagem): void
+    {
+        $passagem->refresh();
+        $excesso = round((float) $passagem->pago - (float) $passagem->total, 2);
+        if ($excesso <= 0.009) return;
+        foreach ($passagem->pagamentos()->where('meio', '!=', 'desconto')->orderByDesc('id')->get() as $pg) {
+            if ($excesso <= 0.009) break;
+            $corte = min((float) $pg->valor, $excesso);
+            $novo = round((float) $pg->valor - $corte, 2);
+            if ($novo <= 0.009) $pg->delete(); else $pg->forceFill(['valor' => $novo])->save();
+            $excesso = round($excesso - $corte, 2);
+        }
+        $passagem->recalcular();
+    }
+
     /** Cancela apenas alguns passageiros da passagem: remove, libera poltrona e recalcula. Devolução em dinheiro é manual no caixa. */
     protected function cancelarPassageirosParcial(Passagem $passagem, array $ids, string $motivo, string $tipo = 'devolucao')
     {
@@ -1382,6 +1385,7 @@ class PassagemController extends Controller
             $passagem->passageiros()->whereIn('colo_de_id', $ids)->update($marca); // bebês de colo ligados
             $passagem->passageiros()->whereIn('id', $ids)->update($marca);
             $passagem->recalcular();
+            $this->ajustarPagamentoAoTotal($passagem); // pago desce pra bater (cancelou passageiro)
         });
 
         $nota = '['.now()->format('d/m/Y H:i').'] Cancelado(s): '.$nomes.' — '.$motivo.' ('.(auth()->user()->name ?? '').'). Valor: R$ '.number_format($valor, 2, ',', '.').'.';
