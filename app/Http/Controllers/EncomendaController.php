@@ -334,7 +334,27 @@ class EncomendaController extends Controller
             }
         }
 
-        return $out->values();
+        // Mescla entradas com o MESMO documento (CPF) -> mesma pessoa nao aparece repetida.
+        $porDoc = []; $final = collect();
+        foreach ($out as $r) {
+            $doc = preg_replace('/\\D/', '', (string) ($r['documento'] ?? ''));
+            if ($doc === '') { $final->push($r); continue; }
+            if (! array_key_exists($doc, $porDoc)) {
+                $porDoc[$doc] = $final->count();
+                $final->push($r);
+            } else {
+                $i = $porDoc[$doc];
+                $base = $final[$i];
+                foreach ($r as $k => $v) {
+                    if (($base[$k] ?? null) === null || $base[$k] === '') {
+                        if ($v !== null && $v !== '') $base[$k] = $v;
+                    }
+                }
+                $final[$i] = $base;
+            }
+        }
+
+        return $final->values();
     }
 
     // ------------------------------------------------------------------
