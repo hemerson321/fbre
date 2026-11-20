@@ -87,6 +87,8 @@
           <div class="font-semibold">@if($p->tipo==='camarote')🛏️ @endif#{{ $p->numeroFormatado() }} · {{ $p->origem }} → {{ $p->destino }}</div>
           <div class="text-[11px] text-slate-400 truncate">🚤 {{ $p->embarcacao?->nome ?? '—' }}@if($p->data_viagem) · 📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</div>
           <div class="text-xs text-slate-500 truncate">{{ $p->qtd_passageiros }} pax · {{ $p->comprador_nome ?: '—' }} · vendeu: {{ $p->operador?->name }}@if($p->embarcou) · <span class="text-emerald-600 font-semibold">✅ check-in{{ $p->embarcouPor ? ': '.$p->embarcouPor->name : '' }}</span>@elseif(!$p->cancelada) · <span class="text-amber-600 font-semibold">⏳ sem check-in</span>@endif</div>
+          @php $paxResumo = $p->passageiros->filter(fn($x)=>($x->papel ?? '')!=='colo')->map(fn($x)=> trim((string)$x->nome).($x->poltrona ? ' · '.$x->poltrona : ''))->filter()->implode('  |  '); @endphp
+          @if($paxResumo)<div class="text-xs text-slate-700 font-medium mt-0.5 leading-snug">👤 {{ $paxResumo }}</div>@endif
         </a>
         <div class="text-right shrink-0">
           <div class="font-bold">R$ {{ number_format($p->total,2,',','.') }}</div>

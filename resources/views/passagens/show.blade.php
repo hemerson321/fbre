@@ -93,7 +93,8 @@
   <div x-show="painel==='cancel'" x-cloak>
   <form method="post" action="{{ route('passagens.cancelar',$p) }}" class="card p-4">@csrf
     @php $embc = $p->embarcacao; $pa = $embc?->cancelAntes() ?? 10; $pd = $embc?->cancelDepois() ?? 30;
-         $jaSaiu = $p->jaSaiu(); @endphp
+         $jaSaiu = $p->jaSaiu();
+         $pagC = $p->passageiros->filter(fn($x)=>($x->papel ?? '')!=='colo')->values(); @endphp
     <div class="font-bold text-sm mb-1">↩ Devolução ao passageiro</div>
     <div class="rounded-lg bg-slate-50 border p-2.5 text-[12px] text-slate-600 mb-2 space-y-2">
       <div class="flex gap-2"><span class="shrink-0">🟢</span><span><b>Antes</b> da lancha sair — devolve <b>{{ 100-$pa }}%</b> ao passageiro e retém <b>{{ $pa }}%</b>, que vai pro <b>caixa local</b> (não entra no caixa da empresa).</span></div>
@@ -103,6 +104,18 @@
       @endif
       <div class="pt-0.5"><span class="inline-block rounded px-2 py-1 text-white font-bold text-[11px]" style="background:{{ $jaSaiu ? '#e11d48' : '#16a34a' }}">Esta passagem agora: {{ $jaSaiu ? 'DEPOIS — retém '.$pd.'%' : 'ANTES — retém '.$pa.'%' }}</span></div>
     </div>
+    @if($pagC->count() > 1)
+    <div x-data="{escopo:'todos'}" class="mb-3 rounded-lg border p-2.5 bg-white">
+      <label class="flex items-center gap-2 font-semibold text-sm py-0.5 cursor-pointer"><input type="radio" name="escopo_cancel" value="todos" x-model="escopo" class="w-4 h-4"> Cancelar a passagem TODA ({{ $pagC->count() }} passageiros)</label>
+      <label class="flex items-center gap-2 font-semibold text-sm py-0.5 cursor-pointer"><input type="radio" name="escopo_cancel" value="parcial" x-model="escopo" class="w-4 h-4"> Cancelar só alguns passageiros</label>
+      <div x-show="escopo==='parcial'" x-cloak class="mt-1.5 space-y-1 pl-6">
+        @foreach($pagC as $px)
+        <label class="flex items-center gap-2 text-sm py-0.5 cursor-pointer"><input type="checkbox" name="pax_ids[]" value="{{ $px->id }}" class="w-4 h-4"> {{ $px->nome ?: 'Passageiro' }}@if($px->poltrona) · <span class="text-slate-500">polt. {{ $px->poltrona }}</span>@endif · R$ {{ number_format($px->valor_total,2,',','.') }}</label>
+        @endforeach
+        <p class="text-[11px] text-slate-400 pt-0.5">A devolução em dinheiro dos cancelados é registrada manualmente no caixa (saída avulsa).</p>
+      </div>
+    </div>
+    @endif
     <label class="label">Motivo da devolução</label>
     <input name="motivo" class="input mb-2" required minlength="3" placeholder="ex.: passageiro desistiu">
     <button class="btn btn-danger w-full">Confirmar devolução</button>
