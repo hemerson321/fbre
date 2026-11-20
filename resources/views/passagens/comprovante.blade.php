@@ -178,7 +178,7 @@ function rasterTickets(){
   var out = [];
   (function next(i){
     if(i>=els.length){ try{ parent.postMessage({fbreRaster:true, imagens:out}, '*'); }catch(e){} return; }
-    h2c(els[i], {scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false}).then(function(cv){
+    h2c(els[i], {scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false}).then(function(cv){
       try{ out.push(cv.toDataURL('image/png')); }catch(e){}
       next(i+1);
     }).catch(function(){ next(i+1); });
