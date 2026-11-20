@@ -47,6 +47,7 @@ class User extends Authenticatable
             'relatorio_todos' => 'boolean',
             'perm_zerar' => 'boolean',
             'perm_editar_passagem' => 'boolean',
+            'perm_excluir_passagem' => 'boolean',
             'perm_passagem' => 'boolean',
             'perm_frete' => 'boolean',
             'perm_camarote' => 'boolean',
@@ -147,6 +148,9 @@ class User extends Authenticatable
     public function isSuper(): bool       { return $this->super_admin; }
     public function podeZerar(): bool     { return $this->super_admin || (bool) $this->perm_zerar; }
     public function podeEditarPassagem(): bool { return $this->super_admin || $this->admin || $this->gerente() || (bool) $this->perm_editar_passagem; }
+
+    /** Excluir (apagar de vez) passagem — padrão desligado; só super admin ou quem tiver a permissão. */
+    public function podeExcluirPassagem(): bool { return $this->super_admin || (bool) $this->perm_excluir_passagem; }
 
     /** Mapa forma(chave da venda) -> coluna de permissao. */
     public const PERM_FORMA = [

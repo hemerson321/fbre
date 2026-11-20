@@ -37,6 +37,13 @@ class PassagemController extends Controller
         $fCanc = $f; $fCanc['cancelada'] = '1'; unset($fCanc['status_pagamento'], $fCanc['embarcou']);
         $totais['cancelados'] = Passagem::filtrar($fCanc)->count();
         $totais['cancelados_valor'] = Passagem::filtrar($fCanc)->sum('total');
+        // + passageiros cancelados individualmente (cancelamento parcial) nas passagens ativas
+        $idsAtivas = (clone $base)->pluck('id');
+        if ($idsAtivas->isNotEmpty()) {
+            $paxCanc = \App\Models\PassagemPassageiro::whereIn('passagem_id', $idsAtivas)->where('cancelado', true);
+            $totais['cancelados'] += (int) $paxCanc->count();
+            $totais['cancelados_valor'] += (float) (clone $paxCanc)->sum('valor_total');
+        }
 
         $ids = (clone $base)->select('id');
         $porMeio = Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $ids)
@@ -1223,6 +1230,20 @@ class PassagemController extends Controller
         });
 
         return ['ok' => true];
+    }
+
+    /** Exclui PERMANENTEMENTE a passagem (só quem tem permissão). Empresa-escopado pelo binding. */
+    public function excluir(Passagem $passagem)
+    {
+        abort_unless(auth()->user()->podeExcluirPassagem(), 403, 'Sem permissão para excluir passagens.');
+        $num = $passagem->numeroFormatado();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($passagem) {
+            \App\Models\Pagamento::where('modulo', 'passagem')->where('origem_id', $passagem->id)->delete();
+            $passagem->passageiros()->delete();
+            $passagem->delete();
+        });
+        if (request()->expectsJson()) return ['ok' => true];
+        return redirect()->route('passagens.index')->with('ok', 'Passagem #'.$num.' excluída permanentemente.');
     }
 
     public function cancelar(Request $request, Passagem $passagem)

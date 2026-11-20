@@ -77,7 +77,7 @@
   <div class="text-xs text-amber-600 -mt-2">Mostrando só as passagens <b>canceladas</b> do período. <a href="{{ request()->fullUrlWithQuery(['cancelada'=>null]) }}" class="underline">voltar pras ativas</a></div>
   @endif
 
-  @php $podeEditar = auth()->user()->podeEditarPassagem(); @endphp
+  @php $podeEditar = auth()->user()->podeEditarPassagem(); $podeExcluir = auth()->user()->podeExcluirPassagem(); @endphp
   {{-- lista --}}
   <div class="card divide-y"@if($podeEditar) x-data="editarMassa()"@endif>
     @forelse($passagens as $p)
@@ -102,6 +102,7 @@
             <button type="button" onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}?vias='+FBRE.perguntarVias())" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Imprimir comprovante">🖨</button>
             <button type="button" onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Copiar bilhete como imagem (colar no WhatsApp)">🖼️</button>
             <button type="button" onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap" title="Baixar PDF / enviar no WhatsApp">📲 PDF</button>
+            @if($podeExcluir)<form method="post" action="{{ route('passagens.excluir',$p) }}" onsubmit="return confirm('Excluir PERMANENTEMENTE a passagem #{{ $p->numeroFormatado() }}? Não dá pra desfazer.')" class="inline">@csrf<button type="submit" class="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[12px] font-semibold text-rose-700 hover:bg-rose-100" title="Excluir permanentemente (apagar de vez)">🗑</button></form>@endif
           </div>
         </div>
       </div>

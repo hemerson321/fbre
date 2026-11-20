@@ -199,6 +199,7 @@
     'pode_desconto'   => ['Dar desconto na venda', 'Pode baixar o valor da passagem na hora (desconto do operador). Agentes/revendedores nunca têm.'],
     'perm_zerar'      => ['Zerar o sistema', 'Pode apagar TODAS as encomendas/caixa e recomeçar do zero (botão em Cadastros gerais). Use com cuidado.'],
     'perm_editar_passagem' => ['Editar passagens', 'Pode editar passagens já vendidas (uma ou várias em massa): transporte, data, trecho, forma e os dados da venda.'],
+    'perm_excluir_passagem' => ['Excluir passagens (apagar de vez) ⚠️', 'Pode APAGAR permanentemente uma venda da lista. NÃO dá pra desfazer. Padrão: desligado.'],
   ]; @endphp
   @foreach($admPerms as $k=>[$l,$d])
     <label class="flex items-start gap-3 py-1.5 cursor-pointer">
