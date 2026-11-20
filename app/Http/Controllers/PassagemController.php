@@ -1072,6 +1072,38 @@ class PassagemController extends Controller
         return view('passagens.checkin', ['p' => $passagem, 'u' => auth()->user()]);
     }
 
+    /** Edita em massa as passagens selecionadas (transporte, data, trecho, forma). */
+    public function editarMassa(Request $request)
+    {
+        abort_unless(auth()->user()->podeEditarPassagem(), 403, 'Sem permissão para editar passagens.');
+        $data = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer',
+            'embarcacao_id' => 'nullable|integer',
+            'data_viagem' => 'nullable|date',
+            'origem' => 'nullable|string|max:120',
+            'destino' => 'nullable|string|max:120',
+            'forma' => 'nullable|in:avista,areceber,faturado,online',
+        ]);
+
+        $campos = [];
+        foreach (['embarcacao_id', 'data_viagem', 'origem', 'destino', 'forma'] as $c) {
+            if (! empty($data[$c])) $campos[$c] = $data[$c];
+        }
+        if (empty($campos)) {
+            return response()->json(['ok' => false, 'erro' => 'Escolha pelo menos um campo para alterar.'], 422);
+        }
+        // Trocar transporte: confirma que a embarcacao e da empresa (escopo global cuida disso)
+        if (isset($campos['embarcacao_id']) && ! \App\Models\Embarcacao::whereKey($campos['embarcacao_id'])->exists()) {
+            return response()->json(['ok' => false, 'erro' => 'Transporte inválido.'], 422);
+        }
+
+        // Passagem tem escopo por empresa -> so altera as passagens da empresa atual.
+        $n = Passagem::whereIn('id', $data['ids'])->where('cancelada', false)->update($campos);
+
+        return ['ok' => true, 'alteradas' => $n];
+    }
+
     public function cancelar(Request $request, Passagem $passagem)
     {
         $data = $request->validate(['motivo' => 'required|string|min:3|max:300'], ['motivo.required' => 'Informe o motivo.']);
