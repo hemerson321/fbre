@@ -30,6 +30,12 @@
       <option value="parcial" @selected(($f['status_pagamento'] ?? '')==='parcial')>Parcial</option>
       <option value="pendente" @selected(($f['status_pagamento'] ?? '')==='pendente')>Não pago</option>
     </select>
+    <select name="forma" class="input">
+      <option value="">Forma: todas</option>
+      @foreach(\App\Models\Passagem::FORMAS as $k=>$l)
+      <option value="{{ $k }}" @selected(($f['forma'] ?? '')===$k)>{{ $l }}</option>
+      @endforeach
+    </select>
     <select name="embarcou" class="input">
       <option value="">Embarque: todos</option>
       <option value="1" @selected(($f['embarcou'] ?? '')==='1')>Embarcou</option>

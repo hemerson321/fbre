@@ -37,6 +37,7 @@ class Passagem extends Model
         'avista'   => 'À vista',
         'areceber' => 'A receber',
         'faturado' => 'Faturado',
+        'online'   => 'Compra Online',
     ];
 
     public const MODULO = 'passagem';

@@ -147,7 +147,7 @@ class SyncController extends Controller
             'comprador_nome' => 'nullable|string|max:120',
             'comprador_telefone' => 'nullable|string|max:30',
             'comprador_documento' => 'nullable|string|max:20',
-            'forma' => 'required|in:avista,areceber,faturado',
+            'forma' => 'required|in:avista,areceber,faturado,online',
             'observacao' => 'nullable|string|max:1000',
             'desconto' => 'nullable|numeric|min:0',
             'passageiros' => 'required|array|min:1',
