@@ -62,9 +62,11 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   $colos = $p->passageiros->filter(fn ($x) => (($x->papel ?? '') === 'colo'))->values();
   if ($pagantes->isEmpty()) { $pagantes = $p->passageiros->values(); $colos = collect(); }
   $tot = $pagantes->count();
+  $vias = max(1, min(9, (int) request('vias', 1)));
   $titulo = $ehCam ? 'BILHETE · CAMAROTE' : 'BILHETE DE PASSAGEM';
 @endphp
 
+@for($__via = 0; $__via < $vias; $__via++)
 @foreach($pagantes as $i => $pax)
 <div class="ticket" style="--cor:{{ $cor }}">@if($p->cancelada)<div class="cwm"><b>CANCELADO</b></div>@endif
   <div class="hdr">
@@ -163,6 +165,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   <div class="foot">Bilhete {{ $i+1 }}/{{ $tot }} · Emitido {{ now()->format('d/m/Y H:i') }} · {{ $p->operador?->name }}</div>
 </div>
 @endforeach
+@endfor
 
 
 <div id="pdfbar" style="display:none;padding:10px 6px 22px">

@@ -910,7 +910,8 @@
       async imprimirDiretoENovo(id){
         let ok=false;
         try{
-          const imagens = await this._rasterComprovante('/passagens/'+id+'/comprovante');
+          const vias = FBRE.perguntarVias();
+          const imagens = await this._rasterComprovante('/passagens/'+id+'/comprovante?vias='+vias);
           if(imagens && imagens.length){
             const dd = await fetch('/passagens/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({imagens})}).then(r=>r.json()).catch(()=>null);
             ok = !!(dd && dd.ok);

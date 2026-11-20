@@ -374,6 +374,7 @@ document.addEventListener('alpine:init', () => {
     fmtMoney: v => (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
     parseMoney: s => { const d=String(s||'').replace(/\D/g,''); return d ? parseInt(d,10)/100 : 0; },
     abrirImpressao: url => { const w = window.open(url, 'fbre_print', 'width=420,height=640'); if (w) w.focus(); },
+    perguntarVias: () => { const n = prompt('Quantas vias imprimir?', '1'); if (n === null) return 1; const v = parseInt(n) || 1; return Math.max(1, Math.min(9, v)); },
     // Copia o bilhete (comprovante) como IMAGEM PNG pra colar no WhatsApp/outros.
     copiarBilheteImg: (btn, baseUrl) => {
       const prev = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳';

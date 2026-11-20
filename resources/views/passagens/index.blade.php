@@ -92,7 +92,7 @@
           <div class="font-bold">R$ {{ number_format($p->total,2,',','.') }}</div>
           @if($p->cancelada)<span class="chip font-extrabold" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5">✖ CANCELADA</span>@else<span class="chip st-{{ $p->cor() }}">{{ $p->statusTexto() }}</span>@endif
           <div class="flex gap-1 mt-1.5 justify-end">
-            <button type="button" onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}')" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Imprimir comprovante">🖨</button>
+            <button type="button" onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}?vias='+FBRE.perguntarVias())" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Imprimir comprovante">🖨</button>
             <button type="button" onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Copiar bilhete como imagem (colar no WhatsApp)">🖼️</button>
             <button type="button" onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap" title="Baixar PDF / enviar no WhatsApp">📲 PDF</button>
           </div>
