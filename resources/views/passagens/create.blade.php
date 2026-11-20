@@ -274,13 +274,17 @@
       <div class="sec-b">
         <div class="flex gap-1.5" x-ref="fForma">
           @foreach(\App\Models\Passagem::FORMAS as $k=>$l)
-          @if(empty($soAvista) || $k==='avista')
+          @if((empty($soAvista) || $k==='avista') && in_array($k, $formasPermitidas ?? ['avista']))
           <label class="forma" :class="forma==='{{ $k }}' && 'on'"><input type="radio" name="forma_sel" value="{{ $k }}" x-model="forma" class="sr-only"> {{ $l }}</label>
           @endif
           @endforeach
         </div>
+        <div x-show="forma==='areceber'" class="flex items-center gap-2 mt-1">
+          <label class="lbl !mb-0">Parcelado em</label>
+          <select x-model.number="parcelas" class="field w-auto font-semibold"><template x-for="n in 12" :key="n"><option :value="n" x-text="n+'x'"></option></template></select>
+        </div>
         @if(!empty($soAvista))
-        <p class="text-xs text-slate-500 -mt-1">Revendedor: venda à vista. O acerto (a receber/faturado) é entre você e a empresa.</p>
+        <p class="text-xs text-slate-500 -mt-1">Revendedor: venda à vista. O acerto (parcelado/faturado) é entre você e a empresa.</p>
         @endif
         <div x-show="forma!=='faturado' && forma!=='online'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
@@ -490,7 +494,7 @@
 
   function novaPassagem(){
     return {
-      salvando:false, forma:'avista', imprimir:'direto',
+      salvando:false, forma:@js($formaInicial ?? 'avista'), parcelas:1, imprimir:'direto',
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
       pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
@@ -972,7 +976,7 @@
           origem:this.origemSel, destino:this.destinoSel,
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
-          forma:this.forma, desconto:Number(this.desconto)||0, observacao:this.observacao||null,
+          forma:this.forma, parcelas:(this.forma==='areceber'?(Number(this.parcelas)||1):1), desconto:Number(this.desconto)||0, observacao:this.observacao||null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.papel||null, bebe_colo:((p.temColo && (p.bebeColo.nome||'').trim()) ? {nome:p.bebeColo.nome.trim(), documento:(p.bebeColo.documento||'').trim()||null, nascimento:p.bebeColo.nascimento||null} : null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
           pagamentos:this.forma==='faturado'?[]:(this.forma==='online'?[{meio:this.onlineMeio, valor:this.total}]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])}))),
@@ -981,7 +985,7 @@
       async salvar(ev){
         if(this.salvando) return;
         if(!this.validarPassageiros()) return;
-        if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Essa forma precisa fechar o valor total (PIX, débito ou crédito). Para deixar saldo em aberto, use "A receber".'); return; }
+        if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Essa forma precisa fechar o valor total (PIX, débito ou crédito). Para deixar saldo em aberto, use "Parcelado".'); return; }
         this.salvando=true;
         try{ if(this.origemSel) localStorage.setItem('fbre_origem',this.origemSel); if(this.embarcacaoSel) localStorage.setItem('fbre_transporte',this.embarcacaoSel); }catch(e){}
         const dados=this.montarDados();

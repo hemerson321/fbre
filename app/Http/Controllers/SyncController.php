@@ -148,6 +148,7 @@ class SyncController extends Controller
             'comprador_telefone' => 'nullable|string|max:30',
             'comprador_documento' => 'nullable|string|max:20',
             'forma' => 'required|in:avista,areceber,faturado,online',
+            'parcelas' => 'nullable|integer|min:1|max:12',
             'observacao' => 'nullable|string|max:1000',
             'desconto' => 'nullable|numeric|min:0',
             'passageiros' => 'required|array|min:1',
@@ -183,6 +184,9 @@ class SyncController extends Controller
             'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
             'pix_cobranca_id' => 'nullable|integer',
         ]);
+        if (! auth()->user()->podeUsarForma($data['forma'])) {
+            return response()->json(['ok' => false, 'erro' => 'Você não tem permissão para usar a forma de pagamento "'.(\App\Models\Passagem::FORMAS[$data['forma']] ?? $data['forma']).'".'], 422);
+        }
         try {
             $p = $svc->criar($data, auth()->id(), $data['uuid'], (bool) $request->input('offline', false));
         } catch (\App\Exceptions\VendaRecusada $e) {

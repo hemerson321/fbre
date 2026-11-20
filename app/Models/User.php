@@ -57,6 +57,10 @@ class User extends Authenticatable
             'perm_financeiro' => 'boolean',
             'perm_pix_manual' => 'boolean',
             'perm_pix_dinamico' => 'boolean',
+            'perm_forma_avista' => 'boolean',
+            'perm_forma_parcelado' => 'boolean',
+            'perm_forma_faturado' => 'boolean',
+            'perm_forma_online' => 'boolean',
             'mod_perms' => 'array',
         ];
     }
@@ -143,6 +147,29 @@ class User extends Authenticatable
     public function isSuper(): bool       { return $this->super_admin; }
     public function podeZerar(): bool     { return $this->super_admin || (bool) $this->perm_zerar; }
     public function podeEditarPassagem(): bool { return $this->super_admin || $this->admin || $this->gerente() || (bool) $this->perm_editar_passagem; }
+
+    /** Mapa forma(chave da venda) -> coluna de permissao. */
+    public const PERM_FORMA = [
+        'avista' => 'perm_forma_avista',
+        'areceber' => 'perm_forma_parcelado',
+        'faturado' => 'perm_forma_faturado',
+        'online' => 'perm_forma_online',
+    ];
+
+    /** Esse usuario pode usar essa forma de pagamento? Admin/gerente sempre podem. */
+    public function podeUsarForma(string $forma): bool
+    {
+        if ($this->super_admin || $this->admin || $this->gerente()) return true;
+        $col = self::PERM_FORMA[$forma] ?? null;
+        if ($col === null) return false;
+        return (bool) $this->{$col};
+    }
+
+    /** Lista das chaves de forma que esse usuario pode usar (na ordem de FORMAS). */
+    public function formasPermitidas(): array
+    {
+        return array_values(array_filter(array_keys(\App\Models\Passagem::FORMAS), fn ($k) => $this->podeUsarForma($k)));
+    }
 
     /** Módulos de cadastro do sistema. */
     public const MODULOS = [

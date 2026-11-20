@@ -106,6 +106,7 @@ class PassagemService
                 'comprador_telefone' => $data['comprador_telefone'] ?? null,
                 'comprador_documento' => $data['comprador_documento'] ?? null,
                 'forma' => $data['forma'] ?? 'avista',
+                'parcelas' => max(1, min(12, (int) ($data['parcelas'] ?? 1))),
                 'observacao' => $data['observacao'] ?? null,
                 'desconto' => $data['desconto'] ?? 0,
                 'documentos_gerais' => $this->salvarDocs($data['documentos_gerais'] ?? []) ?: null,

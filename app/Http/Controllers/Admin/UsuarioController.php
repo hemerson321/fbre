@@ -128,6 +128,10 @@ class UsuarioController extends Controller
             'perm_financeiro' => 'nullable|boolean',
             'perm_pix_manual' => 'nullable|boolean',
             'perm_pix_dinamico' => 'nullable|boolean',
+            'perm_forma_avista' => 'nullable|boolean',
+            'perm_forma_parcelado' => 'nullable|boolean',
+            'perm_forma_faturado' => 'nullable|boolean',
+            'perm_forma_online' => 'nullable|boolean',
             'checkin_auto' => 'nullable|boolean',
             'is_revendedor' => 'nullable|boolean',
             'revendedor_id' => 'nullable|integer',
@@ -150,7 +154,7 @@ class UsuarioController extends Controller
             'embarcacao_principal_id' => 'nullable|integer',
             'estacao_id' => 'nullable|integer|exists:estacoes,id',
         ], ['login.regex' => 'O login deve ter só letras minúsculas, números, ponto, traço ou underline.']);
-        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_transporte', 'perm_acerto', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'perm_editar_passagem', 'pode_desconto', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo', 'perm_financeiro', 'perm_pix_manual', 'perm_pix_dinamico', 'checkin_auto', 'is_revendedor'] as $b) {
+        foreach (['admin', 'perm_cadastra', 'perm_baixa', 'perm_caixa', 'caixa_todos', 'perm_filtro', 'perm_transporte', 'perm_acerto', 'perm_relatorio', 'relatorio_todos', 'perm_imprimir', 'perm_retroativo', 'perm_parcial', 'perm_zerar', 'perm_editar_passagem', 'pode_desconto', 'perm_passagem', 'perm_frete', 'perm_camarote', 'perm_lanchonete', 'perm_wifi', 'perm_avulso', 'perm_recibo', 'perm_financeiro', 'perm_pix_manual', 'perm_pix_dinamico', 'perm_forma_avista', 'perm_forma_parcelado', 'perm_forma_faturado', 'perm_forma_online', 'checkin_auto', 'is_revendedor'] as $b) {
             $data[$b] = $request->boolean($b);
         }
         // ativo: no cadastro o usuário já nasce ativo (o form só mostra o checkbox na edição);

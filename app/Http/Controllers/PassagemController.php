@@ -150,6 +150,8 @@ class PassagemController extends Controller
             'ultimaOrigem' => session('ultima_origem_pass') ?: (Tenant::empresa()->cidade ?: $localidades->first()),
             'embarcacaoPrincipal' => session('ultima_embarcacao_pass') ?: $u->embarcacao_principal_id,
             'checkinAuto' => (bool) $u->checkin_auto,
+            'formasPermitidas' => $u->formasPermitidas(),
+            'formaInicial' => $u->formasPermitidas()[0] ?? 'avista',
             'podeParcial' => $u->podeParcial(),
             'podeRetroativo' => $u->podeRetroativo(),
             'mostraComprador' => (bool) Tenant::empresa()->config('comprador_passagem', true),

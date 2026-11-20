@@ -16,6 +16,7 @@ class Passagem extends Model
     protected $guarded = [];
 
     protected $casts = [
+        'parcelas' => 'integer',
         'embarcou' => 'boolean',
         'cancelada' => 'boolean',
         'transferida' => 'boolean',
@@ -35,7 +36,7 @@ class Passagem extends Model
 
     public const FORMAS = [
         'avista'   => 'À vista',
-        'areceber' => 'A receber',
+        'areceber' => 'Parcelado',
         'faturado' => 'Faturado',
         'online'   => 'Compra Online',
     ];
