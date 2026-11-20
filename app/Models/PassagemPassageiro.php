@@ -16,6 +16,8 @@ class PassagemPassageiro extends Model
         'valor_total' => 'decimal:2',
         'documentos' => 'array',
         'checkin' => 'boolean',
+        'cancelado' => 'boolean',
+        'cancelado_em' => 'datetime',
         'checkin_em' => 'datetime',
     ];
 

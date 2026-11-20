@@ -99,7 +99,8 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 @foreach($pagantes as $i => $pax)
 <div class="ticket" style="--cor:{{ $cor }}">
 @php $ehGrat = (($pax->papel ?? '') !== 'colo') && ((float) ($pax->valor_passagem ?? 0) <= 0.009) && ((float) ($pax->valor_integral ?? 0) > 0.009); @endphp
-@if($p->cancelada)<div class="cwm"><b>CANCELADO</b></div>@endif
+@php $__tarja = $p->cancelada ? ((($p->cancel_tipo ?? '')==='cancelamento')?'CANCELAMENTO':'DEVOLUÇÃO') : (($pax->cancelado ?? false) ? ((($pax->cancelado_tipo ?? '')==='cancelamento')?'CANCELAMENTO':'DEVOLUÇÃO') : null); @endphp
+@if($__tarja)<div class="cwm"><b>{{ $__tarja }}</b></div>@endif
 @if($ehGrat && !$p->cancelada)<div style="position:absolute;top:0;bottom:0;right:0.5mm;display:flex;align-items:center;pointer-events:none;z-index:1"><span style="writing-mode:vertical-rl;font-size:15px;font-weight:900;letter-spacing:3px;color:rgba(0,0,0,.22)">GRATUIDADE</span></div>@endif
   <div class="hdr">
     @if($e?->logo)<img src="/{{ $e->logo }}" alt="logo">@endif
@@ -164,7 +165,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     <div class="row"><span class="k">Seguro</span><span class="vv">R$ {{ number_format((float) ($pax->valor_seguro ?? 0),2,',','.') }}</span></div>
     <div class="row"><span class="k">Alimentação e serviço</span><span class="vv">R$ {{ number_format((float) ($pax->valor_alimentacao ?? 0),2,',','.') }}</span></div>
     <div class="total"><span class="tl">Valor total</span><span class="tv">R$ {{ number_format((float) $pax->valor_total,2,',','.') }}</span></div>
-    <div class="row"><span class="k">Situação</span><span class="vv">@if($p->cancelada)<span class="pg no">CANCELADA</span>@elseif($ehGrat)<span class="pg" style="background:#dbeafe;color:#1e40af">Gratuidade ({{ $pax->tipo ?: 'Idoso' }})</span>@elseif($p->devido > 0.009)<span class="pg no">EM ABERTO</span>@else<span class="pg ok">PAGO</span>@endif</span></div>
+    <div class="row"><span class="k">Situação</span><span class="vv">@if($p->cancelada || ($pax->cancelado ?? false))<span class="pg no">CANCELADA</span>@elseif($ehGrat)<span class="pg" style="background:#dbeafe;color:#1e40af">Gratuidade ({{ $pax->tipo ?: 'Idoso' }})</span>@elseif($p->devido > 0.009)<span class="pg no">EM ABERTO</span>@else<span class="pg ok">PAGO</span>@endif</span></div>
     <div class="fpg">
     <div class="fpg-h">💳 Pagamento</div>
     <div class="row"><span class="k">Forma de pagamento</span><span class="vv b">{{ $formaLabel }}</span></div>

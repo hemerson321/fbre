@@ -27,8 +27,8 @@
         <div class="flex justify-between py-2 text-sm">
           <div class="flex gap-2">
 @php $miniatura = $pax->foto ?: $pax->foto_rg; @endphp @if($miniatura)<a href="/{{ $pax->foto_rg ?: $pax->foto }}" target="_blank" title="Ver documento"><img src="/{{ $miniatura }}" class="h-10 w-10 object-cover rounded border shrink-0"></a>@endif
-            <div>{{ $pax->nome }}
-            <span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded {{ $pax->checkin ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600' }}">{{ $pax->checkin ? 'check-in ✓' : 'sem check-in' }}</span>@if($pax->papel==='colo')<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-700">👶 colo</span>@endif
+            <div @class(['line-through text-rose-400'=>$pax->cancelado])>{{ $pax->nome }}
+            <span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded {{ $pax->checkin ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600' }}">{{ $pax->checkin ? 'check-in ✓' : 'sem check-in' }}</span>@if($pax->cancelado)<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">✖ CANCELADO</span>@endif @if($pax->papel==='colo')<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-700">👶 colo</span>@endif
             <div class="text-xs text-slate-500">{{ $pax->tipo }} ({{ $pax->percentual }}%)@if($pax->poltrona) · poltrona {{ $pax->poltrona }}@endif @if($pax->documento)· {{ $pax->doc_tipo ? $pax->doc_tipo.' ' : '' }}{{ $pax->documento }}@endif</div>@if($pax->valor_integral > $pax->valor_total + 0.009)<div class="text-xs text-amber-600">Preço normal R$ {{ number_format($pax->valor_integral,2,',','.') }} · Pago R$ {{ number_format($pax->valor_total,2,',','.') }}</div>@endif<div class="text-xs text-slate-400">Transp. R$ {{ number_format($pax->valor_passagem,2,',','.') }}@if(($pax->valor_alimentacao + $pax->valor_taxa)>0) · Alim.+Adic. R$ {{ number_format($pax->valor_alimentacao + $pax->valor_taxa,2,',','.') }}@endif</div>@if($pax->documentos)<div class="mt-1.5">@include('passagens._docs', ['docs'=>$pax->documentos, 'size'=>44])</div>@endif</div></div>
           <div class="text-right shrink-0"><div class="font-semibold">R$ {{ number_format($pax->valor_total,2,',','.') }}</div>@if($podeBaixa)<button type="button" class="chkbtn mt-1 rounded-lg px-2.5 py-1 text-[12px] font-bold {{ $pax->checkin ? 'bg-emerald-600 text-white border border-emerald-600' : 'bg-white text-slate-600 border border-slate-300' }}" onclick="FBRE.checkinPax(this,'{{ route('passagens.show',$p) }}/checkin-pax/{{ $pax->id }}')">{{ $pax->checkin ? '✓ embarcou' : 'Check-in' }}</button>@endif</div>
         </div>
@@ -96,6 +96,10 @@
          $jaSaiu = $p->jaSaiu();
          $pagC = $p->passageiros->filter(fn($x)=>($x->papel ?? '')!=='colo')->values(); @endphp
     <div class="font-bold text-sm mb-1">↩ Cancelamento / Devolução</div>
+    <div class="grid grid-cols-2 gap-2 mb-2" x-data="{t:'devolucao'}">
+      <label class="border-2 rounded-xl p-2 text-center font-bold text-sm cursor-pointer transition" :class="t==='devolucao' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-500'"><input type="radio" name="cancel_tipo" value="devolucao" x-model="t" class="sr-only"> ↩ Devolução</label>
+      <label class="border-2 rounded-xl p-2 text-center font-bold text-sm cursor-pointer transition" :class="t==='cancelamento' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-500'"><input type="radio" name="cancel_tipo" value="cancelamento" x-model="t" class="sr-only"> ✖ Cancelamento</label>
+    </div>
     <div class="rounded-lg bg-slate-50 border p-2.5 text-[12px] text-slate-600 mb-2 space-y-2">
       <div class="flex gap-2"><span class="shrink-0">🟢</span><span><b>Antes</b> da lancha sair — devolve <b>{{ 100-$pa }}%</b> ao passageiro e retém <b>{{ $pa }}%</b>, que vai pro <b>caixa local</b> (não entra no caixa da empresa).</span></div>
       <div class="flex gap-2"><span class="shrink-0">🔴</span><span><b>Depois</b> que a lancha saiu — devolve <b>{{ 100-$pd }}%</b> ao passageiro e retém <b>{{ $pd }}%</b>, que fica pro <b>proprietário</b> da lancha.</span></div>

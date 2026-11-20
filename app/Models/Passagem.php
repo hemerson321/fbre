@@ -96,9 +96,9 @@ class Passagem extends Model
     /** Recalcula totais a partir dos passageiros e pagamentos. */
     public function recalcular(): void
     {
-        $subtotal = (float) $this->passageiros()->sum('valor_passagem');
-        $taxa = (float) $this->passageiros()->sum('valor_taxa');
-        $alim = (float) $this->passageiros()->sum('valor_alimentacao');
+        $subtotal = (float) $this->passageiros()->where('cancelado', false)->sum('valor_passagem');
+        $taxa = (float) $this->passageiros()->where('cancelado', false)->sum('valor_taxa');
+        $alim = (float) $this->passageiros()->where('cancelado', false)->sum('valor_alimentacao');
         $descontoPag = (float) $this->pagamentos()->where('meio', 'desconto')->sum('valor');
         $desconto = max((float) $this->desconto, $descontoPag);
         $total = max($subtotal + $taxa + $alim - $desconto, 0);
@@ -114,7 +114,7 @@ class Passagem extends Model
             'total' => $total,
             'pago' => $pago,
             'devido' => $devido,
-            'qtd_passageiros' => $this->passageiros()->count(),
+            'qtd_passageiros' => $this->passageiros()->where('cancelado', false)->count(),
             'status_pagamento' => $status,
         ])->save();
     }

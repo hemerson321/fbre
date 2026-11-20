@@ -46,7 +46,7 @@ class PassagemController extends Controller
         // Lista mostra ativas + canceladas juntas (os totais acima continuam só com ativas).
         $fLista = $f;
         if (($fLista['cancelada'] ?? '') === '') $fLista['cancelada'] = 'todas';
-        $passagens = Passagem::filtrar($fLista)->with(['embarcacao', 'operador', 'embarcouPor', 'passageiros:id,passagem_id,nome,poltrona,papel'])->orderByDesc('id')->paginate(50)->withQueryString();
+        $passagens = Passagem::filtrar($fLista)->with(['embarcacao', 'operador', 'embarcouPor', 'passageiros:id,passagem_id,nome,poltrona,papel,cancelado'])->orderByDesc('id')->paginate(50)->withQueryString();
 
         return view('passagens.index', [
             'passagens' => $passagens,
@@ -531,7 +531,7 @@ class PassagemController extends Controller
         $reqMax = $temTrecho ? max($reqS, $reqD) : null;
 
         $ocup = collect();
-        foreach ($q->with('passageiros:id,passagem_id,poltrona')->get(['id', 'origem', 'destino']) as $pg) {
+        foreach ($q->with(['passageiros' => fn ($q) => $q->where('cancelado', false)->select('id', 'passagem_id', 'poltrona')])->get(['id', 'origem', 'destino']) as $pg) {
             if ($temTrecho) {
                 $c = $idx($pg->origem); $d = $idx($pg->destino);
                 if ($c !== false && $d !== false) {
@@ -1229,6 +1229,7 @@ class PassagemController extends Controller
     {
         $data = $request->validate(['motivo' => 'required|string|min:3|max:300'], ['motivo.required' => 'Informe o motivo.']);
         abort_if($passagem->cancelada, 422, 'Passagem já cancelada.');
+        $tipoCancel = $request->input('cancel_tipo') === 'cancelamento' ? 'cancelamento' : 'devolucao';
 
         // Cancelamento PARCIAL: só alguns passageiros (quando há 2+). Se marcar todos, cai no fluxo normal abaixo.
         $paxIds = array_values(array_filter(array_map('intval', (array) $request->input('pax_ids', []))));
@@ -1237,7 +1238,7 @@ class PassagemController extends Controller
             $selec = array_values(array_intersect($paxIds, $pagantes));
             if (empty($selec)) return back()->with('erro', 'Selecione ao menos um passageiro válido.');
             if (count($selec) < count($pagantes)) {
-                return $this->cancelarPassageirosParcial($passagem, $selec, $data['motivo']);
+                return $this->cancelarPassageirosParcial($passagem, $selec, $data['motivo'], $tipoCancel);
             }
             // selecionou todos -> segue cancelamento total normal
         }
@@ -1314,6 +1315,7 @@ class PassagemController extends Controller
             $passagem->forceFill([
                 'cancelada' => true, 'motivo_cancelamento' => $data['motivo'],
                 'cancel_retido' => $retido, 'cancel_reembolso' => $reembolso, 'cancel_fase' => $depois ? 'depois' : 'antes',
+                'cancel_tipo' => $tipoCancel,
             ])->save();
             $passagem->recalcular();
             $msg = 'Devolução registrada. Devolvido R$ '.number_format($reembolso, 2, ',', '.').' ('.(100 - $pct).'%).';
@@ -1326,23 +1328,24 @@ class PassagemController extends Controller
         }
 
         // Sem politica: estorna tudo (comportamento padrao).
-        $passagem->forceFill(['cancelada' => true, 'motivo_cancelamento' => $data['motivo']])->save();
+        $passagem->forceFill(['cancelada' => true, 'motivo_cancelamento' => $data['motivo'], 'cancel_tipo' => $tipoCancel])->save();
         $passagem->pagamentos()->update(['estornado' => true]);
         $passagem->recalcular();
         return redirect()->route('passagens.show', $passagem)->with('ok', 'Passagem cancelada.');
     }
 
     /** Cancela apenas alguns passageiros da passagem: remove, libera poltrona e recalcula. Devolução em dinheiro é manual no caixa. */
-    protected function cancelarPassageirosParcial(Passagem $passagem, array $ids, string $motivo)
+    protected function cancelarPassageirosParcial(Passagem $passagem, array $ids, string $motivo, string $tipo = 'devolucao')
     {
         $alvos = $passagem->passageiros()->whereIn('id', $ids)->get();
         if ($alvos->isEmpty()) return back()->with('erro', 'Passageiro(s) não encontrado(s).');
         $nomes = $alvos->pluck('nome')->map(fn ($n) => trim((string) $n))->filter()->implode(', ');
         $valor = (float) $alvos->sum('valor_total');
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($passagem, $ids) {
-            $passagem->passageiros()->whereIn('colo_de_id', $ids)->delete(); // bebês de colo ligados
-            $passagem->passageiros()->whereIn('id', $ids)->delete();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($passagem, $ids, $motivo, $tipo) {
+            $marca = ['cancelado' => true, 'cancelado_em' => now(), 'cancelado_motivo' => $motivo, 'cancelado_tipo' => $tipo];
+            $passagem->passageiros()->whereIn('colo_de_id', $ids)->update($marca); // bebês de colo ligados
+            $passagem->passageiros()->whereIn('id', $ids)->update($marca);
             $passagem->recalcular();
         });
 
