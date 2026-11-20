@@ -24,6 +24,10 @@
   <div class="sm:col-span-2"><label class="label">Chave PIX (impressa no comprovante)</label><input name="pix" class="input" value="{{ old('pix',$empresa->pix) }}"></div>
   <div class="sm:col-span-2"><label class="label">Rodapé do comprovante</label><textarea name="rodape_comprovante" rows="2" class="input !min-h-[60px] py-2">{{ old('rodape_comprovante',$empresa->rodape_comprovante) }}</textarea></div>
   <div class="sm:col-span-2"><label class="label">Aviso em destaque no topo do bilhete</label><textarea name="aviso_comprovante" rows="2" class="input !min-h-[60px] py-2" placeholder="Ex.: Passageiro no porto com 1 hora de antecedência à saída da embarcação">{{ old('aviso_comprovante',$empresa->aviso_comprovante) }}</textarea></div>
+  <label class="sm:col-span-2 flex items-start gap-2 py-1.5 cursor-pointer border rounded-lg px-3 bg-slate-50">
+    <input type="checkbox" name="comprovante_dados_completos" value="1" @checked($empresa->config('comprovante_dados_completos', false)) class="w-5 h-5 rounded mt-0.5 shrink-0">
+    <span><span class="font-semibold">Mostrar razão social e endereço completo no bilhete</span><br><span class="text-xs text-slate-500">Desligado (padrão): o bilhete mostra só o nome, CNPJ e telefone. Ligado: inclui a razão social e o endereço.</span></span>
+  </label>
   <div><label class="label">🏷️ Etiqueta — largura (mm)</label><input name="etiqueta_mm_w" type="number" min="10" max="120" class="input !min-h-[40px]" value="{{ old('etiqueta_mm_w', $empresa->config('etiqueta_mm_w', 29)) }}" placeholder="29"><p class="text-[11px] text-slate-400 mt-0.5">Tamanho do papel da impressora de etiqueta (Brother QL: DK-1201 = 29 × 90). Mude aqui quando trocar o papel — o agente não precisa mexer.</p></div>
   <div><label class="label">🏷️ Etiqueta — altura (mm)</label><input name="etiqueta_mm_h" type="number" min="20" max="300" class="input !min-h-[40px]" value="{{ old('etiqueta_mm_h', $empresa->config('etiqueta_mm_h', 90)) }}" placeholder="90"></div>
   <div class="sm:col-span-2"><label class="label">🏷️ Etiqueta — orientação do texto</label>

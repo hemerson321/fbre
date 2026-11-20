@@ -11,7 +11,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .c{text-align:center}.muted{color:#6b7280}.b{font-weight:700}
 .hdr{text-align:center;margin-bottom:4px}
 .hdr img{height:80px;max-width:72mm;object-fit:contain;margin-bottom:4px}
-.emp{font-weight:800;font-size:14px;letter-spacing:.02em;line-height:1.1}
+.emp{font-weight:800;font-size:16px;letter-spacing:.02em;line-height:1.12}
 .cnpj{font-size:10.5px;color:#1f2937}
 .band{margin:6px -4mm 0;padding:5px 0;text-align:center;color:#fff;font-weight:800;font-size:12px;letter-spacing:.09em;background:var(--cor)}
 .hero{display:flex;align-items:stretch;gap:6px;margin:9px 0 5px}
@@ -75,11 +75,11 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   <div class="hdr">
     @if($e?->logo)<img src="/{{ $e->logo }}" alt="logo">@endif
     <div class="emp">{{ strtoupper($e?->nomeExibicao() ?? 'FBRE') }}</div>
-    @if($e && $e->nome && mb_strtoupper(trim($e->nome)) !== mb_strtoupper(trim($e->nomeExibicao())))<div class="cnpj">{{ strtoupper($e->nome) }}</div>@endif
+    @if($e?->config('comprovante_dados_completos') && $e && $e->nome && mb_strtoupper(trim($e->nome)) !== mb_strtoupper(trim($e->nomeExibicao())))<div class="cnpj">{{ strtoupper($e->nome) }}</div>@endif
     @php $__fisc = trim(($e?->cnpj ? 'CNPJ '.$e->cnpj : '').($e?->config('ie') ? ($e?->cnpj ? ' · ' : '').'IE '.$e->config('ie') : '')); @endphp
     @if($__fisc)<div class="cnpj">{{ $__fisc }}</div>@endif
     @if($e?->telefone || $e?->whatsapp)<div class="cnpj">{{ $e->telefone }}{{ ($e->telefone && $e->whatsapp) ? ' · ' : '' }}{{ $e->whatsapp }}</div>@endif
-    @if($e?->endereco || $e?->cidade)<div class="cnpj">{{ $e->endereco }}{{ ($e->endereco && $e->cidade) ? ' · ' : '' }}{{ $e->cidade }}{{ $e->uf ? '/'.$e->uf : '' }}</div>@endif
+    @if($e?->config('comprovante_dados_completos') && ($e?->endereco || $e?->cidade))<div class="cnpj">{{ $e->endereco }}{{ ($e->endereco && $e->cidade) ? ' · ' : '' }}{{ $e->cidade }}{{ $e->uf ? '/'.$e->uf : '' }}</div>@endif
   </div>
   <div class="band">{{ $titulo }}</div>
   @if($e?->aviso_comprovante)<div style="text-align:center;font-weight:800;font-size:10.5px;line-height:1.25;text-transform:uppercase;letter-spacing:.02em;color:var(--cor);border:1.5px dashed var(--cor);border-radius:8px;padding:5px 7px;margin:5px 2px 2px">⚠️ {{ $e->aviso_comprovante }}</div>@endif
@@ -194,7 +194,7 @@ function rasterTickets(){
   var out = [];
   (function next(i){
     if(i>=els.length){ try{ parent.postMessage({fbreRaster:true, imagens:out}, '*'); }catch(e){} return; }
-    h2c(els[i], {scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false}).then(function(cv){
+    h2c(els[i], {scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false}).then(function(cv){
       try{ out.push(cv.toDataURL('image/png')); }catch(e){}
       next(i+1);
     }).catch(function(){ next(i+1); });
@@ -202,7 +202,7 @@ function rasterTickets(){
 }
 function qrImprimir(){
   try{ document.querySelectorAll('.qrp').forEach(function(el){ var sz=parseInt(el.dataset.size)||130; new QRCode(el,{text:el.dataset.url,width:sz,height:sz,correctLevel:QRCode.CorrectLevel.M}); }); }catch(e){}
-  if(RASTER){ setTimeout(rasterTickets, 450); return; }
+  if(RASTER){ var _imgs=Array.prototype.slice.call(document.images); var _wi=Promise.all(_imgs.filter(function(im){return !im.complete;}).map(function(im){return new Promise(function(r){im.onload=im.onerror=r;});})); var _wf=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve(); Promise.race([Promise.all([_wi,_wf]), new Promise(function(r){setTimeout(r,500);})]).then(function(){ setTimeout(rasterTickets,60); }); return; }
   var isMobile = /Android|iPhone|iPad|iPod|Mobile|Opera Mini/i.test(navigator.userAgent||'') || (window.matchMedia && window.matchMedia('(max-width:820px)').matches) || ('ontouchstart' in window && Math.min(screen.width,screen.height)<820);
   if(MODO==='pdf' || isMobile){
     document.getElementById('pdfbar').style.display='block';
