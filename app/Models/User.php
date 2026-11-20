@@ -46,6 +46,7 @@ class User extends Authenticatable
             'caixa_todos' => 'boolean',
             'relatorio_todos' => 'boolean',
             'perm_zerar' => 'boolean',
+            'perm_editar_passagem' => 'boolean',
             'perm_passagem' => 'boolean',
             'perm_frete' => 'boolean',
             'perm_camarote' => 'boolean',
@@ -141,6 +142,7 @@ class User extends Authenticatable
     public function isAdmin(): bool       { return $this->admin; }
     public function isSuper(): bool       { return $this->super_admin; }
     public function podeZerar(): bool     { return $this->super_admin || (bool) $this->perm_zerar; }
+    public function podeEditarPassagem(): bool { return $this->super_admin || $this->admin || $this->gerente() || (bool) $this->perm_editar_passagem; }
 
     /** Módulos de cadastro do sistema. */
     public const MODULOS = [
