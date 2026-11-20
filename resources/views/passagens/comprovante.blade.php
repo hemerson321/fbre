@@ -89,7 +89,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   @if($p->data_viagem || $hora)
   <div style="text-align:center;background:var(--cor);color:#fff;border-radius:9px;padding:5px 8px;margin:5px 0 2px;font-weight:800;letter-spacing:.02em">
     🕒 SAÍDA @if($p->data_viagem){{ $p->data_viagem->format('d/m/Y') }} · {{ $dias[(int) $p->data_viagem->dayOfWeek] }}@endif
-    @if($hora)<div style="font-size:23px;line-height:1.05;margin-top:2px">⏰ {{ $hora }}</div>@endif
+    @if($hora)<div style="font-size:30px;line-height:1.05;margin-top:3px;letter-spacing:.03em">⏰ {{ $hora }}</div>@endif
   </div>@endif
 
   <div class="sec">
