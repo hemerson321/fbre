@@ -101,8 +101,6 @@ class User extends Authenticatable
     /** Pode dar desconto do operador na venda? Revendedor nunca; admin/super sempre; operador conforme a flag. */
     public function podeDesconto(): bool
     {
-        $emp = \App\Support\Tenant::empresa();
-        if ($emp && ! $emp->config('usa_desconto', true)) return false;
         return ! $this->is_revendedor && ($this->super_admin || $this->admin || $this->gerente() || (bool) $this->pode_desconto);
     }
 
