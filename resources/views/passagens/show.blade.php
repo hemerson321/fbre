@@ -215,8 +215,9 @@
 <script>
 function imprimirDiretoPassagem(btn){
   const txt = btn.textContent;
+  const vias = FBRE.perguntarVias();
   const POST = '{{ route('passagens.imprimir-direto',$p) }}';
-  const RURL = '{{ route('passagens.comprovante',$p) }}?raster=1';
+  const RURL = '{{ route('passagens.comprovante',$p) }}?raster=1&vias='+vias;
   btn.disabled = true; btn.textContent = 'Gerando bilhete...';
   let done = false;
   const ifr = document.createElement('iframe');
