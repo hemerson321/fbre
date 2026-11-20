@@ -236,10 +236,16 @@ class EncomendaController extends Controller
         $q = trim((string) $request->query('q'));
         if (strlen($q) < 2) return [];
 
-        $pessoas = Pessoa::where(fn ($w) => $w->where('nome', 'like', "%$q%")->orWhere('telefone', 'like', "%$q%"))
-            ->orderBy('nome')->limit(8)->get(['nome', 'telefone', 'documento', 'doc_tipo', 'sexo', 'nascimento', 'nacionalidade', 'foto', 'foto_rg']);
-
         $empresaId = \App\Support\Tenant::id();
+        $soPassagem = $request->query('fonte') === 'passagem';
+
+        // Autocomplete de PASSAGEIRO (fonte=passagem): busca SO quem tem passagem de
+        // verdade (passagem_passageiros). Se a venda foi apagada, o nome some.
+        // Caso contrario (comprador/encomenda): usa o cadastro de pessoas + fallback.
+        $pessoas = $soPassagem
+            ? collect()
+            : Pessoa::where(fn ($w) => $w->where('nome', 'like', "%$q%")->orWhere('telefone', 'like', "%$q%"))
+                ->orderBy('nome')->limit(8)->get(['nome', 'telefone', 'documento', 'doc_tipo', 'sexo', 'nascimento', 'nacionalidade', 'foto', 'foto_rg']);
 
         // Enriquece cada pessoa com o cadastro dela nas passagens (sexo, nascimento, foto...).
         // Pega o valor mais recente NAO-VAZIO de cada campo (um cadastro antigo pode ter o que o ultimo nao tem).
