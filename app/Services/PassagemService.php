@@ -199,6 +199,15 @@ class PassagemService
                 ]);
             }
 
+            // Desconto da venda vira um lançamento meio=desconto (pro caixa mostrar em "Descontos").
+            if ((float) ($data['desconto'] ?? 0) > 0.009) {
+                \App\Models\Pagamento::create([
+                    'empresa_id' => $empresa->id, 'modulo' => 'passagem', 'origem_id' => $p->id, 'encomenda_id' => null,
+                    'meio' => 'desconto', 'valor' => (float) $data['desconto'], 'user_id' => $userId,
+                    'momento' => 'cadastro', 'tipo_mov' => 'entrada',
+                ]);
+            }
+
             $this->lembrarPessoa($data['comprador_nome'] ?? '', $data['comprador_telefone'] ?? null, $data['comprador_documento'] ?? null);
             $p->recalcular();
             $this->definirRevendedor($p, $userId);

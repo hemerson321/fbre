@@ -58,7 +58,7 @@
     </thead>
     <tbody>
       @forelse($linhas as $l)
-      <tr>
+      <tr @if($l->municipio ?? false)style="background:#dbeafe"@endif>
         <td>{{ $l->data ? \Carbon\Carbon::parse($l->data)->format('d/m/Y H:i') : '—' }}</td>
         <td>{{ $l->descricao }}</td>
         <td class="muted">{{ $l->ref }}</td>
@@ -70,6 +70,7 @@
     </tbody>
   </table>
 
+  <div style="font-size:10px;color:#555;margin:6px 0"><span style="background:#dbeafe;padding:1px 7px;border-radius:4px">Agente / Município (faturado)</span> <span style="background:#fee2e2;color:#b91c1c;padding:1px 7px;border-radius:4px">Cancelado</span></div>
   <div class="totais">
     @foreach($totais as $t)
     <div class="tot {{ !empty($t['forte']) ? 'forte' : '' }}">

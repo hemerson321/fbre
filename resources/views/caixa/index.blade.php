@@ -76,12 +76,18 @@
   @foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)
     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m]->valor ?? 0,2,',','.') }}</div><div class="text-xs text-slate-400">{{ $porMeio[$m]->qtd ?? 0 }} lançamentos</div></div>
   @endforeach
-  <div class="card p-3 text-xs space-y-1">
-    <div class="flex justify-between"><span class="text-slate-500">Saídas avulsas</span><b class="text-red-600">R$ {{ number_format($saidas,2,',','.') }}</b></div>
-    <div class="flex justify-between"><span class="text-slate-500">Descontos</span><b>R$ {{ number_format($descontos,2,',','.') }}</b></div>
-    <div class="flex justify-between"><span class="text-slate-500">Cadastros</span><b>{{ $cadastros }}</b></div>
-    <div class="flex justify-between"><span class="text-slate-500">Entregas</span><b>{{ $entregas }}</b></div>
-    <div class="flex justify-between"><span class="text-slate-500">❌ Cancelados</span><b class="text-slate-500">{{ $cancelados->qtd ?? 0 }} · R$ {{ number_format($cancelados->valor ?? 0,2,',','.') }}</b></div>
+</div>
+<div class="card px-4 py-2.5">
+  <div class="flex flex-wrap items-center gap-x-7 gap-y-1.5 text-[13px]">
+    <span class="text-slate-500">Saídas avulsas <b class="text-red-600 ml-1">R$ {{ number_format($saidas,2,',','.') }}</b></span>
+    <span class="text-slate-300">·</span>
+    <span class="text-slate-500">Descontos <b class="text-slate-800 ml-1">R$ {{ number_format($descontos,2,',','.') }}</b></span>
+    <span class="text-slate-300">·</span>
+    <span class="text-slate-500">Cadastros <b class="text-slate-800 ml-1">{{ $cadastros }}</b></span>
+    <span class="text-slate-300">·</span>
+    <span class="text-slate-500">Entregas <b class="text-slate-800 ml-1">{{ $entregas }}</b></span>
+    <span class="text-slate-300">·</span>
+    <span class="text-slate-500">❌ Cancelados <b class="text-slate-800 ml-1">{{ $cancelados->qtd ?? 0 }} · R$ {{ number_format($cancelados->valor ?? 0,2,',','.') }}</b></span>
   </div>
 </div>
 
@@ -117,16 +123,7 @@
 </div>
 @endif
 
-<div class="card overflow-hidden">
-  <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Por operador</div>
-  <table class="w-full text-sm"><thead class="bg-slate-50 text-[11px] uppercase text-slate-500"><tr><th class="p-3 text-left">Operador</th>@foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)<th class="p-3 text-right">{{ $meios[$m] }}</th>@endforeach<th class="p-3 text-right">Total</th></tr></thead>
-  <tbody class="divide-y">
-  @forelse($porOperador as $uid=>$d)
-    <tr><td class="p-3 font-semibold">{{ ($usuarios[$uid] ?? null)?->name ?? '—' }}</td>@foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)<td class="p-3 text-right">{{ number_format($d['meios'][$m] ?? 0,2,',','.') }}</td>@endforeach<td class="p-3 text-right font-bold">{{ number_format($d['total'],2,',','.') }}</td></tr>
-  @empty <tr><td colspan="7" class="p-6 text-center text-slate-400">Sem movimento no período.</td></tr> @endforelse
-  </tbody></table>
-</div>
-
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
 <div class="card overflow-hidden">
   <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">🚤 Por lancha / transporte</div>
   @php $tmap = $transportes->keyBy('id'); @endphp
@@ -136,6 +133,16 @@
     <tr><td class="p-3 font-semibold">{{ $eid ? '🚤 '.(($tmap[$eid] ?? null)?->nome ?? ('Transporte '.$eid)) : '— sem transporte —' }}</td>@foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)<td class="p-3 text-right">{{ number_format($d['meios'][$m] ?? 0,2,',','.') }}</td>@endforeach<td class="p-3 text-right font-bold">{{ number_format($d['total'],2,',','.') }}</td></tr>
   @empty <tr><td colspan="7" class="p-6 text-center text-slate-400">Sem movimento no período.</td></tr> @endforelse
   </tbody></table>
+</div>
+<div class="card overflow-hidden">
+  <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">Por operador</div>
+  <table class="w-full text-sm"><thead class="bg-slate-50 text-[11px] uppercase text-slate-500"><tr><th class="p-3 text-left">Operador</th>@foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)<th class="p-3 text-right">{{ $meios[$m] }}</th>@endforeach<th class="p-3 text-right">Total</th></tr></thead>
+  <tbody class="divide-y">
+  @forelse($porOperador as $uid=>$d)
+    <tr><td class="p-3 font-semibold">{{ ($usuarios[$uid] ?? null)?->name ?? '—' }}</td>@foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)<td class="p-3 text-right">{{ number_format($d['meios'][$m] ?? 0,2,',','.') }}</td>@endforeach<td class="p-3 text-right font-bold">{{ number_format($d['total'],2,',','.') }}</td></tr>
+  @empty <tr><td colspan="7" class="p-6 text-center text-slate-400">Sem movimento no período.</td></tr> @endforelse
+  </tbody></table>
+</div>
 </div>
 
 <div class="card overflow-hidden">

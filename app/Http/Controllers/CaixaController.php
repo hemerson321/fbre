@@ -180,11 +180,14 @@ class CaixaController extends Controller
         if ($request->boolean('pdf')) {
             $movs = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->limit(2000)->get();
             $canais = Pagamento::CANAIS;
+            $passIdsP = $movs->where('modulo', 'passagem')->pluck('origem_id')->filter()->unique()->all();
+            $formasP = $passIdsP ? \App\Models\Passagem::whereIn('id', $passIdsP)->pluck('forma', 'id') : collect();
             $linhas = $movs->map(fn ($p) => (object) [
                 'data' => $p->created_at,
                 'descricao' => trim(($p->user?->name ? $p->user->name.' · ' : '').($p->categoria ?: ucfirst((string) $p->modulo))),
                 'ref' => $p->encomenda?->numeroFormatado() ? '#'.$p->encomenda->numeroFormatado() : ($canais[$p->canal] ?? ''),
                 'valor' => (float) $p->valor,
+                'municipio' => $p->modulo === 'passagem' && (($formasP[$p->origem_id] ?? null) === 'faturado'),
             ]);
             $ent = (float) $porMeio->sum('valor');
             $tot = [
