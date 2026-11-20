@@ -911,8 +911,10 @@
         let ok=false;
         try{
           const vias = FBRE.perguntarVias();
-          let imagens = await this._rasterComprovante('/passagens/'+id+'/comprovante');
-          if(imagens && imagens.length && vias>1){ let __t=[]; for(let __v=0; __v<vias; __v++) __t=__t.concat(imagens); imagens=__t; }
+          const __rz = await this._rasterComprovante('/passagens/'+id+'/comprovante');
+          let imagens = (__rz && __rz.imagens) ? __rz.imagens.slice() : [];
+          if(imagens.length && vias>1){ let __t=[]; for(let __v=0; __v<vias; __v++) __t=__t.concat(imagens); imagens=__t; }
+          if(__rz && __rz.resumo) imagens.push(__rz.resumo);
           if(imagens && imagens.length){
             const dd = await fetch('/passagens/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({imagens})}).then(r=>r.json()).catch(()=>null);
             ok = !!(dd && dd.ok);
@@ -927,12 +929,12 @@
         return new Promise((resolve)=>{
           let done=false; const ifr=document.createElement('iframe');
           ifr.style.cssText='position:fixed;left:-10000px;top:0;width:360px;height:10px;border:0;opacity:0';
-          const fim=(imgs)=>{ if(done)return; done=true; window.removeEventListener('message',onMsg); try{ifr.remove();}catch(e){} resolve(imgs||[]); };
-          const onMsg=(ev)=>{ const d=ev.data; if(!d||!d.fbreRaster)return; fim(d.imagens||[]); };
+          const fim=(res)=>{ if(done)return; done=true; window.removeEventListener('message',onMsg); try{ifr.remove();}catch(e){} resolve(res||{imagens:[],resumo:null}); };
+          const onMsg=(ev)=>{ const d=ev.data; if(!d||!d.fbreRaster)return; fim({imagens:d.imagens||[], resumo:d.resumo||null}); };
           window.addEventListener('message',onMsg);
           document.body.appendChild(ifr);
           ifr.src = url + (url.indexOf('?')>=0?'&':'?') + 'raster=1';
-          setTimeout(()=>fim([]), 20000);
+          setTimeout(()=>fim({imagens:[],resumo:null}), 20000);
         });
       },
       validarPassageiros(){

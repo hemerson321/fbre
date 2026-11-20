@@ -232,7 +232,8 @@ function imprimirDiretoPassagem(btn){
     const d = ev.data; if(!d || !d.fbreRaster) return;
     if(!d.imagens || !d.imagens.length){ fim(false, 'Não consegui gerar o bilhete.'); return; }
     btn.textContent = 'Enviando pra impressora...';
-    let imgs = d.imagens; if(vias>1){ let t=[]; for(let v=0;v<vias;v++) t=t.concat(d.imagens); imgs=t; }
+    let imgs = d.imagens.slice(); if(vias>1){ let t=[]; for(let v=0;v<vias;v++) t=t.concat(d.imagens); imgs=t; }
+    if(d.resumo) imgs.push(d.resumo);
     fetch(POST, {method:'POST', headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'}, body: JSON.stringify({imagens:imgs})})
       .then(r=>r.json())
       .then(dd=>{ if(dd && dd.ok){ fim(true, dd.jobs+' bilhete'+(dd.jobs>1?'s':'')); } else { fim(false, (dd && dd.erro) || 'Erro na impressora.'); } })

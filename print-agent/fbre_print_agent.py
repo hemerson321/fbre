@@ -276,7 +276,6 @@ def montar_etiqueta(d, col):
         out += p.bytes()
     return bytes(out)
 
-
 def montar_pix(d, col):
     emp = d.get("empresa", {})
     px = d.get("pix", {})
