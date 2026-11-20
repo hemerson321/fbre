@@ -56,6 +56,8 @@ class ManifestoCaixa
                     'municipio' => $ehMunicipio && ! $cancPax,
                     'cliente' => (string) ($p->comprador_nome ?? ''),
                     'poltrona' => (string) ($pax->poltrona ?? ''),
+                    'embarcou' => (bool) $p->embarcou,
+                    'checkin' => (bool) ($pax->checkin ?? false),
                 ]);
                 if (! $cancPax && ! $ehColo) { $nPax++; if ($ehIdoso) $nIdosos++; }
                 if ($ehColo && ! $cancPax) $nColos++;

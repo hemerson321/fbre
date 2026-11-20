@@ -318,7 +318,7 @@ class PassagemController extends Controller
     public function manifesto(Request $request)
     {
         $f = $this->filtros($request);
-        $passagens = Passagem::filtrar($f)->where('cancelada', false)->with(['passageiros', 'camarote', 'embarcacao'])
+        $passagens = Passagem::filtrar($f)->where('cancelada', false)->with(['passageiros', 'camarote', 'embarcacao', 'operador', 'pagamentos'])
             ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
 
         $linhas = collect();
@@ -345,6 +345,9 @@ class PassagemController extends Controller
                 ]);
             }
         }
+
+        // tabela padrao (igual prestacao) para a lista de embarque/desembarque
+        $linhasPrest = \App\Support\ManifestoCaixa::dados($passagens)['linhas'];
 
         // cabecalho (modelo oficial)
         $embs = $passagens->map(fn ($p) => $p->embarcacao?->nome)->filter()->unique()->values();
@@ -376,6 +379,7 @@ class PassagemController extends Controller
 
         return view($view, [
             'linhas' => $linhas,
+            'linhasPrest' => $linhasPrest,
             'f' => $f,
             'empresa' => Tenant::empresa(),
             'cab' => $cab,
