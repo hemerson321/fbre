@@ -6,22 +6,23 @@
 body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#111}
 .ticket{page-break-after:always;padding:4mm 4mm 5mm;position:relative;overflow:hidden}
 .ticket:last-child{page-break-after:auto}
-.resumo-venda{position:absolute;left:-10000px;top:0;width:360px;background:#fff;color:#000;padding:4mm 4.5mm 5mm;font-family:inherit;font-size:12.5px;line-height:1.3}
+.resumo-venda{position:absolute;left:-10000px;top:0;width:360px;background:#fff;color:#000;padding:4mm 4.5mm 5mm;font-family:inherit;font-size:14px;line-height:1.32}
 .rz-h{text-align:center;border-bottom:2px solid #000;padding-bottom:5px;margin-bottom:6px}
 .rz-h .t{font-weight:900;font-size:16px;letter-spacing:.06em}
 .rz-h .s{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-top:1px}
 .rz-h .n{font-size:11px;color:#1f2937;margin-top:3px;font-weight:700}
-.rz-emp{font-weight:900;font-size:14px;text-align:center;letter-spacing:.02em}
+.rz-emp{font-weight:900;font-size:17px;text-align:center;letter-spacing:.02em}
 .rz-tr{text-align:center;font-weight:800;font-size:13px;margin:1px 0}
 .rz-line{border-top:1px dashed #9ca3af;margin:6px 0}
-.rz-row{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:1.5px 0}
+.rz-row{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;padding:2px 0}
 .rz-row .k{color:#374151;font-weight:600}
-.rz-row .vv{font-weight:700;text-align:right}
-.rz-px{font-size:12px;padding:2px 0;display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted #e5e7eb}
+.rz-row .vv{font-weight:800;text-align:right;color:#000}
+.rz-px{font-size:13.5px;padding:2.5px 0;display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted #e5e7eb}
 .rz-px .nm{font-weight:700}
 .rz-px .pl{font-weight:800;white-space:nowrap}
 .rz-sech{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#374151;margin:4px 0 2px}
-.rz-tot{display:flex;justify-content:space-between;font-weight:900;font-size:14px;border-top:2px solid #000;margin-top:4px;padding-top:4px}
+.rz-pay{display:flex;justify-content:space-between;gap:8px;font-size:16px;font-weight:900;padding:4px 7px;margin:3px 0;background:#f1f5f9;border:1.5px solid #cbd5e1;border-radius:8px}
+.rz-tot{display:flex;justify-content:space-between;font-weight:900;font-size:18px;border-top:2px solid #000;margin-top:4px;padding-top:4px}
 .rz-pg{display:inline-block;font-weight:900;font-size:11px;padding:1px 8px;border-radius:6px}
 .rz-ass{margin-top:10px;font-size:11px}
 .rz-ln{border-bottom:1px solid #000;height:14px;margin-top:2px}
@@ -221,7 +222,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   @endforeach
   @if($colos->count())<div class="rz-row" style="margin-top:3px"><span class="k">+ bebês de colo</span><span class="vv">{{ $colos->count() }}</span></div>@endif
   <div class="rz-line"></div>
-  <div class="rz-row"><span class="k">Forma de pagamento</span><span class="vv">{{ \App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma) }}</span></div>
+  <div class="rz-pay"><span>💳 Pagamento</span><span>{{ $formas ?: (\App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma)) }}</span></div>
   <div class="rz-row"><span class="k">Recebido</span><span class="vv">R$ {{ number_format($rzPag,2,',','.') }}</span></div>
   <div class="rz-row"><span class="k">Em aberto</span><span class="vv">R$ {{ number_format($rzDev,2,',','.') }}</span></div>
   <div class="rz-tot"><span>TOTAL</span><span>R$ {{ number_format((float) $p->total,2,',','.') }}</span></div>
