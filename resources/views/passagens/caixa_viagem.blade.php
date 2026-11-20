@@ -44,7 +44,7 @@
 <table>
   <thead><tr>
     <th>Nr</th><th>Ticket</th><th>Trecho</th><th>Nome completo</th><th>Data compra</th>
-    <th>Vendedor</th><th class="r">Valor</th><th>Status</th><th>Forma</th><th>Cliente</th><th>Lugar</th>
+    <th>Vendedor</th><th class="r">Valor</th><th>P</th><th>Status</th><th>Forma</th><th>Cliente</th><th>Agência</th><th>Lugar</th>
   </tr></thead>
   <tbody>
     @forelse($linhas as $l)
@@ -56,13 +56,15 @@
       <td>{{ $l->data_compra?->format('d/m/Y') }}</td>
       <td>{{ $l->vendedor }}</td>
       <td class="r">R$ {{ number_format($l->valor,2,',','.') }}</td>
+      <td style="font-weight:700">{{ $l->p }}</td>
       <td>{{ $l->status }}</td>
       <td>{{ $l->forma }}</td>
       <td>{{ $l->cliente }}</td>
+      <td>{{ $l->agencia }}</td>
       <td>{{ $l->poltrona }}</td>
     </tr>
     @empty
-    <tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:20px">Nenhuma venda no filtro selecionado.</td></tr>
+    <tr><td colspan="13" style="text-align:center;color:#94a3b8;padding:20px">Nenhuma venda no filtro selecionado.</td></tr>
     @endforelse
   </tbody>
 </table>
