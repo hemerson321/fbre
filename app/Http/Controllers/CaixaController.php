@@ -139,6 +139,11 @@ class CaixaController extends Controller
         $podeAvulso = auth()->user()->podeModulo('avulso');
 
         $movimentos = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->paginate(100)->withQueryString();
+        // dados das passagens dos lançamentos desta página (cor por tipo + trecho)
+        $passIdsMov = collect($movimentos->items())->where('modulo', 'passagem')->pluck('origem_id')->filter()->unique()->all();
+        $passMov = $passIdsMov
+            ? \App\Models\Passagem::whereIn('id', $passIdsMov)->with(['passageiros:id,passagem_id,papel,tipo,cancelado'])->get(['id', 'origem', 'destino', 'forma', 'cancelada'])->keyBy('id')
+            : collect();
 
         // VENDAS (BRUTO): valor total vendido no filtro, independente de ter entrado no caixa (ex.: venda de agente ainda nao repassada)
         $filtroData = function ($q) use ($inicio, $fim, $userId, $transporteId) {
@@ -217,7 +222,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto]);
     }
 

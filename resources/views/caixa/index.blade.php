@@ -156,10 +156,21 @@
   </div>
   @endif
   @foreach($movimentos as $m)
-    @php $rf = $m->resumoFonte(); @endphp
-    <a href="{{ $rf['url'] ?? '#' }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 text-sm">
+    @php
+      $rf = $m->resumoFonte();
+      $pz = ($m->modulo === 'passagem') ? (($passMov ?? collect())[$m->origem_id] ?? null) : null;
+      $corMov = null; $trechoMov = null;
+      if ($pz) {
+        $trechoMov = $pz->origem.' → '.$pz->destino;
+        if ($pz->cancelada) $corMov = '#fee2e2';
+        elseif ($pz->forma === 'faturado') $corMov = '#dbeafe';
+        elseif ($pz->passageiros->contains(fn($x)=> mb_stripos((string)$x->tipo,'pcd')!==false || mb_stripos((string)$x->tipo,'defic')!==false)) $corMov = '#fef9c3';
+        elseif ($pz->passageiros->contains(fn($x)=> mb_stripos((string)$x->tipo,'idoso')!==false)) $corMov = '#dcfce7';
+      }
+    @endphp
+    <a href="{{ $rf['url'] ?? '#' }}" class="flex items-center gap-3 p-3 hover:brightness-95 text-sm"@if($corMov) style="background:{{ $corMov }}"@endif>
       <div class="w-14 text-xs text-slate-400">{{ $m->created_at->format('d/m') }}<br>{{ $m->created_at->format('H:i') }}</div>
-      <div class="flex-1 min-w-0"><span class="chip" style="background:{{ \App\Support\Modulos::hex($m->modulo ?: 'encomenda') }}20;color:{{ \App\Support\Modulos::hex($m->modulo ?: 'encomenda') }}">{{ \App\Support\Modulos::icone($m->modulo ?: 'encomenda') }}</span> <b>#{{ $rf['numero'] }}</b> {{ $rf['nome'] }}<div class="text-xs text-slate-400">{{ $m->user?->name }} · {{ $m->momento==='cadastro'?'no cadastro':'na baixa' }}</div></div>
+      <div class="flex-1 min-w-0"><span class="chip" style="background:{{ \App\Support\Modulos::hex($m->modulo ?: 'encomenda') }}20;color:{{ \App\Support\Modulos::hex($m->modulo ?: 'encomenda') }}">{{ \App\Support\Modulos::icone($m->modulo ?: 'encomenda') }}</span> <b>#{{ $rf['numero'] }}</b> {{ $rf['nome'] }}@if($trechoMov) <span class="text-slate-500">· {{ $trechoMov }}</span>@endif<div class="text-xs text-slate-400">{{ $m->user?->name }} · {{ $m->momento==='cadastro'?'no cadastro':'na baixa' }}</div></div>
       <span class="chip bg-slate-100 text-slate-600">{{ $meios[$m->canal] ?? \App\Models\Pagamento::MEIOS[$m->meio] ?? $m->meio }}</span>
       <div class="font-bold whitespace-nowrap">R$ {{ number_format($m->valor,2,',','.') }}</div>
     </a>
