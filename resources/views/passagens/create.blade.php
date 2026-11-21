@@ -309,7 +309,7 @@
         @endif
         <div x-show="forma!=='faturado' && forma!=='online'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
-            <div x-show="forma!=='areceber' && (m.k!=='dinheiro' || forma!=='online') && (m.k!=='pix' || pixManual || pixEstatico || pixDinamico)">
+            <div x-show="forma!=='areceber' && m.k!=='credito' && (m.k!=='dinheiro' || forma!=='online') && (m.k!=='pix' || pixManual || pixEstatico || pixDinamico)">
               <label class="lbl" x-text="m.k==='pix' ? (pixEstatico ? 'PIX Estático' : (pixDinamico ? 'PIX Dinâmico' : 'PIX Manual')) : m.l"></label>
               <div class="flex gap-1">
                 <input class="field text-right font-semibold w-full" x-money="pag[m.k]">
