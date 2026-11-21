@@ -97,6 +97,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens', [\App\Http\Controllers\PassagemController::class, 'index'])->name('passagens.index')->middleware('perm:passagem.ver');
     Route::get('/passagens/nova', [\App\Http\Controllers\PassagemController::class, 'create'])->name('passagens.create')->middleware('perm:passagem');
     Route::post('/passagens', [\App\Http\Controllers\PassagemController::class, 'store'])->name('passagens.store')->middleware('perm:passagem');
+    // Cliente faturado: busca + cadastro rapido direto da venda (JSON)
+    Route::get('/passagens/clientes-faturado/buscar', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'buscar'])->name('passagens.cliente-faturado.buscar')->middleware('perm:passagem');
+    Route::post('/passagens/clientes-faturado', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'criarRapido'])->name('passagens.cliente-faturado.criar')->middleware('perm:passagem');
     Route::get('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteCreate'])->name('passagens.camarote.create')->middleware('perm:camarote');
     Route::post('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteStore'])->name('passagens.camarote.store')->middleware('perm:camarote');
     Route::get('/passagens/camarotes', [\App\Http\Controllers\PassagemController::class, 'camarotesMapa'])->name('passagens.camarotes')->middleware('perm:camarote');

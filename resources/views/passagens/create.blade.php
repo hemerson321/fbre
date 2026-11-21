@@ -329,7 +329,42 @@
             </template>
           </div>
         </div>
-        <p x-show="forma==='faturado'" class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">Faturado: nada é recebido agora.</p>
+        <div x-show="forma==='faturado'" x-cloak class="rounded-xl border border-amber-200 bg-amber-50/70 p-2 space-y-2">
+          <div class="text-[13px] font-semibold text-amber-800">🧾 Cliente faturado (a receber)</div>
+          <template x-if="fatSel">
+            <div class="flex items-center justify-between gap-2 rounded-lg bg-white border border-amber-200 px-2 py-1.5">
+              <div class="min-w-0">
+                <div class="font-semibold text-sm truncate" x-text="fatSel.nome + (fatSel.empresa ? ' · '+fatSel.empresa : '')"></div>
+                <div class="text-[11px] text-slate-500" x-text="((fatSel.doc_tipo||'')+' '+(fatSel.documento||'')).trim() || 'sem documento'"></div>
+              </div>
+              <button type="button" class="text-rose-600 text-[12px] font-semibold shrink-0" @click="fatLimpar()">trocar</button>
+            </div>
+          </template>
+          <div x-show="!fatSel" class="space-y-2">
+            <input type="text" x-model="fatBusca" @input.debounce.300ms="fatBuscar()" placeholder="Buscar cliente (nome, empresa ou documento)" class="field w-full">
+            <template x-if="fatResultados.length">
+              <div class="rounded-lg border border-slate-200 bg-white divide-y max-h-40 overflow-auto">
+                <template x-for="c in fatResultados" :key="c.id">
+                  <button type="button" class="block w-full text-left px-2 py-1.5 hover:bg-amber-50 text-sm" @click="fatSelecionar(c)">
+                    <span class="font-semibold" x-text="c.nome"></span><span class="text-slate-500" x-text="c.empresa ? ' · '+c.empresa : ''"></span>
+                    <span class="text-[11px] text-slate-400 block" x-text="((c.doc_tipo||'')+' '+(c.documento||'')).trim()"></span>
+                  </button>
+                </template>
+              </div>
+            </template>
+            <div class="rounded-lg border border-dashed border-amber-300 p-2 space-y-1.5">
+              <div class="text-[11px] font-semibold text-amber-700 uppercase">Novo cliente</div>
+              <input type="text" x-model="fatNome" placeholder="Nome / responsável" class="field w-full">
+              <input type="text" x-model="fatEmpresa" placeholder="Empresa (razão social) — opcional" class="field w-full">
+              <div class="flex items-center gap-2">
+                <input type="text" x-model="fatDoc" @input="fatDocTipoCalc()" inputmode="numeric" placeholder="CPF ou CNPJ" class="field flex-1">
+                <span class="text-[11px] font-bold px-2 py-1 rounded shrink-0" :class="fatDocTipo==='CNPJ'?'bg-indigo-100 text-indigo-700':(fatDocTipo==='CPF'?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-400')" x-text="fatDocTipo || '—'"></span>
+              </div>
+              <button type="button" class="w-full rounded-lg bg-amber-600 text-white py-2 text-sm font-bold disabled:opacity-40" :disabled="!fatNome.trim()" @click="fatCriar()">+ Cadastrar e usar</button>
+            </div>
+          </div>
+          <p class="text-[11px] text-amber-700/80">Faturado: nada é recebido agora. Fica a receber no nome do cliente acima.</p>
+        </div>
 
         <div class="rounded-2xl p-2.5 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
           <div class="flex justify-between text-xs opacity-75"><span>Tarifa de Transporte</span><span x-text="FBRE.moeda(subPassagem)"></span></div>
@@ -517,6 +552,7 @@
     return {
       salvando:false, forma:@js($formaInicial ?? 'avista'), parcelas:1, imprimir:'direto',
       agenteOn:false, agenteId:'', agenteAcerto:true,
+      fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
       pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
@@ -1000,11 +1036,17 @@
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
           forma:this.forma, parcelas:(this.forma==='areceber'?(Number(this.parcelas)||1):1), desconto:Number(this.desconto)||0, observacao:this.observacao||null,
           agente_id:(this.agenteOn && this.agenteId)?Number(this.agenteId):null, agente_acerto:(this.agenteOn && this.agenteAcerto)?1:0,
+          cliente_faturado_id:(this.forma==='faturado' && this.clienteFaturadoId)?Number(this.clienteFaturadoId):null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.papel||null, bebe_colo:((p.temColo && (p.bebeColo.nome||'').trim()) ? {nome:p.bebeColo.nome.trim(), documento:(p.bebeColo.documento||'').trim()||null, nascimento:p.bebeColo.nascimento||null} : null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
           pagamentos:this.forma==='faturado'?[]:(this.forma==='online'?[{meio:this.onlineMeio, valor:this.total}]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])}))),
         };
       },
+      fatDocTipoCalc(){ const d=(this.fatDoc||'').replace(/\D/g,''); this.fatDocTipo = d.length===14?'CNPJ':(d.length>=11?'CPF':''); },
+      async fatBuscar(){ const q=(this.fatBusca||'').trim(); if(q.length<1){ this.fatResultados=[]; return; } try{ const r=await fetch(@js(route('passagens.cliente-faturado.buscar'))+'?q='+encodeURIComponent(q),{headers:{Accept:'application/json'},credentials:'same-origin'}); this.fatResultados = r.ok ? (await r.json()) : []; }catch(e){ this.fatResultados=[]; } },
+      fatSelecionar(c){ this.fatSel=c; this.clienteFaturadoId=c.id; this.fatResultados=[]; this.fatBusca=''; },
+      fatLimpar(){ this.fatSel=null; this.clienteFaturadoId=null; },
+      async fatCriar(){ const nome=(this.fatNome||'').trim(); if(!nome) return; try{ const r=await fetch(@js(route('passagens.cliente-faturado.criar')),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},credentials:'same-origin',body:JSON.stringify({nome:nome, empresa:(this.fatEmpresa||'').trim()||null, documento:(this.fatDoc||'').trim()||null})}); const j=await r.json(); if(j&&j.ok&&j.cliente){ this.fatSelecionar(j.cliente); this.fatNome=''; this.fatEmpresa=''; this.fatDoc=''; this.fatDocTipo=''; } else { alert('Nao deu pra cadastrar o cliente.'); } }catch(e){ alert('Erro ao cadastrar cliente.'); } },
       async salvar(ev){
         if(this.salvando) return;
         if(!this.validarPassageiros()) return;

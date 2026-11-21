@@ -475,6 +475,7 @@ class PassagemController extends Controller
             'desconto' => 'nullable|numeric|min:0',
             'agente_id' => 'nullable|integer',
             'agente_acerto' => 'nullable|boolean',
+            'cliente_faturado_id' => 'nullable|integer',
             'passageiros' => 'required|array|min:1',
             'passageiros.*.nome' => 'required|string|max:120',
             'passageiros.*.tipo' => 'required|string|max:60',

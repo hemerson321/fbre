@@ -107,6 +107,7 @@ class PassagemService
                 'comprador_documento' => $data['comprador_documento'] ?? null,
                 'forma' => $data['forma'] ?? 'avista',
                 'parcelas' => max(1, min(12, (int) ($data['parcelas'] ?? 1))),
+                'cliente_faturado_id' => (($data['forma'] ?? '') === 'faturado' && ! empty($data['cliente_faturado_id'])) ? (int) $data['cliente_faturado_id'] : null,
                 'observacao' => $data['observacao'] ?? null,
                 'desconto' => $data['desconto'] ?? 0,
                 'documentos_gerais' => $this->salvarDocs($data['documentos_gerais'] ?? []) ?: null,
