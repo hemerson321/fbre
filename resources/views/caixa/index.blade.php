@@ -91,6 +91,26 @@
   </div>
 </div>
 
+@if($prestacaoTransporte ?? false)
+<div class="card overflow-hidden border-2 border-indigo-300">
+  <div class="p-3 border-b bg-indigo-50 flex items-center justify-between flex-wrap gap-2">
+    <div class="font-bold text-sm text-indigo-800">📋 Prestação de contas — 🚤 {{ $prestacaoTransporte->emb->nome }}</div>
+    <div class="text-[11px] text-indigo-600">{{ $prestacaoTransporte->qtd }} passagem(ns) no filtro</div>
+  </div>
+  <div class="p-3">
+    <div class="max-w-md mx-auto text-sm">
+      <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacaoTransporte->bruto,2,',','.') }}</b></div>
+      <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Comissão de Agência ({{ $prestacaoTransporte->pct }}%)</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->comissao,2,',','.') }}</b></div>
+      <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Débito Prop.</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->debito,2,',','.') }}</b></div>
+      <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Cartão de crédito</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->cartao,2,',','.') }}</b></div>
+      <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Crédito Prop. (Entradas)</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->credProp,2,',','.') }}</b></div>
+      <div class="flex justify-between py-2 border-t-2 border-slate-300 font-bold text-amber-700"><span>Total Geral de Despesas</span><b>R$ {{ number_format($prestacaoTransporte->despesas,2,',','.') }}</b></div>
+      <div class="flex justify-between items-center mt-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3"><span class="font-bold text-emerald-800">TOTAL GERAL LÍQUIDO</span><b class="text-2xl text-emerald-700">R$ {{ number_format($prestacaoTransporte->liquido,2,',','.') }}</b></div>
+    </div>
+  </div>
+</div>
+@endif
+
 @if($donosBalcao->isNotEmpty())
 <div class="card overflow-hidden border border-amber-200">
   <div class="p-3 border-b bg-amber-50 flex items-center justify-between flex-wrap gap-2">
