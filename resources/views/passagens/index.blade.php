@@ -88,61 +88,36 @@
 
   @php $podeEditar = auth()->user()->podeEditarPassagem(); $podeExcluir = auth()->user()->podeExcluirPassagem(); @endphp
   {{-- lista --}}
-  <div class="card overflow-hidden"@if($podeEditar) x-data="editarMassa()"@endif>
-    <div class="overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead class="bg-slate-50 text-[11px] uppercase text-slate-500"><tr>
-        @if($podeEditar)<th class="p-2 w-8"></th>@endif
-        <th class="p-2 text-left">Ticket</th>
-        <th class="p-2 text-left">Trecho</th>
-        <th class="p-2 text-left">Transporte</th>
-        <th class="p-2 text-left">Passageiros</th>
-        <th class="p-2 text-left">Vendedor</th>
-        <th class="p-2 text-right">Valor</th>
-        <th class="p-2 text-left">Status</th>
-        <th class="p-2 text-center">Ações</th>
-      </tr></thead>
-      <tbody class="divide-y">
-      @forelse($passagens as $p)
-        @php
-          $pagLista = $p->passageiros->filter(fn($x)=>($x->papel ?? '')!=='colo');
-          $nCanc = $pagLista->filter(fn($x)=>$x->cancelado)->count();
-          $paxResumo = $pagLista->map(function($x){ $t = e(trim((string)$x->nome)).($x->poltrona ? ' · '.e($x->poltrona) : ''); return $x->cancelado ? '<span class="line-through text-rose-500">'.$t.' ✖</span>' : $t; })->filter()->implode('  ·  ');
-          $paxTitle = $pagLista->map(fn($x)=> trim((string)$x->nome).($x->poltrona ? ' ('.$x->poltrona.')' : '').($x->cancelado ? ' [cancelado]' : ''))->filter()->implode(', ');
-          $corP = null;
-          if ($p->cancelada) $corP='#fee2e2';
-          elseif ($p->forma==='faturado') $corP='#dbeafe';
-          elseif ($pagLista->contains(fn($x)=> mb_stripos((string)$x->tipo,'pcd')!==false || mb_stripos((string)$x->tipo,'defic')!==false)) $corP='#fef9c3';
-          elseif ($pagLista->contains(fn($x)=> mb_stripos((string)$x->tipo,'idoso')!==false)) $corP='#dcfce7';
-        @endphp
-        <tr class="align-top hover:brightness-95"@if($corP) style="background:{{ $corP }}"@endif>
-          @if($podeEditar)<td class="p-2 text-center">@if(!$p->cancelada)<input type="checkbox" @change="toggle({{ $p->id }})" :checked="sel.includes({{ $p->id }})" class="w-5 h-5 rounded cursor-pointer" title="Selecionar p/ editar em massa">@endif</td>@endif
-          <td class="p-2 whitespace-nowrap"><a href="{{ route('passagens.show',$p) }}" class="font-semibold text-slate-800 hover:underline">@if($p->tipo==='camarote')🛏️ @endif#{{ $p->numeroFormatado() }}</a></td>
-          <td class="p-2 whitespace-nowrap">{{ $p->origem }} → {{ $p->destino }}</td>
-          <td class="p-2 whitespace-nowrap text-xs text-slate-500">🚤 {{ $p->embarcacao?->nome ?? '—' }}@if($p->data_viagem)<br>📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</td>
-          <td class="p-2 align-top" style="min-width:200px;max-width:320px">
-            @if($paxResumo)<div class="text-[12px] text-slate-700 leading-snug" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden" title="{{ $paxTitle }}">{!! $paxResumo !!}</div>@endif
-            <div class="text-[11px] text-slate-400 mt-0.5 whitespace-nowrap">👤 {{ $p->qtd_passageiros }} pax · {{ \Illuminate\Support\Str::limit($p->comprador_nome ?: '—', 18) }}@if($nCanc) · <span class="text-rose-600 font-semibold">✖ {{ $nCanc }}</span>@endif @if($p->embarcou)· <span class="text-emerald-600 font-semibold">✅</span>@elseif(!$p->cancelada)· <span class="text-amber-600 font-semibold">⏳</span>@endif</div>
-          </td>
-          <td class="p-2 whitespace-nowrap text-xs">{{ $p->operador?->name }}</td>
-          <td class="p-2 text-right whitespace-nowrap font-bold">R$ {{ number_format($p->total,2,',','.') }}</td>
-          <td class="p-2 whitespace-nowrap">@if($p->cancelada)<span class="chip font-extrabold" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5">✖ CANCELADA</span>@else<span class="chip st-{{ $p->cor() }}">{{ $p->statusTexto() }}</span>@endif</td>
-          <td class="p-2">
-            <div class="flex gap-1 justify-center">
-              @if($podeEditar && !$p->cancelada)<button type="button" @click="editarUm({{ $p->id }})" class="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[12px] font-semibold text-amber-700 hover:bg-amber-100" title="Editar tudo desta passagem">✏️</button>@endif
-              <button type="button" onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}?vias='+FBRE.perguntarVias())" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Imprimir comprovante">🖨</button>
-              <button type="button" onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Copiar bilhete como imagem (colar no WhatsApp)">🖼️</button>
-              <button type="button" onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap" title="Baixar PDF / enviar no WhatsApp">📲 PDF</button>
-              @if($podeExcluir)<form method="post" action="{{ route('passagens.excluir',$p) }}" onsubmit="return confirm('Excluir PERMANENTEMENTE a passagem #{{ $p->numeroFormatado() }}? Não dá pra desfazer.')" class="inline">@csrf<button type="submit" class="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[12px] font-semibold text-rose-700 hover:bg-rose-100" title="Excluir permanentemente (apagar de vez)">🗑</button></form>@endif
-            </div>
-          </td>
-        </tr>
-      @empty
-        <tr><td colspan="9" class="p-6 text-center text-slate-400">Nenhuma passagem no filtro.</td></tr>
-      @endforelse
-      </tbody>
-    </table>
-    </div>
+  <div class="card divide-y"@if($podeEditar) x-data="editarMassa()"@endif>
+    @forelse($passagens as $p)
+      <div class="flex items-center gap-3 p-3 hover:bg-slate-50 row-{{ $p->cor() }}@if($p->cancelada) relative overflow-hidden @endif">@if($p->cancelada)<div class="pointer-events-none absolute inset-0 flex items-center justify-center" style="z-index:5"><span style="transform:rotate(-7deg);font-size:30px;font-weight:900;letter-spacing:5px;color:rgba(185,28,28,.16);white-space:nowrap">CANCELADO</span></div>@endif
+        @if($podeEditar && !$p->cancelada)<input type="checkbox" @change="toggle({{ $p->id }})" :checked="sel.includes({{ $p->id }})" class="w-5 h-5 rounded shrink-0 cursor-pointer" title="Selecionar p/ editar em massa">@endif
+        <a href="{{ route('passagens.show',$p) }}" class="flex-1 min-w-0 block">
+          <div class="font-semibold">@if($p->tipo==='camarote')🛏️ @endif#{{ $p->numeroFormatado() }} · {{ $p->origem }} → {{ $p->destino }}</div>
+          <div class="text-[11px] text-slate-400 truncate">🚤 {{ $p->embarcacao?->nome ?? '—' }}@if($p->data_viagem) · 📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</div>
+          <div class="text-xs text-slate-500 truncate">{{ $p->qtd_passageiros }} pax · {{ $p->comprador_nome ?: '—' }} · vendeu: {{ $p->operador?->name }}@if($p->embarcou) · <span class="text-emerald-600 font-semibold">✅ check-in{{ $p->embarcouPor ? ': '.$p->embarcouPor->name : '' }}</span>@elseif(!$p->cancelada) · <span class="text-amber-600 font-semibold">⏳ sem check-in</span>@endif</div>
+          @php
+            $pagLista = $p->passageiros->filter(fn($x)=>($x->papel ?? '')!=='colo');
+            $nCanc = $pagLista->filter(fn($x)=>$x->cancelado)->count();
+            $paxResumo = $pagLista->map(function($x){ $t = e(trim((string)$x->nome)).($x->poltrona ? ' · '.e($x->poltrona) : ''); return $x->cancelado ? '<span class="line-through text-rose-500">'.$t.' ✖</span>' : $t; })->filter()->implode('  |  ');
+          @endphp
+          @if($paxResumo)<div class="text-xs text-slate-700 font-medium mt-0.5 leading-snug">👤 {!! $paxResumo !!}@if($nCanc) <span class="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-700">✖ {{ $nCanc }} cancelado(s)</span>@endif</div>@endif
+        </a>
+        <div class="text-right shrink-0">
+          <div class="font-bold">R$ {{ number_format($p->total,2,',','.') }}</div>
+          @if($p->cancelada)<span class="chip font-extrabold" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5">✖ CANCELADA</span>@else<span class="chip st-{{ $p->cor() }}">{{ $p->statusTexto() }}</span>@endif
+          <div class="flex gap-1 mt-1.5 justify-end">
+            @if($podeEditar && !$p->cancelada)<button type="button" @click="editarUm({{ $p->id }})" class="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[12px] font-semibold text-amber-700 hover:bg-amber-100" title="Editar tudo desta passagem">✏️</button>@endif
+            <button type="button" onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}?vias='+FBRE.perguntarVias())" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Imprimir comprovante">🖨</button>
+            <button type="button" onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Copiar bilhete como imagem (colar no WhatsApp)">🖼️</button>
+            <button type="button" onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap" title="Baixar PDF / enviar no WhatsApp">📲 PDF</button>
+            @if($podeExcluir)<form method="post" action="{{ route('passagens.excluir',$p) }}" onsubmit="return confirm('Excluir PERMANENTEMENTE a passagem #{{ $p->numeroFormatado() }}? Não dá pra desfazer.')" class="inline">@csrf<button type="submit" class="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[12px] font-semibold text-rose-700 hover:bg-rose-100" title="Excluir permanentemente (apagar de vez)">🗑</button></form>@endif
+          </div>
+        </div>
+      </div>
+    @empty
+      <div class="p-6 text-center text-slate-400">Nenhuma passagem no filtro.</div>
+    @endforelse
     @if($podeEditar)
     <div x-show="sel.length" x-cloak style="position:fixed;left:0;right:0;bottom:0;z-index:50" class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-2xl">
       <span class="text-sm font-semibold"><span x-text="sel.length"></span> selecionada(s)</span>
