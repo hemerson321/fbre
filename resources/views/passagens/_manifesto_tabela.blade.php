@@ -35,7 +35,7 @@
       <td>{{ $l->vendedor }}</td>
       <td class="r">R$ {{ number_format($l->valor,2,',','.') }}</td>
       <td style="font-weight:700">{{ $l->p }}</td>
-      <td>{{ $l->status }}</td>
+      <td>@if($l->proprietario ?? false)<b style="color:#067d3b">{{ $l->status }}</b>@else{{ $l->status }}@endif</td>
       <td>{{ $l->forma }}</td>
       <td>{{ $l->cliente }}</td>
       <td>{{ $l->agencia }}</td>

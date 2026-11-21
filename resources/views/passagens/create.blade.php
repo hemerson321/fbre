@@ -310,9 +310,27 @@
         @endif
         <div x-show="forma!=='faturado'" class="mt-1 rounded-xl border p-2" :class="pagoProprietario ? 'border-emerald-400 bg-emerald-50' : 'border-emerald-200 bg-emerald-50/70'">
           <label class="flex items-center gap-2 text-[13px] font-semibold text-emerald-800 cursor-pointer">
-            <input type="checkbox" x-model="pagoProprietario" class="w-4 h-4 rounded shrink-0"> 🚤 Pagamento do proprietário
+            <input type="checkbox" x-model="pagoProprietario" @change="if(pagoProprietario && !(Number(pagProp.valor)>0)) pagProp.valor=devidoSemProp()" class="w-4 h-4 rounded shrink-0"> 🚤 Pagamento do proprietário
           </label>
-          <p x-show="pagoProprietario" x-cloak class="text-[11px] text-emerald-700/90 mt-1 leading-snug">Marque e lance o valor na forma que o proprietário pagou (dinheiro, PIX, débito ou crédito) usando o <b>=</b>. O pagamento entra identificado como <b>do proprietário</b> e fecha a venda.</p>
+          <div x-show="pagoProprietario" x-cloak class="mt-1.5 flex gap-2 items-end">
+            <div class="flex-1">
+              <label class="lbl">Valor pago pelo proprietário</label>
+              <div class="flex gap-1">
+                <input class="field text-right font-semibold w-full" x-money="pagProp.valor">
+                <button type="button" @click="pagProp.valor=devidoSemProp()" title="Lançar o valor que falta" class="shrink-0 rounded-xl border-2 w-11 flex items-center justify-center font-extrabold text-lg" style="border-color:var(--cor1);color:var(--cor1)">=</button>
+              </div>
+            </div>
+            <div class="w-28">
+              <label class="lbl">Forma</label>
+              <select class="field w-full" x-model="pagProp.meio">
+                <option value="dinheiro">Dinheiro</option>
+                <option value="pix">PIX</option>
+                <option value="debito">Débito</option>
+                <option value="credito">Crédito</option>
+              </select>
+            </div>
+          </div>
+          <p x-show="pagoProprietario" x-cloak class="text-[11px] text-emerald-700/90 mt-1 leading-snug">Entra como pago (identificado como <b>do proprietário</b>) e <b>fecha a venda</b> — não fica em aberto.</p>
         </div>
         <div x-show="forma!=='faturado' && forma!=='online'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
@@ -558,7 +576,7 @@
   function novaPassagem(){
     return {
       salvando:false, forma:@js($formaInicial ?? 'avista'), parcelas:1, imprimir:'direto',
-      agenteOn:false, agenteId:'', agenteAcerto:true, pagoProprietario:false,
+      agenteOn:false, agenteId:'', agenteAcerto:true, pagoProprietario:false, pagProp:{valor:null, meio:'dinheiro'},
       fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
@@ -918,7 +936,8 @@
       get subTaxa(){ return this.passageiros.reduce((s,p)=>s+(Number(p.valor_taxa)||0),0); },
       get subAlim(){ return this.passageiros.reduce((s,p)=>s+(Number(p.valor_alimentacao)||0),0); },
       get total(){ return Math.max(this.subPassagem+this.subTaxa+this.subAlim-(Number(this.desconto)||0),0); },
-      get pago(){ if(this.forma==='faturado') return 0; if(this.forma==='online') return this.total; return this.meios.reduce((s,m)=> s + (Number(this.pag[m.k])||0), 0); },
+      get pago(){ if(this.forma==='faturado') return 0; if(this.forma==='online') return this.total; return this.meios.reduce((s,m)=> s + (Number(this.pag[m.k])||0), 0) + (this.pagoProprietario ? (Number(this.pagProp.valor)||0) : 0); },
+      devidoSemProp(){ const outras=this.meios.reduce((s,m)=>s+(Number(this.pag[m.k])||0),0); return Math.round(Math.max((Number(this.total)||0)-outras,0)*100)/100; },
       get pagoSemDinheiro(){ return (Number(this.pag.pix)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0); },
       get devido(){ return Math.max(this.total-this.pago,0); },
 
@@ -1054,7 +1073,7 @@
           cliente_faturado_id:(this.forma==='faturado' && this.clienteFaturadoId)?Number(this.clienteFaturadoId):null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.papel||null, bebe_colo:((p.temColo && (p.bebeColo.nome||'').trim()) ? {nome:p.bebeColo.nome.trim(), documento:(p.bebeColo.documento||'').trim()||null, nascimento:p.bebeColo.nascimento||null} : null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
-          pagamentos:this.forma==='faturado'?[]:(this.forma==='online'?[{meio:this.onlineMeio, valor:this.total, proprietario:this.pagoProprietario?1:0}]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k]), proprietario:this.pagoProprietario?1:0}))),
+          pagamentos:this.forma==='faturado'?[]:(this.forma==='online'?[{meio:this.onlineMeio, valor:this.total}]:[...this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})), ...((this.pagoProprietario && Number(this.pagProp.valor)>0)?[{meio:this.pagProp.meio||'dinheiro', valor:Number(this.pagProp.valor), proprietario:1}]:[])]),
         };
       },
       fatDocTipoCalc(){ const d=(this.fatDoc||'').replace(/\D/g,''); this.fatDocTipo = d.length===14?'CNPJ':(d.length>=11?'CPF':''); },

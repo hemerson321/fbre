@@ -28,6 +28,7 @@ class ManifestoCaixa
                 ? $meios->keys()->map(fn ($m) => \App\Models\Pagamento::MEIOS[$m] ?? ucfirst($m))->implode(', ')
                 : (\App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma));
             $ehMunicipio = $p->forma === 'faturado';
+            $ehProp = $p->pagamentos->contains(fn ($pg) => (bool) ($pg->pago_proprietario ?? false));
 
             foreach ($p->passageiros as $pax) {
                 $ehColo = ($pax->papel ?? '') === 'colo';
@@ -49,11 +50,12 @@ class ManifestoCaixa
                     'tipo' => $tipoTxt,
                     'p' => $ehColo ? 'C' : mb_strtoupper(mb_substr(trim($tipoTxt) ?: 'A', 0, 1)),
                     'agencia' => (string) ($p->revendedor?->name ?? ''),
-                    'status' => $cancPax ? 'Devolvida' : ((float) $p->devido > 0.009 ? 'Em aberto' : 'Paga'),
+                    'status' => $cancPax ? 'Devolvida' : ((float) $p->devido > 0.009 ? 'Em aberto' : ($ehProp ? 'Pago · Proprietário' : 'Paga')),
                     'forma' => $formaTxt,
                     'idoso' => $ehIdoso && ! $cancPax,
                     'pcd' => $ehPcd && ! $cancPax,
                     'municipio' => $ehMunicipio && ! $cancPax,
+                    'proprietario' => $ehProp && ! $cancPax,
                     'cliente' => (string) ($p->clienteFaturado?->rotulo() ?: ($p->comprador_nome ?? '')),
                     'poltrona' => (string) ($pax->poltrona ?? ''),
                     'embarcou' => (bool) $p->embarcou,
