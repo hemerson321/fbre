@@ -79,6 +79,20 @@
               <input name="hora_saida" type="time" value="{{ $e->hora_saida ? \Illuminate\Support\Str::substr($e->hora_saida,0,5) : '' }}" class="input !min-h-[40px] !w-40">
               <p class="text-[11px] text-slate-400 mt-0.5">Usada na devolução pra saber se a lancha <b>já saiu</b> (retém a % de depois) ou <b>não</b> (retém a de antes). Sem hora, só vira "depois" quando o dia da viagem acaba.</p>
             </div>
+            <div class="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+              <div class="text-[12px] font-bold text-slate-600 mb-1">🧾 Dados de empresa no BILHETE (opcional)</div>
+              <p class="text-[11px] text-slate-400 mb-2">Se preenchido, o bilhete deste transporte mostra estes dados. Em branco, usa os dados da empresa.</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div><label class="label !text-xs">Nome fantasia</label><input name="nome_fantasia" value="{{ $e->nome_fantasia }}" class="input !min-h-[40px]" placeholder="Ex.: Ajato Passagem"></div>
+                <div><label class="label !text-xs">Razão social</label><input name="razao_social" value="{{ $e->razao_social }}" class="input !min-h-[40px]"></div>
+                <div><label class="label !text-xs">CNPJ</label><input name="cnpj" value="{{ $e->cnpj }}" class="input !min-h-[40px]"></div>
+                <div><label class="label !text-xs">Inscrição estadual (IE)</label><input name="ie" value="{{ $e->ie }}" class="input !min-h-[40px]"></div>
+                <div class="sm:col-span-2"><label class="label !text-xs">Endereço</label><input name="endereco" value="{{ $e->endereco }}" class="input !min-h-[40px]"></div>
+                <div><label class="label !text-xs">CEP</label><input name="cep" value="{{ $e->cep }}" class="input !min-h-[40px]"></div>
+                <div><label class="label !text-xs">Contato (telefone)</label><input name="contato" value="{{ $e->contato }}" class="input !min-h-[40px]"></div>
+                <div class="sm:col-span-2"><label class="label !text-xs">E-mail</label><input name="email_bilhete" value="{{ $e->email_bilhete }}" class="input !min-h-[40px]" inputmode="email" autocapitalize="none"></div>
+              </div>
+            </div>
             <div class="mt-2">
               <label class="label !text-xs">👤 Proprietário (usuário do sistema)</label>
               <select name="dono_id" class="input !min-h-[40px]">

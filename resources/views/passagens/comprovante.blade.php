@@ -93,6 +93,17 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   $tot = $pagantes->count();
   $vias = max(1, min(9, (int) request('vias', 1)));
   $titulo = $ehCam ? 'BILHETE · CAMAROTE' : 'BILHETE DE PASSAGEM';
+  // Dados de empresa NO BILHETE: se a embarcacao tem os proprios, usa; senao os da empresa.
+  $emb = $p->embarcacao;
+  $embEmp = $emb && (trim((string)($emb->cnpj ?? '')) !== '' || trim((string)($emb->razao_social ?? '')) !== '' || trim((string)($emb->nome_fantasia ?? '')) !== '');
+  $bNomeFant = $embEmp ? (trim((string)$emb->nome_fantasia) ?: $emb->nome) : ($e?->nomeExibicao() ?? 'FBRE');
+  $bRazao = $embEmp ? trim((string)$emb->razao_social) : (($e?->config('comprovante_dados_completos') && $e && $e->nome && mb_strtoupper(trim($e->nome)) !== mb_strtoupper(trim($e->nomeExibicao()))) ? $e->nome : '');
+  $bCnpj = $embEmp ? trim((string)$emb->cnpj) : trim((string)($e?->cnpj ?? ''));
+  $bIe   = $embEmp ? trim((string)$emb->ie) : trim((string)($e?->config('ie') ?? ''));
+  $bFisc = trim(($bCnpj ? 'CNPJ '.$bCnpj : '').($bIe ? ($bCnpj ? ' · ' : '').'IE '.$bIe : ''));
+  $bFone = $embEmp ? trim((string)$emb->contato) : trim(((string)($e?->telefone ?? '')).((($e?->telefone) && ($e?->whatsapp)) ? ' · ' : '').((string)($e?->whatsapp ?? '')));
+  $bEnd  = $embEmp ? trim((string)$emb->endereco.(trim((string)($emb->cep ?? '')) !== '' ? ' · CEP '.$emb->cep : '')) : (($e?->config('comprovante_dados_completos') && ($e?->endereco || $e?->cidade)) ? trim(((string)($e->endereco ?? '')).((($e->endereco) && ($e->cidade)) ? ' · ' : '').((string)($e->cidade ?? '')).($e->uf ? '/'.$e->uf : '')) : '');
+  $bEmail = $embEmp ? trim((string)$emb->email_bilhete) : '';
 @endphp
 
 @for($__via = 0; $__via < $vias; $__via++)
@@ -104,12 +115,12 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 @if($ehGrat && !$p->cancelada)<div style="position:absolute;top:0;bottom:0;right:0.5mm;display:flex;align-items:center;pointer-events:none;z-index:1"><span style="writing-mode:vertical-rl;font-size:15px;font-weight:900;letter-spacing:3px;color:rgba(0,0,0,.22)">GRATUIDADE</span></div>@endif
   <div class="hdr">
     @if($e?->logo)<img src="/{{ $e->logo }}" alt="logo">@endif
-    <div class="emp">{{ strtoupper($e?->nomeExibicao() ?? 'FBRE') }}</div>
-    @if($e?->config('comprovante_dados_completos') && $e && $e->nome && mb_strtoupper(trim($e->nome)) !== mb_strtoupper(trim($e->nomeExibicao())))<div class="cnpj">{{ strtoupper($e->nome) }}</div>@endif
-    @php $__fisc = trim(($e?->cnpj ? 'CNPJ '.$e->cnpj : '').($e?->config('ie') ? ($e?->cnpj ? ' · ' : '').'IE '.$e->config('ie') : '')); @endphp
-    @if($__fisc)<div class="cnpj">{{ $__fisc }}</div>@endif
-    @if($e?->telefone || $e?->whatsapp)<div class="cnpj">{{ $e->telefone }}{{ ($e->telefone && $e->whatsapp) ? ' · ' : '' }}{{ $e->whatsapp }}</div>@endif
-    @if($e?->config('comprovante_dados_completos') && ($e?->endereco || $e?->cidade))<div class="cnpj">{{ $e->endereco }}{{ ($e->endereco && $e->cidade) ? ' · ' : '' }}{{ $e->cidade }}{{ $e->uf ? '/'.$e->uf : '' }}</div>@endif
+    <div class="emp">{{ strtoupper($bNomeFant) }}</div>
+    @if($bRazao)<div class="cnpj">{{ strtoupper($bRazao) }}</div>@endif
+    @if($bFisc)<div class="cnpj">{{ $bFisc }}</div>@endif
+    @if($bFone)<div class="cnpj">{{ $bFone }}</div>@endif
+    @if($bEnd)<div class="cnpj">{{ $bEnd }}</div>@endif
+    @if($bEmail)<div class="cnpj">{{ strtolower($bEmail) }}</div>@endif
   </div>
   <div class="band">{{ $titulo }}</div>
   @if($e?->aviso_comprovante)<div style="text-align:center;font-weight:800;font-size:10.5px;line-height:1.25;text-transform:uppercase;letter-spacing:.02em;color:var(--cor);border:1.5px dashed var(--cor);border-radius:8px;padding:5px 7px;margin:5px 2px 2px">⚠️ {{ $e->aviso_comprovante }}</div>@endif
