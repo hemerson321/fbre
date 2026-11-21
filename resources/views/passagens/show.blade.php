@@ -76,7 +76,7 @@
   <button type="button" onclick="imprimirDiretoPassagem(this)" class="btn btn-ghost w-full">⚡ Imprimir direto (1 por passageiro)</button>
   <div x-data="{ painel:'' }">
   <div class="flex gap-2 overflow-x-auto pb-1">
-    <button onclick="FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost shrink-0 whitespace-nowrap">🖨 Comprovante</button>
+    <button onclick="FBRE.imprimirComprovante('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost shrink-0 whitespace-nowrap">🖨 Comprovante</button>
     <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost shrink-0 whitespace-nowrap">📲 Enviar PDF (WhatsApp)</button>
     <button onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost shrink-0 whitespace-nowrap">🖼️ Copiar imagem</button>
     @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
@@ -237,9 +237,10 @@
 <script>
 function imprimirDiretoPassagem(btn){
   const txt = btn.textContent;
-  const vias = FBRE.perguntarVias();
+  const qs = FBRE.perguntarImpressao('Imprimir direto na impressora:'); if(qs===null){ return; }
+  const _sp = new URLSearchParams(qs); const so = _sp.get('so') || 'tudo'; const vias = Math.max(1, parseInt(_sp.get('vias')||'1', 10));
   const POST = '{{ route('passagens.imprimir-direto',$p) }}';
-  const RURL = '{{ route('passagens.comprovante',$p) }}?raster=1';
+  const RURL = '{{ route('passagens.comprovante',$p) }}?raster=1&so='+so;
   btn.disabled = true; btn.textContent = 'Gerando bilhete...';
   let done = false;
   const ifr = document.createElement('iframe');
@@ -252,10 +253,11 @@ function imprimirDiretoPassagem(btn){
   };
   const onMsg = (ev) => {
     const d = ev.data; if(!d || !d.fbreRaster) return;
-    if(!d.imagens || !d.imagens.length){ fim(false, 'Não consegui gerar o bilhete.'); return; }
+    let imgs = [];
+    if(so!=='resumo' && d.imagens && d.imagens.length){ for(let v=0;v<vias;v++) imgs = imgs.concat(d.imagens); }
+    if(so!=='bilhete' && d.resumo){ imgs.push(d.resumo); }
+    if(!imgs.length){ fim(false, 'Não consegui gerar nada pra imprimir.'); return; }
     btn.textContent = 'Enviando pra impressora...';
-    let imgs = d.imagens.slice(); if(vias>1){ let t=[]; for(let v=0;v<vias;v++) t=t.concat(d.imagens); imgs=t; }
-    if(d.resumo) imgs.push(d.resumo);
     fetch(POST, {method:'POST', headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'}, body: JSON.stringify({imagens:imgs})})
       .then(r=>r.json())
       .then(dd=>{ if(dd && dd.ok){ fim(true, dd.jobs+' bilhete'+(dd.jobs>1?'s':'')); } else { fim(false, (dd && dd.erro) || 'Erro na impressora.'); } })
@@ -268,6 +270,12 @@ function imprimirDiretoPassagem(btn){
 </script>
 @if(request('print'))
 <script>document.addEventListener('DOMContentLoaded',()=>FBRE.abrirImpressao('{{ route('passagens.comprovante',$p) }}'));</script>
+@endif
+@if(request('imprimir_cancel'))
+<script>document.addEventListener('DOMContentLoaded',function(){
+  var tp = @json(($p->cancel_tipo ?? '')==='cancelamento' ? 'cancelamento' : 'devolução');
+  FBRE.imprimirComprovante('{{ route('passagens.comprovante',$p) }}', 'Passagem registrada como '+tp+'. Imprimir a via ('+tp+') ou o resumo?');
+});</script>
 @endif
 <script>
 function transfCal(linhas, origem, destino, assentosUrl){

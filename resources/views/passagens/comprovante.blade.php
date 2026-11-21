@@ -92,6 +92,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   if ($pagantes->isEmpty()) { $pagantes = $p->passageiros->values(); $colos = collect(); }
   $tot = $pagantes->count();
   $vias = max(1, min(9, (int) request('vias', 1)));
+  $so = in_array(request('so'), ['bilhete','resumo'], true) ? request('so') : 'tudo';
   $titulo = $ehCam ? 'BILHETE · CAMAROTE' : 'BILHETE DE PASSAGEM';
   // Dados de empresa NO BILHETE: se a embarcacao tem os proprios, usa; senao os da empresa.
   $emb = $p->embarcacao;
@@ -106,6 +107,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   $bEmail = $embEmp ? trim((string)$emb->email_bilhete) : '';
 @endphp
 
+@if($so !== 'resumo')
 @for($__via = 0; $__via < $vias; $__via++)
 @foreach($pagantes as $i => $pax)
 <div class="ticket" style="--cor:{{ $cor }}">
@@ -222,11 +224,13 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 </div>
 @endforeach
 @endfor
+@endif
 
 @php
   $rzPag = (float) $p->pago; $rzDev = (float) $p->devido;
   $rzSit = $p->cancelada ? ['CANCELADA','#fee2e2','#b91c1c'] : ($rzDev > 0.009 ? ['EM ABERTO','#fef3c7','#92400e'] : ['PAGO','#dcfce7','#166534']);
 @endphp
+@if($so !== 'bilhete')
 <div class="resumo-venda">
   <div class="rz-h">
     <div class="t">RESUMO DA VENDA</div>
@@ -262,6 +266,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 </div>
 
 
+@endif
 <div id="pdfbar" style="display:none;padding:10px 6px 22px">
   <button id="btEnviar" onclick="enviarPdf()" style="width:100%;max-width:300px;margin:0 auto;display:block;padding:13px 16px;font-size:15px;font-weight:bold;border:0;border-radius:12px;background:#22c55e;color:#fff">📲 Enviar / Compartilhar PDF</button>
   <div id="pdfStatus" style="text-align:center;font-size:11px;color:#666;margin-top:7px">preparando o PDF…</div>

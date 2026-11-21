@@ -377,6 +377,22 @@ document.addEventListener('alpine:init', () => {
     parseMoney: s => { const d=String(s||'').replace(/\D/g,''); return d ? parseInt(d,10)/100 : 0; },
     abrirImpressao: url => { const w = window.open(url, 'fbre_print', 'width=420,height=640'); if (w) w.focus(); },
     perguntarVias: () => { const n = prompt('Quantas vias imprimir?', '1'); if (n === null) return 1; const v = parseInt(n) || 1; return Math.max(1, Math.min(9, v)); },
+    // Pergunta O QUE imprimir (tudo/bilhete/resumo) + quantas vias; devolve a query ou null (cancelou).
+    perguntarImpressao: (titulo) => {
+      const r = prompt((titulo || 'O que imprimir?') + '\n\n1 = Tudo (bilhetes + resumo)\n2 = Só os bilhetes\n3 = Só o resumo', '1');
+      if (r === null) return null;
+      const t = String(r).trim();
+      const so = t === '3' ? 'resumo' : (t === '2' ? 'bilhete' : 'tudo');
+      let vias = 1;
+      if (so !== 'resumo') { const n = prompt('Quantas vias dos bilhetes?', '1'); if (n === null) return null; vias = Math.max(1, Math.min(9, parseInt(n) || 1)); }
+      return 'so=' + so + '&vias=' + vias;
+    },
+    // Abre o comprovante perguntando o que imprimir. extra = params adicionais (ex.: 'modo=pdf').
+    imprimirComprovante: (baseUrl, titulo, extra) => {
+      const qs = window.FBRE.perguntarImpressao(titulo); if (qs === null) return;
+      const sep = baseUrl.indexOf('?') >= 0 ? '&' : '?';
+      window.FBRE.abrirImpressao(baseUrl + sep + qs + (extra ? '&' + extra : ''));
+    },
     // Copia o bilhete (comprovante) como IMAGEM PNG pra colar no WhatsApp/outros.
     copiarBilheteImg: (btn, baseUrl) => {
       const prev = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳';

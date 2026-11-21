@@ -1393,14 +1393,14 @@ class PassagemController extends Controller
             } else {
                 $msg .= ' Retido '.$pct.'% (R$ '.number_format($retido, 2, ',', '.').') — '.($depois ? 'parte do dono' : 'caixa local').'.';
             }
-            return redirect()->route('passagens.show', $passagem)->with('ok', $msg);
+            return redirect()->route('passagens.show', ['passagem' => $passagem, 'imprimir_cancel' => 1])->with('ok', $msg);
         }
 
         // Sem politica: estorna tudo (comportamento padrao).
         $passagem->forceFill(['cancelada' => true, 'motivo_cancelamento' => $data['motivo'], 'cancel_tipo' => $tipoCancel])->save();
         $passagem->pagamentos()->update(['estornado' => true]);
         $passagem->recalcular();
-        return redirect()->route('passagens.show', $passagem)->with('ok', 'Passagem cancelada.');
+        return redirect()->route('passagens.show', ['passagem' => $passagem, 'imprimir_cancel' => 1])->with('ok', 'Passagem cancelada.');
     }
 
     /** Se o pago ficou MAIOR que o total (edição baixou valor ou cancelou passageiro), reduz o pagamento registrado pra bater. */
