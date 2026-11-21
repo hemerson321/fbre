@@ -207,8 +207,41 @@ class CaixaController extends Controller
                         (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
                         - (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
                     $deb = max(0.0, $deb);
-                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'bruto' => (float) $p->bruto, 'comissao' => round((float) $p->bruto - (float) $p->v, 2), 'valor' => (float) $p->v, 'debito' => $deb, 'liquido' => round((float) $p->v - $deb, 2), 'dono' => optional($e->dono)->name ?? $e->dono_nome];
+                    $comissao = round((float) $p->bruto - (float) $p->v, 2);
+                    $passIdsDono = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+                        ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))->pluck('id');
+                    $cartao = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsDono)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
+                    $credProp = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsDono)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
+                    $despesas = round($comissao + $deb + $cartao + $credProp, 2);
+                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'bruto' => (float) $p->bruto, 'comissao' => $comissao, 'valor' => (float) $p->v, 'debito' => $deb, 'cartao' => $cartao, 'credProp' => $credProp, 'despesas' => $despesas, 'liquidoPrest' => round((float) $p->bruto - $despesas, 2), 'liquido' => round((float) $p->v - $deb, 2), 'dono' => optional($e->dono)->name ?? $e->dono_nome];
                 })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0)->values();
+        }
+
+        // Prestação do TRANSPORTE filtrado (aparece pra qualquer transporte, tenha dono ou não).
+        $prestacaoTransporte = null;
+        if ($transporteId) {
+            $embF = \App\Models\Embarcacao::find($transporteId);
+            if ($embF) {
+                $pctF = (int) $embF->comissao_empresa_pct;
+                $pqF = \App\Models\Passagem::where('embarcacao_id', $embF->id)->where('cancelada', false)->where('transferida', false)
+                    ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]));
+                $passIdsF = (clone $pqF)->pluck('id');
+                $brutoF = round((float) (clone $pqF)->sum('total'), 2);
+                $comissaoF = round($brutoF * $pctF / 100, 2);
+                $cartaoF = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsF)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
+                $credPropF = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsF)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
+                $debitoF = round(
+                    (float) \App\Models\Pagamento::where('embarcacao_id', $embF->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
+                    - (float) \App\Models\Pagamento::where('embarcacao_id', $embF->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
+                $debitoF = max(0.0, $debitoF);
+                $despesasF = round($comissaoF + $debitoF + $cartaoF + $credPropF, 2);
+                $prestacaoTransporte = (object) [
+                    'emb' => $embF, 'pct' => $pctF, 'qtd' => $passIdsF->count(),
+                    'bruto' => $brutoF, 'comissao' => $comissaoF, 'debito' => $debitoF,
+                    'cartao' => $cartaoF, 'credProp' => $credPropF, 'despesas' => $despesasF,
+                    'liquido' => round($brutoF - $despesasF, 2),
+                ];
+            }
         }
 
         // Acertos recentes (balcão + agente) que podem ser DESFEITOS — só quando a empresa libera.
@@ -274,7 +307,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 

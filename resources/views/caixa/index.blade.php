@@ -119,6 +119,18 @@
         @endif
       </div>
     </div>
+    <div class="px-3 pb-3 -mt-1">
+      <div class="rounded-lg bg-slate-50 border border-slate-200 p-2.5 text-xs max-w-md">
+        <div class="font-bold text-slate-500 uppercase text-[10px] mb-1">📋 Prestação de contas (balcão)</div>
+        <div class="flex justify-between py-0.5"><span>Total vendas de Passagens</span><b>R$ {{ number_format($d->bruto,2,',','.') }}</b></div>
+        <div class="flex justify-between py-0.5"><span>Comissão de Agência ({{ (int)$d->emb->comissao_empresa_pct }}%)</span><b class="text-rose-600">− R$ {{ number_format($d->comissao,2,',','.') }}</b></div>
+        <div class="flex justify-between py-0.5"><span>Débito Prop.</span><b class="text-rose-600">− R$ {{ number_format($d->debito,2,',','.') }}</b></div>
+        <div class="flex justify-between py-0.5"><span>Cartão de crédito</span><b class="text-rose-600">− R$ {{ number_format($d->cartao,2,',','.') }}</b></div>
+        <div class="flex justify-between py-0.5"><span>Crédito Prop. (Entradas)</span><b class="text-rose-600">− R$ {{ number_format($d->credProp,2,',','.') }}</b></div>
+        <div class="flex justify-between py-1 border-t border-slate-300 mt-1 font-bold text-amber-700"><span>Total Geral de Despesas</span><b>R$ {{ number_format($d->despesas,2,',','.') }}</b></div>
+        <div class="flex justify-between py-1 font-bold text-emerald-700 text-sm"><span>Total Geral Líquido</span><b>R$ {{ number_format($d->liquidoPrest,2,',','.') }}</b></div>
+      </div>
+    </div>
     @endforeach
   </div>
 </div>
