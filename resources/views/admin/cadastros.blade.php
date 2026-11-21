@@ -214,7 +214,8 @@ function taxasEditor(taxas){ return { taxas: (taxas&&taxas.length)?taxas:[{orige
           <button type="button" class="text-blue-600 hover:underline" @click="mostra=!mostra" x-text="mostra ? 'ocultar' : 'mostrar'"></button>
           <button type="button" class="text-blue-600 hover:underline" @click="navigator.clipboard.writeText(@js($e->token)); $el.textContent='copiado!'; setTimeout(()=>$el.textContent='copiar',1500)">copiar</button>
         </div>
-        @php $ops = ($usuarios ?? collect())->where('estacao_id', $e->id); $livres = ($usuarios ?? collect())->filter(fn($u)=>(int)$u->estacao_id !== (int)$e->id); @endphp
+        @if(Route::has('admin.estacoes.vincular'))
+        @php $ops = ($usuarios ?? collect())->where('estacao_id', $e->id)->values(); $livres = ($usuarios ?? collect())->filter(fn($u)=>(int)($u->estacao_id ?? 0) !== (int)$e->id)->values(); @endphp
         <div class="flex items-center gap-1.5 mt-1.5 text-xs flex-wrap">
           <span class="text-slate-500">🖨️ Operadores:</span>
           @forelse($ops as $op)
@@ -231,6 +232,7 @@ function taxasEditor(taxas){ return { taxas: (taxas&&taxas.length)?taxas:[{orige
             </select>
           </form>
         </div>
+        @endif
       </div>
     @empty <div class="py-3 text-slate-400">Nenhuma estação.</div> @endforelse
   </div>

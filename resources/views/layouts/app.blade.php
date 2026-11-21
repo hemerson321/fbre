@@ -121,9 +121,9 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','cadastra')) $g[] = ['r'=>route('passagens.create'), 'l'=>'Nova passagem', 'i'=>'🎫'];
   if ($u->permite('passagem','ver'))  $g[] = ['r'=>route('passagens.index'), 'l'=>'Passagens / embarque', 'i'=>'🧾'];
   if ($u->permite('passagem','baixa')) $g[] = ['r'=>route('passagens.scanner'), 'l'=>'Check-in / embarque', 'i'=>'📷'];
-  if ($u->permite('passagem','cadastra')) $g[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
-  if ($u->isAdmin() || $u->isSuper()) $g[] = ['r'=>route('passagens.transferencia'), 'l'=>'Transferir transporte', 'i'=>'🔄'];
-  if ($u->permite('passagem','cadastra')) $g[] = ['r'=>route('passagens.bloqueios'), 'l'=>'Travar poltronas', 'i'=>'🔒'];
+  if ($u->permite('passagem','cadastra') && Route::has('clientes-faturado')) $g[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
+  if (($u->isAdmin() || $u->isSuper()) && Route::has('passagens.transferencia')) $g[] = ['r'=>route('passagens.transferencia'), 'l'=>'Transferir transporte', 'i'=>'🔄'];
+  if ($u->permite('passagem','cadastra') && Route::has('passagens.bloqueios')) $g[] = ['r'=>route('passagens.bloqueios'), 'l'=>'Travar poltronas', 'i'=>'🔒'];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if ($u->ehRevendedor()) $g[] = ['r'=>route('meus-acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;

@@ -971,21 +971,26 @@
     imprimirPix(id){ fetch('/cobranca/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'}}).then(r=>r.json()).then(d=>{ if(!d||!d.ok){ alert((d&&d.erro)||'Nenhuma estação de impressão ativa. Mostre o QR na tela.'); } }).catch(()=>{}); },
       // Imprime o bilhete direto na térmica (via estação) e já libera a tela p/ o próximo passageiro.
       async imprimirDiretoENovo(id){
-        let ok=false;
+        let ok=false, cancelou=false;
         try{
-          const vias = FBRE.perguntarVias();
-          const __rz = await this._rasterComprovante('/passagens/'+id+'/comprovante');
-          let imagens = (__rz && __rz.imagens) ? __rz.imagens.slice() : [];
-          if(imagens.length && vias>1){ let __t=[]; for(let __v=0; __v<vias; __v++) __t=__t.concat(imagens); imagens=__t; }
-          if(__rz && __rz.resumo) imagens.push(__rz.resumo);
-          if(imagens && imagens.length){
-            const dd = await fetch('/passagens/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({imagens})}).then(r=>r.json()).catch(()=>null);
-            ok = !!(dd && dd.ok);
-            if(!ok) alert((dd && dd.erro) || 'Não consegui imprimir direto. Vou abrir a passagem pra você imprimir.');
+          const qs = FBRE.perguntarImpressao('O que imprimir?');
+          if(qs===null){ cancelou=true; }
+          else {
+            const _sp=new URLSearchParams(qs); const so=_sp.get('so')||'tudo'; const vias=Math.max(1,parseInt(_sp.get('vias')||'1',10));
+            const __rz = await this._rasterComprovante('/passagens/'+id+'/comprovante?so='+so);
+            let imagens = [];
+            if(so!=='resumo' && __rz && __rz.imagens && __rz.imagens.length){ for(let __v=0; __v<vias; __v++) imagens=imagens.concat(__rz.imagens); }
+            if(so!=='bilhete' && __rz && __rz.resumo) imagens.push(__rz.resumo);
+            if(imagens && imagens.length){
+              const dd = await fetch('/passagens/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({imagens})}).then(r=>r.json()).catch(()=>null);
+              ok = !!(dd && dd.ok);
+              if(!ok) alert((dd && dd.erro) || 'Não consegui imprimir direto. Vou abrir a passagem pra você imprimir.');
+            } else { alert('Nada selecionado pra imprimir.'); }
           }
         }catch(e){}
-        if(ok){ window.location.href='{{ route('passagens.create') }}'; }  // imprimiu: libera p/ novo cadastro
-        else { window.location.href='/passagens/'+id; }                    // falhou: abre a passagem p/ imprimir manual
+        if(cancelou){ window.location.href='/passagens/'+id; return; }       // cancelou a impressão: abre a passagem (salva) p/ imprimir depois
+        if(ok){ window.location.href='{{ route('passagens.create') }}'; }    // imprimiu: libera p/ novo cadastro
+        else { window.location.href='/passagens/'+id; }                      // falhou: abre a passagem p/ imprimir manual
       },
       // Renderiza o comprovante em iframe oculto (raster) e devolve as imagens dos bilhetes.
       _rasterComprovante(url){

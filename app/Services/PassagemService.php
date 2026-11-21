@@ -197,6 +197,7 @@ class PassagemService
                     'user_id' => $userId,
                     'momento' => 'cadastro',
                     'tipo_mov' => 'entrada',
+                    'pago_proprietario' => ! empty($pag['proprietario']),
                 ]);
             }
 

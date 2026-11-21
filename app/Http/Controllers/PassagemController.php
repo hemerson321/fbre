@@ -437,6 +437,7 @@ class PassagemController extends Controller
             'pagamentos' => 'nullable|array',
             'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito',
             'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
+            'pagamentos.*.proprietario' => 'nullable|boolean',
             'imprimir' => 'nullable|in:navegador,direto,nao',
         ]);
 
@@ -509,6 +510,7 @@ class PassagemController extends Controller
             'pagamentos' => 'nullable|array',
             'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito',
             'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
+            'pagamentos.*.proprietario' => 'nullable|boolean',
             'imprimir' => 'nullable|in:navegador,direto,nao',
         ]);
     }
