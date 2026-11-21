@@ -17,6 +17,7 @@
     @if($p->comprador_nome)<div class="flex justify-between"><span class="text-slate-500">Comprador</span><b>{{ $p->comprador_nome }}</b></div>@endif
     <div class="flex justify-between"><span class="text-slate-500">Operador</span><b>{{ $p->operador?->name }}</b></div>
     <div class="flex justify-between"><span class="text-slate-500">Forma</span><b>{{ \App\Models\Passagem::FORMAS[$p->forma] ?? $p->forma }}</b></div>
+    @if($p->pagamentos->contains(fn($pg)=>(bool)($pg->pago_proprietario ?? false)))<div class="flex justify-between"><span class="text-slate-500">Pagamento</span><b class="text-emerald-700">🚤 Realizado pelo proprietário</b></div>@endif
   </div>
 
   <div class="card p-4">

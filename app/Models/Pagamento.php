@@ -11,7 +11,7 @@ class Pagamento extends Model
     use PertenceEmpresa;
 
     protected $guarded = [];
-    protected $casts = ['estornado' => 'boolean', 'valor' => 'decimal:2', 'pix_auto' => 'boolean'];
+    protected $casts = ['estornado' => 'boolean', 'valor' => 'decimal:2', 'pix_auto' => 'boolean', 'pago_proprietario' => 'boolean'];
 
     public const MEIOS = [
         'dinheiro' => 'Dinheiro',

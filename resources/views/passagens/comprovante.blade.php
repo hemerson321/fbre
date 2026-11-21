@@ -86,6 +86,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   $hora = $horaRota ?: ($p->embarcacao?->hora_saida ? \Illuminate\Support\Str::substr($p->embarcacao->hora_saida, 0, 5) : null);
   $formas = $p->pagamentos->map(fn ($pg) => \App\Models\Pagamento::MEIOS[$pg->meio] ?? $pg->meio)->filter()->unique()->implode(', ');
   $formaLabel = (\App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma)) . (($p->forma === 'areceber' && (int) $p->parcelas > 1) ? ' ('.(int) $p->parcelas.'x)' : '');
+  $ehProprietario = $p->pagamentos->contains(fn ($pg) => (bool) ($pg->pago_proprietario ?? false));
   $nrViagem = $p->viagem?->id;
   $pagantes = $p->passageiros->filter(fn ($x) => (($x->papel ?? '') !== 'colo'))->values();
   $colos = $p->passageiros->filter(fn ($x) => (($x->papel ?? '') === 'colo'))->values();
@@ -189,6 +190,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
     @if($pgs->count())
       @foreach($pgs as $meio => $val)<div class="row"><span class="k">{{ \App\Models\Pagamento::MEIOS[$meio] ?? ucfirst($meio) }}</span><span class="vv">R$ {{ number_format($val,2,',','.') }}</span></div>@endforeach
     @elseif($formas)<div class="row"><span class="k">Forma</span><span class="vv">{{ $formas }}</span></div>@endif
+    @if($ehProprietario)<div class="row"><span class="k">🚤 Pagamento</span><span class="vv b">Realizado pelo proprietário</span></div>@endif
     </div>
     <div class="row"><span class="k">Vendedor</span><span class="vv">{{ $p->operador?->name ?? '—' }}</span></div>
     <div class="row"><span class="k">Compra</span><span class="vv">{{ $p->created_at->format('d/m/Y H:i') }}</span></div>
@@ -255,6 +257,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   <div class="rz-pay">
     <div class="rz-payrow"><span class="k">💳 Forma</span><span>{{ $formaLabel }}</span></div>
     @if($formas)<div class="rz-payrow"><span class="k">Pago em</span><span>{{ $formas }}</span></div>@endif
+    @if($ehProprietario)<div class="rz-payrow"><span class="k">🚤 Proprietário</span><span>Pagamento realizado pelo proprietário</span></div>@endif
   </div>
   @if($p->desconto > 0.009)<div class="rz-row"><span class="k">Desconto</span><span class="vv">- R$ {{ number_format((float) $p->desconto,2,',','.') }}</span></div>@endif
   <div class="rz-row"><span class="k">Recebido</span><span class="vv">R$ {{ number_format($rzPag,2,',','.') }}</span></div>

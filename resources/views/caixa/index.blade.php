@@ -217,7 +217,7 @@
     <a href="{{ $rf['url'] ?? '#' }}" class="flex items-center gap-3 p-3 hover:brightness-95 text-sm"@if($corMov) style="background:{{ $corMov }}"@endif>
       <div class="w-14 text-xs text-slate-400">{{ $m->created_at->format('d/m') }}<br>{{ $m->created_at->format('H:i') }}</div>
       <div class="flex-1 min-w-0"><span class="chip" style="background:{{ \App\Support\Modulos::hex($m->modulo ?: 'encomenda') }}20;color:{{ \App\Support\Modulos::hex($m->modulo ?: 'encomenda') }}">{{ \App\Support\Modulos::icone($m->modulo ?: 'encomenda') }}</span> <b>#{{ $rf['numero'] }}</b> {{ $rf['nome'] }}@if($trechoMov) <span class="text-slate-500">· {{ $trechoMov }}</span>@endif<div class="text-xs text-slate-400">{{ $m->user?->name }} · {{ $m->momento==='cadastro'?'no cadastro':'na baixa' }}</div></div>
-      <span class="chip bg-slate-100 text-slate-600">{{ $meios[$m->canal] ?? \App\Models\Pagamento::MEIOS[$m->meio] ?? $m->meio }}</span>
+      <span class="chip bg-slate-100 text-slate-600">{{ $meios[$m->canal] ?? \App\Models\Pagamento::MEIOS[$m->meio] ?? $m->meio }}</span>@if($m->pago_proprietario ?? false)<span class="chip bg-emerald-100 text-emerald-700 font-semibold">🚤 proprietário</span>@endif
       <div class="font-bold whitespace-nowrap">R$ {{ number_format($m->valor,2,',','.') }}</div>
     </a>
   @endforeach

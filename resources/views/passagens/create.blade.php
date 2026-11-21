@@ -308,6 +308,10 @@
         @if(!empty($soAvista))
         <p class="text-xs text-slate-500 -mt-1">Revendedor: venda à vista. O acerto (parcelado/faturado) é entre você e a empresa.</p>
         @endif
+        <label x-show="forma!=='faturado'" class="mt-1 flex items-center gap-2 text-[13px] font-semibold text-emerald-800 cursor-pointer rounded-xl border border-emerald-200 bg-emerald-50/70 p-2">
+          <input type="checkbox" x-model="pagoProprietario" class="w-4 h-4 rounded shrink-0"> 🚤 Pagamento do proprietário
+          <span class="text-[11px] font-normal text-emerald-700/80">(o proprietário pagou direto à agência — entra normal no caixa, só identificado)</span>
+        </label>
         <div x-show="forma!=='faturado' && forma!=='online'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
             <div x-show="forma!=='areceber' && m.k!=='credito' && (m.k!=='dinheiro' || forma!=='online') && (m.k!=='pix' || pixManual || pixEstatico || pixDinamico)">
@@ -552,7 +556,7 @@
   function novaPassagem(){
     return {
       salvando:false, forma:@js($formaInicial ?? 'avista'), parcelas:1, imprimir:'direto',
-      agenteOn:false, agenteId:'', agenteAcerto:true,
+      agenteOn:false, agenteId:'', agenteAcerto:true, pagoProprietario:false,
       fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
@@ -1048,7 +1052,7 @@
           cliente_faturado_id:(this.forma==='faturado' && this.clienteFaturadoId)?Number(this.clienteFaturadoId):null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.papel||null, bebe_colo:((p.temColo && (p.bebeColo.nome||'').trim()) ? {nome:p.bebeColo.nome.trim(), documento:(p.bebeColo.documento||'').trim()||null, nascimento:p.bebeColo.nascimento||null} : null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
-          pagamentos:this.forma==='faturado'?[]:(this.forma==='online'?[{meio:this.onlineMeio, valor:this.total}]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])}))),
+          pagamentos:this.forma==='faturado'?[]:(this.forma==='online'?[{meio:this.onlineMeio, valor:this.total, proprietario:this.pagoProprietario?1:0}]:this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k]), proprietario:this.pagoProprietario?1:0}))),
         };
       },
       fatDocTipoCalc(){ const d=(this.fatDoc||'').replace(/\D/g,''); this.fatDocTipo = d.length===14?'CNPJ':(d.length>=11?'CPF':''); },
