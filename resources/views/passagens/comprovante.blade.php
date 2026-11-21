@@ -93,6 +93,8 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   $tot = $pagantes->count();
   $vias = max(1, min(9, (int) request('vias', 1)));
   $so = in_array(request('so'), ['bilhete','resumo'], true) ? request('so') : 'tudo';
+  $soCancelados = request()->boolean('cancelados');
+  $biList = $soCancelados ? $pagantes->filter(fn ($x) => $p->cancelada || ($x->cancelado ?? false))->values() : $pagantes;
   $titulo = $ehCam ? 'BILHETE · CAMAROTE' : 'BILHETE DE PASSAGEM';
   // Dados de empresa NO BILHETE: se a embarcacao tem os proprios, usa; senao os da empresa.
   $emb = $p->embarcacao;
@@ -109,7 +111,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 
 @if($so !== 'resumo')
 @for($__via = 0; $__via < $vias; $__via++)
-@foreach($pagantes as $i => $pax)
+@foreach($biList as $i => $pax)
 <div class="ticket" style="--cor:{{ $cor }}">
 @php $ehGrat = (($pax->papel ?? '') !== 'colo') && ((float) ($pax->valor_passagem ?? 0) <= 0.009) && ((float) ($pax->valor_integral ?? 0) > 0.009); @endphp
 @php $__tarja = $p->cancelada ? ((($p->cancel_tipo ?? '')==='cancelamento')?'CANCELAMENTO':'DEVOLUÇÃO') : (($pax->cancelado ?? false) ? ((($pax->cancelado_tipo ?? '')==='cancelamento')?'CANCELAMENTO':'DEVOLUÇÃO') : null); @endphp

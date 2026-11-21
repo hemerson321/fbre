@@ -274,7 +274,7 @@ function imprimirDiretoPassagem(btn){
 @if(request('imprimir_cancel'))
 <script>document.addEventListener('DOMContentLoaded',function(){
   var tp = @json(($p->cancel_tipo ?? '')==='cancelamento' ? 'cancelamento' : 'devolução');
-  FBRE.imprimirComprovante('{{ route('passagens.comprovante',$p) }}', 'Passagem registrada como '+tp+'. Imprimir a via ('+tp+') ou o resumo?');
+  FBRE.imprimirComprovante('{{ route('passagens.comprovante',$p) }}', 'Passagem registrada como '+tp+'. Imprimir a via do '+tp+' (só o passageiro cancelado) ou o resumo?', 'cancelados=1');
 });</script>
 @endif
 <script>
