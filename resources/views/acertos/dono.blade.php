@@ -35,6 +35,22 @@
     </div>
   </div>
 
+  {{-- Prestação de contas detalhada (modelo do proprietário) --}}
+  <div class="card p-4 border-2 border-indigo-200">
+    <div class="text-sm font-bold text-indigo-900 uppercase tracking-wide mb-2 text-center">📋 Prestação de contas</div>
+    <div class="divide-y text-sm">
+      <div class="flex justify-between py-1.5"><span>Total vendas de Passagens</span><b>{{ $moeda($bruto) }}</b></div>
+      <div class="flex justify-between py-1.5"><span>Comissão de Agência ({{ number_format((float)$pct,2,',','.') }}%)</span><b class="text-rose-600">− {{ $moeda($comissao) }}</b></div>
+      <div class="flex justify-between py-1.5"><span>Débito Prop.</span><b class="text-rose-600">− {{ $moeda($debitoProp) }}</b></div>
+      <div class="flex justify-between py-1.5"><span>Cartão de crédito</span><b class="text-rose-600">− {{ $moeda($cartaoCredito) }}</b></div>
+      <div class="flex justify-between py-1.5"><span>Crédito Prop. (Entradas)</span><b class="text-rose-600">− {{ $moeda($creditoProp) }}</b></div>
+      <div class="flex justify-between py-2 border-t-2 border-slate-300 font-bold text-amber-700"><span>Total Geral de Despesas</span><b>{{ $moeda($despesas) }}</b></div>
+    </div>
+    <div class="mt-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3 flex justify-between items-center">
+      <span class="font-bold text-emerald-800">TOTAL GERAL LÍQUIDO</span><b class="text-2xl text-emerald-700">{{ $moeda($liquido) }}</b>
+    </div>
+  </div>
+
   {{-- resumo por canal --}}
   <div class="grid grid-cols-2 gap-2">
     <div class="card p-3">

@@ -16,6 +16,13 @@
   .resumo .b{font-size:11px;color:#555;text-transform:uppercase}
   .resumo .v{font-size:15px;font-weight:bold}
   .pagar{color:#b45309}
+  .prest{margin:10px 0 14px;padding:12px 14px;border:2px solid #0b3b6f;border-radius:10px;background:#f4f8ff}
+  .prest-h{font-size:13px;font-weight:bold;color:#0b3b6f;margin-bottom:8px;letter-spacing:.04em;text-align:center}
+  .prest-row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px dotted #c3d2e6;font-size:13px}
+  .prest-row span{color:#333}
+  .prest-row b{font-weight:bold;white-space:nowrap}
+  .prest-row.tot{border-top:2px solid #0b3b6f;border-bottom:none;margin-top:5px;padding-top:7px;color:#b45309}
+  .prest-row.liq{border-bottom:none;font-size:17px;color:#067d3b;background:#eafaf0;padding:9px 10px;border-radius:7px;margin-top:6px;font-weight:bold}
   h2{font-size:13px;margin:16px 0 6px;padding:5px 8px;background:#0b1a33;color:#fff;border-radius:6px;display:flex;justify-content:space-between}
   table{width:100%;border-collapse:collapse;margin-bottom:4px}
   th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #e3e3e3;vertical-align:top}
@@ -50,10 +57,15 @@
     </div>
   </div>
 
-  <div class="resumo">
-    <div><div class="b">Total vendido</div><div class="v">R$ {{ $moeda($bruto) }}</div></div>
-    <div><div class="b">Comissão da empresa ({{ $pct }}%)</div><div class="v">R$ {{ $moeda($comissao) }}</div></div>
-    <div><div class="b">A pagar ao proprietário</div><div class="v pagar">R$ {{ $moeda($dono) }}</div></div>
+  <div class="prest">
+    <div class="prest-h">📋 PRESTAÇÃO DE CONTAS</div>
+    <div class="prest-row"><span>Total vendas de Passagens</span><b>R$ {{ $moeda($bruto) }}</b></div>
+    <div class="prest-row"><span>Comissão de Agência ({{ number_format((float)$pct,2,',','.') }}%)</span><b>− R$ {{ $moeda($comissao) }}</b></div>
+    <div class="prest-row"><span>Débito Prop.</span><b>− R$ {{ $moeda($debitoProp) }}</b></div>
+    <div class="prest-row"><span>Cartão de crédito</span><b>− R$ {{ $moeda($cartaoCredito) }}</b></div>
+    <div class="prest-row"><span>Crédito Prop. (Entradas)</span><b>− R$ {{ $moeda($creditoProp) }}</b></div>
+    <div class="prest-row tot"><span>Total Geral de Despesas</span><b>R$ {{ $moeda($despesas) }}</b></div>
+    <div class="prest-row liq"><span>TOTAL GERAL LÍQUIDO</span><b>R$ {{ $moeda($liquido) }}</b></div>
   </div>
 
   {{-- BALCÃO --}}

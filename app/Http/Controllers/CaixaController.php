@@ -199,12 +199,12 @@ class CaixaController extends Controller
                 ->map(function ($e) {
                     $pct = (int) $e->comissao_empresa_pct;
                     $p = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
-                        ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->first();
+                        ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total),0) as bruto, COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->first();
                     $deb = round(
                         (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
                         - (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
                     $deb = max(0.0, $deb);
-                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'valor' => (float) $p->v, 'debito' => $deb, 'liquido' => round((float) $p->v - $deb, 2), 'dono' => optional($e->dono)->name ?? $e->dono_nome];
+                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'bruto' => (float) $p->bruto, 'comissao' => round((float) $p->bruto - (float) $p->v, 2), 'valor' => (float) $p->v, 'debito' => $deb, 'liquido' => round((float) $p->v - $deb, 2), 'dono' => optional($e->dono)->name ?? $e->dono_nome];
                 })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0)->values();
         }
 

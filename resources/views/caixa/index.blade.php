@@ -102,7 +102,7 @@
     <div class="flex items-center justify-between gap-2 p-3 flex-wrap">
       <div class="min-w-0">
         <div class="font-semibold truncate">🚤 {{ $d->emb->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· proprietário {{ $d->dono }}</span>@endif</div>
-        <div class="text-xs text-slate-400">{{ $d->qtd }} passagem(ns) de balcão · comissão empresa {{ (int)$d->emb->comissao_empresa_pct }}%</div>
+        <div class="text-xs text-slate-500">{{ $d->qtd }} passagem(ns) de balcão · vendido <b>R$ {{ number_format($d->bruto ?? 0,2,',','.') }}</b> · comissão {{ (int)$d->emb->comissao_empresa_pct }}% = <b class="text-indigo-700">R$ {{ number_format($d->comissao ?? 0,2,',','.') }}</b></div>
         @if($d->debito > 0)<div class="text-[11px] text-rose-600 font-semibold mt-0.5">↩ proprietário deve R$ {{ number_format($d->debito,2,',','.') }} (devolução já acertada) — abate no acerto</div>@endif
       </div>
       <div class="flex items-center gap-2">
@@ -110,6 +110,7 @@
           <div class="text-lg font-bold text-amber-700">R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}</div>
           @if($d->debito > 0)<div class="text-[10px] text-slate-400">bruto {{ number_format($d->valor,2,',','.') }} − dívida {{ number_format($d->debito,2,',','.') }}</div>@endif
         </div>
+        @if(\Illuminate\Support\Facades\Route::has('meu-transporte.relatorio'))<a href="{{ route('meu-transporte.relatorio', $d->emb) }}" class="btn btn-ghost btn-sm whitespace-nowrap border border-indigo-200 text-indigo-700">📋 Prestação</a>@endif
         @if($d->valor > 0)
         <form method="post" action="{{ route('meu-transporte.baixa-balcao', $d->emb) }}" onsubmit="return confirm('Pagar o proprietário de {{ $d->emb->nome }}? Paga R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}@if($d->debito > 0) (já abatendo R$ {{ number_format(min($d->debito,$d->valor),2,',','.') }} de devolução)@endif e fica só a comissão da empresa.')">
           @csrf

@@ -159,10 +159,27 @@ class AcertoController extends Controller
         $bruto = round($brutoBalcao + $brutoAgentes, 2);
         $dono = round($donoBalcao + $donoAgentes, 2);
         $comissao = round($bruto - $dono, 2);
+
+        // --- Prestação de contas (breakdown p/ o proprietário) ---
+        $ids = $passagens->pluck('id')->all();
+        // Cartão de crédito recebido nessas passagens (informativo).
+        $cartao = $ids ? round((float) Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $ids)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2) : 0.0;
+        // Crédito do proprietário = pagamentos feitos pelo próprio proprietário (ele já recebeu direto).
+        $creditoProp = $ids ? round((float) Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $ids)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2) : 0.0;
+        // Débito do proprietário = devoluções já acertadas que ele deve.
+        $debitoProp = round(
+            (float) Pagamento::where('embarcacao_id', $embarcacao->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
+            - (float) Pagamento::where('embarcacao_id', $embarcacao->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
+        $debitoProp = max(0.0, $debitoProp);
+        // Despesas do proprietário = comissão da agência + débito. Líquido = dono - débito - o que o proprietário já recebeu direto.
+        $despesas = round($comissao + $debitoProp, 2);
+        $liquido = round($dono - $debitoProp - $creditoProp, 2);
+
         $dados = compact(
             'embarcacao', 'passagens', 'balcao', 'agentes',
             'brutoBalcao', 'donoBalcao', 'brutoAgentes', 'donoAgentes',
-            'bruto', 'dono', 'comissao', 'pct', 'viagemId', 'dataViagem'
+            'bruto', 'dono', 'comissao', 'pct', 'viagemId', 'dataViagem',
+            'cartao', 'creditoProp', 'debitoProp', 'despesas', 'liquido'
         );
         if ($request->boolean('pdf')) {
             return view('acertos.dono-pdf', $dados + ['empresa' => Tenant::empresa()]);

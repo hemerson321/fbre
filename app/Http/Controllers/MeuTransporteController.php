@@ -244,10 +244,26 @@ class MeuTransporteController extends Controller
         $bruto = round($brutoBalcao + $brutoAgentes, 2);
         $dono = round($donoBalcao + $donoAgentes, 2);
         $comissao = round($bruto - $dono, 2);
+
+        // --- Prestação de contas (modelo do proprietário) ---
+        $passIds = $passagens->pluck('id')->all();
+        $pgBase = Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIds)->where('estornado', false);
+        $cartaoCredito = round((float) (clone $pgBase)->where('meio', 'credito')->sum('valor'), 2);
+        $creditoProp   = round((float) (clone $pgBase)->where('pago_proprietario', true)->sum('valor'), 2);
+        // Débito do proprietário (devoluções já acertadas, ainda não abatidas)
+        $debitoProp = round(
+            (float) Pagamento::where('embarcacao_id', $embarcacao->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
+            - (float) Pagamento::where('embarcacao_id', $embarcacao->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
+        $debitoProp = max(0.0, $debitoProp);
+        // Despesas = comissão + débito + cartão + crédito do proprietário (entradas já adiantadas)
+        $despesas = round($comissao + $debitoProp + $cartaoCredito + $creditoProp, 2);
+        $liquido = round($bruto - $despesas, 2);
+
         $dados = compact(
             'embarcacao', 'passagens', 'balcao', 'agentes',
             'brutoBalcao', 'donoBalcao', 'brutoAgentes', 'donoAgentes',
-            'bruto', 'dono', 'comissao', 'pct', 'viagemId', 'dataViagem'
+            'bruto', 'dono', 'comissao', 'pct', 'viagemId', 'dataViagem',
+            'cartaoCredito', 'creditoProp', 'debitoProp', 'despesas', 'liquido'
         );
         if ($request->boolean('pdf')) {
             return view('acertos.dono-pdf', $dados + ['empresa' => Tenant::empresa()]);
