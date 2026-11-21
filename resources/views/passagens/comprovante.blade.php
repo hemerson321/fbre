@@ -30,7 +30,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .rz-ln{border-bottom:1px solid #000;height:14px;margin-top:2px}
 .rz-foot{text-align:center;font-size:9px;color:#374151;margin-top:8px;border-top:1px dashed #9ca3af;padding-top:4px}
 .cwm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:60;overflow:hidden}
-.cwm b{writing-mode:vertical-rl;text-orientation:mixed;font-size:44px;font-weight:900;letter-spacing:3px;line-height:1;color:rgba(185,28,28,.34);white-space:nowrap;text-transform:uppercase}
+.cwm b{writing-mode:vertical-rl;text-orientation:mixed;font-size:82px;font-weight:900;letter-spacing:-12px;line-height:.9;color:rgba(185,28,28,.38);white-space:nowrap;text-transform:uppercase}
 .c{text-align:center}.muted{color:#6b7280}.b{font-weight:700}
 .hdr{text-align:center;margin-bottom:4px}
 .hdr img{height:80px;max-width:72mm;object-fit:contain;margin-bottom:4px}
