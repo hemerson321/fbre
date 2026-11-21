@@ -66,20 +66,19 @@
     <div class="lin g"><span>Total recebido</span><span>R$ {{ number_format($totRecebido,2,',','.') }}</span></div>
     @if($totDevolvido > 0.009)<div class="lin" style="color:#b91c1c"><span>Devolvido (fora do caixa)</span><b>- R$ {{ number_format($totDevolvido,2,',','.') }}</b></div>@endif
   </div>
+  @if($prestacao ?? false)
+  <div class="bloco">
+    <h2>Prestação de contas</h2>
+    <div class="lin"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacao->bruto,2,',','.') }}</b></div>
+    <div class="lin"><span>Comissão de Agência{{ !is_null($prestacao->pct) ? ' ('.$prestacao->pct.'%)' : '' }}</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
+    <div class="lin"><span>Débito Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->debito,2,',','.') }}</b></div>
+    <div class="lin"><span>Cartão de crédito</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
+    <div class="lin"><span>Crédito Prop. (Entradas)</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->credProp,2,',','.') }}</b></div>
+    <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px;color:#b45309"><span>Total Geral de Despesas</span><b>R$ {{ number_format($prestacao->despesas,2,',','.') }}</b></div>
+    <div class="lin g" style="color:#067d3b"><span>Total Geral Líquido</span><span>R$ {{ number_format($prestacao->liquido,2,',','.') }}</span></div>
+  </div>
+  @endif
 </div>
-
-@if($prestacao ?? false)
-<div class="prest">
-  <div class="prest-h">📋 PRESTAÇÃO DE CONTAS — {{ strtoupper($prestacao->nome) }}</div>
-  <div class="prest-row"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacao->bruto,2,',','.') }}</b></div>
-  <div class="prest-row"><span>Comissão de Agência{{ !is_null($prestacao->pct) ? ' ('.$prestacao->pct.'%)' : '' }}</span><b>− R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
-  <div class="prest-row"><span>Débito Prop.</span><b>− R$ {{ number_format($prestacao->debito,2,',','.') }}</b></div>
-  <div class="prest-row"><span>Cartão de crédito</span><b>− R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
-  <div class="prest-row"><span>Crédito Prop. (Entradas)</span><b>− R$ {{ number_format($prestacao->credProp,2,',','.') }}</b></div>
-  <div class="prest-row tot"><span>Total Geral de Despesas</span><b>R$ {{ number_format($prestacao->despesas,2,',','.') }}</b></div>
-  <div class="prest-row liq"><span>TOTAL GERAL LÍQUIDO</span><b>R$ {{ number_format($prestacao->liquido,2,',','.') }}</b></div>
-</div>
-@endif
 
 <div class="leg">
   Legenda:
