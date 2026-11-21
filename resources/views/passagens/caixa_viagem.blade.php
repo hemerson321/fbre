@@ -38,7 +38,7 @@
 <body>
 <div class="bar noprint">
   <a href="javascript:window.print()" class="btn p">🖨 Imprimir</a>
-  <a href="{{ route('passagens.index') }}" class="btn">← Voltar</a>
+  <a href="{{ route('passagens.index') }}" onclick="if(document.referrer){history.back();return false;}" class="btn">← Voltar</a>
 </div>
 @php $e = \App\Support\Tenant::empresa(); @endphp
 <h1>💰 Caixa por viagem{{ $embs->count()===1 ? ' · '.strtoupper($embs->first()) : '' }}</h1>

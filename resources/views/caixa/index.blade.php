@@ -3,7 +3,7 @@
 @section('conteudo')
 <div class="space-y-4">
 <div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ ($ehRelatorio ?? false) ? ($verTodos ? '📋 Relatório geral' : '📋 Meu relatório') : ($verTodos ? 'Caixa geral' : 'Meu caixa') }}</h1>
-  <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId])) }}" target="_blank" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div></div>
+  <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId])) }}" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div></div>
 
 @if($podeAvulso)
 <div x-data="{open:false, tipo:'entrada'}" class="no-print">
@@ -130,25 +130,12 @@
           <div class="text-lg font-bold text-amber-700">R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}</div>
           @if($d->debito > 0)<div class="text-[10px] text-slate-400">bruto {{ number_format($d->valor,2,',','.') }} − dívida {{ number_format($d->debito,2,',','.') }}</div>@endif
         </div>
-        @if(\Illuminate\Support\Facades\Route::has('meu-transporte.relatorio'))<a href="{{ route('meu-transporte.relatorio', $d->emb) }}" class="btn btn-ghost btn-sm whitespace-nowrap border border-indigo-200 text-indigo-700">📋 Prestação</a>@endif
         @if($d->valor > 0)
         <form method="post" action="{{ route('meu-transporte.baixa-balcao', $d->emb) }}" onsubmit="return confirm('Pagar o proprietário de {{ $d->emb->nome }}? Paga R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}@if($d->debito > 0) (já abatendo R$ {{ number_format(min($d->debito,$d->valor),2,',','.') }} de devolução)@endif e fica só a comissão da empresa.')">
           @csrf
           <button class="btn btn-accent btn-sm whitespace-nowrap">Pagar proprietário</button>
         </form>
         @endif
-      </div>
-    </div>
-    <div class="px-3 pb-3 -mt-1">
-      <div class="rounded-lg bg-slate-50 border border-slate-200 p-2.5 text-xs max-w-md">
-        <div class="font-bold text-slate-500 uppercase text-[10px] mb-1">📋 Prestação de contas (balcão)</div>
-        <div class="flex justify-between py-0.5"><span>Total vendas de Passagens</span><b>R$ {{ number_format($d->bruto,2,',','.') }}</b></div>
-        <div class="flex justify-between py-0.5"><span>Comissão de Agência ({{ (int)$d->emb->comissao_empresa_pct }}%)</span><b class="text-rose-600">− R$ {{ number_format($d->comissao,2,',','.') }}</b></div>
-        <div class="flex justify-between py-0.5"><span>Débito Prop.</span><b class="text-rose-600">− R$ {{ number_format($d->debito,2,',','.') }}</b></div>
-        <div class="flex justify-between py-0.5"><span>Cartão de crédito</span><b class="text-rose-600">− R$ {{ number_format($d->cartao,2,',','.') }}</b></div>
-        <div class="flex justify-between py-0.5"><span>Crédito Prop. (Entradas)</span><b class="text-rose-600">− R$ {{ number_format($d->credProp,2,',','.') }}</b></div>
-        <div class="flex justify-between py-1 border-t border-slate-300 mt-1 font-bold text-amber-700"><span>Total Geral de Despesas</span><b>R$ {{ number_format($d->despesas,2,',','.') }}</b></div>
-        <div class="flex justify-between py-1 font-bold text-emerald-700 text-sm"><span>Total Geral Líquido</span><b>R$ {{ number_format($d->liquidoPrest,2,',','.') }}</b></div>
       </div>
     </div>
     @endforeach
