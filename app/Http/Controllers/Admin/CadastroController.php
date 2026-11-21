@@ -55,7 +55,6 @@ class CadastroController extends Controller
             'produtos' => Produto::where('modulo', 'encomenda')->orderBy('nome')->get(),
             'produtosFrete' => Produto::where('modulo', 'frete')->orderBy('nome')->get(),
             'estacoes' => Estacao::orderBy('nome')->get(),
-            'usuarios' => \App\Models\User::where('empresa_id', \App\Support\Tenant::id())->where('super_admin', false)->orderBy('name')->get(['id', 'name', 'estacao_id', 'ativo']),
             'categorias' => AvulsoCategoria::orderBy('ordem')->orderBy('nome')->get(),
             'tiposPassageiro' => TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(),
             'taxasEmbarque' => TaxaEmbarque::where('ativo', true)->orderBy('origem')->orderBy('destino')->get(),

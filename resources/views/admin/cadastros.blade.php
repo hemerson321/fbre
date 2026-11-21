@@ -214,25 +214,6 @@ function taxasEditor(taxas){ return { taxas: (taxas&&taxas.length)?taxas:[{orige
           <button type="button" class="text-blue-600 hover:underline" @click="mostra=!mostra" x-text="mostra ? 'ocultar' : 'mostrar'"></button>
           <button type="button" class="text-blue-600 hover:underline" @click="navigator.clipboard.writeText(@js($e->token)); $el.textContent='copiado!'; setTimeout(()=>$el.textContent='copiar',1500)">copiar</button>
         </div>
-        @if(Route::has('admin.estacoes.vincular'))
-        @php $ops = ($usuarios ?? collect())->where('estacao_id', $e->id)->values(); $livres = ($usuarios ?? collect())->filter(fn($u)=>(int)($u->estacao_id ?? 0) !== (int)$e->id)->values(); @endphp
-        <div class="flex items-center gap-1.5 mt-1.5 text-xs flex-wrap">
-          <span class="text-slate-500">🖨️ Operadores:</span>
-          @forelse($ops as $op)
-            <span class="chip bg-blue-50 text-blue-700 inline-flex items-center gap-1">{{ $op->name }}@if(!$op->ativo) <span class="text-slate-400">(inativo)</span>@endif
-              <form method="post" action="{{ route('admin.estacoes.desvincular',$e) }}" class="inline" onsubmit="return confirm('Tirar {{ $op->name }} desta impressora?')">@csrf<input type="hidden" name="user_id" value="{{ $op->id }}"><button class="text-red-500 leading-none font-bold" title="remover">&times;</button></form>
-            </span>
-          @empty
-            <span class="text-slate-400">nenhum ainda</span>
-          @endforelse
-          <form method="post" action="{{ route('admin.estacoes.vincular',$e) }}" class="inline-flex items-center gap-1">@csrf
-            <select name="user_id" class="input !min-h-[30px] !py-0.5 !text-xs !w-44" required onchange="if(this.value)this.form.requestSubmit()">
-              <option value="">+ adicionar operador…</option>
-              @foreach($livres as $op)<option value="{{ $op->id }}">{{ $op->name }}@if($op->estacao_id) · troca de impressora@endif</option>@endforeach
-            </select>
-          </form>
-        </div>
-        @endif
       </div>
     @empty <div class="py-3 text-slate-400">Nenhuma estação.</div> @endforelse
   </div>
