@@ -798,31 +798,30 @@ class PassagemController extends Controller
         $embs = $passagens->map(fn ($p) => $p->embarcacao?->nome)->filter()->unique()->values();
         $datas = $passagens->pluck('data_viagem')->filter()->unique()->values();
 
-        // Prestação de contas do transporte (quando a viagem é de um único transporte).
+        // Prestação de contas (soma TODAS as passagens da impressão; comissão certa por transporte).
         $prestacao = null;
-        $embIds = $passagens->pluck('embarcacao_id')->filter()->unique()->values();
-        if ($embIds->count() === 1) {
-            $embF = Embarcacao::find($embIds->first());
-            if ($embF) {
-                $pctF = (int) $embF->comissao_empresa_pct;
-                $validas = $passagens->where('cancelada', false)->where('transferida', false);
-                $pgs = $validas->flatMap(fn ($p) => $p->pagamentos)->filter(fn ($pg) => ! $pg->estornado);
-                $brutoF = round((float) $validas->sum('total'), 2);
-                $comissaoF = round($brutoF * $pctF / 100, 2);
-                $cartaoF = round((float) $pgs->where('meio', 'credito')->sum('valor'), 2);
-                $credPropF = round((float) $pgs->filter(fn ($pg) => (bool) ($pg->pago_proprietario ?? false))->sum('valor'), 2);
-                $debitoF = round(
-                    (float) Pagamento::where('embarcacao_id', $embF->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
-                    - (float) Pagamento::where('embarcacao_id', $embF->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
-                $debitoF = max(0.0, $debitoF);
-                $despesasF = round($comissaoF + $debitoF + $cartaoF + $credPropF, 2);
-                $prestacao = (object) [
-                    'nome' => $embF->nome, 'pct' => $pctF,
-                    'bruto' => $brutoF, 'comissao' => $comissaoF, 'debito' => $debitoF,
-                    'cartao' => $cartaoF, 'credProp' => $credPropF, 'despesas' => $despesasF,
-                    'liquido' => round($brutoF - $despesasF, 2),
-                ];
-            }
+        $validas = $passagens->where('cancelada', false)->where('transferida', false);
+        $embIdsP = $validas->pluck('embarcacao_id')->filter()->unique()->values();
+        if ($validas->count() > 0 && $embIdsP->count() > 0) {
+            $pctsP = Embarcacao::whereIn('id', $embIdsP)->pluck('comissao_empresa_pct', 'id');
+            $pgs = $validas->flatMap(fn ($p) => $p->pagamentos)->filter(fn ($pg) => ! $pg->estornado);
+            $brutoF = round((float) $validas->sum('total'), 2);
+            $comissaoF = round((float) $validas->sum(fn ($p) => (float) $p->total * (int) ($pctsP[$p->embarcacao_id] ?? 0) / 100), 2);
+            $cartaoF = round((float) $pgs->where('meio', 'credito')->sum('valor'), 2);
+            $credPropF = round((float) $pgs->filter(fn ($pg) => (bool) ($pg->pago_proprietario ?? false))->sum('valor'), 2);
+            $debitoF = round(
+                (float) Pagamento::whereIn('embarcacao_id', $embIdsP)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
+                - (float) Pagamento::whereIn('embarcacao_id', $embIdsP)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
+            $debitoF = max(0.0, $debitoF);
+            $despesasF = round($comissaoF + $debitoF + $cartaoF + $credPropF, 2);
+            $nomeP = $embIdsP->count() === 1 ? (optional(Embarcacao::find($embIdsP->first()))->nome ?? 'Transporte') : 'Todos os transportes';
+            $pctP = $embIdsP->count() === 1 ? (int) ($pctsP[$embIdsP->first()] ?? 0) : null;
+            $prestacao = (object) [
+                'nome' => $nomeP, 'pct' => $pctP,
+                'bruto' => $brutoF, 'comissao' => $comissaoF, 'debito' => $debitoF,
+                'cartao' => $cartaoF, 'credProp' => $credPropF, 'despesas' => $despesasF,
+                'liquido' => round($brutoF - $despesasF, 2),
+            ];
         }
 
         return view('passagens.caixa_viagem', [

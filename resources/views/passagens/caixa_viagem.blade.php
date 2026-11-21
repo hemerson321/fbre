@@ -72,7 +72,7 @@
 <div class="prest">
   <div class="prest-h">📋 PRESTAÇÃO DE CONTAS — {{ strtoupper($prestacao->nome) }}</div>
   <div class="prest-row"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacao->bruto,2,',','.') }}</b></div>
-  <div class="prest-row"><span>Comissão de Agência ({{ $prestacao->pct }}%)</span><b>− R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
+  <div class="prest-row"><span>Comissão de Agência{{ !is_null($prestacao->pct) ? ' ('.$prestacao->pct.'%)' : '' }}</span><b>− R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
   <div class="prest-row"><span>Débito Prop.</span><b>− R$ {{ number_format($prestacao->debito,2,',','.') }}</b></div>
   <div class="prest-row"><span>Cartão de crédito</span><b>− R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
   <div class="prest-row"><span>Crédito Prop. (Entradas)</span><b>− R$ {{ number_format($prestacao->credProp,2,',','.') }}</b></div>
