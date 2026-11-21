@@ -45,7 +45,7 @@ class ManifestoCaixa
                     'colo' => $ehColo,
                     'cancelado' => $cancPax,
                     'data_compra' => $p->created_at,
-                    'vendedor' => $p->operador?->name ?? '—',
+                    'vendedor' => $p->revendedor?->name ?: ($p->operador?->name ?? '—'),
                     'valor' => (float) $pax->valor_total,
                     'tipo' => $tipoTxt,
                     'p' => $ehColo ? 'C' : mb_strtoupper(mb_substr(trim($tipoTxt) ?: 'A', 0, 1)),
