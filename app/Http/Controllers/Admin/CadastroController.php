@@ -138,7 +138,7 @@ class CadastroController extends Controller
             'tipos.*.id' => 'nullable|integer',
             'tipos.*.nome' => 'required|string|max:60',
             'tipos.*.cor' => 'nullable|string|max:9',
-            'tipos.*.modo' => 'required|in:porcentagem,valor',
+            'tipos.*.modo' => 'required|in:porcentagem,valor,manual',
             'tipos.*.percentual' => 'nullable|integer|min:0|max:100',
             'tipos.*.pct_sobre' => 'nullable|in:tarifa,tudo',
             'tipos.*.idade_min' => 'nullable|integer|min:0|max:120',

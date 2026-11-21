@@ -62,6 +62,7 @@ class EmpresaController extends Controller
         $config['usa_desconto_tabela'] = $request->boolean('usa_desconto_tabela');
         $config['comprador_passagem'] = $request->boolean('comprador_passagem');
         $config['usa_cancel_transporte'] = $request->boolean('usa_cancel_transporte');
+        $config['desfazer_acerto'] = $request->boolean('desfazer_acerto');
         $config['comprovante_dados_completos'] = $request->boolean('comprovante_dados_completos');
         $config['cancel_antes_pct'] = max(0, min(100, (int) $request->input('cancel_antes_pct', 10)));
         $config['cancel_depois_pct'] = max(0, min(100, (int) $request->input('cancel_depois_pct', 30)));

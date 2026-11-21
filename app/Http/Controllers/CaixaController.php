@@ -208,6 +208,29 @@ class CaixaController extends Controller
                 })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0)->values();
         }
 
+        // Acertos recentes (balcão + agente) que podem ser DESFEITOS — só quando a empresa libera.
+        $permiteDesfazer = (bool) Tenant::empresa()->config('desfazer_acerto');
+        $acertosRecentes = collect();
+        if ($permiteDesfazer && auth()->user()->caixaTodos()) {
+            $acertosRecentes = Pagamento::whereNotNull('acerto_lote')->where('estornado', false)
+                ->whereIn('categoria', ['Pagamento ao dono (balcão)', 'Repasse do agente'])
+                ->when($inicio, fn ($x) => $x->where('created_at', '>=', $inicio))
+                ->when($fim, fn ($x) => $x->where('created_at', '<=', $fim))
+                ->with(['embarcacao', 'user'])->orderByDesc('id')->limit(500)->get()
+                ->groupBy('acerto_lote')->map(function ($g) {
+                    $f = $g->first();
+                    $agente = $f->categoria === 'Repasse do agente';
+                    return (object) [
+                        'lote' => $f->acerto_lote,
+                        'emb' => $f->embarcacao,
+                        'tipo' => $agente ? 'agente' : 'balcão',
+                        'valor' => (float) $g->where('categoria', '!=', 'Débito do dono — abatido')->sum('valor'),
+                        'quando' => $f->created_at,
+                        'quem' => optional($f->user)->name,
+                    ];
+                })->values();
+        }
+
         if ($request->boolean('pdf')) {
             $movs = (clone $base)->with(['user', 'encomenda'])->orderByDesc('id')->limit(2000)->get();
             $canais = Pagamento::CANAIS;
@@ -248,7 +271,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 

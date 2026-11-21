@@ -115,6 +115,11 @@ Route::middleware('auth')->group(function () {
     // Transferencia GLOBAL de transporte (Fase 1) — antes das rotas /passagens/{passagem}
     Route::get('/passagens/transferencia', [\App\Http\Controllers\PassagemController::class, 'transferencia'])->name('passagens.transferencia')->middleware('perm:admin');
     Route::post('/passagens/transferencia', [\App\Http\Controllers\PassagemController::class, 'transferenciaProcessar'])->name('passagens.transferencia.processar')->middleware('perm:admin');
+
+    // Travar poltronas (não vendáveis) — antes das rotas /passagens/{passagem}
+    Route::get('/passagens/travar-poltronas', [\App\Http\Controllers\PassagemController::class, 'bloqueios'])->name('passagens.bloqueios')->middleware('perm:passagem');
+    Route::post('/passagens/travar-poltronas', [\App\Http\Controllers\PassagemController::class, 'bloquearPoltrona'])->name('passagens.bloquear')->middleware('perm:passagem');
+    Route::post('/passagens/travar-poltronas/liberar', [\App\Http\Controllers\PassagemController::class, 'desbloquearPoltrona'])->name('passagens.desbloquear')->middleware('perm:passagem');
     Route::get('/passagens/gratuidade', [\App\Http\Controllers\PassagemController::class, 'gratuidade'])->name('passagens.gratuidade')->middleware('perm:passagem');
     Route::post('/passagens/poltrona-hold', [\App\Http\Controllers\PassagemController::class, 'poltronaHold'])->name('passagens.poltrona-hold')->middleware('perm:passagem');
     Route::post('/passagens/editar-massa', [\App\Http\Controllers\PassagemController::class, 'editarMassa'])->name('passagens.editar-massa')->middleware('perm:passagem.ver');
@@ -149,6 +154,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/meu-transporte/{embarcacao}/baixa-balcao', [\App\Http\Controllers\MeuTransporteController::class, 'baixaBalcao'])->name('meu-transporte.baixa-balcao');
     Route::post('/meu-transporte/{embarcacao}/baixa-agente/{agente}', [\App\Http\Controllers\MeuTransporteController::class, 'baixaAgente'])->name('meu-transporte.baixa-agente');
     Route::get('/meu-transporte/{embarcacao}/relatorio', [\App\Http\Controllers\MeuTransporteController::class, 'relatorio'])->name('meu-transporte.relatorio');
+    Route::post('/meu-transporte/desfazer-acerto', [\App\Http\Controllers\MeuTransporteController::class, 'desfazerAcerto'])->name('meu-transporte.desfazer-acerto');
+
     // Acertos do agente externo (deve a empresa + deve aos donos)
     Route::get('/meus-acertos', [AcertoController::class, 'meuAgente'])->name('meus-acertos');
     // Simulacao (demo): entrar como usuario de cada papel para demonstrar ao cliente

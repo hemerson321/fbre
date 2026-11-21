@@ -123,7 +123,8 @@ class MeuTransporteController extends Controller
             ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
             ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
         $valor = (float) (clone $q)->selectRaw('COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->value('v');
-        $n = $q->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id()]);
+        $lote = (string) \Illuminate\Support\Str::uuid();
+        $n = $q->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id(), 'acerto_lote' => $lote]);
 
         // Abate o saldo devedor do dono (devoluções de passagens já acertadas).
         $deb = round(
@@ -139,7 +140,7 @@ class MeuTransporteController extends Controller
                 'meio' => 'dinheiro', 'valor' => $pagar, 'user_id' => auth()->id(),
                 'momento' => 'baixa', 'tipo_mov' => 'saida',
                 'categoria' => 'Pagamento ao dono (balcão)', 'descricao' => 'Repasse do balcão ao dono - '.$embarcacao->nome.($abate > 0 ? ' (já abatido R$ '.number_format($abate, 2, ',', '.').' de devolução)' : ''),
-                'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false,
+                'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false, 'acerto_lote' => $lote,
             ]);
         }
         if ($abate > 0) {
@@ -147,7 +148,7 @@ class MeuTransporteController extends Controller
                 'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
                 'embarcacao_id' => $embarcacao->id, 'meio' => 'dinheiro', 'valor' => $abate, 'user_id' => auth()->id(),
                 'momento' => 'baixa', 'tipo_mov' => 'entrada', 'categoria' => 'Débito do dono — abatido',
-                'descricao' => 'Débito de devolução abatido no acerto - '.$embarcacao->nome,
+                'descricao' => 'Débito de devolução abatido no acerto - '.$embarcacao->nome, 'acerto_lote' => $lote,
             ]);
         }
 
@@ -166,9 +167,11 @@ class MeuTransporteController extends Controller
             ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
             ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
         $valor = (float) (clone $q)->sum('acerto_empresa_valor');
+        $lote = (string) \Illuminate\Support\Str::uuid();
         $n = $q->update([
             'acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id(),
             'acerto_empresa' => true, 'acerto_empresa_em' => now(), 'acerto_empresa_por' => auth()->id(),
+            'acerto_lote' => $lote,
         ]);
         // Entrada no caixa DO TRANSPORTE (o dono recebeu o repasse do agente). Marcada no barco
         // para aparecer no "Caixa do meu transporte"; nao entra no caixa geral da empresa.
@@ -179,10 +182,42 @@ class MeuTransporteController extends Controller
                 'meio' => 'dinheiro', 'valor' => $valor, 'user_id' => auth()->id(),
                 'momento' => 'baixa', 'tipo_mov' => 'entrada',
                 'categoria' => 'Repasse do agente', 'descricao' => 'Repasse do agente '.$agente->name.' - '.$embarcacao->nome,
-                'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false,
+                'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false, 'acerto_lote' => $lote,
             ]);
         }
         return back()->with('ok', 'Baixa do agente '.$agente->name.': '.$n.' passagem(ns) · R$ '.number_format($valor, 2, ',', '.').' recebido direto do agente.');
+    }
+
+    /** Desfaz um acerto (balcão ou agente) pelo lote: volta as passagens pra "em aberto" e estorna o pagamento. Controlado pela config da empresa. */
+    public function desfazerAcerto(Request $request)
+    {
+        $empresa = Tenant::empresa();
+        abort_unless((bool) $empresa->config('desfazer_acerto'), 403, 'Desfazer acerto está desativado nesta empresa.');
+
+        $lote = trim((string) $request->input('lote'));
+        abort_if($lote === '', 422, 'Lote do acerto não informado.');
+
+        $passagens = Passagem::where('acerto_lote', $lote)->get();
+        if ($passagens->isEmpty()) {
+            return back()->with('erro', 'Esse acerto não foi encontrado (talvez já tenha sido desfeito).');
+        }
+
+        // Permissão: quem confere o caixa, ou o proprietário da lancha do acerto.
+        $embId = (int) $passagens->first()->embarcacao_id;
+        if (! auth()->user()->caixaTodos()) {
+            $this->autorizar(Embarcacao::findOrFail($embId));
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($lote) {
+            Passagem::where('acerto_lote', $lote)->update([
+                'acerto_dono' => false, 'acerto_dono_em' => null, 'acerto_dono_por' => null,
+                'acerto_empresa' => false, 'acerto_empresa_em' => null, 'acerto_empresa_por' => null,
+                'acerto_lote' => null,
+            ]);
+            Pagamento::where('acerto_lote', $lote)->where('estornado', false)->update(['estornado' => true]);
+        });
+
+        return back()->with('ok', 'Acerto desfeito: '.$passagens->count().' passagem(ns) voltaram para "em aberto" e o pagamento foi estornado.');
     }
 
     /** Prestacao de contas (tela ou PDF) da lancha do dono. Reaproveita o layout de acertos/dono. */

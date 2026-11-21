@@ -123,6 +123,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','baixa')) $g[] = ['r'=>route('passagens.scanner'), 'l'=>'Check-in / embarque', 'i'=>'📷'];
   if ($u->permite('passagem','cadastra')) $g[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
   if ($u->isAdmin() || $u->isSuper()) $g[] = ['r'=>route('passagens.transferencia'), 'l'=>'Transferir transporte', 'i'=>'🔄'];
+  if ($u->permite('passagem','cadastra')) $g[] = ['r'=>route('passagens.bloqueios'), 'l'=>'Travar poltronas', 'i'=>'🔒'];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if ($u->ehRevendedor()) $g[] = ['r'=>route('meus-acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;

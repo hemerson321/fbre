@@ -727,7 +727,8 @@
         const pr=this.precoDoTipo(t);
         const _tar=Number(pr.tarifa)||0, _alim=this.usaAlim?(Number(pr.alim)||0):0, _integ=Number(pr.integral)||0;
         // regra: "com desconto" vazio => cobra o INTEGRAL (preco normal); com desconto preenchido => cobra o com desconto
-        if(_tar>0){ p.valor_passagem=_tar; p.valor_alimentacao=_alim; }
+        if(t && (t.modo==='manual')){ p.valor_passagem=0; p.valor_alimentacao=0; }
+        else if(_tar>0){ p.valor_passagem=_tar; p.valor_alimentacao=_alim; }
         else { p.valor_passagem=_integ; p.valor_alimentacao=0; }
         p.valor_taxa = (this.usaEmbarque && p.paga_taxa) ? this.taxaDoTrecho() : 0;
         p.valor_integral = Math.max(_integ, (Number(p.valor_passagem)||0)+(Number(p.valor_alimentacao)||0)+(Number(p.valor_taxa)||0));

@@ -79,6 +79,7 @@
           <select x-model="t.modo" :name="`tipos[${i}][modo]`" class="input !min-h-[40px] !w-48" :class="t.eh_normal ? 'pointer-events-none opacity-60' : ''" @mousedown="t.eh_normal && $event.preventDefault()">
             <option value="valor">Valor (Tarifa+Alim.)</option>
             <option value="porcentagem">Porcentagem do Normal</option>
+            <option value="manual">Valor digitado na venda</option>
           </select></div>
         <div x-show="t.modo==='porcentagem' && !t.eh_normal" class="flex items-end gap-2 flex-wrap">
           <div class="flex items-end gap-1"><div><label class="label !text-xs">% do Normal</label>
@@ -89,6 +90,7 @@
               <option value="tudo">Transporte + alimentação</option>
             </select></div>
         </div>
+        <div x-show="t.modo==='manual' && !t.eh_normal" class="text-[11px] text-indigo-600 font-semibold pb-2 self-end">✍️ O operador digita o valor da passagem na hora da venda.</div>
         <template x-if="t.modo==='valor' || t.eh_normal">
           <div class="flex items-end gap-2">
             <div><label class="label !text-xs">Tarifa Padrão</label>

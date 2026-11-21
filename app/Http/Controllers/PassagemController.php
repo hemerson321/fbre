@@ -8,6 +8,7 @@ use App\Models\Pagamento;
 use App\Models\Passagem;
 use App\Models\PassagemPassageiro;
 use App\Models\Pessoa;
+use App\Models\PoltronaBloqueada;
 use App\Models\Rota;
 use App\Models\TabelaPreco;
 use App\Models\TaxaEmbarque;
@@ -560,6 +561,12 @@ class PassagemController extends Controller
             }
             foreach ($pg->passageiros as $pax) if ($pax->poltrona) $ocup->push((string) $pax->poltrona);
         }
+
+        // Poltronas TRAVADAS (não vendáveis) entram como ocupadas.
+        $bq = \App\Models\PoltronaBloqueada::where('embarcacao_id', $embarcacaoId)->where('ativo', true);
+        if ($dataViagem) $bq->where(fn ($w) => $w->whereNull('data_viagem')->orWhereDate('data_viagem', $dataViagem));
+        foreach ($bq->pluck('poltrona') as $pol) if ($pol !== null && $pol !== '') $ocup->push((string) $pol);
+
         return $ocup->unique()->values();
     }
 
@@ -1442,6 +1449,77 @@ class PassagemController extends Controller
         $msg = 'Passageiro(s) cancelado(s): '.$nomes.'. Poltrona liberada e valores recalculados.';
         if ($valor > 0.009) $msg .= ' Se houver devolução (R$ '.number_format($valor, 2, ',', '.').'), registre no caixa (saída avulsa).';
         return redirect()->route('passagens.show', $passagem)->with('ok', $msg);
+    }
+
+    /** Tela de travar poltronas (não vendáveis) por transporte/viagem. */
+    public function bloqueios(Request $request)
+    {
+        $embarcacoes = Embarcacao::where('ativo', true)->where('usa_poltrona', true)->orderBy('nome')
+            ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas', 'poltronas_lista']);
+
+        $embId = $request->integer('embarcacao_id') ?: ($embarcacoes->first()->id ?? null);
+        $dataViagem = $request->input('data_viagem') ?: null;
+        $emb = $embId ? $embarcacoes->firstWhere('id', $embId) : null;
+
+        $vendidas = [];
+        $bloqueadas = collect();
+        if ($emb) {
+            $vendidas = Passagem::where('embarcacao_id', $emb->id)->where('cancelada', false)->where('transferida', false)
+                ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+                ->with(['passageiros:id,passagem_id,poltrona,cancelado'])->get()
+                ->flatMap(fn ($p) => $p->passageiros->where('cancelado', false)->pluck('poltrona'))
+                ->filter()->map(fn ($v) => (string) $v)->unique()->values()->all();
+
+            $bloqueadas = PoltronaBloqueada::where('embarcacao_id', $emb->id)->where('ativo', true)
+                ->orderByRaw('data_viagem IS NULL DESC')->orderBy('data_viagem')->orderBy('poltrona')->get();
+        }
+
+        return view('passagens.bloqueios', compact('embarcacoes', 'embId', 'dataViagem', 'emb', 'vendidas', 'bloqueadas'));
+    }
+
+    /** Trava uma ou mais poltronas pra não serem vendidas. */
+    public function bloquearPoltrona(Request $request)
+    {
+        $data = $request->validate([
+            'embarcacao_id' => 'required|integer',
+            'data_viagem' => 'nullable|date',
+            'motivo' => 'nullable|string|max:120',
+            'poltronas' => 'required|array|min:1',
+            'poltronas.*' => 'string|max:10',
+        ]);
+        $emb = Embarcacao::findOrFail($data['embarcacao_id']);
+        $dataViagem = $data['data_viagem'] ?? null;
+
+        $n = 0;
+        foreach (array_unique($data['poltronas']) as $pol) {
+            $pol = trim((string) $pol);
+            if ($pol === '') continue;
+            $existe = PoltronaBloqueada::where('embarcacao_id', $emb->id)->where('poltrona', $pol)->where('ativo', true)
+                ->where(function ($w) use ($dataViagem) {
+                    $w->whereNull('data_viagem');
+                    if ($dataViagem) $w->orWhereDate('data_viagem', $dataViagem);
+                })->exists();
+            if ($existe) continue;
+            PoltronaBloqueada::create([
+                'empresa_id' => Tenant::id(), 'embarcacao_id' => $emb->id, 'poltrona' => $pol,
+                'data_viagem' => $dataViagem, 'motivo' => $data['motivo'] ?? null,
+                'ativo' => true, 'user_id' => auth()->id(),
+            ]);
+            $n++;
+        }
+
+        $rotulo = $dataViagem ? ('a viagem de '.\Illuminate\Support\Carbon::parse($dataViagem)->format('d/m/Y')) : 'TODAS as viagens';
+        return back()->with('ok', $n > 0 ? ($n.' poltrona(s) travada(s) para '.$rotulo.'.') : 'Nenhuma poltrona nova (já estavam travadas).');
+    }
+
+    /** Libera (remove) uma poltrona travada. */
+    public function desbloquearPoltrona(Request $request)
+    {
+        $data = $request->validate(['id' => 'required|integer']);
+        $b = PoltronaBloqueada::findOrFail($data['id']);
+        $pol = $b->poltrona;
+        $b->delete();
+        return back()->with('ok', 'Poltrona '.$pol.' liberada pra venda.');
     }
 
     /** FASE 1 — Transferência GLOBAL de transporte: move TODOS os passageiros de uma viagem pra outra lancha. */

@@ -123,6 +123,38 @@
 </div>
 @endif
 
+@if(($permiteDesfazer ?? false) && isset($acertosRecentes) && $acertosRecentes->isNotEmpty())
+<div class="card overflow-hidden border border-slate-200">
+  <div class="p-3 border-b bg-slate-50 flex items-center justify-between flex-wrap gap-2">
+    <div class="font-bold text-sm text-slate-600">↩️ Desfazer acerto</div>
+    <div class="text-[11px] text-slate-400">acertos dados no período — desfazer volta as passagens pra "em aberto" e estorna o pagamento</div>
+  </div>
+  <div class="divide-y text-sm">
+    @foreach($acertosRecentes as $a)
+    <div class="flex items-center justify-between gap-2 p-3 flex-wrap">
+      <div class="min-w-0">
+        <div class="font-semibold truncate">
+          <span class="chip {{ $a->tipo==='agente' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700' }}">{{ $a->tipo==='agente' ? '🤝 agente' : '🚤 balcão' }}</span>
+          {{ $a->emb->nome ?? 'Transporte' }}
+        </div>
+        <div class="text-xs text-slate-400">
+          {{ \Illuminate\Support\Carbon::parse($a->quando)->format('d/m/Y H:i') }}@if($a->quem) · baixa por {{ $a->quem }}@endif
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="text-right"><div class="text-lg font-bold text-slate-700">R$ {{ number_format($a->valor,2,',','.') }}</div></div>
+        <form method="post" action="{{ route('meu-transporte.desfazer-acerto') }}" onsubmit="return confirm('Desfazer este acerto ({{ $a->tipo }} · {{ $a->emb->nome ?? '' }} · R$ {{ number_format($a->valor,2,',','.') }})?\n\nAs passagens voltam pra EM ABERTO e o pagamento é estornado.')">
+          @csrf
+          <input type="hidden" name="lote" value="{{ $a->lote }}">
+          <button class="btn btn-ghost btn-sm text-rose-600 border border-rose-200 whitespace-nowrap">↩️ Desfazer</button>
+        </form>
+      </div>
+    </div>
+    @endforeach
+  </div>
+</div>
+@endif
+
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
 <div class="card overflow-hidden">
   <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">🚤 Por lancha / transporte</div>
