@@ -26,7 +26,7 @@
   </tr></thead>
   <tbody>
     @forelse($linhas as $l)
-    <tr class="@if($l->cancelado)canc @elseif($l->pcd)pcd @elseif($l->idoso)idoso @elseif($l->municipio)mun @endif">
+    <tr class="@if($l->cancelado)canc @elseif($l->pcd)pcd @elseif($l->idoso)idoso @elseif($l->municipio || !empty($l->agencia))mun @endif">
       <td>{{ $l->nr }}</td>
       <td>{{ $l->ticket }}</td>
       <td>{{ $l->trecho }}</td>
@@ -38,7 +38,7 @@
       <td>@if($l->proprietario ?? false)<b style="color:#067d3b">{{ $l->status }}</b>@else{{ $l->status }}@endif</td>
       <td>{{ $l->forma }}</td>
       <td>{{ $l->cliente }}</td>
-      <td>{{ $l->agencia }}</td>
+      <td>@if(!empty($l->agencia))<b style="color:#1d4ed8">🤝 {{ $l->agencia }}</b>@endif</td>
       <td>{{ $l->poltrona }}</td>
     </tr>
     @empty
