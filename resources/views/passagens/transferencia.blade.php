@@ -58,7 +58,7 @@
     </template>
 
     <template x-if="destino">
-      <div class="text-[12px] text-slate-500">Dica: clique num passageiro (mapa da esquerda ou na lista) e depois numa poltrona livre do destino (direita) para atribuir. Clique de novo numa poltrona verde para desfazer.</div>
+      <div class="text-[12px] text-slate-500">Dica: <b>arraste</b> uma poltrona com passageiro (segura e solta) para outra poltrona livre — na mesma lancha ou do destino. Ou clique num passageiro e depois numa poltrona livre. Clique de novo numa poltrona verde para desfazer.</div>
     </template>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -75,11 +75,11 @@
                     <template x-for="(f,ri) in bloco" :key="'or'+bi+'_'+ri">
                       <div class="flex items-center justify-center gap-1">
                         <div class="flex gap-1"><template x-for="n in f.esq" :key="'oe'+n">
-                          <button type="button" class="min-w-[40px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeOrigem(n)" @click="paxNaPoltronaOrigem(n)&&selecionar(paxNaPoltronaOrigem(n).passageiro_id)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:40px" x-text="(paxNaPoltronaOrigem(n)?.nome||'').split(' ')[0]"></span></button>
+                          <button type="button" class="min-w-[40px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeOrigem(n)" @click="paxNaPoltronaOrigem(n)&&selecionar(paxNaPoltronaOrigem(n).passageiro_id)" :draggable="!!paxNaPoltronaOrigem(n)" x-on:dragstart="paxNaPoltronaOrigem(n)&&dragStart(paxNaPoltronaOrigem(n).passageiro_id)" x-on:dragend="dragEnd()"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:40px" x-text="(paxNaPoltronaOrigem(n)?.nome||'').split(' ')[0]"></span></button>
                         </template></div>
                         <div class="w-3 text-center text-[9px] text-slate-300" x-show="f.dir.length">║</div>
                         <div class="flex gap-1"><template x-for="n in f.dir" :key="'od'+n">
-                          <button type="button" class="min-w-[40px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeOrigem(n)" @click="paxNaPoltronaOrigem(n)&&selecionar(paxNaPoltronaOrigem(n).passageiro_id)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:40px" x-text="(paxNaPoltronaOrigem(n)?.nome||'').split(' ')[0]"></span></button>
+                          <button type="button" class="min-w-[40px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeOrigem(n)" @click="paxNaPoltronaOrigem(n)&&selecionar(paxNaPoltronaOrigem(n).passageiro_id)" :draggable="!!paxNaPoltronaOrigem(n)" x-on:dragstart="paxNaPoltronaOrigem(n)&&dragStart(paxNaPoltronaOrigem(n).passageiro_id)" x-on:dragend="dragEnd()"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:40px" x-text="(paxNaPoltronaOrigem(n)?.nome||'').split(' ')[0]"></span></button>
                         </template></div>
                       </div>
                     </template>
@@ -92,11 +92,11 @@
                 <template x-for="(f,ri) in fileiras(origem)" :key="'ofn'+ri">
                   <div class="flex items-center justify-center gap-1">
                     <div class="flex gap-1.5"><template x-for="n in f.esq" :key="'ofe'+n">
-                      <button type="button" class="w-11 h-10 rounded-t-xl rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeOrigem(n)" @click="paxNaPoltronaOrigem(n)&&selecionar(paxNaPoltronaOrigem(n).passageiro_id)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:42px" x-text="(paxNaPoltronaOrigem(n)?.nome||'').split(' ')[0]"></span></button>
+                      <button type="button" class="w-11 h-10 rounded-t-xl rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeOrigem(n)" @click="paxNaPoltronaOrigem(n)&&selecionar(paxNaPoltronaOrigem(n).passageiro_id)" :draggable="!!paxNaPoltronaOrigem(n)" x-on:dragstart="paxNaPoltronaOrigem(n)&&dragStart(paxNaPoltronaOrigem(n).passageiro_id)" x-on:dragend="dragEnd()"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:42px" x-text="(paxNaPoltronaOrigem(n)?.nome||'').split(' ')[0]"></span></button>
                     </template></div>
                     <div class="w-5 text-center text-[9px] text-slate-300">║</div>
                     <div class="flex gap-1.5"><template x-for="n in f.dir" :key="'ofd'+n">
-                      <button type="button" class="w-11 h-10 rounded-t-xl rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeOrigem(n)" @click="paxNaPoltronaOrigem(n)&&selecionar(paxNaPoltronaOrigem(n).passageiro_id)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:42px" x-text="(paxNaPoltronaOrigem(n)?.nome||'').split(' ')[0]"></span></button>
+                      <button type="button" class="w-11 h-10 rounded-t-xl rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeOrigem(n)" @click="paxNaPoltronaOrigem(n)&&selecionar(paxNaPoltronaOrigem(n).passageiro_id)" :draggable="!!paxNaPoltronaOrigem(n)" x-on:dragstart="paxNaPoltronaOrigem(n)&&dragStart(paxNaPoltronaOrigem(n).passageiro_id)" x-on:dragend="dragEnd()"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:42px" x-text="(paxNaPoltronaOrigem(n)?.nome||'').split(' ')[0]"></span></button>
                     </template></div>
                   </div>
                 </template>
@@ -121,11 +121,11 @@
                       <template x-for="(f,ri) in bloco" :key="'dr'+bi+'_'+ri">
                         <div class="flex items-center justify-center gap-1">
                           <div class="flex gap-1"><template x-for="n in f.esq" :key="'de'+n">
-                            <button type="button" class="min-w-[40px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeDestino(n)" @click="atribuirSeat(n)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:40px" x-text="(paxNoDestino(n)?.nome||'').split(' ')[0]"></span></button>
+                            <button type="button" class="min-w-[40px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeDestino(n)" @click="atribuirSeat(n)" :draggable="!!paxNoDestino(n)" x-on:dragstart="paxNoDestino(n)&&dragStart(paxNoDestino(n).passageiro_id)" x-on:dragend="dragEnd()" x-on:dragover.prevent x-on:drop.prevent="dropSeat(n)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:40px" x-text="(paxNoDestino(n)?.nome||'').split(' ')[0]"></span></button>
                           </template></div>
                           <div class="w-3 text-center text-[9px] text-emerald-300" x-show="f.dir.length">║</div>
                           <div class="flex gap-1"><template x-for="n in f.dir" :key="'dd'+n">
-                            <button type="button" class="min-w-[40px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeDestino(n)" @click="atribuirSeat(n)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:40px" x-text="(paxNoDestino(n)?.nome||'').split(' ')[0]"></span></button>
+                            <button type="button" class="min-w-[40px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeDestino(n)" @click="atribuirSeat(n)" :draggable="!!paxNoDestino(n)" x-on:dragstart="paxNoDestino(n)&&dragStart(paxNoDestino(n).passageiro_id)" x-on:dragend="dragEnd()" x-on:dragover.prevent x-on:drop.prevent="dropSeat(n)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:40px" x-text="(paxNoDestino(n)?.nome||'').split(' ')[0]"></span></button>
                           </template></div>
                         </div>
                       </template>
@@ -138,11 +138,11 @@
                   <template x-for="(f,ri) in fileiras(destino)" :key="'dfn'+ri">
                     <div class="flex items-center justify-center gap-1">
                       <div class="flex gap-1.5"><template x-for="n in f.esq" :key="'dfe'+n">
-                        <button type="button" class="w-11 h-10 rounded-t-xl rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeDestino(n)" @click="atribuirSeat(n)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:42px" x-text="(paxNoDestino(n)?.nome||'').split(' ')[0]"></span></button>
+                        <button type="button" class="w-11 h-10 rounded-t-xl rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeDestino(n)" @click="atribuirSeat(n)" :draggable="!!paxNoDestino(n)" x-on:dragstart="paxNoDestino(n)&&dragStart(paxNoDestino(n).passageiro_id)" x-on:dragend="dragEnd()" x-on:dragover.prevent x-on:drop.prevent="dropSeat(n)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:42px" x-text="(paxNoDestino(n)?.nome||'').split(' ')[0]"></span></button>
                       </template></div>
                       <div class="w-5 text-center text-[9px] text-emerald-300">║</div>
                       <div class="flex gap-1.5"><template x-for="n in f.dir" :key="'dfd'+n">
-                        <button type="button" class="w-11 h-10 rounded-t-xl rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeDestino(n)" @click="atribuirSeat(n)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:42px" x-text="(paxNoDestino(n)?.nome||'').split(' ')[0]"></span></button>
+                        <button type="button" class="w-11 h-10 rounded-t-xl rounded-b-md border-2 text-[10px] font-bold leading-tight" :class="classeDestino(n)" @click="atribuirSeat(n)" :draggable="!!paxNoDestino(n)" x-on:dragstart="paxNoDestino(n)&&dragStart(paxNoDestino(n).passageiro_id)" x-on:dragend="dragEnd()" x-on:dragover.prevent x-on:drop.prevent="dropSeat(n)"><span x-text="n"></span><span class="block text-[8px] font-normal truncate" style="max-width:42px" x-text="(paxNoDestino(n)?.nome||'').split(' ')[0]"></span></button>
                       </template></div>
                     </div>
                   </template>
@@ -219,6 +219,7 @@ function transfTool(){
     destino: @js($dados['destino'] ?? null),
     atrib: {},
     selPax: null,
+    dragPax: null,
     salvando: false,
 
     seatsNamed(layout){ const txt=(layout||'').replace(/\r/g,''); const out=[];
@@ -246,12 +247,29 @@ function transfTool(){
       const prox=this.pax.find(p=>!p.colo && !this.atrib[p.passageiro_id] && p.passageiro_id!==this.selPax);
       this.selPax = prox?prox.passageiro_id:null;
     },
+    dragStart(id){ this.dragPax=id; },
+    dragEnd(){ this.dragPax=null; },
+    dropSeat(seat){ if(!this.destino) return; if(this.destinoOcupadaOutros(seat)) return;
+      const id=this.dragPax; if(!id){ return; }
+      const ocupante=this.paxNoDestino(seat); const atual=this.atrib[id];
+      if(ocupante && String(ocupante.passageiro_id)!==String(id)){ if(atual){ this.atrib[ocupante.passageiro_id]=atual; } else { delete this.atrib[ocupante.passageiro_id]; } }
+      this.atrib[id]=String(seat); this.dragPax=null;
+    },
     limparPax(id){ delete this.atrib[id]; },
     organizar(){ this.atrib={}; this.selPax=null;
-      const livres=this.seatsOf(this.destino).filter(s=>!this.destinoOcupadaOutros(s));
-      const ordem=this.seatsOf(this.origem); const idx=s=>{const i=ordem.indexOf(String(s)); return i<0?99999:i;};
-      const fila=this.pax.filter(p=>!p.colo).slice().sort((a,b)=>idx(a.poltrona)-idx(b.poltrona));
-      let i=0; fila.forEach(p=>{ if(i<livres.length) this.atrib[p.passageiro_id]=livres[i++]; });
+      const ocup=s=>this.destinoOcupadaOutros(s);
+      const destSeats=this.seatsOf(this.destino); const destSet=new Set(destSeats.map(String));
+      const usados=new Set(); const pend=[];
+      // 1a passada: MESMA poltrona (mesmo rotulo) se existir e estiver livre no destino
+      this.pax.filter(p=>!p.colo).forEach(p=>{ const lbl=String(p.poltrona||'');
+        if(lbl && destSet.has(lbl) && !ocup(lbl) && !usados.has(lbl)){ this.atrib[p.passageiro_id]=lbl; usados.add(lbl); }
+        else pend.push(p); });
+      // 2a passada: posicao EQUIVALENTE (poltrona livre mais proxima do mesmo indice da origem)
+      const ordemO=this.seatsOf(this.origem); const idxO=s=>{const i=ordemO.indexOf(String(s)); return i<0?99999:i;};
+      pend.sort((a,b)=>idxO(a.poltrona)-idxO(b.poltrona));
+      pend.forEach(p=>{ const i=idxO(p.poltrona); let best=null,bd=1e9;
+        destSeats.forEach((s,j)=>{ if(ocup(s)||usados.has(String(s)))return; const d=Math.abs(j-i); if(d<bd){bd=d;best=String(s);} });
+        if(best){ this.atrib[p.passageiro_id]=best; usados.add(best); } });
     },
     limparTudo(){ this.atrib={}; this.selPax=null; },
 
