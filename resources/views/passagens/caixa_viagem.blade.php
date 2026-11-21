@@ -23,6 +23,12 @@
   .lin{display:flex;justify-content:space-between;gap:16px;padding:2px 0}
   .lin.g{font-weight:900;font-size:15px;border-top:2px solid #111;margin-top:5px;padding-top:6px}
   .leg{margin-top:12px;font-size:10px;color:#555}
+  .prest{margin-top:16px;max-width:430px;border:2px solid #0b3b6f;border-radius:10px;padding:10px 14px;background:#f4f8ff}
+  .prest-h{font-size:12px;font-weight:bold;color:#0b3b6f;letter-spacing:.03em;text-align:center;margin-bottom:8px}
+  .prest-row{display:flex;justify-content:space-between;gap:16px;padding:4px 0;border-bottom:1px dotted #c3d2e6;font-size:12.5px}
+  .prest-row b{white-space:nowrap}
+  .prest-row.tot{border-top:2px solid #0b3b6f;border-bottom:none;margin-top:4px;padding-top:7px;font-weight:bold;color:#b45309}
+  .prest-row.liq{border-bottom:none;margin-top:6px;padding:8px 10px;background:#eafaf0;border-radius:7px;font-weight:bold;font-size:15px;color:#067d3b}
   .leg span{display:inline-block;padding:1px 7px;border-radius:4px;margin-right:6px}
   .bar{margin-bottom:12px;display:flex;gap:8px}
   .btn{display:inline-block;padding:7px 14px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;cursor:pointer;font-weight:700;text-decoration:none;color:#111}
@@ -61,6 +67,19 @@
     @if($totDevolvido > 0.009)<div class="lin" style="color:#b91c1c"><span>Devolvido (fora do caixa)</span><b>- R$ {{ number_format($totDevolvido,2,',','.') }}</b></div>@endif
   </div>
 </div>
+
+@if($prestacao ?? false)
+<div class="prest">
+  <div class="prest-h">📋 PRESTAÇÃO DE CONTAS — {{ strtoupper($prestacao->nome) }}</div>
+  <div class="prest-row"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacao->bruto,2,',','.') }}</b></div>
+  <div class="prest-row"><span>Comissão de Agência ({{ $prestacao->pct }}%)</span><b>− R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
+  <div class="prest-row"><span>Débito Prop.</span><b>− R$ {{ number_format($prestacao->debito,2,',','.') }}</b></div>
+  <div class="prest-row"><span>Cartão de crédito</span><b>− R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
+  <div class="prest-row"><span>Crédito Prop. (Entradas)</span><b>− R$ {{ number_format($prestacao->credProp,2,',','.') }}</b></div>
+  <div class="prest-row tot"><span>Total Geral de Despesas</span><b>R$ {{ number_format($prestacao->despesas,2,',','.') }}</b></div>
+  <div class="prest-row liq"><span>TOTAL GERAL LÍQUIDO</span><b>R$ {{ number_format($prestacao->liquido,2,',','.') }}</b></div>
+</div>
+@endif
 
 <div class="leg">
   Legenda:
