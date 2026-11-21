@@ -222,7 +222,8 @@ function transfTool(){
     dragPax: null,
     salvando: false,
 
-    seatsNamed(layout){ const txt=(layout||'').replace(/\r/g,''); const out=[];
+    parseSeat(s){ s=String(s); const m=s.match(/(\d+)/); const row=m?parseInt(m[1],10):9999; const c=(s.match(/[A-Za-z]+$/)||[''])[0].toUpperCase(); return {row:row,col:c}; },
+        seatsNamed(layout){ const txt=(layout||'').replace(/\r/g,''); const out=[];
       txt.split(/\n[ \t]*\n/).forEach(b=>b.split('\n').filter(l=>l.trim()).forEach(linha=>{ const p=linha.split('|');
         (p[0]||'').trim().split(/\s+/).filter(Boolean).forEach(s=>out.push(s));
         (p[1]||'').trim().split(/\s+/).filter(Boolean).forEach(s=>out.push(s)); })); return out; },
@@ -264,11 +265,12 @@ function transfTool(){
       this.pax.filter(p=>!p.colo).forEach(p=>{ const lbl=String(p.poltrona||'');
         if(lbl && destSet.has(lbl) && !ocup(lbl) && !usados.has(lbl)){ this.atrib[p.passageiro_id]=lbl; usados.add(lbl); }
         else pend.push(p); });
-      // 2a passada: posicao EQUIVALENTE (poltrona livre mais proxima do mesmo indice da origem)
-      const ordemO=this.seatsOf(this.origem); const idxO=s=>{const i=ordemO.indexOf(String(s)); return i<0?99999:i;};
-      pend.sort((a,b)=>idxO(a.poltrona)-idxO(b.poltrona));
-      pend.forEach(p=>{ const i=idxO(p.poltrona); let best=null,bd=1e9;
-        destSeats.forEach((s,j)=>{ if(ocup(s)||usados.has(String(s)))return; const d=Math.abs(j-i); if(d<bd){bd=d;best=String(s);} });
+      // 2a passada: mesma FILA (numero) + mesmo LADO (J/M/C); grupos ficam juntos
+      pend.sort((a,b)=>{ const A=this.parseSeat(a.poltrona), B=this.parseSeat(b.poltrona); return (A.row-B.row) || (Number(a.passagem_id)-Number(b.passagem_id)); });
+      pend.forEach(p=>{ const t=this.parseSeat(p.poltrona); let best=null,bs=1e18;
+        destSeats.forEach(s=>{ if(ocup(s)||usados.has(String(s)))return; const d=this.parseSeat(s);
+          const score=Math.abs(d.row-t.row)*100 + ((d.col===t.col)?0:10) + ((d.col&&t.col)?0:1);
+          if(score<bs){ bs=score; best=String(s); } });
         if(best){ this.atrib[p.passageiro_id]=best; usados.add(best); } });
     },
     limparTudo(){ this.atrib={}; this.selPax=null; },
