@@ -1444,6 +1444,126 @@ class PassagemController extends Controller
         return redirect()->route('passagens.show', $passagem)->with('ok', $msg);
     }
 
+    /** FASE 1 — Transferência GLOBAL de transporte: move TODOS os passageiros de uma viagem pra outra lancha. */
+    public function transferencia(Request $request)
+    {
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+
+        $embarcacoes = Embarcacao::where('ativo', true)->where('usa_poltrona', true)->orderBy('nome')
+            ->get(['id', 'nome', 'usa_poltrona', 'poltronas_qtd', 'poltronas_colunas', 'poltronas_lista']);
+
+        $origemId = $request->integer('origem_id') ?: null;
+        $destinoId = $request->integer('destino_id') ?: null;
+        $dataViagem = $request->input('data_viagem');
+
+        $mapEmb = fn ($e) => $e ? [
+            'id' => $e->id, 'nome' => $e->nome,
+            'qtd' => (int) $e->poltronas_qtd, 'colunas' => (int) ($e->poltronas_colunas ?: 4),
+            'layout' => (string) ($e->poltronas_lista ?? ''),
+        ] : null;
+
+        // datas disponiveis da embarcacao de origem (viagens com passageiros)
+        $datas = $origemId
+            ? Passagem::where('embarcacao_id', $origemId)->where('cancelada', false)->where('transferida', false)
+                ->whereNotNull('data_viagem')->whereDate('data_viagem', '>=', now()->subMonthNoOverflow()->toDateString())
+                ->select('data_viagem')->distinct()->orderBy('data_viagem')->pluck('data_viagem')
+            : collect();
+
+        $dados = null;
+        if ($origemId && $dataViagem) {
+            $origem = Embarcacao::find($origemId);
+            $passagens = Passagem::where('embarcacao_id', $origemId)->where('cancelada', false)->where('transferida', false)
+                ->whereDate('data_viagem', $dataViagem)
+                ->with(['passageiros:id,passagem_id,nome,poltrona,papel,tipo,cancelado'])
+                ->orderBy('id')->get();
+
+            $pax = [];
+            foreach ($passagens as $p) {
+                foreach ($p->passageiros as $x) {
+                    if ($x->cancelado) continue;
+                    $pax[] = [
+                        'passageiro_id' => $x->id,
+                        'passagem_id' => $p->id,
+                        'nome' => $x->nome,
+                        'tipo' => (string) ($x->papel ?: $x->tipo),
+                        'colo' => ($x->papel ?? '') === 'colo',
+                        'poltrona' => (string) ($x->poltrona ?? ''),
+                    ];
+                }
+            }
+
+            $destino = $destinoId ? Embarcacao::find($destinoId) : null;
+            $ocupDestino = $destino
+                ? $this->ocupadas($destino->id, $dataViagem, null)->map(fn ($v) => (string) $v)->values()->all()
+                : [];
+
+            $dados = [
+                'origem' => $mapEmb($origem),
+                'destino' => $destino ? array_merge($mapEmb($destino), ['ocupadas' => $ocupDestino]) : null,
+                'passageiros' => $pax,
+                'data_viagem' => $dataViagem,
+            ];
+        }
+
+        return view('passagens.transferencia', compact('embarcacoes', 'origemId', 'destinoId', 'dataViagem', 'dados', 'datas'));
+    }
+
+    /** FASE 1 — processa a transferência global: atualiza embarcação + poltrona NO LUGAR (sem cancelar/recriar bilhete). */
+    public function transferenciaProcessar(Request $request)
+    {
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+
+        $data = $request->validate([
+            'origem_id' => 'required|integer',
+            'destino_id' => 'required|integer|different:origem_id',
+            'data_viagem' => 'required|date',
+            'mapa' => 'required|array|min:1',
+            'mapa.*.passageiro_id' => 'required|integer',
+            'mapa.*.poltrona' => 'nullable|string|max:10',
+        ]);
+
+        $destino = Embarcacao::findOrFail($data['destino_id']);
+
+        // valida conflitos: poltronas novas únicas + não ocupadas por OUTRAS viagens no destino
+        $ocupDestino = $this->ocupadas($destino->id, $data['data_viagem'], null)->map(fn ($v) => (string) $v)->all();
+        $novas = [];
+        foreach ($data['mapa'] as $m) {
+            $pol = trim((string) ($m['poltrona'] ?? ''));
+            if ($pol === '') continue; // colo / sem poltrona
+            if (in_array($pol, $novas, true)) abort(422, "Poltrona repetida na transferência: $pol");
+            if (in_array($pol, $ocupDestino, true)) abort(422, "A poltrona $pol já está ocupada no transporte de destino.");
+            $novas[] = $pol;
+        }
+
+        $poltronaPorPax = collect($data['mapa'])->keyBy('passageiro_id');
+        $paxIds = $poltronaPorPax->keys()->all();
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($data, $destino, $poltronaPorPax, $paxIds) {
+            $passagens = Passagem::where('embarcacao_id', $data['origem_id'])
+                ->whereDate('data_viagem', $data['data_viagem'])
+                ->where('cancelada', false)->where('transferida', false)
+                ->whereHas('passageiros', fn ($q) => $q->whereIn('id', $paxIds))
+                ->with('passageiros')->get();
+
+            foreach ($passagens as $p) {
+                $p->forceFill([
+                    'embarcacao_id' => $destino->id,
+                    'viagem_id' => null,
+                ])->save();
+                foreach ($p->passageiros as $x) {
+                    if ($poltronaPorPax->has($x->id)) {
+                        $nova = trim((string) ($poltronaPorPax[$x->id]['poltrona'] ?? ''));
+                        $x->forceFill(['poltrona' => $nova !== '' ? $nova : null])->save();
+                    }
+                }
+            }
+        });
+
+        return redirect()->route('passagens.transferencia', [
+            'origem_id' => $data['destino_id'], 'destino_id' => null, 'data_viagem' => $data['data_viagem'],
+        ])->with('ok', 'Transferência concluída: passageiros movidos para '.$destino->nome.'. Check-in, manifesto e etiquetas já usam a lancha e poltrona novas.');
+    }
+
     /** Transfere a passagem pra outro transporte: cria nova (paga) no destino e lanca a despesa no transporte de origem. */
     public function transferir(Request $request, Passagem $passagem)
     {

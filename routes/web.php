@@ -100,6 +100,11 @@ Route::middleware('auth')->group(function () {
     // Cliente faturado: busca + cadastro rapido direto da venda (JSON)
     Route::get('/passagens/clientes-faturado/buscar', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'buscar'])->name('passagens.cliente-faturado.buscar')->middleware('perm:passagem');
     Route::post('/passagens/clientes-faturado', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'criarRapido'])->name('passagens.cliente-faturado.criar')->middleware('perm:passagem');
+    // Clientes faturado (a receber) — operador lista / cadastra / edita
+    Route::get('/clientes-faturado', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'index'])->name('clientes-faturado')->middleware('perm:passagem');
+    Route::post('/clientes-faturado', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'store'])->name('clientes-faturado.store')->middleware('perm:passagem');
+    Route::post('/clientes-faturado/{cliente}', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'update'])->name('clientes-faturado.update')->middleware('perm:passagem');
+    Route::delete('/clientes-faturado/{cliente}', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'destroy'])->name('clientes-faturado.destroy')->middleware('perm:passagem');
     Route::get('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteCreate'])->name('passagens.camarote.create')->middleware('perm:camarote');
     Route::post('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteStore'])->name('passagens.camarote.store')->middleware('perm:camarote');
     Route::get('/passagens/camarotes', [\App\Http\Controllers\PassagemController::class, 'camarotesMapa'])->name('passagens.camarotes')->middleware('perm:camarote');
@@ -107,6 +112,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/lista', [\App\Http\Controllers\PassagemController::class, 'manifesto'])->name('passagens.manifesto')->middleware('perm:passagem.ver');
     Route::get('/passagens/caixa-viagem', [\App\Http\Controllers\PassagemController::class, 'caixaViagem'])->name('passagens.caixa-viagem')->middleware('perm:passagem.ver');
     Route::get('/passagens/assentos', [\App\Http\Controllers\PassagemController::class, 'assentos'])->name('passagens.assentos')->middleware('perm:passagem.ver');
+    // Transferencia GLOBAL de transporte (Fase 1) — antes das rotas /passagens/{passagem}
+    Route::get('/passagens/transferencia', [\App\Http\Controllers\PassagemController::class, 'transferencia'])->name('passagens.transferencia')->middleware('perm:admin');
+    Route::post('/passagens/transferencia', [\App\Http\Controllers\PassagemController::class, 'transferenciaProcessar'])->name('passagens.transferencia.processar')->middleware('perm:admin');
     Route::get('/passagens/gratuidade', [\App\Http\Controllers\PassagemController::class, 'gratuidade'])->name('passagens.gratuidade')->middleware('perm:passagem');
     Route::post('/passagens/poltrona-hold', [\App\Http\Controllers\PassagemController::class, 'poltronaHold'])->name('passagens.poltrona-hold')->middleware('perm:passagem');
     Route::post('/passagens/editar-massa', [\App\Http\Controllers\PassagemController::class, 'editarMassa'])->name('passagens.editar-massa')->middleware('perm:passagem.ver');
@@ -223,11 +231,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/cadastros', [CadastroController::class, 'index'])->name('cadastros');
         Route::post('/cadastros/{tipo}', [CadastroController::class, 'store'])->name('cadastros.store');
         Route::delete('/cadastros/{tipo}/{id}', [CadastroController::class, 'destroy'])->name('cadastros.destroy');
-        // Clientes faturado (a receber) — listar / cadastrar / editar
-        Route::get('/clientes-faturado', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'index'])->name('clientes-faturado');
-        Route::post('/clientes-faturado', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'store'])->name('clientes-faturado.store');
-        Route::post('/clientes-faturado/{cliente}', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'update'])->name('clientes-faturado.update');
-        Route::delete('/clientes-faturado/{cliente}', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'destroy'])->name('clientes-faturado.destroy');
         Route::get('/transportes', [CadastroController::class, 'transportes'])->name('transportes');
         Route::post('/transportes/importar', [CadastroController::class, 'importarTransportes'])->name('transportes.importar');
         Route::post('/embarcacoes/{embarcacao}', [CadastroController::class, 'salvarEmbarcacao'])->name('embarcacoes.salvar');

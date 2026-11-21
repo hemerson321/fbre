@@ -17,6 +17,8 @@
         <a href="{{ route('passagens.caixa-viagem', request()->query()) }}" target="_blank" class="block px-3 py-2 text-sm hover:bg-slate-50 border-t bg-emerald-50">💰 Caixa por viagem <div class="text-[11px] text-slate-500">vendedor · valor · forma · totais do caixa</div></a>
       </div>
     </div>
+    @if(auth()->user()->isAdmin() || auth()->user()->isSuper())<a href="{{ route('passagens.transferencia') }}" class="btn btn-sm bg-white/20 text-white" title="Transferir todos os passageiros de uma viagem para outra lancha">🔄 Transferir</a>@endif
+    <a href="{{ route('clientes-faturado') }}" class="btn btn-sm bg-white/20 text-white" title="Clientes faturado (a receber)">🧾 Faturados</a>
     <a href="{{ route('passagens.create') }}" class="btn btn-sm bg-white/20 text-white">+ Nova</a>
   </div>
 

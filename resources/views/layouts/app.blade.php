@@ -153,7 +153,7 @@ document.addEventListener('alpine:init', () => {
           ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
       ];
       if ($u->temModulo('passagem')) array_splice($adm, 4, 0, [['r'=>route('admin.rotas'), 'l'=>'Rotas e horários', 'i'=>'🗺️']]);
-      if ($u->temModulo('passagem')) $adm[] = ['r'=>route('admin.clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
+      if ($u->temModulo('passagem')) $adm[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
       if ($modOn('camarote')) $adm[] = ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'];
       $adm[] = ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'];
       if ($u->temModulo('passagem')) $adm[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];

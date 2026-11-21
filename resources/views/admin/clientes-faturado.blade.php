@@ -18,7 +18,7 @@
   @if(session('erro'))<div class="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 text-sm">{{ session('erro') }}</div>@endif
 
   {{-- NOVO CLIENTE --}}
-  <form method="post" action="{{ route('admin.clientes-faturado.store') }}" class="card p-3 space-y-2" x-data="{doc:'', get tipo(){ const d=this.doc.replace(/\D/g,''); return d.length===14?'CNPJ':(d.length>=11?'CPF':''); }}">
+  <form method="post" action="{{ route('clientes-faturado.store') }}" class="card p-3 space-y-2" x-data="{doc:'', get tipo(){ const d=this.doc.replace(/\D/g,''); return d.length===14?'CNPJ':(d.length>=11?'CPF':''); }}">
     @csrf
     <div class="font-semibold text-sm text-slate-600">➕ Novo cliente faturado</div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -50,11 +50,11 @@
             </div>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" @click="editId = (editId==={{ $c->id }} ? null : {{ $c->id }})">Editar</button>
-          <form method="post" action="{{ route('admin.clientes-faturado.destroy',$c) }}" onsubmit="return confirm('Remover o cliente {{ $c->nome }}?')">@csrf @method('DELETE')<button class="btn btn-ghost btn-sm text-rose-600">🗑</button></form>
+          <form method="post" action="{{ route('clientes-faturado.destroy',$c) }}" onsubmit="return confirm('Remover o cliente {{ $c->nome }}?')">@csrf @method('DELETE')<button class="btn btn-ghost btn-sm text-rose-600">🗑</button></form>
         </div>
 
         {{-- editar inline --}}
-        <form method="post" action="{{ route('admin.clientes-faturado.update',$c) }}" class="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2 space-y-2" x-show="editId==={{ $c->id }}" x-cloak x-data="{doc:@js($c->documento), get tipo(){ const d=(this.doc||'').replace(/\D/g,''); return d.length===14?'CNPJ':(d.length>=11?'CPF':''); }}">
+        <form method="post" action="{{ route('clientes-faturado.update',$c) }}" class="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2 space-y-2" x-show="editId==={{ $c->id }}" x-cloak x-data="{doc:@js($c->documento), get tipo(){ const d=(this.doc||'').replace(/\D/g,''); return d.length===14?'CNPJ':(d.length>=11?'CPF':''); }}">
           @csrf
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div><label class="label">Nome *</label><input name="nome" required value="{{ $c->nome }}" class="input w-full"></div>

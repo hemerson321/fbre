@@ -52,7 +52,7 @@
     $tools[] = ['r'=>route('admin.cadastros'), 'i'=>'🗂️', 't'=>'Cadastros gerais'];
     if ($modOn('camarote')) $tools[] = ['r'=>route('admin.camarotes'), 'i'=>'🛏️', 't'=>'Suítes / Camarotes'];
     if ($u->temModulo('passagem')) $tools[] = ['r'=>route('admin.rotas'), 'i'=>'🗺️', 't'=>'Rotas e horários'];
-    if ($u->temModulo('passagem')) $tools[] = ['r'=>route('admin.clientes-faturado'), 'i'=>'🧾', 't'=>'Clientes faturado'];
+    if ($u->temModulo('passagem')) $tools[] = ['r'=>route('clientes-faturado'), 'i'=>'🧾', 't'=>'Clientes faturado'];
     $tools[] = ['r'=>route('admin.empresa'), 'i'=>'🏢', 't'=>'Minha empresa'];
   }
   if ($u->isSuper() && ! config('fbre.single')) $tools[] = ['r'=>route('super.empresas'), 'i'=>'🛠️', 't'=>'Empresas'];
