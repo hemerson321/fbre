@@ -153,12 +153,22 @@ class CaixaController extends Controller
             ? \App\Models\Passagem::whereIn('id', $passIdsMov)->with(['passageiros:id,passagem_id,papel,tipo,cancelado'])->get(['id', 'origem', 'destino', 'forma', 'cancelada'])->keyBy('id')
             : collect();
 
-        // Manifesto (modelo prestacao) das PASSAGENS do filtro do caixa — SEM agente externo (nao entra no caixa).
-        $passIdsCx = (clone $base)->where('modulo', 'passagem')->distinct()->pluck('origem_id')->filter()->all();
-        $passCx = $passIdsCx
-            ? \App\Models\Passagem::whereIn('id', $passIdsCx)->when(! $ehRelatorio, fn ($q) => $q->whereNull('revendedor_id'))
-                ->with(['passageiros', 'operador', 'pagamentos', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])->orderByDesc('id')->get()
-            : collect();
+        // Manifesto (modelo prestacao). CAIXA: sem agente externo. RELATORIO: TODAS as passagens do filtro (com agente externo).
+        $relWith = ['passageiros', 'operador', 'pagamentos', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'];
+        if ($ehRelatorio) {
+            $passCx = \App\Models\Passagem::where('cancelada', false)
+                ->when($encIds === null && ! $dataViagem, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
+                ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+                ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+                ->when($userId, fn ($q) => $q->where('user_id', $userId))
+                ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+                ->with($relWith)->orderByDesc('id')->get();
+        } else {
+            $passIdsCx = (clone $base)->where('modulo', 'passagem')->distinct()->pluck('origem_id')->filter()->all();
+            $passCx = $passIdsCx
+                ? \App\Models\Passagem::whereIn('id', $passIdsCx)->whereNull('revendedor_id')->with($relWith)->orderByDesc('id')->get()
+                : collect();
+        }
         $linhasCaixa = \App\Support\ManifestoCaixa::dados($passCx)['linhas'];
 
         // VENDAS (BRUTO): valor total vendido no filtro, independente de ter entrado no caixa (ex.: venda de agente ainda nao repassada)

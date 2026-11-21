@@ -130,9 +130,11 @@ class Passagem extends Model
     // ---------------- filtros ----------------
     public function scopeFiltrar(Builder $q, array $f): Builder
     {
+        // Data da viagem (ou viagem_id) PREVALECE: quando setada, ignora o periodo (created_at).
+        $ignoraPeriodo = ! empty($f['data_viagem']) || ! empty($f['viagem_id']);
         return $q
-            ->when($f['inicio'] ?? null, fn ($q, $v) => $q->where('created_at', '>=', $v.' '.(($f['hora_inicio'] ?? '') ?: '00:00').':00'))
-            ->when($f['fim'] ?? null, fn ($q, $v) => $q->where('created_at', '<=', $v.' '.(($f['hora_fim'] ?? '') ?: '23:59').':59'))
+            ->when(($f['inicio'] ?? null) && ! $ignoraPeriodo, fn ($q) => $q->where('created_at', '>=', $f['inicio'].' '.(($f['hora_inicio'] ?? '') ?: '00:00').':00'))
+            ->when(($f['fim'] ?? null) && ! $ignoraPeriodo, fn ($q) => $q->where('created_at', '<=', $f['fim'].' '.(($f['hora_fim'] ?? '') ?: '23:59').':59'))
             ->when($f['origem'] ?? null, fn ($q, $v) => $q->where('origem', $v))
             ->when($f['destino'] ?? null, fn ($q, $v) => $q->where('destino', $v))
             ->when($f['embarcacao_id'] ?? null, fn ($q, $v) => $q->where('embarcacao_id', $v))

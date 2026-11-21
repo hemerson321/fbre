@@ -157,7 +157,7 @@
   @endif
 
   {{-- Passagens do periodo no modelo da prestacao (sem agente externo) --}}
-  <div class="px-3 pt-3 pb-1 font-bold text-[11px] text-slate-400 uppercase">🧾 Passagens do período (sem agente externo)</div>
+  <div class="px-3 pt-3 pb-1 font-bold text-[11px] text-slate-400 uppercase">🧾 Passagens do período {{ ($ehRelatorio ?? false) ? '(com agente externo)' : '(sem agente externo)' }}</div>
   @include('passagens._manifesto_tabela', ['linhas' => $linhasCaixa])
   <div class="px-3 py-2 text-[10px] text-slate-500 flex flex-wrap gap-2 border-b">Legenda:
     <span style="background:#dbeafe;padding:1px 7px;border-radius:4px">Agente/Município</span>
