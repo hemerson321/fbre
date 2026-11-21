@@ -55,6 +55,7 @@ class CadastroController extends Controller
             'produtos' => Produto::where('modulo', 'encomenda')->orderBy('nome')->get(),
             'produtosFrete' => Produto::where('modulo', 'frete')->orderBy('nome')->get(),
             'estacoes' => Estacao::orderBy('nome')->get(),
+            'usuarios' => \App\Models\User::where('empresa_id', \App\Support\Tenant::id())->where('super_admin', false)->orderBy('name')->get(['id', 'name', 'estacao_id', 'ativo']),
             'categorias' => AvulsoCategoria::orderBy('ordem')->orderBy('nome')->get(),
             'tiposPassageiro' => TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('ordem')->orderBy('nome')->get(),
             'taxasEmbarque' => TaxaEmbarque::where('ativo', true)->orderBy('origem')->orderBy('destino')->get(),
@@ -358,6 +359,24 @@ class CadastroController extends Controller
         ]);
         $estacao->update(['nome' => $data['nome'], 'colunas' => (int) ($data['colunas'] ?? 48)]);
         return back()->with('ok', 'Estação atualizada.');
+    }
+
+    /** Vincula um operador a esta impressora (vários operadores podem usar a mesma). */
+    public function estacaoVincular(Request $request, Estacao $estacao)
+    {
+        $data = $request->validate(['user_id' => 'required|integer']);
+        $u = \App\Models\User::where('empresa_id', Tenant::id())->where('super_admin', false)->findOrFail($data['user_id']);
+        $u->update(['estacao_id' => $estacao->id]);
+        return back()->with('ok', $u->name.' agora imprime na estação '.$estacao->nome.'.');
+    }
+
+    /** Remove um operador desta impressora. */
+    public function estacaoDesvincular(Request $request, Estacao $estacao)
+    {
+        $data = $request->validate(['user_id' => 'required|integer']);
+        $u = \App\Models\User::where('empresa_id', Tenant::id())->where('super_admin', false)->findOrFail($data['user_id']);
+        if ((int) $u->estacao_id === (int) $estacao->id) $u->update(['estacao_id' => null]);
+        return back()->with('ok', $u->name.' removido da estação '.$estacao->nome.'.');
     }
 
     /**

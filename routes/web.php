@@ -245,6 +245,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/taxas-embarque', [CadastroController::class, 'salvarTaxasEmbarque'])->name('taxas-embarque.salvar');
         Route::post('/estacoes', [CadastroController::class, 'novaEstacao'])->name('estacoes.store');
         Route::post('/estacoes/{estacao}/renomear', [CadastroController::class, 'renomearEstacao'])->name('estacoes.renomear');
+        Route::post('/estacoes/{estacao}/vincular', [CadastroController::class, 'estacaoVincular'])->name('estacoes.vincular');
+        Route::post('/estacoes/{estacao}/desvincular', [CadastroController::class, 'estacaoDesvincular'])->name('estacoes.desvincular');
         Route::post('/zerar', [CadastroController::class, 'zerar'])->name('zerar');
         Route::post('/excluir-vendas', [CadastroController::class, 'excluirVendas'])->name('excluir-vendas');
         Route::get('/rotas', [RotaController::class, 'index'])->name('rotas');
