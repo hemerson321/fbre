@@ -107,7 +107,8 @@
         @php
           $pagLista = $p->passageiros->filter(fn($x)=>($x->papel ?? '')!=='colo');
           $nCanc = $pagLista->filter(fn($x)=>$x->cancelado)->count();
-          $paxResumo = $pagLista->map(function($x){ $t = e(trim((string)$x->nome)).($x->poltrona ? ' · '.e($x->poltrona) : ''); return $x->cancelado ? '<span class="line-through text-rose-500">'.$t.' ✖</span>' : $t; })->filter()->implode('  |  ');
+          $paxResumo = $pagLista->map(function($x){ $t = e(trim((string)$x->nome)).($x->poltrona ? ' · '.e($x->poltrona) : ''); return $x->cancelado ? '<span class="line-through text-rose-500">'.$t.' ✖</span>' : $t; })->filter()->implode('  ·  ');
+          $paxTitle = $pagLista->map(fn($x)=> trim((string)$x->nome).($x->poltrona ? ' ('.$x->poltrona.')' : '').($x->cancelado ? ' [cancelado]' : ''))->filter()->implode(', ');
           $corP = null;
           if ($p->cancelada) $corP='#fee2e2';
           elseif ($p->forma==='faturado') $corP='#dbeafe';
@@ -119,9 +120,9 @@
           <td class="p-2 whitespace-nowrap"><a href="{{ route('passagens.show',$p) }}" class="font-semibold text-slate-800 hover:underline">@if($p->tipo==='camarote')🛏️ @endif#{{ $p->numeroFormatado() }}</a></td>
           <td class="p-2 whitespace-nowrap">{{ $p->origem }} → {{ $p->destino }}</td>
           <td class="p-2 whitespace-nowrap text-xs text-slate-500">🚤 {{ $p->embarcacao?->nome ?? '—' }}@if($p->data_viagem)<br>📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</td>
-          <td class="p-2 min-w-[180px]">
-            @if($paxResumo)<div class="text-slate-700 font-medium leading-snug">👤 {!! $paxResumo !!}@if($nCanc) <span class="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-700">✖ {{ $nCanc }}</span>@endif</div>@endif
-            <div class="text-[11px] text-slate-400">{{ $p->qtd_passageiros }} pax · {{ $p->comprador_nome ?: '—' }}@if($p->embarcou) · <span class="text-emerald-600 font-semibold">✅ check-in</span>@elseif(!$p->cancelada) · <span class="text-amber-600 font-semibold">⏳ sem check-in</span>@endif</div>
+          <td class="p-2 align-top" style="min-width:200px;max-width:320px">
+            @if($paxResumo)<div class="text-[12px] text-slate-700 leading-snug" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden" title="{{ $paxTitle }}">{!! $paxResumo !!}</div>@endif
+            <div class="text-[11px] text-slate-400 mt-0.5 whitespace-nowrap">👤 {{ $p->qtd_passageiros }} pax · {{ \Illuminate\Support\Str::limit($p->comprador_nome ?: '—', 18) }}@if($nCanc) · <span class="text-rose-600 font-semibold">✖ {{ $nCanc }}</span>@endif @if($p->embarcou)· <span class="text-emerald-600 font-semibold">✅</span>@elseif(!$p->cancelada)· <span class="text-amber-600 font-semibold">⏳</span>@endif</div>
           </td>
           <td class="p-2 whitespace-nowrap text-xs">{{ $p->operador?->name }}</td>
           <td class="p-2 text-right whitespace-nowrap font-bold">R$ {{ number_format($p->total,2,',','.') }}</td>
