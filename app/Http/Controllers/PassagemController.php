@@ -781,7 +781,7 @@ class PassagemController extends Controller
     public function caixaViagem(Request $request)
     {
         $f = $this->filtros($request);
-        unset($f['cancelada']); // inclui as devolvidas/canceladas no relatorio
+        $f['cancelada'] = 'todas'; // inclui as devolvidas/canceladas no relatorio
         $passagens = Passagem::filtrar($f)
             ->with(['passageiros', 'operador', 'pagamentos', 'embarcacao', 'camarote', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])
             ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
