@@ -185,8 +185,9 @@
                 <select class="field !min-h-0 py-1 text-sm w-full" x-model="p.tipo_id" @change="aplicarTipo(p)">
                   @foreach($tipos->where('colo', false) as $t)@php $lbl = $t->nome.(((($t->modo ?? 'valor')==='porcentagem') && !$t->eh_normal) ? ' ('.$t->percentual.'%)' : ''); @endphp<option value="{{ $t->id }}"@if($t->gratuito || $t->idoso_meia) :disabled="gratInfo && gratInfo.restante<=0" x-text="(gratInfo && gratInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@elseif($t->pcd) :disabled="pcdInfo && pcdInfo.restante<=0" x-text="(pcdInfo && pcdInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@endif>{{ $lbl }}</option>@endforeach
                 </select></div>
-              <div class="col-span-2 text-right"><label class="lbl">Valor</label>
-                <div class="text-base font-extrabold leading-tight" style="color:var(--cor1)" x-text="FBRE.moeda(paxTotal(p))"></div></div>
+              <div class="col-span-2 text-right"><label class="lbl" x-text="p.modo==='manual' ? 'Valor (digite)' : 'Valor'"></label>
+                <div x-show="p.modo!=='manual'" class="text-base font-extrabold leading-tight" style="color:var(--cor1)" x-text="FBRE.moeda(paxTotal(p))"></div>
+                <input x-show="p.modo==='manual'" x-money="p.valor_passagem" inputmode="decimal" placeholder="0,00" class="field !min-h-0 py-1 text-sm w-full text-right font-extrabold" style="color:var(--cor1)" x-cloak></div>
             </div>
             {{-- linha 3: documento + poltrona --}}
             <div class="flex items-end gap-2 mt-1.5">
