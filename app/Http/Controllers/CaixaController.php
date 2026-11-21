@@ -195,10 +195,13 @@ class CaixaController extends Controller
         $donosBalcao = collect();
         if (auth()->user()->caixaTodos()) {
             $meusIds = $meusBarcos ?: [];
-            $donosBalcao = \App\Models\Embarcacao::whereNotNull('dono_id')->whereNotIn('id', $meusIds)->orderBy('nome')->get()
-                ->map(function ($e) {
+            $donosBalcao = \App\Models\Embarcacao::whereNotNull('dono_id')->whereNotIn('id', $meusIds)
+                ->when($transporteId, fn ($q) => $q->where('id', $transporteId))
+                ->orderBy('nome')->get()
+                ->map(function ($e) use ($dataViagem) {
                     $pct = (int) $e->comissao_empresa_pct;
                     $p = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+                        ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
                         ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total),0) as bruto, COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->first();
                     $deb = round(
                         (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
