@@ -217,31 +217,35 @@ class CaixaController extends Controller
                 })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0)->values();
         }
 
-        // Prestação do TRANSPORTE filtrado (aparece pra qualquer transporte, tenha dono ou não).
+        // Prestação GERAL do filtro: soma TODAS as passagens do filtro atual (comissão certa por transporte).
         $prestacaoTransporte = null;
-        if ($transporteId) {
-            $embF = \App\Models\Embarcacao::find($transporteId);
-            if ($embF) {
-                $pctF = (int) $embF->comissao_empresa_pct;
-                $pqF = \App\Models\Passagem::where('embarcacao_id', $embF->id)->where('cancelada', false)->where('transferida', false)
-                    ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]));
-                $passIdsF = (clone $pqF)->pluck('id');
-                $brutoF = round((float) (clone $pqF)->sum('total'), 2);
-                $comissaoF = round($brutoF * $pctF / 100, 2);
-                $cartaoF = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsF)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
-                $credPropF = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsF)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
-                $debitoF = round(
-                    (float) \App\Models\Pagamento::where('embarcacao_id', $embF->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
-                    - (float) \App\Models\Pagamento::where('embarcacao_id', $embF->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
-                $debitoF = max(0.0, $debitoF);
-                $despesasF = round($comissaoF + $debitoF + $cartaoF + $credPropF, 2);
-                $prestacaoTransporte = (object) [
-                    'emb' => $embF, 'pct' => $pctF, 'qtd' => $passIdsF->count(),
-                    'bruto' => $brutoF, 'comissao' => $comissaoF, 'debito' => $debitoF,
-                    'cartao' => $cartaoF, 'credProp' => $credPropF, 'despesas' => $despesasF,
-                    'liquido' => round($brutoF - $despesasF, 2),
-                ];
-            }
+        $pqG = \App\Models\Passagem::where('cancelada', false)->where('transferida', false)
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]));
+        $passG = (clone $pqG)->get(['id', 'embarcacao_id', 'total']);
+        if ($passG->count() > 0) {
+            $embIdsG = $passG->pluck('embarcacao_id')->filter()->unique()->values();
+            $pcts = \App\Models\Embarcacao::whereIn('id', $embIdsG)->pluck('comissao_empresa_pct', 'id');
+            $brutoG = round((float) $passG->sum('total'), 2);
+            $comissaoG = round((float) $passG->sum(fn ($p) => (float) $p->total * (int) ($pcts[$p->embarcacao_id] ?? 0) / 100), 2);
+            $idsG = $passG->pluck('id');
+            $cartaoG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
+            $credPropG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
+            $debitoG = round(
+                (float) \App\Models\Pagamento::whereIn('embarcacao_id', $embIdsG)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
+                - (float) \App\Models\Pagamento::whereIn('embarcacao_id', $embIdsG)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
+            $debitoG = max(0.0, $debitoG);
+            $despesasG = round($comissaoG + $debitoG + $cartaoG + $credPropG, 2);
+            // rótulo do transporte e %: nome quando 1 só, senão "Todos os transportes"
+            $nomeG = $embIdsG->count() === 1 ? (optional(\App\Models\Embarcacao::find($embIdsG->first()))->nome ?? 'Transporte') : 'Todos os transportes';
+            $pctG = $embIdsG->count() === 1 ? (int) ($pcts[$embIdsG->first()] ?? 0) : null;
+            $prestacaoTransporte = (object) [
+                'nome' => $nomeG, 'pct' => $pctG, 'qtd' => $passG->count(),
+                'bruto' => $brutoG, 'comissao' => $comissaoG, 'debito' => $debitoG,
+                'cartao' => $cartaoG, 'credProp' => $credPropG, 'despesas' => $despesasG,
+                'liquido' => round($brutoG - $despesasG, 2),
+            ];
         }
 
         // Acertos recentes (balcão + agente) que podem ser DESFEITOS — só quando a empresa libera.
