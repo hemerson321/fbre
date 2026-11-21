@@ -3,7 +3,7 @@
 @section('conteudo')
 @php
   $travadasMapa = $bloqueadas->filter(fn($b)=> $b->data_viagem===null || ($dataViagem && \Illuminate\Support\Carbon::parse($b->data_viagem)->toDateString()===$dataViagem))
-                 ->pluck('poltrona')->map(fn($v)=>(string)$v)->unique()->values();
+                 ->map(fn($b)=>['poltrona'=>(string)$b->poltrona,'motivo'=>(string)($b->motivo ?? ''),'todas'=>$b->data_viagem===null])->values();
 @endphp
 <div class="max-w-3xl mx-auto space-y-4">
 
@@ -68,11 +68,11 @@
                   <template x-for="(f,ri) in bloco" :key="ri">
                     <div class="flex items-center justify-center gap-1">
                       <div class="flex gap-1"><template x-for="n in f.esq" :key="n">
-                        <button type="button" class="min-w-[38px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="cls(n)" :disabled="vendida(n)" @click="toggle(n)" x-text="n"></button>
+                        <button type="button" class="min-w-[38px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="cls(n)" :disabled="vendida(n)" :title="tituloTravada(n)" @click="toggle(n)" x-text="n"></button>
                       </template></div>
                       <div class="w-4 text-center text-[9px] text-slate-300 select-none" x-show="f.dir.length">║</div>
                       <div class="flex gap-1"><template x-for="n in f.dir" :key="n">
-                        <button type="button" class="min-w-[38px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="cls(n)" :disabled="vendida(n)" @click="toggle(n)" x-text="n"></button>
+                        <button type="button" class="min-w-[38px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="cls(n)" :disabled="vendida(n)" :title="tituloTravada(n)" @click="toggle(n)" x-text="n"></button>
                       </template></div>
                     </div>
                   </template>
@@ -92,7 +92,7 @@
         </template>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 items-end">
-          <div><label class="label">Motivo (opcional)</label><input type="text" name="motivo" class="input w-full" placeholder="Ex.: assento quebrado, reservado p/ tripulação"></div>
+          <div><label class="label">Observação (opcional)</label><input type="text" name="motivo" class="input w-full" placeholder="Ex.: dono pediu pra travar, assento quebrado, reservado"></div>
           <div class="text-right">
             <span class="text-sm text-slate-500 mr-2" x-show="count()>0" x-text="count()+' selecionada(s)'"></span>
             <button class="btn btn-accent btn-sm" :disabled="count()===0">🔒 Travar</button>
@@ -147,7 +147,8 @@
         ).filter(b=>b.length);
       },
       vendida(n){ return this.vendidas.map(String).includes(String(n)); },
-      bloqueada(n){ return this.travadas.map(String).includes(String(n)); },
+      bloqueada(n){ return (this.travadas||[]).some(t=>String(t.poltrona)===String(n)); },
+      tituloTravada(n){ const t=(this.travadas||[]).find(t=>String(t.poltrona)===String(n)); if(!t) return ''; return '🔒 '+(t.motivo||'Travada')+(t.todas?' · todas as viagens':' · esta viagem'); },
       selecionada(n){ return this.sel.map(String).includes(String(n)); },
       toggle(n){
         n=String(n);

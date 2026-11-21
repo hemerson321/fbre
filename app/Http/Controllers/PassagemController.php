@@ -604,7 +604,18 @@ class PassagemController extends Controller
             'layout' => (string) ($emb->poltronas_lista ?? ''),
             'ocupadas' => $this->ocupadas($emb->id, $request->input('data_viagem'), $request->input('viagem_id'), $request->input('rota_id'), $request->input('origem'), $request->input('destino'))->values(),
             'reservadas' => $this->reservadas($emb->id, $request->input('data_viagem'), $request->input('viagem_id'), $request->input('rota_id'), $request->input('origem'), $request->input('destino'), auth()->id())->values(),
+            'travadas' => auth()->user()->ehRevendedor() ? [] : $this->travadas($emb->id, $request->input('data_viagem')),
         ];
+    }
+
+    /** Poltronas TRAVADAS (não vendáveis) com a observação — trava a viagem inteira (todo o trecho) daquela data; data nula = todas as viagens. */
+    protected function travadas($embarcacaoId, $dataViagem): array
+    {
+        $q = PoltronaBloqueada::where('embarcacao_id', $embarcacaoId)->where('ativo', true);
+        if ($dataViagem) $q->where(fn ($w) => $w->whereNull('data_viagem')->orWhereDate('data_viagem', $dataViagem));
+        return $q->get(['poltrona', 'motivo', 'data_viagem'])
+            ->map(fn ($b) => ['poltrona' => (string) $b->poltrona, 'motivo' => (string) ($b->motivo ?? ''), 'todas' => $b->data_viagem === null])
+            ->values()->all();
     }
 
     /** Poltronas RESERVADAS (hold temporário) por OUTROS operadores/agentes, no mesmo trecho. */
@@ -645,6 +656,7 @@ class PassagemController extends Controller
         return [
             'ocupadas' => $this->ocupadas($embId, $data['data_viagem'] ?? null, $viagemId, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null)->values(),
             'reservadas' => $this->reservadas($embId, $data['data_viagem'] ?? null, $viagemId, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null, $uid)->values(),
+            'travadas' => (auth()->user() && auth()->user()->ehRevendedor()) ? [] : $this->travadas($embId, $data['data_viagem'] ?? null),
         ];
     }
 
