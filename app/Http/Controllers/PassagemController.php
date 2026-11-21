@@ -1465,6 +1465,7 @@ class PassagemController extends Controller
 
         $vendidas = [];
         $bloqueadas = collect();
+        $datasDisponiveis = collect();
         if ($emb) {
             $vendidas = Passagem::where('embarcacao_id', $emb->id)->where('cancelada', false)->where('transferida', false)
                 ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
@@ -1474,9 +1475,30 @@ class PassagemController extends Controller
 
             $bloqueadas = PoltronaBloqueada::where('embarcacao_id', $emb->id)->where('ativo', true)
                 ->orderByRaw('data_viagem IS NULL DESC')->orderBy('data_viagem')->orderBy('poltrona')->get();
+
+            // Datas pro dropdown: próximas viagens programadas (dia-da-semana da rota) + datas que já têm venda.
+            $hoje = now()->startOfDay();
+            $datas = collect();
+            $rotas = Rota::where('embarcacao_id', $emb->id)->where('ativo', true)->with('paradas')->get();
+            foreach ($rotas as $rota) {
+                $partida = $rota->paradas->first();
+                if (! $partida || $partida->dia_semana === null) continue;
+                $dia = (int) $partida->dia_semana;
+                $base = $hoje->copy();
+                while ($base->dayOfWeek !== $dia) $base->addDay();
+                for ($k = 0; $k < 10; $k++) $datas->push($base->copy()->addWeeks($k)->toDateString());
+            }
+            // datas já vendidas (futuras e recentes) pra não perder nenhuma viagem real
+            Passagem::where('embarcacao_id', $emb->id)->where('cancelada', false)->whereNotNull('data_viagem')
+                ->whereBetween('data_viagem', [$hoje->copy()->subMonthNoOverflow()->toDateString(), $hoje->copy()->addMonthsNoOverflow(3)->toDateString()])
+                ->select('data_viagem')->distinct()->pluck('data_viagem')
+                ->each(fn ($d) => $datas->push(\Illuminate\Support\Carbon::parse($d)->toDateString()));
+            // a data filtrada atual sempre aparece (mesmo que fora da janela)
+            if ($dataViagem) $datas->push(\Illuminate\Support\Carbon::parse($dataViagem)->toDateString());
+            $datasDisponiveis = $datas->unique()->sort()->values();
         }
 
-        return view('passagens.bloqueios', compact('embarcacoes', 'embId', 'dataViagem', 'emb', 'vendidas', 'bloqueadas'));
+        return view('passagens.bloqueios', compact('embarcacoes', 'embId', 'dataViagem', 'emb', 'vendidas', 'bloqueadas', 'datasDisponiveis'));
     }
 
     /** Trava uma ou mais poltronas pra não serem vendidas. */

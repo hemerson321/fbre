@@ -26,7 +26,14 @@
     </div>
     <div>
       <label class="label">Data da viagem <span class="text-slate-400 font-normal">(em branco = todas)</span></label>
-      <input type="date" name="data_viagem" value="{{ $dataViagem }}" class="input w-full" onchange="this.form.submit()">
+      @php $diasCurto = \App\Models\Rota::DIAS_CURTO; @endphp
+      <select name="data_viagem" class="input w-full" onchange="this.form.submit()">
+        <option value="">— todas as viagens —</option>
+        @foreach(($datasDisponiveis ?? collect()) as $d)
+          @php $c = \Illuminate\Support\Carbon::parse($d); @endphp
+          <option value="{{ $c->toDateString() }}" @selected((string)($dataViagem ?? '')===$c->toDateString())>📅 {{ $c->format('d/m/Y') }} · {{ $diasCurto[$c->dayOfWeek] ?? '' }}</option>
+        @endforeach
+      </select>
     </div>
     <div class="text-right"><button class="btn btn-sm">Aplicar</button></div>
   </form>
