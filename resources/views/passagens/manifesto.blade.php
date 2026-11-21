@@ -6,13 +6,16 @@
 <title>Lista de passageiros</title>
 <style>
   *{box-sizing:border-box}
-  body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:16px;color:#111;font-size:12px}
+  @page{ size:A4 landscape; margin:8mm }
+  body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:16px;color:#111;font-size:11px}
   .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px}
   .top h1{font-size:16px;margin:0}
   .muted{color:#555;font-size:11px}
-  table{width:100%;border-collapse:collapse}
-  th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #ddd;vertical-align:top}
-  th{background:#f1f1f1;font-size:10px;text-transform:uppercase;letter-spacing:.03em}
+  table{width:100%;border-collapse:collapse;table-layout:auto}
+  th,td{text-align:left;padding:4px 6px;border-bottom:1px solid #e3e3e3;vertical-align:middle;white-space:nowrap}
+  th{background:#f1f5f9;font-size:9px;text-transform:uppercase;letter-spacing:.03em;color:#334155;border-bottom:2px solid #cbd5e1}
+  td.nome{white-space:normal;min-width:180px;font-weight:600}
+  tbody tr:hover td{filter:brightness(.97)}
   td.c,th.c{text-align:center}
   tr:nth-child(even) td{background:transparent}
   .chip{display:inline-block;border:1px solid #bbb;border-radius:10px;padding:0 6px;font-size:10px}
@@ -65,7 +68,7 @@
         <td>{{ $l->nr }}</td>
         <td>{{ $l->ticket }}</td>
         <td>{{ $l->trecho }}</td>
-        <td><b>{{ strtoupper($l->nome ?: 'PASSAGEIRO') }}</b>@if($l->cancelado) <span class="tag" style="background:#b91c1c;color:#fff">DEVOLVIDA</span>@elseif($l->colo) <span class="tag" style="background:#e0f2fe;color:#075985">COLO</span>@endif</td>
+        <td class="nome"><b>{{ strtoupper($l->nome ?: 'PASSAGEIRO') }}</b>@if($l->cancelado) <span class="tag" style="background:#b91c1c;color:#fff">DEVOLVIDA</span>@elseif($l->colo) <span class="tag" style="background:#e0f2fe;color:#075985">COLO</span>@endif</td>
         <td>{{ $l->data_compra?->format('d/m/Y') }}</td>
         <td>{{ $l->vendedor }}</td>
         <td class="r">R$ {{ number_format($l->valor,2,',','.') }}</td>

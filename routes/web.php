@@ -223,6 +223,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/cadastros', [CadastroController::class, 'index'])->name('cadastros');
         Route::post('/cadastros/{tipo}', [CadastroController::class, 'store'])->name('cadastros.store');
         Route::delete('/cadastros/{tipo}/{id}', [CadastroController::class, 'destroy'])->name('cadastros.destroy');
+        // Clientes faturado (a receber) — listar / cadastrar / editar
+        Route::get('/clientes-faturado', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'index'])->name('clientes-faturado');
+        Route::post('/clientes-faturado', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'store'])->name('clientes-faturado.store');
+        Route::post('/clientes-faturado/{cliente}', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'update'])->name('clientes-faturado.update');
+        Route::delete('/clientes-faturado/{cliente}', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'destroy'])->name('clientes-faturado.destroy');
         Route::get('/transportes', [CadastroController::class, 'transportes'])->name('transportes');
         Route::post('/transportes/importar', [CadastroController::class, 'importarTransportes'])->name('transportes.importar');
         Route::post('/embarcacoes/{embarcacao}', [CadastroController::class, 'salvarEmbarcacao'])->name('embarcacoes.salvar');

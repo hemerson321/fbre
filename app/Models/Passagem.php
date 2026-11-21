@@ -70,6 +70,7 @@ class Passagem extends Model
     public function camarote(): BelongsTo { return $this->belongsTo(Camarote::class); }
     public function operador(): BelongsTo { return $this->belongsTo(User::class, 'user_id'); }
     public function revendedor(): BelongsTo { return $this->belongsTo(User::class, 'revendedor_id'); }
+    public function clienteFaturado(): BelongsTo { return $this->belongsTo(ClienteFaturado::class, 'cliente_faturado_id'); }
     public function embarcouPor(): BelongsTo { return $this->belongsTo(User::class, 'embarcou_por'); }
 
     // ---------------- status ----------------
@@ -141,6 +142,7 @@ class Passagem extends Model
             ->when(isset($f['embarcou']) && $f['embarcou'] !== '', fn ($q) => $q->where('embarcou', (bool) $f['embarcou']))
             ->when($f['forma'] ?? null, fn ($q, $v) => $q->where('forma', $v))
             ->when($f['user_id'] ?? null, fn ($q, $v) => $q->where('user_id', $v))
+            ->when($f['cliente_faturado_id'] ?? null, fn ($q, $v) => $q->where('cliente_faturado_id', $v))
             ->when($f['busca'] ?? null, function ($q, $v) {
                 $v = trim($v);
                 $q->where(function ($q) use ($v) {

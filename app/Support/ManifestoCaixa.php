@@ -54,7 +54,7 @@ class ManifestoCaixa
                     'idoso' => $ehIdoso && ! $cancPax,
                     'pcd' => $ehPcd && ! $cancPax,
                     'municipio' => $ehMunicipio && ! $cancPax,
-                    'cliente' => (string) ($p->comprador_nome ?? ''),
+                    'cliente' => (string) ($p->clienteFaturado?->rotulo() ?: ($p->comprador_nome ?? '')),
                     'poltrona' => (string) ($pax->poltrona ?? ''),
                     'embarcou' => (bool) $p->embarcou,
                     'checkin' => (bool) ($pax->checkin ?? false),

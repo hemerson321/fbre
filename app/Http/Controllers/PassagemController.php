@@ -70,12 +70,13 @@ class PassagemController extends Controller
             'verTodos' => $verTodos,
             'escopo' => $escopo,
             'tiposPax' => \App\Models\TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('nome')->get(['id', 'nome']),
+            'clientesFaturado' => \App\Models\ClienteFaturado::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'empresa']),
         ]);
     }
 
     protected function filtros(Request $request): array
     {
-        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'viagem_id', 'data_viagem', 'status_pagamento', 'embarcou', 'forma', 'busca', 'user_id', 'cancelada']);
+        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'viagem_id', 'data_viagem', 'status_pagamento', 'embarcou', 'forma', 'busca', 'user_id', 'cancelada', 'cliente_faturado_id']);
         if (! $request->has('inicio') && ! $request->filled('busca')) {
             $f['inicio'] = now()->subDays(7)->toDateString();
             $f['fim'] = now()->toDateString();
@@ -321,7 +322,7 @@ class PassagemController extends Controller
     public function manifesto(Request $request)
     {
         $f = $this->filtros($request);
-        $passagens = Passagem::filtrar($f)->where('cancelada', false)->with(['passageiros', 'camarote', 'embarcacao', 'operador', 'pagamentos', 'revendedor:id,name'])
+        $passagens = Passagem::filtrar($f)->where('cancelada', false)->with(['passageiros', 'camarote', 'embarcacao', 'operador', 'pagamentos', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])
             ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
 
         $linhas = collect();
@@ -761,7 +762,7 @@ class PassagemController extends Controller
         $f = $this->filtros($request);
         unset($f['cancelada']); // inclui as devolvidas/canceladas no relatorio
         $passagens = Passagem::filtrar($f)
-            ->with(['passageiros', 'operador', 'pagamentos', 'embarcacao', 'camarote', 'revendedor:id,name'])
+            ->with(['passageiros', 'operador', 'pagamentos', 'embarcacao', 'camarote', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])
             ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
 
         $m = \App\Support\ManifestoCaixa::dados($passagens);
@@ -812,7 +813,7 @@ class PassagemController extends Controller
         ];
         $totais['recebido'] = $totais['total'] - $totais['devido'];
 
-        $vendas = (clone $base)->with(['passageiros', 'operador', 'pagamentos', 'embarcacao:id,nome', 'revendedor:id,name'])
+        $vendas = (clone $base)->with(['passageiros', 'operador', 'pagamentos', 'embarcacao:id,nome', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])
             ->orderByDesc('id')->limit($limite)->get();
 
         // o que falta acertar (revendedor -> empresa | vendedor -> revendedor)

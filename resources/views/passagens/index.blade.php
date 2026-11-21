@@ -37,6 +37,12 @@
       <option value="{{ $k }}" @selected(($f['forma'] ?? '')===$k)>{{ $l }}</option>
       @endforeach
     </select>
+    @if(($clientesFaturado ?? collect())->count())
+    <select name="cliente_faturado_id" class="input" onchange="this.form.submit()">
+      <option value="">Faturado: todos</option>
+      @foreach($clientesFaturado as $cf)<option value="{{ $cf->id }}" @selected((string)($f['cliente_faturado_id'] ?? '')===(string)$cf->id)>🧾 {{ $cf->nome }}{{ $cf->empresa ? ' · '.$cf->empresa : '' }}</option>@endforeach
+    </select>
+    @endif
     <select name="embarcou" class="input">
       <option value="">Embarque: todos</option>
       <option value="1" @selected(($f['embarcou'] ?? '')==='1')>Embarcou</option>

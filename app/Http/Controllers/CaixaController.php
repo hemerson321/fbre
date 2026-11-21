@@ -149,7 +149,7 @@ class CaixaController extends Controller
         $passIdsCx = (clone $base)->where('modulo', 'passagem')->distinct()->pluck('origem_id')->filter()->all();
         $passCx = $passIdsCx
             ? \App\Models\Passagem::whereIn('id', $passIdsCx)->whereNull('revendedor_id')
-                ->with(['passageiros', 'operador', 'pagamentos'])->orderByDesc('id')->get()
+                ->with(['passageiros', 'operador', 'pagamentos', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])->orderByDesc('id')->get()
             : collect();
         $linhasCaixa = \App\Support\ManifestoCaixa::dados($passCx)['linhas'];
 
