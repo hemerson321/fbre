@@ -1,8 +1,8 @@
 @extends('layouts.app')
-@section('titulo','Caixa')
+@section('titulo', ($ehRelatorio ?? false) ? 'Relatório' : 'Caixa')
 @section('conteudo')
 <div class="space-y-4">
-<div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ $verTodos ? 'Caixa geral' : 'Meu caixa' }}</h1>
+<div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ ($ehRelatorio ?? false) ? ($verTodos ? '📋 Relatório geral' : '📋 Meu relatório') : ($verTodos ? 'Caixa geral' : 'Meu caixa') }}</h1>
   <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId])) }}" target="_blank" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div></div>
 
 @if($podeAvulso)
