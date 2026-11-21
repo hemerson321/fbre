@@ -83,7 +83,7 @@ class CaixaController extends Controller
             ->where($semDebitoLedger)
             ->when($dataViagem, $filtraDataViagem)
             ->where('tipo_mov', '!=', 'saida')
-            ->where($semRevenda);
+            ->when(! $ehRelatorio, fn ($q) => $q->where($semRevenda));
 
         $canalSql = Pagamento::canalSql();
         $porMeio = (clone $base)->selectRaw("$canalSql as canal_sql, SUM(valor) valor, COUNT(*) qtd")->groupBy('canal_sql')->get()->keyBy('canal_sql');
@@ -117,7 +117,7 @@ class CaixaController extends Controller
         $descontos = Pagamento::where('estornado', false)->where('meio', 'desconto')
             ->when($encIds === null && ! $dataViagem, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
-            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->where($filtraRepasseDono)->when($dataViagem, $filtraDataViagem)->where($semRevenda)->sum('valor');
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))->when($modulo, fn ($q) => $q->where('modulo', $modulo))->when($transporteId, $filtraTransp)->where($filtraRepasseDono)->when($dataViagem, $filtraDataViagem)->when(! $ehRelatorio, fn ($q) => $q->where($semRevenda))->sum('valor');
 
         $entregas = Evento::where('tipo', 'entrega')
             ->when($encIds === null && ! $dataViagem, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
@@ -156,7 +156,7 @@ class CaixaController extends Controller
         // Manifesto (modelo prestacao) das PASSAGENS do filtro do caixa — SEM agente externo (nao entra no caixa).
         $passIdsCx = (clone $base)->where('modulo', 'passagem')->distinct()->pluck('origem_id')->filter()->all();
         $passCx = $passIdsCx
-            ? \App\Models\Passagem::whereIn('id', $passIdsCx)->whereNull('revendedor_id')
+            ? \App\Models\Passagem::whereIn('id', $passIdsCx)->when(! $ehRelatorio, fn ($q) => $q->whereNull('revendedor_id'))
                 ->with(['passageiros', 'operador', 'pagamentos', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])->orderByDesc('id')->get()
             : collect();
         $linhasCaixa = \App\Support\ManifestoCaixa::dados($passCx)['linhas'];
@@ -176,7 +176,7 @@ class CaixaController extends Controller
             return $filtroData($q);
         };
         $vendasBruto = 0.0;
-        if (! $modulo || $modulo === 'passagem') $vendasBruto += (float) $aplicaVB(\App\Models\Passagem::where('cancelada', false)->whereNull('revendedor_id')->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem)))->sum('total');
+        if (! $modulo || $modulo === 'passagem') $vendasBruto += (float) $aplicaVB(\App\Models\Passagem::where('cancelada', false)->when(! $ehRelatorio, fn ($x) => $x->whereNull('revendedor_id'))->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem)))->sum('total');
         if ((! $modulo || $modulo === 'encomenda') && ! $dataViagem) $vendasBruto += (float) $aplicaVB(Encomenda::query())->sum('total');
         if (! $modulo || $modulo === 'frete') $vendasBruto += (float) $filtroData(\App\Models\Frete::query())->sum('total');
 
