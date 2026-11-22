@@ -41,11 +41,26 @@
   <a href="javascript:window.print()" class="btn p">🖨 Imprimir</a>
   <a href="{{ route('passagens.index') }}" onclick="if(document.referrer){history.back();return false;}" class="btn">← Voltar</a>
 </div>
-@php $e = \App\Support\Tenant::empresa(); @endphp
-<h1>💰 Caixa por viagem{{ $embs->count()===1 ? ' · '.strtoupper($embs->first()) : '' }}</h1>
+@php $e = \App\Support\Tenant::empresa(); $rel = $ehRelatorio ?? false; @endphp
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+  @if($e?->logo)<img src="/{{ $e->logo }}" alt="" style="height:44px;max-width:130px;object-fit:contain">@endif
+  <div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <h1 style="margin:0">💰 {{ $rel ? 'Relatório por viagem' : 'Caixa por viagem' }}</h1>
+      <span style="font-size:10px;font-weight:900;letter-spacing:.08em;padding:2px 8px;border-radius:6px;{{ $rel ? 'background:#e0e7ff;color:#3730a3' : 'background:#dcfce7;color:#166534' }}">{{ $rel ? 'RELATÓRIO' : 'CAIXA' }}</span>
+    </div>
+    @if($e)<div style="font-size:12px;color:#555;font-weight:700">{{ $e->nomeExibicao() }}</div>@endif
+  </div>
+</div>
+@if(!empty($filtros))
+<div class="sub" style="margin-bottom:4px">
+  <b>Filtros:</b>
+  @foreach($filtros as $fk => $fv)<span style="display:inline-block;background:#eef2ff;color:#3730a3;border-radius:5px;padding:1px 7px;margin:1px 2px;font-weight:700">{{ $fk }}: {{ $fv }}</span>@endforeach
+</div>
+@endif
 <div class="sub">
   @if($datas->count())Data da viagem: <b>{{ $datas->map(fn($d)=>\Illuminate\Support\Carbon::parse($d)->format('d/m/Y'))->implode(', ') }}</b> · @endif
-  {{ $linhas->count() }} linha(s) · Emitido {{ now()->format('d/m/Y H:i') }}@if($e) · {{ $e->nomeExibicao() }}@endif
+  {{ $linhas->count() }} linha(s) · Emitido {{ now()->format('d/m/Y H:i') }}
 </div>
 
 @include('passagens._manifesto_tabela', ['linhas' => $linhas])
@@ -88,7 +103,7 @@
   <h2 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#374151;border-bottom:2px solid #111;padding-bottom:3px;margin:0 0 6px">Vendas por categoria × forma</h2>
   <table style="width:100%;border-collapse:collapse;font-size:11.5px">
     <thead><tr style="background:#f1f5f9">
-      <th style="text-align:left;padding:3px 6px">Categoria</th><th style="text-align:right;padding:3px 6px">Dinheiro</th><th style="text-align:right;padding:3px 6px">PIX</th><th style="text-align:right;padding:3px 6px">Débito</th><th style="text-align:right;padding:3px 6px">Crédito</th><th style="text-align:right;padding:3px 6px">A Receber</th><th style="text-align:right;padding:3px 6px">Total</th>
+      <th style="text-align:left;padding:3px 6px">Categoria</th><th style="text-align:right;padding:3px 6px">Dinheiro</th><th style="text-align:right;padding:3px 6px">PIX</th><th style="text-align:right;padding:3px 6px">Débito</th><th style="text-align:right;padding:3px 6px">Créd. à vista</th><th style="text-align:right;padding:3px 6px">Créd. parcelado</th><th style="text-align:right;padding:3px 6px">A Receber</th><th style="text-align:right;padding:3px 6px">Total</th>
     </tr></thead>
     <tbody>
       @foreach(['balcao'=>'Balcão','proprietario'=>'Proprietário','agente'=>'Agente interior'] as $ck=>$cl)
@@ -98,7 +113,8 @@
         <td style="text-align:right;padding:3px 6px">{{ number_format($c['dinheiro'] ?? 0,2,',','.') }}</td>
         <td style="text-align:right;padding:3px 6px">{{ number_format($c['pix'] ?? 0,2,',','.') }}</td>
         <td style="text-align:right;padding:3px 6px">{{ number_format($c['debito'] ?? 0,2,',','.') }}</td>
-        <td style="text-align:right;padding:3px 6px">{{ number_format($c['credito'] ?? 0,2,',','.') }}</td>
+        <td style="text-align:right;padding:3px 6px">{{ number_format($c['credito_avista'] ?? 0,2,',','.') }}</td>
+        <td style="text-align:right;padding:3px 6px">{{ number_format($c['credito_parcelado'] ?? 0,2,',','.') }}</td>
         <td style="text-align:right;padding:3px 6px;color:#b45309">{{ number_format($c['areceber'] ?? 0,2,',','.') }}</td>
         <td style="text-align:right;padding:3px 6px;font-weight:700">{{ number_format($c['total'] ?? 0,2,',','.') }}</td>
       </tr>

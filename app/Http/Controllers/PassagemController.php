@@ -830,12 +830,13 @@ class PassagemController extends Controller
         }
 
         // Quebra por categoria (Balcão/Proprietário/Agente) × forma, pra prestação.
-        $novaCat = fn () => ['qtd' => 0, 'total' => 0.0, 'dinheiro' => 0.0, 'pix' => 0.0, 'debito' => 0.0, 'credito' => 0.0, 'areceber' => 0.0];
+        $novaCat = fn () => ['qtd' => 0, 'total' => 0.0, 'dinheiro' => 0.0, 'pix' => 0.0, 'debito' => 0.0, 'credito' => 0.0, 'credito_avista' => 0.0, 'credito_parcelado' => 0.0, 'areceber' => 0.0];
         $porCategoria = ['balcao' => $novaCat(), 'proprietario' => $novaCat(), 'agente' => $novaCat()];
         foreach ($passagens->where('cancelada', false)->where('transferida', false) as $pp) {
             $cat = $pp->revendedor_id
                 ? 'agente'
                 : ($pp->pagamentos->contains(fn ($pg) => (bool) ($pg->pago_proprietario ?? false)) ? 'proprietario' : 'balcao');
+            $parcelado = (int) ($pp->parcelas ?? 1) > 1; // crédito parcelado = passagem com parcelas > 1
             $porCategoria[$cat]['qtd']++;
             $porCategoria[$cat]['total'] += (float) $pp->total;
             $porCategoria[$cat]['areceber'] += (float) $pp->devido;
@@ -843,11 +844,29 @@ class PassagemController extends Controller
                 if ($pg->meio === 'desconto' || (float) $pg->valor <= 0) continue;
                 $k = $pg->meio === 'pix' ? 'pix' : $pg->meio;
                 if (isset($porCategoria[$cat][$k])) $porCategoria[$cat][$k] += (float) $pg->valor;
+                if ($pg->meio === 'credito') {
+                    $porCategoria[$cat][$parcelado ? 'credito_parcelado' : 'credito_avista'] += (float) $pg->valor;
+                }
             }
         }
 
+        // Cabeçalho: modo (caixa/relatório) + filtros aplicados (só os que existem)
+        $ehRelatorio = $request->boolean('relatorio');
+        $filtros = [];
+        if ($embs->count()) $filtros['Transporte'] = $embs->implode(', ');
+        if (! empty($f['user_id'])) $filtros['Operador'] = optional(\App\Models\User::find($f['user_id']))->name;
+        if (! empty($f['forma'])) $filtros['Forma'] = \App\Models\Passagem::FORMAS[$f['forma']] ?? $f['forma'];
+        if (! empty($f['origem'])) $filtros['Origem'] = $f['origem'];
+        if (! empty($f['destino'])) $filtros['Destino'] = $f['destino'];
+        if (! empty($f['status_pagamento'])) $filtros['Status'] = ucfirst($f['status_pagamento']);
+        if (! empty($f['cliente_faturado_id'])) $filtros['Cliente faturado'] = optional(\App\Models\ClienteFaturado::find($f['cliente_faturado_id']))->nome;
+        if (! empty($f['busca'])) $filtros['Busca'] = $f['busca'];
+        $filtros = array_filter($filtros, fn ($v) => $v !== null && $v !== '');
+
         return view('passagens.caixa_viagem', [
             'linhas' => $linhas,
+            'ehRelatorio' => $ehRelatorio,
+            'filtros' => $filtros,
             'totForma' => $totForma,
             'totDesconto' => $totDesconto,
             'totGeral' => $totGeral,
