@@ -46,6 +46,11 @@ class AgenteController extends Controller
             'meses_venda' => 'nullable|integer|min:1|max:12',
         ]);
 
+        // Token OpenAI do áudio: em branco no editar = mantém o atual (igual aos tokens secretos do app).
+        $audioTokNovo  = trim((string) $request->input('regras.audio_token'));
+        $audioTokAtual = ($agente && $agente->exists) ? (string) ($agente->regras['audio_token'] ?? '') : '';
+        $audioToken    = $audioTokNovo !== '' ? $audioTokNovo : ($audioTokAtual ?: null);
+
         $payload = [
             'nome' => $data['nome'],
             'modulo' => $data['modulo'],
@@ -64,6 +69,8 @@ class AgenteController extends Controller
                 'nunca_inventa' => (bool) ($request->input('regras.nunca_inventa')),
                 'checkin_auto' => (bool) ($request->input('regras.checkin_auto')),
                 'responde_audio' => (bool) ($request->input('regras.responde_audio')),
+                'audio_token' => $audioToken,
+                'audio_voz' => $request->input('regras.audio_voz') ?: 'alloy',
                 'meses_venda' => (int) ($request->input('meses_venda') ?: 2),
             ],
             'horario' => [

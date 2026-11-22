@@ -12,23 +12,22 @@ use Illuminate\Support\Facades\Log;
  */
 class SinteseVoz
 {
-    protected function tokenOpenAI(?LlmProvedor $pref = null): ?string
+    protected function tokenOpenAI(?string $pref = null): ?string
     {
-        if ($pref && $pref->provider === 'openai' && trim((string) $pref->token) !== '') {
-            return trim((string) $pref->token);
-        }
+        $pref = trim((string) $pref);
+        if ($pref !== '') return $pref; // token colado direto no agente
         $p = LlmProvedor::where('provider', 'openai')->where('ativo', true)
             ->whereNotNull('token')->orderByDesc('id')->first();
         $tok = $p ? trim((string) $p->token) : '';
         return $tok !== '' ? $tok : null;
     }
 
-    /** Sintetiza o texto em áudio (base64 mp3). Retorna '' se não der. */
-    public function sintetizar(string $texto, string $voz = 'alloy', ?LlmProvedor $pref = null): string
+    /** Sintetiza o texto em áudio (base64 mp3). $tokenPref = token OpenAI do agente (preferido). '' se não der. */
+    public function sintetizar(string $texto, string $voz = 'alloy', ?string $tokenPref = null): string
     {
         $texto = trim($texto);
         if ($texto === '') return '';
-        $token = $this->tokenOpenAI($pref);
+        $token = $this->tokenOpenAI($tokenPref);
         if (! $token) { Log::warning('SinteseVoz: nenhum provedor OpenAI ativo para gerar áudio.'); return ''; }
 
         $texto = mb_substr($texto, 0, 1800); // limite seguro de TTS

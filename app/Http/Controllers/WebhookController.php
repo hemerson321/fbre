@@ -65,7 +65,8 @@ class WebhookController extends Controller
 
                         // ÁUDIO -> transcreve e processa como se fosse texto do cliente
                         if ($ehAudio) {
-                            $txt = trim(app(\App\Services\TranscritorAudio::class)->transcrever($b64, $mmime ?: 'audio/ogg'));
+                            $audioTok = $agente ? trim((string) ($agente->regras['audio_token'] ?? '')) : '';
+                            $txt = trim(app(\App\Services\TranscritorAudio::class)->transcrever($b64, $mmime ?: 'audio/ogg', $audioTok ?: null));
                             if ($txt !== '') {
                                 $msg->update(['texto' => '🎤 '.$txt]);
                                 $msg->conversa->forceFill(['ultima_msg_texto' => mb_substr('🎤 '.$txt, 0, 255)])->save();

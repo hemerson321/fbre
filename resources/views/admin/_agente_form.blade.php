@@ -21,7 +21,22 @@
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[sensiveis_humano]" value="1" @checked($r['sensiveis_humano'] ?? true) class="w-5 h-5 rounded"> Assunto sensível (reclamação/reembolso) → chama humano</label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[nunca_inventa]" value="1" @checked($r['nunca_inventa'] ?? true) class="w-5 h-5 rounded"> Nunca inventa preço/rota (só o que está no sistema)</label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[checkin_auto]" value="1" @checked($r['checkin_auto'] ?? false) class="w-5 h-5 rounded"> Check-in automático nas vendas do agente (desmarcado = cliente faz check-in no embarque)</label>
-    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[responde_audio]" value="1" @checked($r['responde_audio'] ?? false) class="w-5 h-5 rounded"> Responder em áudio quando o cliente mandar áudio (precisa de provedor OpenAI)</label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[responde_audio]" value="1" @checked($r['responde_audio'] ?? false) class="w-5 h-5 rounded"> Responder em áudio quando o cliente mandar áudio</label>
+    <div class="grid sm:grid-cols-2 gap-2 pl-7">
+      <div>
+        <label class="label text-xs">Token OpenAI p/ áudio</label>
+        <input name="regras[audio_token]" type="password" class="input font-mono text-sm" autocomplete="off" placeholder="{{ !empty($r['audio_token']) ? '•••• salvo — deixe em branco p/ manter' : 'sk-...' }}">
+        <p class="text-[11px] text-slate-400 mt-0.5">Cole o token da OpenAI. Ele ouve o áudio do cliente e gera a voz da resposta. @if(!empty($r['audio_token']))<span class="text-emerald-600 font-semibold">Token salvo ✓</span>@endif</p>
+      </div>
+      <div>
+        <label class="label text-xs">Voz da resposta</label>
+        <select name="regras[audio_voz]" class="input">
+          @foreach(['alloy'=>'Alloy (neutra)','nova'=>'Nova (feminina)','shimmer'=>'Shimmer (feminina suave)','coral'=>'Coral (feminina)','echo'=>'Echo (masculina)','onyx'=>'Onyx (masculina grave)'] as $vk=>$vl)
+            <option value="{{ $vk }}" @selected(($r['audio_voz'] ?? 'alloy')==$vk)>{{ $vl }}</option>
+          @endforeach
+        </select>
+      </div>
+    </div>
   </div>
 
   <div class="grid sm:grid-cols-2 gap-3">

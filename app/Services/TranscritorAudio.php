@@ -14,21 +14,20 @@ use Illuminate\Support\Facades\Log;
 class TranscritorAudio
 {
     /** Token de um provedor OpenAI ativo (prefere o passado, se for OpenAI). */
-    protected function tokenOpenAI(?LlmProvedor $pref = null): ?string
+    protected function tokenOpenAI(?string $pref = null): ?string
     {
-        if ($pref && $pref->provider === 'openai' && trim((string) $pref->token) !== '') {
-            return trim((string) $pref->token);
-        }
+        $pref = trim((string) $pref);
+        if ($pref !== '') return $pref; // token colado direto no agente
         $p = LlmProvedor::where('provider', 'openai')->where('ativo', true)
             ->whereNotNull('token')->orderByDesc('id')->first();
         $tok = $p ? trim((string) $p->token) : '';
         return $tok !== '' ? $tok : null;
     }
 
-    /** Transcreve o áudio (base64). Retorna o texto, ou '' se não der. */
-    public function transcrever(string $base64, string $mime = 'audio/ogg', ?LlmProvedor $pref = null): string
+    /** Transcreve o áudio (base64). $tokenPref = token OpenAI do agente (preferido). Retorna o texto, ou '' se não der. */
+    public function transcrever(string $base64, string $mime = 'audio/ogg', ?string $tokenPref = null): string
     {
-        $token = $this->tokenOpenAI($pref);
+        $token = $this->tokenOpenAI($tokenPref);
         if (! $token) { Log::warning('TranscritorAudio: nenhum provedor OpenAI ativo para transcrever áudio.'); return ''; }
 
         $bin = base64_decode($base64, true);
