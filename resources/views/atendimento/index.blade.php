@@ -35,7 +35,10 @@
               <span class="text-xs text-slate-500 truncate flex-1">{{ $c->ultima_msg_texto }}</span>
               @if($c->nao_lidas)<span class="min-w-[18px] text-center rounded-full bg-emerald-500 text-white text-[10px] font-bold px-1">{{ $c->nao_lidas }}</span>@endif
             </div>
-            <span class="chip text-[10px] bg-{{ $c->cor() }}-100 text-{{ $c->cor() }}-700 mt-0.5">{{ $c->statusLabel() }}</span>@if($c->funilLabel())<span class="chip text-[10px] bg-indigo-100 text-indigo-700 mt-0.5 ml-1">{{ $c->funilLabel() }}</span>@endif@if($c->precisa_humano)<span class="chip text-[10px] bg-rose-100 text-rose-700 mt-0.5 ml-1 font-bold">🔔 precisa atendente@if($c->transferida_motivo) · {{ $c->transferida_motivo }}@endif</span>@endif@if($c->atendente)<span class="chip text-[10px] bg-emerald-100 text-emerald-700 mt-0.5 ml-1">👤 {{ $c->atendente->name }}</span>@endif
+            <span class="chip text-[10px] bg-{{ $c->cor() }}-100 text-{{ $c->cor() }}-700 mt-0.5">{{ $c->statusLabel() }}</span>
+            @if($c->funilLabel())<span class="chip text-[10px] bg-indigo-100 text-indigo-700 mt-0.5 ml-1">{{ $c->funilLabel() }}</span>@endif
+            @if($c->precisa_humano)<span class="chip text-[10px] bg-rose-100 text-rose-700 mt-0.5 ml-1 font-bold">🔔 precisa atendente{{ $c->transferida_motivo ? ' · '.$c->transferida_motivo : '' }}</span>@endif
+            @if($c->atendente)<span class="chip text-[10px] bg-emerald-100 text-emerald-700 mt-0.5 ml-1">👤 {{ $c->atendente->name }}</span>@endif
           </div>
         </a>
       @empty
