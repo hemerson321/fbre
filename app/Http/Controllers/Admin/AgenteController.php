@@ -43,6 +43,7 @@ class AgenteController extends Controller
             'hr_fim' => 'nullable|string|max:5',
             'hr_dias' => 'nullable|array',
             'regras' => 'nullable|array',
+            'meses_venda' => 'nullable|integer|min:1|max:12',
         ]);
 
         $payload = [
@@ -62,6 +63,7 @@ class AgenteController extends Controller
                 'sensiveis_humano' => (bool) ($request->input('regras.sensiveis_humano')),
                 'nunca_inventa' => (bool) ($request->input('regras.nunca_inventa')),
                 'checkin_auto' => (bool) ($request->input('regras.checkin_auto')),
+                'meses_venda' => (int) ($request->input('meses_venda') ?: 2),
             ],
             'horario' => [
                 'modo' => $data['hr_modo'],

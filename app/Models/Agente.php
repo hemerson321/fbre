@@ -31,6 +31,9 @@ class Agente extends Model
 
     public function regra(string $k): bool { return (bool) ($this->regras[$k] ?? false); }
 
+    /** Antecedência máxima de venda (meses à frente). Padrão 2. */
+    public function mesesVenda(): int { return max(1, min(12, (int) ($this->regras['meses_venda'] ?? 2))); }
+
     /** Está no horário de trabalho configurado? */
     public function noHorario(?\DateTimeInterface $agora = null): bool
     {

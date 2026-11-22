@@ -7,6 +7,7 @@
     <div><label class="label">Provedor de IA</label><select name="llm_provedor_id" class="input"><option value="">—</option>@foreach($llms as $l)<option value="{{ $l->id }}" @selected(($a->llm_provedor_id ?? null)==$l->id)>{{ $l->nome }}</option>@endforeach</select></div>
     <div><label class="label">Conexão WhatsApp</label><select name="whatsapp_conexao_id" class="input"><option value="">—</option>@foreach($conexoes as $c)<option value="{{ $c->id }}" @selected(($a->whatsapp_conexao_id ?? null)==$c->id)>{{ $c->nome }}</option>@endforeach</select></div>
     <div><label class="label">Conta de pagamento (PIX)</label><select name="pagamento_api_id" class="input"><option value="">—</option>@foreach($apis as $p)<option value="{{ $p->id }}" @selected(($a->pagamento_api_id ?? null)==$p->id)>{{ $p->nome }}</option>@endforeach</select></div>
+    <div><label class="label">Vender com antecedência (meses)</label><input type="number" name="meses_venda" min="1" max="12" class="input" value="{{ $r['meses_venda'] ?? 2 }}" title="Padrão 2 meses. O preço é o mesmo em qualquer data futura."></div>
     <label class="flex items-end gap-2 text-sm pb-2"><input type="checkbox" name="ativo" value="1" @checked($a->ativo ?? true) class="w-5 h-5 rounded"> Agente ativo</label>
   </div>
 

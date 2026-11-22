@@ -181,11 +181,13 @@ class AgenteBot
         $p[] = "OBJETIVO (feche a venda rápido, sem enrolar, um passo por vez):";
         $p[] = "1) TRECHO que ele quer (origem → destino). Confirme que existe nos DADOS.";
         $p[] = "2) DATA. Se o cliente disser 'qualquer dia', 'semana que vem' ou não souber, NÃO devolva a pergunta: OFEREÇA as próximas saídas REAIS da rota (estão nos DADOS em 'próximas saídas') e peça pra ele escolher uma.";
+        $p[] = "ANTECEDÊNCIA: você pode vender de HOJE até ".$a->mesesVenda()." ".($a->mesesVenda() == 1 ? 'mês' : 'meses')." à frente. O preço é O MESMO em qualquer data. Se o cliente pedir uma data específica dentro desse período que caia num DIA DE SAÍDA da rota (mesmo dia-da-semana das 'próximas saídas'), PODE vender normal — não chame atendente, não diga que não sabe o preço. Se a data pedida passar do limite, diga que ainda não abriu pra venda e ofereça a saída válida mais próxima.";
         $p[] = "3) QUANTAS pessoas vão. Se disser 'só eu', é 1 adulto. Se for MAIS DE 1 (ou se não estiver claro quem são), PERGUNTE a composição ANTES de falar qualquer valor: 'são todos adultos ou tem criança?'. Se tiver criança, pergunte a IDADE de cada uma. NUNCA assuma que são todos adultos nem jogue o total antes disso.";
         $p[] = "4) SÓ com a composição definida (quantos adultos, quantas crianças e idades), monte o VALOR TOTAL somando CADA passageiro pelo seu tipo/idade, de forma organizada. Ex.: '1 adulto R$ 560 + 1 criança (8 anos) R$ 280 = R$ 840'. Mande o resumo curto (trecho, data, lancha, total) e pergunte 'posso gerar o PIX?'. NÃO peça documento ainda.";
         $p[] = "VENDA NORMAL (1, 2, 3, 4 pessoas, família — ex.: 'eu, meu filho e minha filha') você resolve SOZINHO: cote o valor (preço do trecho × pessoas) e feche. NUNCA mande uma venda normal pro atendente, nem por causa da quantidade de pessoas. Se você tem o preço nos DADOS, PASSE o valor — não diga que vai confirmar com atendente.";
         $p[] = "SÓ chame um atendente quando o cliente PEDIR DESCONTO ou preço especial por quantidade (ex.: 'tem desconto pra 7 pessoas?', 'faz um preço melhor pra 10?'). Fora isso, é venda normal: some e feche você mesmo.";
-        $p[] = "CRIANÇAS: se o cliente falar em filho(s)/criança(s), PERGUNTE quantas e a IDADE de cada uma (pergunta natural: 'quantos anos têm as crianças?'). Pela idade, escolha o tipo certo (veja TIPOS DE PASSAGEIRO e as faixas) e use o preço daquele tipo NA TABELA DE PREÇOS do trecho. Bebê de colo é grátis e não ocupa assento. Depois monte o VALOR TOTAL = adulto(s) + cada criança pelo preço certo, e só então mande o resumo. NUNCA peça documento antes de fechar o valor.";
+        $p[] = "CRIANÇAS: se o cliente falar em filho(s)/criança(s), PERGUNTE quantas e a IDADE de cada uma (pergunta natural: 'quantos anos têm as crianças?'). Pela idade, escolha o tipo certo (veja TIPOS DE PASSAGEIRO e as faixas) e use o preço JÁ CALCULADO daquele tipo NA TABELA DE PREÇOS do trecho (você NÃO precisa de atendente pra isso — o valor está pronto). Bebê de colo é grátis e não ocupa assento. Monte o VALOR TOTAL = adulto(s) + cada criança pelo preço certo e mande o resumo.";
+        $p[] = "DOCUMENTO DA CRIANÇA ANTES DO PIX: quando tiver criança (ou qualquer tarifa com desconto por idade), ANTES de gerar o PIX peça a FOTO ou ARQUIVO do documento da criança pra confirmar a idade. Só gere o PIX depois que o documento confirmar que a idade bate. Isso evita um adulto pagar como criança. (Venda só de adultos NÃO precisa disso — documento fica pro final.)";
         $p[] = "5) Confirmando, gere o PIX (veja PAGAMENTO). Primeiro o pagamento.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
@@ -198,7 +200,7 @@ class AgenteBot
         }
         $p[] = "Use SOMENTE os trechos e preços dos DADOS abaixo. Se o cliente pedir um trecho que NÃO está nos DADOS, diga que não tem esse trecho e mostre os que existem — NUNCA invente cidade, rota ou preço.";
 
-        $p[] = "\nDADOS (trechos e preços):\n".$this->dados();
+        $p[] = "\nDADOS (trechos e preços):\n".$this->dados($a->mesesVenda());
 
         if ($a->pagamento_api_id) {
             $p[] = "\nPAGAMENTO: só quando o cliente confirmar a compra (trecho + data + nº de pessoas + dados do passageiro definidos) e quiser pagar, gere o PIX escrevendo numa linha isolada, exatamente: [[PIX:VALOR;DESCRICAO]] — valor total em reais com ponto decimal. Ex.: [[PIX:200.00;2 passagens Manaus-Coari 26/10]]. Nunca invente o valor.";
@@ -211,7 +213,7 @@ class AgenteBot
     }
 
     /** Monta um resumo compacto de rotas/preços e tipos. */
-    protected function dados(): string
+    protected function dados(int $meses = 2): string
     {
         $normal = TipoPassageiro::where('ativo', true)->where('eh_normal', true)->first()
             ?? TipoPassageiro::where('ativo', true)->first()
@@ -220,22 +222,30 @@ class AgenteBot
 
         if ($normal) {
             try { TrechoPreco::curarOrfaos(); } catch (\Throwable $e) {} // preços presos num tipo antigo voltam pro normal
-            $tiposPreco = TipoPassageiro::where('ativo', true)->orderByDesc('eh_normal')->get()->keyBy('id');
+            $tiposPreco = TipoPassageiro::where('ativo', true)->orderByDesc('eh_normal')->get();
             $precos = TrechoPreco::where('ativo', true)
-                ->whereIn('tipo_passageiro_id', $tiposPreco->keys()->all())
+                ->whereIn('tipo_passageiro_id', $tiposPreco->pluck('id')->all())
                 ->orderBy('origem')->orderBy('destino')->limit(1500)->get();
             if ($precos->isNotEmpty()) {
-                $porTrecho = [];
+                // preço registrado por trecho e por tipo (origem|destino => [tipo_id => preço])
+                $own = [];
                 foreach ($precos as $tp) {
-                    $tipo = $tiposPreco[$tp->tipo_passageiro_id] ?? null;
-                    if (! $tipo) continue;
-                    $porTrecho[$tp->origem.' → '.$tp->destino][$tipo->nome] = (float) $tp->tarifa + (float) $tp->alimentacao;
+                    $own[$tp->origem.'|'.$tp->destino][$tp->tipo_passageiro_id] = (float) $tp->tarifa + (float) $tp->alimentacao;
                 }
-                $linhas[] = "PREÇOS POR TRECHO (valor por pessoa, por tipo — some conforme quem vai):";
-                foreach ($porTrecho as $trecho => $vals) {
+                $linhas[] = "PREÇOS POR TRECHO (valor JÁ CALCULADO por pessoa, por tipo — é só usar, some conforme quem vai):";
+                foreach ($own as $key => $byTipo) {
+                    [$o, $d] = explode('|', $key);
+                    $adulto = $byTipo[$normal->id] ?? null;
                     $parts = [];
-                    foreach ($vals as $tnome => $v) $parts[] = $tnome.' R$ '.number_format($v, 2, ',', '.');
-                    $linhas[] = "- {$trecho}: ".implode(' · ', $parts);
+                    foreach ($tiposPreco as $t) {
+                        if ($t->colo || $t->gratuito) continue; // grátis — não precisa valor
+                        $v = $byTipo[$t->id] ?? null;
+                        if ($v === null && ($t->modo ?? 'valor') === 'porcentagem' && $adulto !== null) {
+                            $v = round($adulto * ((int) $t->percentual) / 100, 2); // ex.: criança 50% do adulto
+                        }
+                        if ($v !== null && $v >= 0) $parts[] = $t->nome.' R$ '.number_format($v, 2, ',', '.');
+                    }
+                    if ($parts) $linhas[] = "- {$o} → {$d}: ".implode(' · ', $parts);
                 }
             }
         }
@@ -254,7 +264,7 @@ class AgenteBot
                     }
                     $diaN = \App\Models\Rota::DIAS[$pp->dia_semana] ?? '?';
                     $hora = $pp->hora ? substr($pp->hora, 0, 5) : '(hora não definida)';
-                    $prox = $this->proximasDatasDia((int) $pp->dia_semana);
+                    $prox = $this->proximasDatasDia((int) $pp->dia_semana, $meses);
                     $linhas[] = "   • ".$pp->localidade.": sai ".$diaN." ".$hora." pela lancha ".$lancha.($prox ? " — próximas: ".$prox : '');
                 }
             }
@@ -280,12 +290,13 @@ class AgenteBot
         return $linhas ? implode("\n", $linhas) : "Sem tabela de preços cadastrada ainda.";
     }
 
-    /** Próximas 3 datas (dd/mm) de um dia-da-semana (0=Dom..6=Sáb), a partir de hoje. */
-    protected function proximasDatasDia(int $dia): string
+    /** Datas (dd/mm) de um dia-da-semana (0=Dom..6=Sáb), de hoje até a janela de venda (meses). */
+    protected function proximasDatasDia(int $dia, int $meses = 2): string
     {
         $d = now()->startOfDay();
+        $limite = now()->startOfDay()->addMonths(max(1, $meses));
         $datas = [];
-        for ($i = 0; $i < 70 && count($datas) < 3; $i++) {
+        while ($d->lte($limite) && count($datas) < 10) {
             if ($d->dayOfWeek === $dia) $datas[] = $d->format('d/m');
             $d->addDay();
         }
