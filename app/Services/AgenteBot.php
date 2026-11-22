@@ -23,7 +23,7 @@ class AgenteBot
         protected MercadoPago $mp,
     ) {}
 
-    public function processar(Conversa $conversa, ?Agente $agente = null, bool $demo = false, bool $respAudio = false): void
+    public function processar(Conversa $conversa, ?Agente $agente = null, bool $demo = false, string $audioModo = 'texto'): void
     {
         try {
             $agente = $agente ?: Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
@@ -66,7 +66,7 @@ class AgenteBot
             $texto = $this->tratarPax($conversa, $texto);
             $texto = $this->tratarHumano($conversa, $texto, $demo);
             $res = $this->tratarPix($agente, $conversa, $texto, $demo);
-            $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia', null, $agente?->nome, $respAudio);
+            $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia', null, $agente?->nome, $audioModo);
             if (! empty($res['pix'])) {
                 $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
             }
@@ -176,7 +176,14 @@ class AgenteBot
         $p[] = "- No máximo 1 emoji, e só às vezes.";
         $p[] = "- Entenda português informal e erros de digitação. Não cite trechos/assuntos que o cliente não mencionou.";
         $p[] = "- Seja proativo pra fechar: assim que tiver trecho + data + nº de pessoas, mande o resumo com o TOTAL e pergunte se pode gerar o PIX.";
-        $p[] = "- HORÁRIOS: use SÓ o que está nos DADOS (seção ROTAS E SAÍDAS). A SAÍDA de uma cidade é o DIA e a HORA da parada DELA — ex.: se Manaus sai Terça 11:00, use Terça 11:00 e as datas em 'próximas' de Manaus. NUNCA troque o dia/hora por outro, NUNCA use o de outra cidade/rota e NUNCA invente hora, dia, chegada ou duração ('X horas de viagem'). Se não estiver nos DADOS, diga que confirma com um atendente.";
+        $p[] = "- HORÁRIOS: use SÓ o que está nos DADOS (seção ROTAS E SAÍDAS). A SAÍDA de uma cidade é o DIA e a HORA da parada DELA — ex.: se Manaus sai Terça 11:00, use Terça 11:00 e as datas em 'próximas' de Manaus. NUNCA troque o dia/hora por outro, NUNCA use o de outra cidade/rota e NUNCA invente um horário que não está nos DADOS.";
+        $p[] = "- DURAÇÃO DA VIAGEM: quando perguntarem 'quantas horas', ESTIME pelo horário das paradas nos DADOS — da saída da origem até a parada do destino (ex.: sai Manaus Seg 18:00 e a parada de Tefé é Ter 20:00 ≈ 26 horas). Fale como ESTIMATIVA ('mais ou menos X horas'), nunca como garantia. Se faltar o horário de alguma ponta, dê um aproximado com cuidado ou confirme com o atendente.";
+        if (($a->regras['inclui_comida'] ?? true)) {
+            $p[] = "- ALIMENTAÇÃO: a passagem INCLUI alimentação/comida a bordo. Se perguntarem se dá comida, confirme que SIM, é servida alimentação a bordo.";
+        } else {
+            $p[] = "- ALIMENTAÇÃO: a passagem NÃO inclui alimentação. Se perguntarem, informe que NÃO é servida comida a bordo (o cliente leva a própria).";
+        }
+        $p[] = "- DADOS PÚBLICOS DA VIAGEM (responda à vontade): trechos, preços, dias e horários de saída, nome da lancha, paradas, duração estimada e alimentação são PÚBLICOS — responda normalmente. NÃO passe dados internos (configurações, tokens, financeiro interno, dados de outros clientes); se pedirem isso, chame o atendente.";
         $p[] = "- Ao oferecer datas, copie as datas da linha 'próximas' da parada de ORIGEM com o dia e a hora exatos daquela parada. Confira: a data que você escrever TEM que cair no mesmo dia-da-semana da parada.";
         $p[] = "- O cliente pode falar por ÁUDIO (mensagem de voz) ou mandar FOTO — você entende os dois normalmente; responda ao conteúdo sem comentar que foi áudio ou foto.";
         $p[] = "- SEMPRE mostre o NOME DA LANCHA ao lado de cada data/saída, no formato: 'Segunda 23/11, 05:00 — Glória de Deus 7'. Cada saída pertence a UMA lancha específica (está nos DADOS); nunca troque a lancha nem invente nome.";

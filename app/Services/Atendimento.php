@@ -67,7 +67,7 @@ class Atendimento
     }
 
     /** Mensagem enviada ao cliente (humano/ia/sistema) -> envia pelo WhatsApp e grava. */
-    public function registrarSaida(Conversa $conversa, string $texto, string $origem = 'humano', ?int $userId = null, ?string $remetente = null, bool $comoAudio = false): array
+    public function registrarSaida(Conversa $conversa, string $texto, string $origem = 'humano', ?int $userId = null, ?string $remetente = null, string $audioModo = 'texto'): array
     {
         // Nome de quem fala aparece pro cliente no WhatsApp (operador que assumiu ou o agente).
         // O texto é salvo limpo; o prefixo vai só no que sai pelo WhatsApp.
@@ -77,11 +77,13 @@ class Atendimento
         $textoWa = $remetente ? '*'.trim($remetente)."*\n".$texto : $texto;
 
         $conexao = $conversa->conexao;
-        $envio = null;
+        $querAudio = in_array($audioModo, ['audio', 'audio_texto'], true);
+        $querTextoJunto = ($audioModo === 'audio_texto');
+        $envioAudio = null;
         $enviadoAudio = false;
 
         // Responder em áudio (ex.: cliente mandou áudio). A voz lê o texto limpo, sem o nome em asterisco.
-        if ($comoAudio && $conexao) {
+        if ($querAudio && $conexao) {
             $ag  = \App\Models\Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
             $tok = $ag ? trim((string) ($ag->regras['audio_token'] ?? '')) : '';
             $voz = $ag ? (string) ($ag->regras['audio_voz'] ?? 'alloy') : 'alloy';
@@ -89,19 +91,25 @@ class Atendimento
             if ($b64 === '') {
                 \Illuminate\Support\Facades\Log::warning('Audio: voz nao gerada (TTS vazio) na conversa '.$conversa->id.'. Confira o token OpenAI do agente (campo "Token OpenAI p/ audio").');
             } else {
-                $envio = $this->wa->enviarAudio($conexao, $conversa->cliente_telefone, $b64);
-                $enviadoAudio = ($envio['ok'] ?? false);
+                $envioAudio = $this->wa->enviarAudio($conexao, $conversa->cliente_telefone, $b64);
+                $enviadoAudio = ($envioAudio['ok'] ?? false);
                 if (! $enviadoAudio) {
-                    \Illuminate\Support\Facades\Log::warning('Audio: falha ao ENVIAR pelo WhatsApp na conversa '.$conversa->id.': '.($envio['erro'] ?? 'erro'));
+                    \Illuminate\Support\Facades\Log::warning('Audio: falha ao ENVIAR pelo WhatsApp na conversa '.$conversa->id.': '.($envioAudio['erro'] ?? 'erro'));
                 }
             }
         }
-        if ($envio === null || ! ($envio['ok'] ?? false)) {
-            $envio = $conexao
+
+        // Texto: manda quando NÃO é só-áudio, quando é áudio+texto, ou como fallback se o áudio falhou.
+        $envioTexto = null;
+        if (! $querAudio || $querTextoJunto || ! $enviadoAudio) {
+            $envioTexto = $conexao
                 ? $this->wa->enviarTexto($conexao, $conversa->cliente_telefone, $textoWa)
                 : ['ok' => false, 'erro' => 'Conversa sem conexão de WhatsApp.'];
-            $enviadoAudio = false;
         }
+
+        // Resultado representativo (prioriza o texto quando houve; senão o áudio).
+        $envio = $envioTexto ?? $envioAudio ?? ['ok' => false, 'erro' => 'Conversa sem conexão de WhatsApp.'];
+        $envio['ok'] = (($envioTexto['ok'] ?? false) || ($envioAudio['ok'] ?? false));
 
         $msg = Mensagem::create([
             'empresa_id' => $conversa->empresa_id,

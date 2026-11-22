@@ -70,8 +70,8 @@ class WebhookController extends Controller
                             if ($txt !== '') {
                                 $msg->update(['texto' => '🎤 '.$txt]);
                                 $msg->conversa->forceFill(['ultima_msg_texto' => mb_substr('🎤 '.$txt, 0, 255)])->save();
-                                $respAudio = (bool) optional($agente)->regra('responde_audio');
-                                app(\App\Services\AgenteBot::class)->processar($msg->conversa, $agente, false, $respAudio);
+                                $audioModo = $agente ? (string) ($agente->regras['audio_modo'] ?? (($agente->regras['responde_audio'] ?? false) ? 'audio' : 'texto')) : 'texto';
+                                app(\App\Services\AgenteBot::class)->processar($msg->conversa, $agente, false, $audioModo);
                             } else {
                                 $at->registrarSaida($msg->conversa, 'Não consegui ouvir seu áudio direitinho 😕 Pode me mandar por escrito, por favor?', 'ia', null, $agNome);
                             }

@@ -21,7 +21,16 @@
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[sensiveis_humano]" value="1" @checked($r['sensiveis_humano'] ?? true) class="w-5 h-5 rounded"> Assunto sensível (reclamação/reembolso) → chama humano</label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[nunca_inventa]" value="1" @checked($r['nunca_inventa'] ?? true) class="w-5 h-5 rounded"> Nunca inventa preço/rota (só o que está no sistema)</label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[checkin_auto]" value="1" @checked($r['checkin_auto'] ?? false) class="w-5 h-5 rounded"> Check-in automático nas vendas do agente (desmarcado = cliente faz check-in no embarque)</label>
-    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[responde_audio]" value="1" @checked($r['responde_audio'] ?? false) class="w-5 h-5 rounded"> Responder em áudio quando o cliente mandar áudio</label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[inclui_comida]" value="1" @checked($r['inclui_comida'] ?? true) class="w-5 h-5 rounded"> Viagem inclui alimentação (comida a bordo) — se desmarcar, o agente informa que NÃO dá comida</label>
+    @php $am = $r['audio_modo'] ?? (($r['responde_audio'] ?? false) ? 'audio' : 'texto'); @endphp
+    <div class="pt-1">
+      <label class="label text-xs">Quando o cliente mandar ÁUDIO, o agente responde com</label>
+      <select name="regras[audio_modo]" class="input sm:max-w-xs">
+        <option value="texto" @selected($am==='texto')>Só texto</option>
+        <option value="audio" @selected($am==='audio')>Só áudio</option>
+        <option value="audio_texto" @selected($am==='audio_texto')>Áudio + texto (manda os dois)</option>
+      </select>
+    </div>
     <div class="grid sm:grid-cols-2 gap-2 pl-7">
       <div>
         <label class="label text-xs">Token OpenAI p/ áudio</label>
