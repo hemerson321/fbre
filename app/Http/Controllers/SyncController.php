@@ -182,6 +182,10 @@ class SyncController extends Controller
             'pagamentos' => 'nullable|array',
             'pagamentos.*.meio' => 'required_with:pagamentos|in:dinheiro,pix,debito,credito',
             'pagamentos.*.valor' => 'required_with:pagamentos|numeric|min:0',
+            'pagamentos.*.proprietario' => 'nullable|boolean',
+            'agente_id' => 'nullable|integer',
+            'agente_acerto' => 'nullable|boolean',
+            'cliente_faturado_id' => 'nullable|integer',
             'pix_cobranca_id' => 'nullable|integer',
         ]);
         if (! auth()->user()->podeUsarForma($data['forma'])) {
