@@ -422,8 +422,9 @@ class AgenteBot
 
         $r = $this->mp->cobrarPix($api, $valor, $descricao, ['nome' => $c->cliente_nome, 'telefone' => $c->cliente_telefone]);
         if (! $r['ok']) {
-            Log::warning('Agente PIX falhou: '.($r['erro'] ?? ''));
-            if (! $demo) { try { $this->atendimento->transferir($c, 'Falha ao gerar PIX'); } catch (\Throwable $e) {} }
+            $motivo = trim((string) ($r['erro'] ?? '')) ?: 'erro desconhecido';
+            Log::warning('Agente PIX falhou: '.$motivo);
+            if (! $demo) { try { $this->atendimento->transferir($c, 'Falha ao gerar PIX: '.$motivo); } catch (\Throwable $e) {} }
             return ['texto' => trim(str_replace($marcador, "\nSó um instante que um atendente vai finalizar seu PIX aqui, tá?", $texto)), 'pix' => null];
         }
 
