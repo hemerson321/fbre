@@ -185,8 +185,9 @@ class AgenteBot
         $p[] = "4) Mande o resumo curto: trecho, data e VALOR TOTAL (preço do trecho × pessoas) e pergunte 'posso gerar o PIX?'. (NÃO peça dados de passageiro ainda.)";
         $p[] = "VENDA NORMAL (1, 2, 3, 4 pessoas, família — ex.: 'eu, meu filho e minha filha') você resolve SOZINHO: cote o valor (preço do trecho × pessoas) e feche. NUNCA mande uma venda normal pro atendente, nem por causa da quantidade de pessoas. Se você tem o preço nos DADOS, PASSE o valor — não diga que vai confirmar com atendente.";
         $p[] = "SÓ chame um atendente quando o cliente PEDIR DESCONTO ou preço especial por quantidade (ex.: 'tem desconto pra 7 pessoas?', 'faz um preço melhor pra 10?'). Fora isso, é venda normal: some e feche você mesmo.";
+        $p[] = "CRIANÇAS: se o cliente falar em filho(s)/criança(s), PERGUNTE quantas e a IDADE de cada uma (pergunta natural: 'quantos anos têm as crianças?'). Pela idade, escolha o tipo certo (veja TIPOS DE PASSAGEIRO e as faixas) e use o preço daquele tipo NA TABELA DE PREÇOS do trecho. Bebê de colo é grátis e não ocupa assento. Depois monte o VALOR TOTAL = adulto(s) + cada criança pelo preço certo, e só então mande o resumo. NUNCA peça documento antes de fechar o valor.";
         $p[] = "5) Confirmando, gere o PIX (veja PAGAMENTO). Primeiro o pagamento.";
-        $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os DADOS DO(S) PASSAGEIRO(S): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO — ou diga que pode mandar a FOTO do RG/CNH que você pega os dados. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
+        $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
 
         if ($a->regra('nao_revela_robo')) {
@@ -219,14 +220,22 @@ class AgenteBot
 
         if ($normal) {
             try { TrechoPreco::curarOrfaos(); } catch (\Throwable $e) {} // preços presos num tipo antigo voltam pro normal
-            $trechos = TrechoPreco::where('ativo', true)
-                ->when($normal, fn ($q) => $q->where('tipo_passageiro_id', $normal->id))
-                ->orderBy('origem')->orderBy('destino')->limit(400)->get();
-            if ($trechos->isNotEmpty()) {
-                $linhas[] = "Preços (passageiro adulto, por trecho):";
-                foreach ($trechos as $t) {
-                    $preco = (float) $t->tarifa + (float) $t->alimentacao;
-                    $linhas[] = "- {$t->origem} → {$t->destino}: R$ ".number_format($preco, 2, ',', '.');
+            $tiposPreco = TipoPassageiro::where('ativo', true)->orderByDesc('eh_normal')->get()->keyBy('id');
+            $precos = TrechoPreco::where('ativo', true)
+                ->whereIn('tipo_passageiro_id', $tiposPreco->keys()->all())
+                ->orderBy('origem')->orderBy('destino')->limit(1500)->get();
+            if ($precos->isNotEmpty()) {
+                $porTrecho = [];
+                foreach ($precos as $tp) {
+                    $tipo = $tiposPreco[$tp->tipo_passageiro_id] ?? null;
+                    if (! $tipo) continue;
+                    $porTrecho[$tp->origem.' → '.$tp->destino][$tipo->nome] = (float) $tp->tarifa + (float) $tp->alimentacao;
+                }
+                $linhas[] = "PREÇOS POR TRECHO (valor por pessoa, por tipo — some conforme quem vai):";
+                foreach ($porTrecho as $trecho => $vals) {
+                    $parts = [];
+                    foreach ($vals as $tnome => $v) $parts[] = $tnome.' R$ '.number_format($v, 2, ',', '.');
+                    $linhas[] = "- {$trecho}: ".implode(' · ', $parts);
                 }
             }
         }
@@ -253,13 +262,18 @@ class AgenteBot
 
         $tipos = TipoPassageiro::where('ativo', true)->orderByDesc('eh_normal')->get();
         if ($tipos->isNotEmpty()) {
-            $linhas[] = "\nTipos de passageiro:";
+            $linhas[] = "\nTIPOS DE PASSAGEIRO (escolha o tipo da criança/idoso PELA IDADE; o preço de cada tipo está na tabela acima):";
             foreach ($tipos as $t) {
-                if ($t->eh_normal) { $linhas[] = "- {$t->nome}: preço cheio (base)"; continue; }
-                $regra = ($t->modo ?? 'valor') === 'porcentagem'
-                    ? ((int) $t->percentual).'% do adulto'
-                    : 'preço próprio por trecho';
-                $linhas[] = "- {$t->nome}: {$regra}";
+                $faixa = '';
+                if ($t->idade_min !== null || $t->idade_max !== null) {
+                    $min = $t->idade_min !== null ? (int) $t->idade_min : 0;
+                    $max = $t->idade_max !== null ? ((int) $t->idade_max).' anos' : 'em diante';
+                    $faixa = " (idade: {$min} a {$max})";
+                }
+                if ($t->colo) { $linhas[] = "- {$t->nome}{$faixa}: BEBÊ DE COLO — grátis, não ocupa assento e não paga."; continue; }
+                if ($t->gratuito) { $linhas[] = "- {$t->nome}{$faixa}: GRATUITO."; continue; }
+                if ($t->eh_normal) { $linhas[] = "- {$t->nome}{$faixa}: preço cheio (adulto/base)."; continue; }
+                $linhas[] = "- {$t->nome}{$faixa}: use o preço desse tipo na tabela de preços acima.";
             }
         }
 
