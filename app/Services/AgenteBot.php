@@ -183,6 +183,8 @@ class AgenteBot
         $p[] = "2) DATA. Se o cliente disser 'qualquer dia', 'semana que vem' ou não souber, NÃO devolva a pergunta: OFEREÇA as próximas saídas REAIS da rota (estão nos DADOS em 'próximas saídas') e peça pra ele escolher uma.";
         $p[] = "3) QUANTAS pessoas (se disser 'só eu', é 1 — não pergunte de novo).";
         $p[] = "4) Mande o resumo curto: trecho, data e VALOR TOTAL (preço do trecho × pessoas) e pergunte 'posso gerar o PIX?'. (NÃO peça dados de passageiro ainda.)";
+        $p[] = "VENDA NORMAL (1, 2, 3, 4 pessoas, família — ex.: 'eu, meu filho e minha filha') você resolve SOZINHO: cote o valor (preço do trecho × pessoas) e feche. NUNCA mande uma venda normal pro atendente, nem por causa da quantidade de pessoas. Se você tem o preço nos DADOS, PASSE o valor — não diga que vai confirmar com atendente.";
+        $p[] = "SÓ chame um atendente quando o cliente PEDIR DESCONTO ou preço especial por quantidade (ex.: 'tem desconto pra 7 pessoas?', 'faz um preço melhor pra 10?'). Fora isso, é venda normal: some e feche você mesmo.";
         $p[] = "5) Confirmando, gere o PIX (veja PAGAMENTO). Primeiro o pagamento.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os DADOS DO(S) PASSAGEIRO(S): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO — ou diga que pode mandar a FOTO do RG/CNH que você pega os dados. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
@@ -210,7 +212,9 @@ class AgenteBot
     /** Monta um resumo compacto de rotas/preços e tipos. */
     protected function dados(): string
     {
-        $normal = TipoPassageiro::where('eh_normal', true)->first() ?? TipoPassageiro::first();
+        $normal = TipoPassageiro::where('ativo', true)->where('eh_normal', true)->first()
+            ?? TipoPassageiro::where('ativo', true)->first()
+            ?? TipoPassageiro::where('eh_normal', true)->first();
         $linhas = [];
 
         if ($normal) {
