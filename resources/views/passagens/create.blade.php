@@ -205,17 +205,19 @@
                 <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑'"></span>
               </button>
             </div>
-            {{-- linha 4: acoes --}}
-            <div class="flex items-center justify-between gap-2 mt-2 pt-1.5 border-t border-slate-100">
-              <div class="flex items-center gap-3 flex-wrap">
-                <label class="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
-                <label class="flex items-center gap-1.5 text-xs font-semibold text-sky-700"><input type="checkbox" x-model="p.temColo" class="w-4 h-4 rounded"> 👶 Bebê de colo</label>
+            {{-- linha final: telefone + nacionalidade + check-in/bebê + anexos --}}
+            <div class="flex items-end gap-2 mt-2 pt-1.5 border-t border-slate-100">
+              <div class="flex-1 min-w-0"><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" @input="p.telefone=FBRE.foneMask($event.target.value)" inputmode="tel" maxlength="16" placeholder="(00) 00000-0000"></div>
+              <div class="flex-1 min-w-0"><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.nacionalidade" placeholder="Brasileira"></div>
+              <div class="flex flex-col gap-1 shrink-0 pb-1">
+                <label class="flex items-center gap-1 text-[11px] font-semibold whitespace-nowrap cursor-pointer"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
+                <label class="flex items-center gap-1 text-[11px] font-semibold text-sky-700 whitespace-nowrap cursor-pointer"><input type="checkbox" x-model="p.temColo" class="w-4 h-4 rounded"> 👶 Bebê de colo</label>
               </div>
-              <div class="flex items-center gap-3">
-                <label class="text-[12px] font-semibold flex items-center gap-1 cursor-pointer" style="color:var(--cor1)">📎 Anexos<input type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple class="hidden" @change="anexarDocs(i,$event)"></label>
-              </div>
+              <label class="shrink-0 pb-1 text-[12px] font-semibold flex items-center gap-1 cursor-pointer whitespace-nowrap" style="color:var(--cor1)" title="Anexar documentos">📎 Anexos<input type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple class="hidden" @change="anexarDocs(i,$event)"></label>
             </div>
-            <div x-show="p.temColo" x-cloak class="mt-2 rounded-xl border border-sky-200 bg-sky-50 p-2.5 space-y-1.5">
+
+            {{-- bebê de colo: carrega logo após a nacionalidade --}}
+            <div x-show="p.temColo" x-cloak class="mt-1.5 rounded-xl border border-sky-200 bg-sky-50 p-2 space-y-1.5">
               <div class="text-[12px] font-bold text-sky-700">👶 Bebê de colo (grátis · não ocupa poltrona · não é passageiro separado)</div>
               <input class="field !min-h-0 py-1 text-sm w-full" x-model="p.bebeColo.nome" placeholder="Nome do bebê">
               <div class="grid grid-cols-2 gap-2">
@@ -223,6 +225,8 @@
                 <input class="field !min-h-0 py-1 text-sm w-full" inputmode="numeric" maxlength="10" x-model="p.bebeColo.nasc_br" @input="mascaraNascColo(p)" placeholder="Nascimento dd/mm/aaaa">
               </div>
             </div>
+
+            {{-- anexos (previews) --}}
             <div x-show="p.documentos && p.documentos.length" x-cloak class="flex flex-wrap gap-1.5 mt-1.5">
               <template x-for="(d,j) in p.documentos" :key="j">
                 <div class="relative inline-flex items-center gap-1.5 rounded-lg border bg-white pl-1 pr-2 py-1">
@@ -232,11 +236,6 @@
                   <button type="button" @click="removerDoc(i,j)" class="bg-red-500 text-white rounded-full w-4 h-4 text-[11px] leading-none flex items-center justify-center shrink-0">×</button>
                 </div>
               </template>
-            </div>
-            {{-- linha 5: telefone + nacionalidade --}}
-            <div class="grid grid-cols-2 gap-2 mt-1.5">
-              <div><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" @input="p.telefone=FBRE.foneMask($event.target.value)" inputmode="tel" maxlength="16" placeholder="(00) 00000-0000"></div>
-              <div><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.nacionalidade" placeholder="Brasileira"></div>
             </div>
           </div>
         </template>
@@ -410,16 +409,30 @@
 
     <section class="sec shrink-0">
       <div class="p-2.5 space-y-2">
-        <div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-slate-600">
+        <div class="flex gap-x-3 text-[13px] text-slate-600">
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="direto" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
-        <div class="hidden lg:block">
-          <button x-show="total>0 || forma!=='avista'" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || !passageiros.length">
-            <span x-show="!salvando">💾 Salvar passagem</span><span x-show="salvando">Salvando…</span>
+
+        {{-- FILA DE VENDAS --}}
+        <div x-show="fila.length" x-cloak class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-2 space-y-1">
+          <div class="flex justify-between text-[11px] font-bold text-indigo-700"><span x-text="fila.length+' venda(s) na fila'"></span><span x-text="'Σ '+FBRE.moeda(filaTotal)"></span></div>
+          <template x-for="(it,fi) in fila" :key="fi">
+            <div class="flex items-center justify-between gap-2 text-[12px] bg-white rounded-lg border border-indigo-100 px-2 py-1">
+              <span class="truncate" x-text="(fi+1)+'. '+it.resumo.nome+' · '+it.resumo.trecho"></span>
+              <span class="shrink-0 font-semibold" x-text="FBRE.moeda(it.resumo.total)"></span>
+              <button type="button" @click="fila.splice(fi,1)" class="text-rose-500 font-bold text-base leading-none shrink-0" title="Remover da fila">×</button>
+            </div>
+          </template>
+        </div>
+
+        <div class="hidden lg:flex gap-2">
+          <button type="button" @click="adicionarVenda()" x-show="passageiros.length && (total>0 || forma!=='avista')" class="shrink-0 rounded-xl px-3 py-3 text-sm font-extrabold border-2 disabled:opacity-40" style="border-color:var(--cor1);color:var(--cor1)" :disabled="salvando" title="Adicionar esta venda à fila e começar outra">➕ Fila</button>
+          <button x-show="total>0 || forma!=='avista' || fila.length" class="flex-1 rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || (!passageiros.length && !fila.length)">
+            <span x-show="!salvando" x-text="fila.length ? ('✅ Finalizar '+filaCount+' venda'+(filaCount>1?'s':'')) : '💾 Salvar passagem'"></span><span x-show="salvando">Salvando…</span>
           </button>
         </div>
-        <p class="text-[11px] text-slate-400 text-center" x-show="!passageiros.length">Adicione ao menos um passageiro.</p>
+        <p class="text-[11px] text-slate-400 text-center" x-show="!passageiros.length && !fila.length">Adicione ao menos um passageiro.</p>
       </div>
     </section>
   </div>
@@ -562,10 +575,14 @@
         <div class="text-[11px] text-slate-400 font-semibold" x-text="passageiros.length+(passageiros.length===1?' passageiro':' passageiros')"></div>
       </div>
     </div>
-    <button type="submit" x-show="total>0 || forma!=='avista'" class="w-full rounded-2xl py-3.5 text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:opacity-40" style="background:var(--cor1)" :disabled="salvando || !passageiros.length">
-      <span x-show="!salvando">✅ Confirmar venda</span><span x-show="salvando">Salvando…</span>
-    </button>
-    <p class="text-[11px] text-slate-400 text-center mt-1" x-show="!passageiros.length">Adicione ao menos um passageiro.</p>
+    <div x-show="fila.length" x-cloak class="text-[11px] font-bold text-indigo-700 mb-1 text-center" x-text="fila.length+' na fila · Σ '+FBRE.moeda(filaTotal)"></div>
+    <div class="flex gap-2">
+      <button type="button" @click="adicionarVenda()" x-show="passageiros.length && (total>0 || forma!=='avista')" class="shrink-0 rounded-2xl px-4 py-3.5 text-sm font-extrabold border-2" style="border-color:var(--cor1);color:var(--cor1)" :disabled="salvando">➕ Fila</button>
+      <button type="submit" x-show="total>0 || forma!=='avista' || fila.length" class="flex-1 rounded-2xl py-3.5 text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:opacity-40" style="background:var(--cor1)" :disabled="salvando || (!passageiros.length && !fila.length)">
+        <span x-show="!salvando" x-text="fila.length ? ('✅ Finalizar '+filaCount) : '✅ Confirmar venda'"></span><span x-show="salvando">Salvando…</span>
+      </button>
+    </div>
+    <p class="text-[11px] text-slate-400 text-center mt-1" x-show="!passageiros.length && !fila.length">Adicione ao menos um passageiro.</p>
   </div>
 </form>
 @endsection
@@ -600,7 +617,7 @@
       compradorNome:'', compradorTel:'', compradorDoc:'', observacao:'', documentosGerais:[],
       lancamentoEm:@js(now()->toDateString()),
       desconto:null,
-      passageiros:[],
+      passageiros:[], fila:[],
       precoInfo:false,
       paxLista:[], paxAberto:-1,
       nonce: Math.random().toString(36).slice(2,10),  // nome de campo aleatorio -> mata o autofill do Chrome
@@ -1101,6 +1118,7 @@
       async fatCriar(){ const nome=(this.fatNome||'').trim(); if(!nome) return; try{ const r=await fetch(@js(route('passagens.cliente-faturado.criar')),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},credentials:'same-origin',body:JSON.stringify({nome:nome, empresa:(this.fatEmpresa||'').trim()||null, documento:(this.fatDoc||'').trim()||null})}); const j=await r.json(); if(j&&j.ok&&j.cliente){ this.fatSelecionar(j.cliente); this.fatNome=''; this.fatEmpresa=''; this.fatDoc=''; this.fatDocTipo=''; } else { alert('Nao deu pra cadastrar o cliente.'); } }catch(e){ alert('Erro ao cadastrar cliente.'); } },
       async salvar(ev){
         if(this.salvando) return;
+        if(this.fila.length){ return this.finalizarFila(ev); }
         if(!this.validarPassageiros()) return;
         if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Falta lançar '+FBRE.moeda(this.devido)+'. Lance o valor nas formas ou use Faturado pra deixar a receber.'); return; }
         this.salvando=true;
@@ -1114,6 +1132,63 @@
           alert('Sem conexão: passagem '+r.local.dados.numero_completo+' guardada neste aparelho. Sobe sozinha quando a internet voltar.');
           window.location.href='{{ route('passagens.create') }}';
         }catch(e){ alert('Não foi possível salvar: '+e.message); this.salvando=false; }
+      },
+      // ---------- FILA DE VENDAS (múltiplas vendas separadas) ----------
+      get filaTotal(){ return this.fila.reduce((s,it)=>s+(Number(it.resumo?.total)||0),0); },
+      get filaCount(){ return this.fila.length + (this.passageiros.some(p=>(p.nome||'').trim()) ? 1 : 0); },
+      _filaEntry(){ return { dados:this.montarDados(), resumo:{ pax:this.passageiros.length, total:(Number(this.total)||0), trecho:((this.origemSel||'?')+' → '+(this.destinoSel||'?')), nome:(((this.passageiros[0]||{}).nome||'').trim()||'Passageiro') } }; },
+      _vendaOk(){
+        if(!this.validarPassageiros()) return false;
+        if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Falta lançar '+FBRE.moeda(this.devido)+' nesta venda. Feche o pagamento ou use Faturado.'); return false; }
+        return true;
+      },
+      _resetVenda(){
+        this.passageiros=[]; const np=this.novoPax(); this.aplicarTipo(np); this.passageiros.push(np);
+        this.tipoPag='balcao'; this.metodosAtivos=[this.tipoPag==='online'?'pix':'dinheiro']; this.credParcel=false; this.dividir=false;
+        this.pag={dinheiro:null,pix:null,debito:null,credito:null}; this.proprietarioMaq=false; this.parcelas=1; this.desconto=null;
+        this.agenteId=''; this.agenteAcerto=true; this.clienteFaturadoId=null; this.fatSel=null; this.fatBusca=''; this.fatResultados=[];
+        this.compradorNome=''; this.compradorTel=''; this.compradorDoc=''; this.observacao=''; this.documentosGerais=[];
+        this.destinoSel=''; this.pixCobId=null;
+      },
+      adicionarVenda(){
+        if(this.salvando) return;
+        if(!this._vendaOk()) return;
+        this.fila.push(this._filaEntry());
+        this._resetVenda();
+        try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){}
+      },
+      async _printDiretoId(id, so, vias){
+        try{
+          const __rz = await this._rasterComprovante('/passagens/'+id+'/comprovante?so='+so);
+          let imagens=[];
+          if(so!=='resumo' && __rz && __rz.imagens && __rz.imagens.length){ for(let v=0; v<vias; v++) imagens=imagens.concat(__rz.imagens); }
+          if(so!=='bilhete' && __rz && __rz.resumo) imagens.push(__rz.resumo);
+          if(imagens.length){ const dd=await fetch('/passagens/'+id+'/imprimir-direto',{method:'POST',headers:{'X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify({imagens})}).then(r=>r.json()).catch(()=>null); return !!(dd && dd.ok); }
+        }catch(e){}
+        return false;
+      },
+      async finalizarFila(ev){
+        if(ev && ev.preventDefault) ev.preventDefault();
+        if(this.salvando) return;
+        // inclui a venda em edição se tiver passageiro com nome
+        if(this.passageiros.some(p=>(p.nome||'').trim())){ if(!this._vendaOk()) return; this.fila.push(this._filaEntry()); this._resetVenda(); }
+        if(!this.fila.length){ alert('Nenhuma venda na fila.'); return; }
+        this.salvando=true;
+        // pergunta de impressão UMA vez (vale pra todas); respeita direto/não imprimir
+        let so=null, vias=1, modo=this.imprimir;
+        if(modo==='direto'){ const qs=FBRE.perguntarImpressao('O que imprimir? (vale pra todas as vendas)'); if(qs===null){ modo='nao'; } else { const sp=new URLSearchParams(qs); so=sp.get('so')||'tudo'; vias=Math.max(1,parseInt(sp.get('vias')||'1',10)); } }
+        let ok=0; const falhas=[];
+        for(const it of this.fila){
+          try{
+            const r=await FBREOffline.salvarModulo('passagem', it.dados);
+            if(r.servidor && r.servidor.ok){ ok++; if(modo==='direto' && so){ await this._printDiretoId(r.servidor.id, so, vias); } }
+            else if(r.local){ ok++; if(modo!=='nao'){ try{ await FBREOffline.imprimirModuloLocal(r.local); }catch(e){} } }
+            else { falhas.push(it); }
+          }catch(e){ falhas.push(it); }
+        }
+        this.fila=[]; this.salvando=false;
+        alert(ok+' venda(s) finalizada(s).'+(falhas.length?(' '+falhas.length+' não subiram — tente de novo.'):''));
+        window.location.href='{{ route('passagens.create') }}';
       },
     };
   }

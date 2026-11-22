@@ -6,7 +6,9 @@
 body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#111}
 .ticket{page-break-after:always;padding:4mm 4mm 5mm;position:relative;overflow:hidden}
 .ticket:last-child{page-break-after:auto}
-.resumo-venda{position:absolute;left:-10000px;top:0;width:360px;background:#fff;color:#000;padding:4mm 4.5mm 5mm;font-family:inherit;font-size:14px;line-height:1.32}
+.resumo-venda{position:absolute;left:-10000px;top:0;width:360px;background:#fff;color:#000;padding:4mm 4.5mm 5mm;font-family:inherit;font-size:14px;line-height:1.32;overflow:hidden}
+.rz-wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:60;overflow:hidden}
+.rz-wm b{writing-mode:vertical-rl;text-orientation:mixed;font-size:118px;font-weight:900;letter-spacing:-14px;line-height:.9;color:rgba(185,28,28,.30);white-space:nowrap;text-transform:uppercase}
 .rz-h{text-align:center;border-bottom:2px solid #000;padding-bottom:5px;margin-bottom:6px}
 .rz-h .t{font-weight:900;font-size:16px;letter-spacing:.06em}
 .rz-h .s{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-top:1px}
@@ -236,6 +238,8 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 @endphp
 @if($so !== 'bilhete')
 <div class="resumo-venda">
+  @php $__rzTarja = $p->cancelada ? ((($p->cancel_tipo ?? '')==='cancelamento')?'CANCELAMENTO':'DEVOLUÇÃO') : null; @endphp
+  @if($__rzTarja)<div class="rz-wm"><b>{{ $__rzTarja }}</b></div>@endif
   <div class="rz-h">
     <div class="t">RESUMO DA VENDA</div>
     <div class="s">Via interna &middot; arquivo</div>
