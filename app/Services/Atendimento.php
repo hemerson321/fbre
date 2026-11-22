@@ -67,7 +67,7 @@ class Atendimento
     }
 
     /** Mensagem enviada ao cliente (humano/ia/sistema) -> envia pelo WhatsApp e grava. */
-    public function registrarSaida(Conversa $conversa, string $texto, string $origem = 'humano', ?int $userId = null, ?string $remetente = null): array
+    public function registrarSaida(Conversa $conversa, string $texto, string $origem = 'humano', ?int $userId = null, ?string $remetente = null, bool $comoAudio = false): array
     {
         // Nome de quem fala aparece pro cliente no WhatsApp (operador que assumiu ou o agente).
         // O texto é salvo limpo; o prefixo vai só no que sai pelo WhatsApp.
@@ -77,9 +77,23 @@ class Atendimento
         $textoWa = $remetente ? '*'.trim($remetente)."*\n".$texto : $texto;
 
         $conexao = $conversa->conexao;
-        $envio = $conexao
-            ? $this->wa->enviarTexto($conexao, $conversa->cliente_telefone, $textoWa)
-            : ['ok' => false, 'erro' => 'Conversa sem conexão de WhatsApp.'];
+        $envio = null;
+        $enviadoAudio = false;
+
+        // Responder em áudio (ex.: cliente mandou áudio). A voz lê o texto limpo, sem o nome em asterisco.
+        if ($comoAudio && $conexao) {
+            $b64 = app(\App\Services\SinteseVoz::class)->sintetizar($texto);
+            if ($b64 !== '') {
+                $envio = $this->wa->enviarAudio($conexao, $conversa->cliente_telefone, $b64);
+                $enviadoAudio = ($envio['ok'] ?? false);
+            }
+        }
+        if ($envio === null || ! ($envio['ok'] ?? false)) {
+            $envio = $conexao
+                ? $this->wa->enviarTexto($conexao, $conversa->cliente_telefone, $textoWa)
+                : ['ok' => false, 'erro' => 'Conversa sem conexão de WhatsApp.'];
+            $enviadoAudio = false;
+        }
 
         $msg = Mensagem::create([
             'empresa_id' => $conversa->empresa_id,
@@ -90,7 +104,7 @@ class Atendimento
             'user_id' => $userId,
             'wa_message_id' => $envio['resposta']['key']['id'] ?? ($envio['resposta']['messages'][0]['id'] ?? null),
             'lida' => true,
-            'meta' => $envio['ok'] ? null : ['erro' => $envio['erro'] ?? 'falha'],
+            'meta' => $envio['ok'] ? ($enviadoAudio ? ['audio' => true] : null) : ['erro' => $envio['erro'] ?? 'falha'],
         ]);
 
         $conversa->ultima_msg_texto = mb_substr($texto, 0, 255);

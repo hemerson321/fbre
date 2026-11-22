@@ -21,6 +21,7 @@
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[sensiveis_humano]" value="1" @checked($r['sensiveis_humano'] ?? true) class="w-5 h-5 rounded"> Assunto sensível (reclamação/reembolso) → chama humano</label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[nunca_inventa]" value="1" @checked($r['nunca_inventa'] ?? true) class="w-5 h-5 rounded"> Nunca inventa preço/rota (só o que está no sistema)</label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[checkin_auto]" value="1" @checked($r['checkin_auto'] ?? false) class="w-5 h-5 rounded"> Check-in automático nas vendas do agente (desmarcado = cliente faz check-in no embarque)</label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[responde_audio]" value="1" @checked($r['responde_audio'] ?? false) class="w-5 h-5 rounded"> Responder em áudio quando o cliente mandar áudio (precisa de provedor OpenAI)</label>
   </div>
 
   <div class="grid sm:grid-cols-2 gap-3">

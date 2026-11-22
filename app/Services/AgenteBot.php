@@ -23,7 +23,7 @@ class AgenteBot
         protected MercadoPago $mp,
     ) {}
 
-    public function processar(Conversa $conversa, ?Agente $agente = null, bool $demo = false): void
+    public function processar(Conversa $conversa, ?Agente $agente = null, bool $demo = false, bool $respAudio = false): void
     {
         try {
             $agente = $agente ?: Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
@@ -66,7 +66,7 @@ class AgenteBot
             $texto = $this->tratarPax($conversa, $texto);
             $texto = $this->tratarHumano($conversa, $texto, $demo);
             $res = $this->tratarPix($agente, $conversa, $texto, $demo);
-            $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia', null, $agente?->nome);
+            $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia', null, $agente?->nome, $respAudio);
             if (! empty($res['pix'])) {
                 $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
             }

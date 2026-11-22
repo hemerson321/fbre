@@ -63,6 +63,7 @@ class AgenteController extends Controller
                 'sensiveis_humano' => (bool) ($request->input('regras.sensiveis_humano')),
                 'nunca_inventa' => (bool) ($request->input('regras.nunca_inventa')),
                 'checkin_auto' => (bool) ($request->input('regras.checkin_auto')),
+                'responde_audio' => (bool) ($request->input('regras.responde_audio')),
                 'meses_venda' => (int) ($request->input('meses_venda') ?: 2),
             ],
             'horario' => [

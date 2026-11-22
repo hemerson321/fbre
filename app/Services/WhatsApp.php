@@ -243,6 +243,27 @@ class WhatsApp
         }
     }
 
+    /** Envia uma mensagem de voz (PTT) pelo Evolution. $base64 = áudio (mp3/ogg) em base64. */
+    public function enviarAudio(WhatsappConexao $c, string $telefone, string $base64): array
+    {
+        $fone = $this->normalizar($telefone);
+        if ($fone === '') return ['ok' => false, 'erro' => 'telefone'];
+        if ($c->tipo === 'oficial') return ['ok' => false, 'erro' => 'áudio pela API oficial não implementado'];
+        $base = rtrim((string) $c->base_url, '/');
+        if (! $base || ! $c->instancia) return ['ok' => false, 'erro' => 'sem base/instancia'];
+        try {
+            $r = $this->evoHttp($c)->timeout(45)->post("{$base}/message/sendWhatsAppAudio/{$c->instancia}", [
+                'number' => $fone,
+                'audio' => $base64,
+            ]);
+            return $r->successful()
+                ? ['ok' => true, 'resposta' => $r->json()]
+                : ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 150)];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
     /** Baixa a mídia (base64) de uma mensagem do Evolution (ex.: foto do documento). */
     public function evoBaixarMidia(WhatsappConexao $c, array $key): array
     {

@@ -60,7 +60,8 @@ class WebhookController extends Controller
                     if (($mid['ok'] ?? false)) {
                         $b64   = $mid['base64'];
                         $mmime = (string) ($mid['mime'] ?? $mime);
-                        $agNome = optional(\App\Models\Agente::where('modulo', $msg->conversa->modulo)->where('ativo', true)->first())->nome;
+                        $agente = \App\Models\Agente::where('modulo', $msg->conversa->modulo)->where('ativo', true)->first();
+                        $agNome = optional($agente)->nome;
 
                         // ÁUDIO -> transcreve e processa como se fosse texto do cliente
                         if ($ehAudio) {
@@ -68,7 +69,8 @@ class WebhookController extends Controller
                             if ($txt !== '') {
                                 $msg->update(['texto' => '🎤 '.$txt]);
                                 $msg->conversa->forceFill(['ultima_msg_texto' => mb_substr('🎤 '.$txt, 0, 255)])->save();
-                                app(\App\Services\AgenteBot::class)->processar($msg->conversa);
+                                $respAudio = (bool) optional($agente)->regra('responde_audio');
+                                app(\App\Services\AgenteBot::class)->processar($msg->conversa, $agente, false, $respAudio);
                             } else {
                                 $at->registrarSaida($msg->conversa, 'Não consegui ouvir seu áudio direitinho 😕 Pode me mandar por escrito, por favor?', 'ia', null, $agNome);
                             }
