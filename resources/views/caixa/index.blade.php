@@ -175,6 +175,27 @@
 </div>
 @endif
 
+<div class="card overflow-hidden">
+  <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">📊 Vendas por categoria <span class="text-[10px] font-normal text-slate-400">· só pra prestação (tudo entra normal no caixa)</span></div>
+  <div class="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x text-center">
+    <div class="p-3">
+      <div class="text-[11px] text-slate-500 uppercase font-semibold">🏬 Balcão</div>
+      <div class="text-lg font-bold text-slate-800">R$ {{ number_format($porCategoria['balcao']['total'] ?? 0,2,',','.') }}</div>
+      <div class="text-[11px] text-slate-400">{{ $porCategoria['balcao']['qtd'] ?? 0 }} venda(s)</div>
+    </div>
+    <div class="p-3 bg-emerald-50/60">
+      <div class="text-[11px] text-emerald-700 uppercase font-semibold">🚤 Proprietário</div>
+      <div class="text-lg font-bold text-emerald-700">R$ {{ number_format($porCategoria['proprietario']['total'] ?? 0,2,',','.') }}</div>
+      <div class="text-[11px] text-slate-400">{{ $porCategoria['proprietario']['qtd'] ?? 0 }} venda(s)</div>
+    </div>
+    <div class="p-3 bg-blue-50/60">
+      <div class="text-[11px] text-blue-700 uppercase font-semibold">🤝 Agente interior</div>
+      <div class="text-lg font-bold text-blue-700">R$ {{ number_format($porCategoria['agente']['total'] ?? 0,2,',','.') }}</div>
+      <div class="text-[11px] text-slate-400">{{ $porCategoria['agente']['qtd'] ?? 0 }} venda(s)</div>
+    </div>
+  </div>
+</div>
+
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
 <div class="card overflow-hidden">
   <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">🚤 Por lancha / transporte</div>

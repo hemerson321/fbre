@@ -171,6 +171,20 @@ class CaixaController extends Controller
         }
         $linhasCaixa = \App\Support\ManifestoCaixa::dados($passCx)['linhas'];
 
+        // 3 categorias de venda: Balcão · Proprietário · Agente (interior)
+        $porCategoria = [
+            'balcao'       => ['qtd' => 0, 'total' => 0.0],
+            'proprietario' => ['qtd' => 0, 'total' => 0.0],
+            'agente'       => ['qtd' => 0, 'total' => 0.0],
+        ];
+        foreach ($passCx->where('cancelada', false) as $p) {
+            $cat = $p->revendedor_id
+                ? 'agente'
+                : ($p->pagamentos->contains(fn ($pg) => (bool) ($pg->pago_proprietario ?? false)) ? 'proprietario' : 'balcao');
+            $porCategoria[$cat]['qtd']++;
+            $porCategoria[$cat]['total'] += (float) $p->total;
+        }
+
         // VENDAS (BRUTO): valor total vendido no filtro, independente de ter entrado no caixa (ex.: venda de agente ainda nao repassada)
         $filtroData = function ($q) use ($inicio, $fim, $userId, $transporteId, $dataViagem) {
             return $q->when(! $dataViagem, fn ($x) => $x->whereBetween('created_at', [$inicio, $fim]))
@@ -313,7 +327,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'porCategoria'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 
