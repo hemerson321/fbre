@@ -8,17 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('conversas', function (Blueprint $table) {
-            if (! Schema::hasColumn('conversas', 'precisa_humano')) {
-                $table->boolean('precisa_humano')->default(false)->after('ia_ativa');
-            }
-            if (! Schema::hasColumn('conversas', 'transferida_motivo')) {
-                $table->string('transferida_motivo', 160)->nullable()->after('precisa_humano');
-            }
-            if (! Schema::hasColumn('conversas', 'transferida_em')) {
-                $table->timestamp('transferida_em')->nullable()->after('transferida_motivo');
-            }
-        });
+        if (! Schema::hasColumn('conversas', 'precisa_humano')) {
+            Schema::table('conversas', fn (Blueprint $t) => $t->boolean('precisa_humano')->default(false));
+        }
+        if (! Schema::hasColumn('conversas', 'transferida_motivo')) {
+            Schema::table('conversas', fn (Blueprint $t) => $t->string('transferida_motivo', 160)->nullable());
+        }
+        if (! Schema::hasColumn('conversas', 'transferida_em')) {
+            Schema::table('conversas', fn (Blueprint $t) => $t->timestamp('transferida_em')->nullable());
+        }
     }
 
     public function down(): void
