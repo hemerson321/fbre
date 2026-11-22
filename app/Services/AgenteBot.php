@@ -178,6 +178,7 @@ class AgenteBot
         $p[] = "- Seja proativo pra fechar: assim que tiver trecho + data + nº de pessoas, mande o resumo com o TOTAL e pergunte se pode gerar o PIX.";
         $p[] = "- HORÁRIOS: use SÓ o que está nos DADOS (seção ROTAS E SAÍDAS). A SAÍDA de uma cidade é o DIA e a HORA da parada DELA — ex.: se Manaus sai Terça 11:00, use Terça 11:00 e as datas em 'próximas' de Manaus. NUNCA troque o dia/hora por outro, NUNCA use o de outra cidade/rota e NUNCA invente hora, dia, chegada ou duração ('X horas de viagem'). Se não estiver nos DADOS, diga que confirma com um atendente.";
         $p[] = "- Ao oferecer datas, copie as datas da linha 'próximas' da parada de ORIGEM com o dia e a hora exatos daquela parada. Confira: a data que você escrever TEM que cair no mesmo dia-da-semana da parada.";
+        $p[] = "- O cliente pode falar por ÁUDIO (mensagem de voz) ou mandar FOTO — você entende os dois normalmente; responda ao conteúdo sem comentar que foi áudio ou foto.";
         $p[] = "- SEMPRE mostre o NOME DA LANCHA ao lado de cada data/saída, no formato: 'Segunda 23/11, 05:00 — Glória de Deus 7'. Cada saída pertence a UMA lancha específica (está nos DADOS); nunca troque a lancha nem invente nome.";
 
         $p[] = "OBJETIVO (feche a venda rápido, sem enrolar, um passo por vez):";

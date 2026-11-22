@@ -40,18 +40,49 @@ class WebhookController extends Controller
 
             foreach ($msgs as $m) {
                 if (($m['telefone'] ?? '') === '') continue;
-                $ehImagem = ($m['tipo'] ?? 'texto') === 'imagem';
+                $tipo     = $m['tipo'] ?? 'texto';
+                $ehImagem = $tipo === 'imagem';
+                $ehAudio  = $tipo === 'audio';
+                $ehDoc    = $tipo === 'documento';
+                $mime     = (string) ($m['mime'] ?? '');
                 $texto = (string) ($m['texto'] ?? '');
-                if ($texto === '' && ! $ehImagem) continue;
-                if ($ehImagem && $texto === '') $texto = '📷 (foto enviada)';
+                if ($texto === '' && ! $ehImagem && ! $ehAudio && ! $ehDoc) continue;
+                if ($texto === '') {
+                    $texto = $ehAudio ? '🎤 (áudio)' : ($ehImagem ? '📷 (foto enviada)' : '📎 (documento enviado)');
+                }
 
                 $msg = $at->registrarEntrada($c, $m['telefone'], $texto, $m['nome'] ?? null, $m['wa_id'] ?? null);
                 if (! $msg || ! $msg->conversa) continue;
 
-                if ($ehImagem && $c->tipo === 'nao_oficial') {
+                // mídias (só Evolution/não-oficial baixa base64)
+                if (($ehImagem || $ehAudio || $ehDoc) && $c->tipo === 'nao_oficial') {
                     $mid = $wa->evoBaixarMidia($c, $m['key'] ?? []);
                     if (($mid['ok'] ?? false)) {
-                        app(\App\Services\AgenteBot::class)->processarFoto($msg->conversa, $mid['base64'], $mid['mime'] ?? 'image/jpeg');
+                        $b64   = $mid['base64'];
+                        $mmime = (string) ($mid['mime'] ?? $mime);
+                        $agNome = optional(\App\Models\Agente::where('modulo', $msg->conversa->modulo)->where('ativo', true)->first())->nome;
+
+                        // ÁUDIO -> transcreve e processa como se fosse texto do cliente
+                        if ($ehAudio) {
+                            $txt = trim(app(\App\Services\TranscritorAudio::class)->transcrever($b64, $mmime ?: 'audio/ogg'));
+                            if ($txt !== '') {
+                                $msg->update(['texto' => '🎤 '.$txt]);
+                                $msg->conversa->forceFill(['ultima_msg_texto' => mb_substr('🎤 '.$txt, 0, 255)])->save();
+                                app(\App\Services\AgenteBot::class)->processar($msg->conversa);
+                            } else {
+                                $at->registrarSaida($msg->conversa, 'Não consegui ouvir seu áudio direitinho 😕 Pode me mandar por escrito, por favor?', 'ia', null, $agNome);
+                            }
+                            continue;
+                        }
+
+                        // FOTO / documento enviado como imagem -> visão (valida documento)
+                        if ($ehImagem || str_starts_with(mb_strtolower($mmime), 'image/')) {
+                            app(\App\Services\AgenteBot::class)->processarFoto($msg->conversa, $b64, $mmime ?: 'image/jpeg');
+                            continue;
+                        }
+
+                        // documento que não é imagem (ex.: PDF) -> pede como foto
+                        $at->registrarSaida($msg->conversa, 'Recebi seu arquivo! Pra eu validar, me manda o documento como *foto* (imagem nítida), por favor 📸', 'ia', null, $agNome);
                         continue;
                     }
                 }
@@ -81,19 +112,30 @@ class WebhookController extends Controller
             $jid = (string) ($key['remoteJid'] ?? '');
             if ($jid === '' || str_contains($jid, '@g.us')) continue; // ignora grupos
             $msg = $d['message'] ?? [];
+            // alguns tipos vêm embrulhados (ex.: documentWithCaptionMessage)
+            $msg = $msg['documentWithCaptionMessage']['message'] ?? $msg['viewOnceMessage']['message'] ?? $msg;
             $ehImagem = isset($msg['imageMessage']);
+            $ehAudio  = isset($msg['audioMessage']);
+            $ehDoc    = isset($msg['documentMessage']);
             $texto = $msg['conversation']
                 ?? ($msg['extendedTextMessage']['text'] ?? null)
                 ?? ($msg['imageMessage']['caption'] ?? null)
+                ?? ($msg['documentMessage']['caption'] ?? null)
                 ?? ($msg['buttonsResponseMessage']['selectedDisplayText'] ?? null)
                 ?? ($msg['listResponseMessage']['title'] ?? null);
-            if (! $texto && ! $ehImagem) continue;
+            if (! $texto && ! $ehImagem && ! $ehAudio && ! $ehDoc) continue;
+            $tipo = $ehImagem ? 'imagem' : ($ehAudio ? 'audio' : ($ehDoc ? 'documento' : 'texto'));
+            $mime = $msg['audioMessage']['mimetype']
+                ?? $msg['imageMessage']['mimetype']
+                ?? $msg['documentMessage']['mimetype']
+                ?? null;
             $out[] = [
                 'telefone' => explode('@', $jid)[0],
                 'texto' => (string) ($texto ?? ''),
                 'nome' => $d['pushName'] ?? null,
                 'wa_id' => $key['id'] ?? null,
-                'tipo' => $ehImagem ? 'imagem' : 'texto',
+                'tipo' => $tipo,
+                'mime' => $mime,
                 'key' => $key,
             ];
         }
