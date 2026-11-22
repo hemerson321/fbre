@@ -321,7 +321,7 @@
               <select class="field w-full" x-model="pagProp.meio"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select>
             </div>
           </div>
-          <p class="text-[11px] text-emerald-700/90 mt-1 leading-snug">Passou na <b>maquineta do proprietário</b> (o valor cai na conta dele). Entra como <b>pago</b>, identificado como Prop., e fecha a venda.</p>
+          <p class="text-[11px] text-emerald-700/90 mt-1 leading-snug">Passou na <b>maquineta do proprietário</b>. O valor entra <b>no caixa da empresa</b> normal — é só identificação (Prop.). Fecha a venda como pago.</p>
         </div>
         <div x-show="forma!=='faturado' && forma!=='online'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
