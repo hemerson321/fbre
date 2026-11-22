@@ -174,19 +174,16 @@
               <img :src="'/'+(p.foto||p.foto_rg)" x-show="p.foto||p.foto_rg" x-cloak class="h-9 w-9 object-cover rounded-lg border shrink-0 cursor-pointer" @click="window.open('/'+(p.foto_rg||p.foto),'_blank')" title="Foto (clique p/ ver o documento)">
               <button type="button" class="w-8 h-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 text-lg leading-none shrink-0" @click="rmPax(i)" x-show="passageiros.length>1" title="Remover">×</button>
             </div>
-            {{-- nascimento + sexo (antes do tipo: a idade define o tipo) --}}
-            <div class="grid grid-cols-2 gap-2 mt-1.5 items-start">
+            {{-- nascimento + sexo + tipo + valor lado a lado (card compacto) --}}
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5 items-start">
               <div><label class="lbl">Nascimento</label><input type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" class="field !min-h-0 py-1 text-sm w-full" x-model="p.nasc_br" @input="mascaraNasc(p)"><div x-show="idadeTxt(p)" x-cloak class="text-[10px] font-bold mt-0.5" style="color:var(--cor1)" x-text="'\ud83c\udf82 '+idadeTxt(p)"></div></div>
               <div><label class="lbl">Sexo</label><select class="field !min-h-0 py-1 text-sm w-full" x-model="p.sexo"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
-            </div>
-            {{-- linha 2: tipo + valor --}}
-            <div class="grid grid-cols-5 gap-2 mt-1.5 items-end">
-              <div class="col-span-3"><label class="lbl">Tipo</label>
+              <div><label class="lbl">Tipo</label>
                 <select class="field !min-h-0 py-1 text-sm w-full" x-model="p.tipo_id" @change="aplicarTipo(p)">
                   @foreach($tipos->where('colo', false) as $t)@php $lbl = $t->nome.(((($t->modo ?? 'valor')==='porcentagem') && !$t->eh_normal) ? ' ('.$t->percentual.'%)' : ''); @endphp<option value="{{ $t->id }}"@if($t->gratuito || $t->idoso_meia) :disabled="gratInfo && gratInfo.restante<=0" x-text="(gratInfo && gratInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@elseif($t->pcd) :disabled="pcdInfo && pcdInfo.restante<=0" x-text="(pcdInfo && pcdInfo.restante<=0) ? @js($lbl.' · esgotado') : @js($lbl)"@endif>{{ $lbl }}</option>@endforeach
                 </select></div>
-              <div class="col-span-2 text-right"><label class="lbl" x-text="p.modo==='manual' ? 'Valor (digite)' : 'Valor'"></label>
-                <div x-show="p.modo!=='manual'" class="text-base font-extrabold leading-tight" style="color:var(--cor1)" x-text="FBRE.moeda(paxTotal(p))"></div>
+              <div class="text-right"><label class="lbl" x-text="p.modo==='manual' ? 'Valor (digite)' : 'Valor'"></label>
+                <div x-show="p.modo!=='manual'" class="text-base font-extrabold leading-tight py-1" style="color:var(--cor1)" x-text="FBRE.moeda(paxTotal(p))"></div>
                 <input x-show="p.modo==='manual'" x-money="p.valor_passagem" inputmode="decimal" placeholder="0,00" class="field !min-h-0 py-1 text-sm w-full text-right font-extrabold" style="color:var(--cor1)" x-cloak></div>
             </div>
             {{-- linha 3: documento + poltrona --}}
