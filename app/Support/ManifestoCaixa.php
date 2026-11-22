@@ -23,9 +23,10 @@ class ManifestoCaixa
 
         foreach ($passagens as $p) {
             $cancelada = (bool) $p->cancelada;
-            $meios = $p->pagamentos->where('meio', '!=', 'desconto')->groupBy('meio');
-            $formaTxt = $meios->isNotEmpty()
-                ? $meios->keys()->map(fn ($m) => \App\Models\Pagamento::MEIOS[$m] ?? ucfirst($m))->implode(', ')
+            $pgsForma = $p->pagamentos->where('meio', '!=', 'desconto');
+            $formaParts = $pgsForma->map(fn ($pg) => (\App\Models\Pagamento::MEIOS[$pg->meio] ?? ucfirst((string) $pg->meio)).((bool) ($pg->pago_proprietario ?? false) ? ' Prop.' : ''))->unique()->values();
+            $formaTxt = $formaParts->isNotEmpty()
+                ? $formaParts->implode(', ')
                 : (\App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma));
             $ehMunicipio = $p->forma === 'faturado';
             $ehProp = $p->pagamentos->contains(fn ($pg) => (bool) ($pg->pago_proprietario ?? false));

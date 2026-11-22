@@ -84,7 +84,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
   $horaRota = null;
   if ($p->rota) { $par = $p->rota->paradas->firstWhere('localidade', $p->origem); $horaRota = ($par && $par->hora) ? \Illuminate\Support\Str::substr($par->hora, 0, 5) : null; }
   $hora = $horaRota ?: ($p->embarcacao?->hora_saida ? \Illuminate\Support\Str::substr($p->embarcacao->hora_saida, 0, 5) : null);
-  $formas = $p->pagamentos->map(fn ($pg) => \App\Models\Pagamento::MEIOS[$pg->meio] ?? $pg->meio)->filter()->unique()->implode(', ');
+  $formas = $p->pagamentos->map(fn ($pg) => (\App\Models\Pagamento::MEIOS[$pg->meio] ?? $pg->meio).((bool) ($pg->pago_proprietario ?? false) ? ' Prop.' : ''))->filter()->unique()->implode(', ');
   $formaLabel = (\App\Models\Passagem::FORMAS[$p->forma] ?? ucfirst((string) $p->forma)) . (($p->forma === 'areceber' && (int) $p->parcelas > 1) ? ' ('.(int) $p->parcelas.'x)' : '');
   $ehProprietario = $p->pagamentos->contains(fn ($pg) => (bool) ($pg->pago_proprietario ?? false));
   $nrViagem = $p->viagem?->id;

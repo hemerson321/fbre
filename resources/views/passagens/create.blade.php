@@ -282,36 +282,35 @@
           <select x-model.number="parcelas" class="field w-auto font-semibold"><template x-for="n in 12" :key="n"><option :value="n" x-text="n+'x'"></option></template></select>
         </div>
 
-        @if(($agentes ?? collect())->count())
-        {{-- Venda lançada em nome de AGENTE EXTERNO (interior) — ele manda pelo WhatsApp e o operador cadastra --}}
-        <div class="mt-1 rounded-xl border border-indigo-200 bg-indigo-50/60 p-2">
-          <label class="flex items-center gap-2 text-[13px] font-semibold text-indigo-800 cursor-pointer">
-            <input type="checkbox" x-model="agenteOn" class="w-4 h-4 rounded shrink-0"> 🧑‍💼 Venda de agente externo (interior)
+        {{-- toggles compactos: agente externo + pagamento do proprietário lado a lado --}}
+        <div class="grid grid-cols-2 gap-1.5 mt-1">
+          @if(($agentes ?? collect())->count())
+          <label class="flex items-center gap-1.5 text-[12px] font-semibold text-indigo-800 cursor-pointer rounded-lg border px-2 py-1.5" :class="agenteOn?'border-indigo-400 bg-indigo-50':'border-indigo-200 bg-indigo-50/60'">
+            <input type="checkbox" x-model="agenteOn" class="w-4 h-4 rounded shrink-0"> 🧑‍💼 Agente externo
           </label>
-          <div x-show="agenteOn" x-cloak class="mt-1.5 space-y-1.5">
-            <select x-model="agenteId" class="field w-full">
-              <option value="">— escolha o agente —</option>
-              @foreach($agentes as $ag)<option value="{{ $ag->id }}">{{ $ag->name }}</option>@endforeach
-            </select>
-            <div class="flex gap-2">
-              <button type="button" class="forma flex-1" :class="agenteAcerto && 'on'" @click="agenteAcerto=true">Com acerto</button>
-              <button type="button" class="forma flex-1" :class="!agenteAcerto && 'on'" @click="agenteAcerto=false">Sem acerto</button>
-            </div>
-            <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="agenteAcerto">Com acerto: gera pendência pra acertar com o agente depois.</p>
-            <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="!agenteAcerto">Sem acerto: só registra a venda no nome do agente, sem pendência.</p>
+          @endif
+          <label x-show="forma!=='faturado'" class="flex items-center gap-1.5 text-[12px] font-semibold text-emerald-800 cursor-pointer rounded-lg border px-2 py-1.5" :class="pagoProprietario?'border-emerald-400 bg-emerald-50':'border-emerald-200 bg-emerald-50/70'">
+            <input type="checkbox" x-model="pagoProprietario" @change="if(pagoProprietario && !(Number(pagProp.valor)>0)) pagProp.valor=devidoSemProp()" class="w-4 h-4 rounded shrink-0"> 🚤 Maquineta do prop.
+          </label>
+        </div>
+        @if(($agentes ?? collect())->count())
+        <div x-show="agenteOn" x-cloak class="mt-1.5 rounded-xl border border-indigo-200 bg-indigo-50/60 p-2 space-y-1.5">
+          <select x-model="agenteId" class="field w-full"><option value="">— escolha o agente —</option>@foreach($agentes as $ag)<option value="{{ $ag->id }}">{{ $ag->name }}</option>@endforeach</select>
+          <div class="flex gap-2">
+            <button type="button" class="forma flex-1" :class="agenteAcerto && 'on'" @click="agenteAcerto=true">Com acerto</button>
+            <button type="button" class="forma flex-1" :class="!agenteAcerto && 'on'" @click="agenteAcerto=false">Sem acerto</button>
           </div>
+          <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="agenteAcerto">Com acerto: gera pendência pra acertar com o agente depois.</p>
+          <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="!agenteAcerto">Sem acerto: só registra a venda no nome do agente, sem pendência.</p>
         </div>
         @endif
         @if(!empty($soAvista))
-        <p class="text-xs text-slate-500 -mt-1">Revendedor: venda à vista. O acerto (parcelado/faturado) é entre você e a empresa.</p>
+        <p class="text-xs text-slate-500 mt-1">Revendedor: venda à vista. O acerto (parcelado/faturado) é entre você e a empresa.</p>
         @endif
-        <div x-show="forma!=='faturado'" class="mt-1 rounded-xl border p-2" :class="pagoProprietario ? 'border-emerald-400 bg-emerald-50' : 'border-emerald-200 bg-emerald-50/70'">
-          <label class="flex items-center gap-2 text-[13px] font-semibold text-emerald-800 cursor-pointer">
-            <input type="checkbox" x-model="pagoProprietario" @change="if(pagoProprietario && !(Number(pagProp.valor)>0)) pagProp.valor=devidoSemProp()" class="w-4 h-4 rounded shrink-0"> 🚤 Pagamento do proprietário
-          </label>
-          <div x-show="pagoProprietario" x-cloak class="mt-1.5 flex gap-2 items-end">
+        <div x-show="pagoProprietario && forma!=='faturado'" x-cloak class="mt-1.5 rounded-xl border border-emerald-300 bg-emerald-50 p-2">
+          <div class="flex gap-2 items-end">
             <div class="flex-1">
-              <label class="lbl">Valor pago pelo proprietário</label>
+              <label class="lbl">Valor na maquineta do proprietário</label>
               <div class="flex gap-1">
                 <input class="field text-right font-semibold w-full" x-money="pagProp.valor">
                 <button type="button" @click="pagProp.valor=devidoSemProp()" title="Lançar o valor que falta" class="shrink-0 rounded-xl border-2 w-11 flex items-center justify-center font-extrabold text-lg" style="border-color:var(--cor1);color:var(--cor1)">=</button>
@@ -319,15 +318,10 @@
             </div>
             <div class="w-28">
               <label class="lbl">Forma</label>
-              <select class="field w-full" x-model="pagProp.meio">
-                <option value="dinheiro">Dinheiro</option>
-                <option value="pix">PIX</option>
-                <option value="debito">Débito</option>
-                <option value="credito">Crédito</option>
-              </select>
+              <select class="field w-full" x-model="pagProp.meio"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select>
             </div>
           </div>
-          <p x-show="pagoProprietario" x-cloak class="text-[11px] text-emerald-700/90 mt-1 leading-snug">Entra como pago (identificado como <b>do proprietário</b>) e <b>fecha a venda</b> — não fica em aberto.</p>
+          <p class="text-[11px] text-emerald-700/90 mt-1 leading-snug">Passou na <b>maquineta do proprietário</b> (o valor cai na conta dele). Entra como <b>pago</b>, identificado como Prop., e fecha a venda.</p>
         </div>
         <div x-show="forma!=='faturado' && forma!=='online'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
