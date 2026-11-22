@@ -270,81 +270,64 @@
     <section class="sec shrink-0">
       <div class="sec-h"><span class="n">4</span><span class="ic">💳</span><span class="t">Pagamento</span></div>
       <div class="sec-b">
-        <div class="flex gap-1.5" x-ref="fForma">
-          @foreach(\App\Models\Passagem::FORMAS as $k=>$l)
-          @if((empty($soAvista) || $k==='avista') && in_array($k, $formasPermitidas ?? ['avista']))
-          <label class="forma" :class="forma==='{{ $k }}' && 'on'"><input type="radio" name="forma_sel" value="{{ $k }}" x-model="forma" class="sr-only"> {{ $l }}</label>
+        {{-- TIPO de pagamento --}}
+        <div class="grid grid-cols-2 gap-1.5" x-ref="fForma">
+          <button type="button" class="forma" :class="tipoPag==='balcao' && 'on'" @click="setTipo('balcao')">🏬 Balcão</button>
+          @if(empty($soAvista) && ($agentes ?? collect())->count())
+          <button type="button" class="forma" :class="tipoPag==='agente' && 'on'" @click="setTipo('agente')">🤝 Agente</button>
           @endif
-          @endforeach
-        </div>
-        <div x-show="forma==='areceber'" class="flex items-center gap-2 mt-1">
-          <label class="lbl !mb-0">Parcelado em</label>
-          <select x-model.number="parcelas" class="field w-auto font-semibold"><template x-for="n in 12" :key="n"><option :value="n" x-text="n+'x'"></option></template></select>
+          @if(empty($soAvista) && in_array('faturado', $formasPermitidas ?? []))
+          <button type="button" class="forma" :class="tipoPag==='faturado' && 'on'" @click="setTipo('faturado')">🧾 Faturado</button>
+          @endif
+          @if(empty($soAvista) && in_array('online', $formasPermitidas ?? []))
+          <button type="button" class="forma" :class="tipoPag==='online' && 'on'" @click="setTipo('online')">🌐 Online</button>
+          @endif
         </div>
 
-        {{-- toggles compactos: agente externo + pagamento do proprietário lado a lado --}}
-        <div class="grid grid-cols-2 gap-1.5 mt-1">
-          @if(($agentes ?? collect())->count())
-          <label class="flex items-center gap-1.5 text-[12px] font-semibold text-indigo-800 cursor-pointer rounded-lg border px-2 py-1.5" :class="agenteOn?'border-indigo-400 bg-indigo-50':'border-indigo-200 bg-indigo-50/60'">
-            <input type="checkbox" x-model="agenteOn" class="w-4 h-4 rounded shrink-0"> 🧑‍💼 Agente externo
-          </label>
-          @endif
-          <label x-show="forma!=='faturado'" class="flex items-center gap-1.5 text-[12px] font-semibold text-emerald-800 cursor-pointer rounded-lg border px-2 py-1.5" :class="pagoProprietario?'border-emerald-400 bg-emerald-50':'border-emerald-200 bg-emerald-50/70'">
-            <input type="checkbox" x-model="pagoProprietario" @change="if(pagoProprietario && !(Number(pagProp.valor)>0)) pagProp.valor=devidoSemProp()" class="w-4 h-4 rounded shrink-0"> 🚤 Caixa do proprietário
-          </label>
-        </div>
+        {{-- AGENTE: seletor + acerto --}}
         @if(($agentes ?? collect())->count())
-        <div x-show="agenteOn" x-cloak class="mt-1.5 rounded-xl border border-indigo-200 bg-indigo-50/60 p-2 space-y-1.5">
+        <div x-show="tipoPag==='agente'" x-cloak class="mt-2 rounded-xl border border-indigo-200 bg-indigo-50/60 p-2 space-y-1.5">
           <select x-model="agenteId" class="field w-full"><option value="">— escolha o agente —</option>@foreach($agentes as $ag)<option value="{{ $ag->id }}">{{ $ag->name }}</option>@endforeach</select>
           <div class="flex gap-2">
             <button type="button" class="forma flex-1" :class="agenteAcerto && 'on'" @click="agenteAcerto=true">Com acerto</button>
             <button type="button" class="forma flex-1" :class="!agenteAcerto && 'on'" @click="agenteAcerto=false">Sem acerto</button>
           </div>
           <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="agenteAcerto">Com acerto: gera pendência pra acertar com o agente depois.</p>
-          <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="!agenteAcerto">Sem acerto: só registra a venda no nome do agente, sem pendência.</p>
+          <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="!agenteAcerto">Sem acerto: só registra a venda no nome do agente.</p>
         </div>
         @endif
-        @if(!empty($soAvista))
-        <p class="text-xs text-slate-500 mt-1">Revendedor: venda à vista. O acerto (parcelado/faturado) é entre você e a empresa.</p>
-        @endif
-        <div x-show="pagoProprietario && forma!=='faturado'" x-cloak class="mt-1.5 rounded-xl border border-emerald-300 bg-emerald-50 p-2">
-          <div class="flex gap-2 items-end">
-            <div class="flex-1">
-              <label class="lbl">Valor que entra no caixa do proprietário</label>
-              <div class="flex gap-1">
-                <input class="field text-right font-semibold w-full" x-money="pagProp.valor">
-                <button type="button" @click="pagProp.valor=devidoSemProp()" title="Lançar o valor que falta" class="shrink-0 rounded-xl border-2 w-11 flex items-center justify-center font-extrabold text-lg" style="border-color:var(--cor1);color:var(--cor1)">=</button>
-              </div>
-            </div>
-            <div class="w-28">
-              <label class="lbl">Forma</label>
-              <select class="field w-full" x-model="pagProp.meio"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select>
-            </div>
-          </div>
-          <p class="text-[11px] text-emerald-700/90 mt-1 leading-snug">Padrão é entrar no caixa da empresa. Marque aqui quando o valor entra <b>no caixa do proprietário</b> (maquineta dele) — aí <b>abate do acerto</b> com ele. Fecha a venda como pago.</p>
+
+        {{-- BALCÃO: maquineta empresa x proprietário --}}
+        <div x-show="tipoPag==='balcao'" class="mt-2 flex items-center gap-1.5">
+          <span class="lbl !mb-0 shrink-0">Maquineta:</span>
+          <button type="button" class="forma flex-1" :class="!proprietarioMaq && 'on'" @click="proprietarioMaq=false">🏢 Empresa</button>
+          <button type="button" class="forma flex-1" :class="proprietarioMaq && 'on'" @click="proprietarioMaq=true">🚤 Proprietário</button>
         </div>
-        <div x-show="forma!=='faturado' && forma!=='online'" class="grid grid-cols-2 gap-2">
-          <template x-for="m in meios" :key="m.k">
-            <div x-show="forma!=='areceber' && m.k!=='credito' && (m.k!=='dinheiro' || forma!=='online') && (m.k!=='pix' || pixManual || pixEstatico || pixDinamico)">
-              <label class="lbl" x-text="m.k==='pix' ? (pixEstatico ? 'PIX Estático' : (pixDinamico ? 'PIX Dinâmico' : 'PIX Manual')) : m.l"></label>
-              <div class="flex gap-1">
-                <input class="field text-right font-semibold w-full" x-money="pag[m.k]">
-                <button type="button" @click="botaoMeio(m.k)" :title="(m.k==='pix' && (pixEstatico||pixDinamico)) ? 'Gerar QR PIX e lançar o valor' : 'Lançar o valor total nesta forma'" class="shrink-0 rounded-xl border-2 w-12 flex items-center justify-center font-extrabold text-lg transition hover:text-white" style="border-color:var(--cor1);color:var(--cor1)" onmouseover="this.style.background='var(--cor1)'" onmouseout="this.style.background=''"><span x-text="(m.k==='pix' && (pixEstatico||pixDinamico)) ? '💠' : '='"></span></button>
-              </div>
-            </div>
-          </template>
-          @if(auth()->user()?->podeDesconto())
-          <div x-show="forma!=='areceber'"><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
-          @endif
-        </div>
-        <div x-show="forma==='online'" class="space-y-1.5">
-          <label class="lbl">Recebido por</label>
-          <div class="grid grid-cols-3 gap-2">
-            <template x-for="m in meiosOnline" :key="m.k">
-              <button type="button" class="forma" :class="onlineMeio===m.k && 'on'" @click="onlineMeio=m.k" x-text="m.l"></button>
+
+        {{-- FORMAS (métodos) — ausente no faturado --}}
+        <div x-show="tipoPag!=='faturado'" class="mt-2">
+          <div class="lbl">Forma de pagamento</div>
+          <div class="grid grid-cols-3 gap-1.5">
+            <template x-for="m in metodosDisponiveis()" :key="m.k">
+              <button type="button" class="forma !text-[11.5px] !px-1" :class="metodoPag===m.k && 'on'" @click="metodoPag=m.k" x-text="m.l"></button>
             </template>
           </div>
+          <div x-show="metodoPag==='credito_parcelado'" x-cloak class="flex items-center gap-2 mt-1.5">
+            <span class="lbl !mb-0 shrink-0">Parcelas</span>
+            <select x-model.number="parcelas" class="field w-auto font-semibold"><template x-for="n in 12" :key="n"><option :value="n" x-text="n+'x'"></option></template></select>
+          </div>
+          <div x-show="metodoPag==='pix' && (pixDinamico || pixEstatico)" x-cloak class="mt-1.5">
+            <button type="button" @click="pixEstatico ? gerarPixEstatico() : gerarPixDinamico()" class="w-full rounded-lg border-2 py-1.5 text-[12px] font-bold" style="border-color:var(--cor1);color:var(--cor1)">💠 Gerar QR PIX</button>
+          </div>
+          @if(auth()->user()?->podeDesconto())
+          <div class="mt-1.5"><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+          @endif
         </div>
+
+        @if(!empty($soAvista))
+        <p class="text-xs text-slate-500 mt-1">Revendedor: venda à vista. O acerto é entre você e a empresa.</p>
+        @endif
+
         <div x-show="forma==='faturado'" x-cloak class="rounded-xl border border-amber-200 bg-amber-50/70 p-2 space-y-2">
           <div class="text-[13px] font-semibold text-amber-800">🧾 Cliente faturado (a receber)</div>
           <template x-if="fatSel">
@@ -566,8 +549,8 @@
 
   function novaPassagem(){
     return {
-      salvando:false, forma:@js($formaInicial ?? 'avista'), parcelas:1, imprimir:'direto',
-      agenteOn:false, agenteId:'', agenteAcerto:true, pagoProprietario:false, pagProp:{valor:null, meio:'dinheiro'},
+      salvando:false, tipoPag:'balcao', metodoPag:'dinheiro', proprietarioMaq:false, parcelas:1, imprimir:'direto',
+      agenteId:'', agenteAcerto:true,
       fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
@@ -588,9 +571,7 @@
       embarcacaoSel:@js((string) old('embarcacao_id', $embarcacaoPrincipal)),
       compradorNome:'', compradorTel:'', compradorDoc:'', observacao:'', documentosGerais:[],
       lancamentoEm:@js(now()->toDateString()),
-      desconto:null, pag:{dinheiro:null,pix:null,debito:null,credito:null},
-      meios:[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX Manual'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}],
-      meiosOnline:[{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'}], onlineMeio:'pix',
+      desconto:null,
       passageiros:[],
       precoInfo:false,
       paxLista:[], paxAberto:-1,
@@ -636,8 +617,8 @@
         // Pagamento: o operador escolhe o meio; nada vem preenchido por padrao.
       },
       ajustarAvista(){ /* desativado: operador escolhe o meio de pagamento, nao preenche dinheiro automatico */ },
-      preencher(meio){ this.meios.forEach(m=>{ if(m.k!==meio) this.pag[m.k]=null; }); this.pag[meio]=+Math.max(this.total,0).toFixed(2); },
-      botaoMeio(k){ this.preencher(k); if(k==='pix'){ if(this.pixEstatico){ this.gerarPixEstatico(); } else if(this.pixDinamico){ this.gerarPixDinamico(); } } },
+      metodosDisponiveis(){ const base=[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'},{k:'credito_parcelado',l:'Créd. Parcelado'}]; return this.tipoPag==='online' ? base.filter(m=>m.k!=='dinheiro') : base; },
+      setTipo(t){ this.tipoPag=t; if(t==='online' && this.metodoPag==='dinheiro') this.metodoPag='pix'; },
 
       // ---- passageiros ----
       _fileToDataUrl(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); },
@@ -802,8 +783,8 @@
       teclaAtalho(e){
         const k=e.key; if(k!=='F1'&&k!=='F2'&&k!=='F3') return; e.preventDefault();
         if(k==='F1'){ const el=this.$refs.fDestino; if(el){ el.focus(); try{ el.showPicker&&el.showPicker(); }catch(_){} } }
-        else if(k==='F2'){ if(this.usaPoltrona){ let i=this.passageiros.findIndex(p=>!p.poltrona); if(i<0)i=0; this.abrirMapa(i); } else { const el=this.$refs.fForma&&this.$refs.fForma.querySelector('input'); if(el) el.focus(); } }
-        else if(k==='F3'){ const w=this.$refs.fForma; if(w){ const r=w.querySelector('input'); if(r) r.focus(); w.scrollIntoView({block:'center',behavior:'smooth'}); } }
+        else if(k==='F2'){ if(this.usaPoltrona){ let i=this.passageiros.findIndex(p=>!p.poltrona); if(i<0)i=0; this.abrirMapa(i); } else { const el=this.$refs.fForma&&this.$refs.fForma.querySelector('button,input'); if(el) el.focus(); } }
+        else if(k==='F3'){ const w=this.$refs.fForma; if(w){ const r=w.querySelector('button,input'); if(r) r.focus(); w.scrollIntoView({block:'center',behavior:'smooth'}); } }
       },
 
       // ---- viagem (igual encomenda) ----
@@ -927,10 +908,11 @@
       get subTaxa(){ return this.passageiros.reduce((s,p)=>s+(Number(p.valor_taxa)||0),0); },
       get subAlim(){ return this.passageiros.reduce((s,p)=>s+(Number(p.valor_alimentacao)||0),0); },
       get total(){ return Math.max(this.subPassagem+this.subTaxa+this.subAlim-(Number(this.desconto)||0),0); },
-      get pago(){ if(this.forma==='faturado') return 0; if(this.forma==='online') return this.total; return this.meios.reduce((s,m)=> s + (Number(this.pag[m.k])||0), 0) + (this.pagoProprietario ? (Number(this.pagProp.valor)||0) : 0); },
-      devidoSemProp(){ const outras=this.meios.reduce((s,m)=>s+(Number(this.pag[m.k])||0),0); return Math.round(Math.max((Number(this.total)||0)-outras,0)*100)/100; },
-      get pagoSemDinheiro(){ return (Number(this.pag.pix)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0); },
-      get devido(){ return Math.max(this.total-this.pago,0); },
+      get forma(){ if(this.tipoPag==='faturado') return 'faturado'; if(this.tipoPag==='online') return 'online'; return 'avista'; },
+      get agenteOn(){ return this.tipoPag==='agente'; },
+      get pagoProprietario(){ return this.tipoPag==='balcao' && this.proprietarioMaq; },
+      get pago(){ return this.tipoPag==='faturado' ? 0 : (Number(this.total)||0); },
+      get devido(){ return Math.max((Number(this.total)||0)-this.pago,0); },
 
       fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
       emvF(id,v){ v=String(v); return id+String(v.length).padStart(2,'0')+v; },
@@ -942,8 +924,7 @@
         if(this.pixPagando) return;
         if(!this.origemSel || !this.destinoSel){ alert('Escolha a origem e o destino antes de gerar o PIX.'); return; }
         if(!this.validarPassageiros()) return;
-        const outros=(Number(this.pag.dinheiro)||0)+(Number(this.pag.debito)||0)+(Number(this.pag.credito)||0);
-        const valor=Math.max((Number(this.total)||0)-outros,0);
+        const valor=Math.max(Number(this.total)||0,0);
         if(valor<=0){ alert('Sem valor a cobrar.'); return; }
         const pedido=this.montarDados();
         this.pixCobId=null; this.pixCopia=''; this.pixQr=''; this.pixValor=valor; this.pixModal=true; this.pixPagando=true;
@@ -1059,12 +1040,12 @@
           origem:this.origemSel, destino:this.destinoSel,
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
-          forma:this.forma, parcelas:(this.forma==='areceber'?(Number(this.parcelas)||1):1), desconto:Number(this.desconto)||0, observacao:this.observacao||null,
-          agente_id:(this.agenteOn && this.agenteId)?Number(this.agenteId):null, agente_acerto:(this.agenteOn && this.agenteAcerto)?1:0,
-          cliente_faturado_id:(this.forma==='faturado' && this.clienteFaturadoId)?Number(this.clienteFaturadoId):null,
+          forma:this.forma, parcelas:(this.metodoPag==='credito_parcelado'?(Number(this.parcelas)||1):1), desconto:Number(this.desconto)||0, observacao:this.observacao||null,
+          agente_id:(this.tipoPag==='agente' && this.agenteId)?Number(this.agenteId):null, agente_acerto:(this.tipoPag==='agente' && this.agenteAcerto)?1:0,
+          cliente_faturado_id:(this.tipoPag==='faturado' && this.clienteFaturadoId)?Number(this.clienteFaturadoId):null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.papel||null, bebe_colo:((p.temColo && (p.bebeColo.nome||'').trim()) ? {nome:p.bebeColo.nome.trim(), documento:(p.bebeColo.documento||'').trim()||null, nascimento:p.bebeColo.nascimento||null} : null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
-          pagamentos:this.forma==='faturado'?[]:(this.forma==='online'?[{meio:this.onlineMeio, valor:this.total}]:[...this.meios.filter(m=>Number(this.pag[m.k])>0).map(m=>({meio:m.k, valor:Number(this.pag[m.k])})), ...((this.pagoProprietario && Number(this.pagProp.valor)>0)?[{meio:this.pagProp.meio||'dinheiro', valor:Number(this.pagProp.valor), proprietario:1}]:[])]),
+          pagamentos:this.tipoPag==='faturado'?[]:[{meio:(this.metodoPag==='credito_parcelado'?'credito':this.metodoPag), valor:this.total, proprietario:(this.pagoProprietario?1:0)}],
         };
       },
       fatDocTipoCalc(){ const d=(this.fatDoc||'').replace(/\D/g,''); this.fatDocTipo = d.length===14?'CNPJ':(d.length>=11?'CPF':''); },
