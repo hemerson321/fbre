@@ -86,9 +86,14 @@ class Atendimento
             $tok = $ag ? trim((string) ($ag->regras['audio_token'] ?? '')) : '';
             $voz = $ag ? (string) ($ag->regras['audio_voz'] ?? 'alloy') : 'alloy';
             $b64 = app(\App\Services\SinteseVoz::class)->sintetizar($texto, $voz ?: 'alloy', $tok ?: null);
-            if ($b64 !== '') {
+            if ($b64 === '') {
+                \Illuminate\Support\Facades\Log::warning('Audio: voz nao gerada (TTS vazio) na conversa '.$conversa->id.'. Confira o token OpenAI do agente (campo "Token OpenAI p/ audio").');
+            } else {
                 $envio = $this->wa->enviarAudio($conexao, $conversa->cliente_telefone, $b64);
                 $enviadoAudio = ($envio['ok'] ?? false);
+                if (! $enviadoAudio) {
+                    \Illuminate\Support\Facades\Log::warning('Audio: falha ao ENVIAR pelo WhatsApp na conversa '.$conversa->id.': '.($envio['erro'] ?? 'erro'));
+                }
             }
         }
         if ($envio === null || ! ($envio['ok'] ?? false)) {
