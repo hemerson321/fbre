@@ -47,6 +47,18 @@
 
 </div>
 
+{{-- ABAS DE VENDAS (várias vendas numa tacada) --}}
+<div class="flex items-center gap-1 overflow-x-auto pb-1 mt-1">
+  <template x-for="(a,ai) in abas" :key="ai">
+    <div x-show="abas.length>1" class="flex items-center shrink-0 rounded-xl border-2 overflow-hidden" :class="ai===abaAtual ? 'border-[var(--cor1)]' : 'border-slate-200'">
+      <button type="button" @click="trocarAba(ai)" class="px-3 py-1.5 text-[13px] font-bold whitespace-nowrap" :class="ai===abaAtual ? 'text-white' : 'text-slate-600 bg-white'" :style="ai===abaAtual ? 'background:var(--cor1)' : ''" x-text="abaLabel(ai)"></button>
+      <button type="button" @click="fecharAba(ai)" class="px-2 py-1.5 text-[14px] font-extrabold leading-none" :class="ai===abaAtual ? 'text-white/85' : 'text-slate-400 bg-white'" :style="ai===abaAtual ? 'background:var(--cor1)' : ''" title="Remover esta venda">×</button>
+    </div>
+  </template>
+  <button type="button" @click="novaAba()" class="shrink-0 rounded-xl border-2 border-dashed px-3 py-1.5 text-[13px] font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)">＋ <span x-text="abas.length>1 ? 'Nova venda' : 'Outra venda'"></span></button>
+  <span x-show="abas.length>1" x-cloak class="shrink-0 text-[11px] text-slate-400 ml-1 whitespace-nowrap">clique numa aba pra editar · finaliza todas de uma vez</span>
+</div>
+
 <div class="grid gap-2 lg:grid-cols-12 items-start">
 
   {{-- COLUNA 1: rota + comprador --}}
@@ -414,25 +426,12 @@
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
 
-        {{-- FILA DE VENDAS --}}
-        <div x-show="fila.length" x-cloak class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-2 space-y-1">
-          <div class="flex justify-between text-[11px] font-bold text-indigo-700"><span x-text="fila.length+' venda(s) na fila'"></span><span x-text="'Σ '+FBRE.moeda(filaTotal)"></span></div>
-          <template x-for="(it,fi) in fila" :key="fi">
-            <div class="flex items-center justify-between gap-2 text-[12px] bg-white rounded-lg border border-indigo-100 px-2 py-1">
-              <span class="truncate" x-text="(fi+1)+'. '+it.resumo.nome+' · '+it.resumo.trecho"></span>
-              <span class="shrink-0 font-semibold" x-text="FBRE.moeda(it.resumo.total)"></span>
-              <button type="button" @click="fila.splice(fi,1)" class="text-rose-500 font-bold text-base leading-none shrink-0" title="Remover da fila">×</button>
-            </div>
-          </template>
-        </div>
-
-        <div class="hidden lg:flex gap-2">
-          <button type="button" @click="adicionarVenda()" x-show="passageiros.length && (total>0 || forma!=='avista')" class="shrink-0 rounded-xl px-3 py-3 text-sm font-extrabold border-2 disabled:opacity-40" style="border-color:var(--cor1);color:var(--cor1)" :disabled="salvando" title="Adicionar esta venda à fila e começar outra">➕ Fila</button>
-          <button x-show="total>0 || forma!=='avista' || fila.length" class="flex-1 rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || (!passageiros.length && !fila.length)">
-            <span x-show="!salvando" x-text="fila.length ? ('✅ Finalizar '+filaCount+' venda'+(filaCount>1?'s':'')) : '💾 Salvar passagem'"></span><span x-show="salvando">Salvando…</span>
+        <div class="hidden lg:block">
+          <button x-show="total>0 || forma!=='avista' || abas.length>1" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || (!passageiros.length && abas.length<=1)">
+            <span x-show="!salvando" x-text="abas.length>1 ? ('✅ Finalizar '+abas.length+' vendas') : '💾 Salvar passagem'"></span><span x-show="salvando">Salvando…</span>
           </button>
         </div>
-        <p class="text-[11px] text-slate-400 text-center" x-show="!passageiros.length && !fila.length">Adicione ao menos um passageiro.</p>
+        <p class="text-[11px] text-slate-400 text-center" x-show="!passageiros.length">Adicione ao menos um passageiro.</p>
       </div>
     </section>
   </div>
@@ -575,14 +574,10 @@
         <div class="text-[11px] text-slate-400 font-semibold" x-text="passageiros.length+(passageiros.length===1?' passageiro':' passageiros')"></div>
       </div>
     </div>
-    <div x-show="fila.length" x-cloak class="text-[11px] font-bold text-indigo-700 mb-1 text-center" x-text="fila.length+' na fila · Σ '+FBRE.moeda(filaTotal)"></div>
-    <div class="flex gap-2">
-      <button type="button" @click="adicionarVenda()" x-show="passageiros.length && (total>0 || forma!=='avista')" class="shrink-0 rounded-2xl px-4 py-3.5 text-sm font-extrabold border-2" style="border-color:var(--cor1);color:var(--cor1)" :disabled="salvando">➕ Fila</button>
-      <button type="submit" x-show="total>0 || forma!=='avista' || fila.length" class="flex-1 rounded-2xl py-3.5 text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:opacity-40" style="background:var(--cor1)" :disabled="salvando || (!passageiros.length && !fila.length)">
-        <span x-show="!salvando" x-text="fila.length ? ('✅ Finalizar '+filaCount) : '✅ Confirmar venda'"></span><span x-show="salvando">Salvando…</span>
-      </button>
-    </div>
-    <p class="text-[11px] text-slate-400 text-center mt-1" x-show="!passageiros.length && !fila.length">Adicione ao menos um passageiro.</p>
+    <button type="submit" x-show="total>0 || forma!=='avista' || abas.length>1" class="w-full rounded-2xl py-3.5 text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:opacity-40" style="background:var(--cor1)" :disabled="salvando || (!passageiros.length && abas.length<=1)">
+      <span x-show="!salvando" x-text="abas.length>1 ? ('✅ Finalizar '+abas.length+' vendas') : '✅ Confirmar venda'"></span><span x-show="salvando">Salvando…</span>
+    </button>
+    <p class="text-[11px] text-slate-400 text-center mt-1" x-show="!passageiros.length">Adicione ao menos um passageiro.</p>
   </div>
 </form>
 @endsection
@@ -617,7 +612,7 @@
       compradorNome:'', compradorTel:'', compradorDoc:'', observacao:'', documentosGerais:[],
       lancamentoEm:@js(now()->toDateString()),
       desconto:null,
-      passageiros:[], fila:[],
+      passageiros:[], abas:[], abaAtual:0, _restaurando:false,
       precoInfo:false,
       paxLista:[], paxAberto:-1,
       nonce: Math.random().toString(36).slice(2,10),  // nome de campo aleatorio -> mata o autofill do Chrome
@@ -641,7 +636,7 @@
         // destino NÃO é lembrado: muda a cada venda, começa sempre em branco
         try{ const t=localStorage.getItem('fbre_transporte'); if(t) this.embarcacaoSel=t; }catch(e){}
         this.$watch('origemSel', v=>{ try{ if(v) localStorage.setItem('fbre_origem',v);}catch(e){} });
-        this.$watch('embarcacaoSel', v=>{ this.mudarEmbarcacao(); if(this.linhasTransporte.length){ const n=x=>String(x||'').trim().toLowerCase(); if(this.origemSel && !this.origens.some(c=>n(c)===n(this.origemSel))) this.origemSel=''; if(!this.origemSel){ const ogs=this.origens; if(ogs.length) this.origemSel=ogs[0]; } if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); this.passageiros.forEach(p=>{ if(p.nascimento) this.aplicarIdade(p); }); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
+        this.$watch('embarcacaoSel', v=>{ if(this._restaurando) return; this.mudarEmbarcacao(); if(this.linhasTransporte.length){ const n=x=>String(x||'').trim().toLowerCase(); if(this.origemSel && !this.origens.some(c=>n(c)===n(this.origemSel))) this.origemSel=''; if(!this.origemSel){ const ogs=this.origens; if(ogs.length) this.origemSel=ogs[0]; } if(this.destinoSel && !this.destinos.some(c=>n(c)===n(this.destinoSel))) this.destinoSel=''; } this.resolverLinha(); this.passageiros.forEach(p=>{ if(p.nascimento) this.aplicarIdade(p); }); try{ localStorage.setItem('fbre_transporte', v||''); }catch(e){} });
         this.$watch('origemSel', ()=>this.carregarGratuidade());
         this.$watch('destinoSel', ()=>this.carregarGratuidade());
         this.$watch('viagemData', ()=>this.carregarGratuidade());
@@ -801,7 +796,7 @@
         this.bandasAtivas().forEach(b=>{ const mn=(b.min===null||b.min===undefined||b.min==='')?null:Number(b.min); const mx=(b.max===null||b.max===undefined||b.max==='')?null:Number(b.max); if(mn===null&&mx===null) return; if((mn===null||a>=mn)&&(mx===null||a<=mx)){ const s=(mx===null?120:mx)-(mn===null?0:mn); if(s<span){ span=s; melhor=this.tipos.find(t=>String(t.id)===String(b.tipo_id)); } } });
         return melhor||null; },
       idadeTxt(p){ const a=this.idadeAnos(p.nascimento); if(a===null) return ''; const t=this.tipos.find(x=>String(x.id)===String(p.tipo_id)); return a+(a===1?' ano':' anos')+(t?(' · '+t.nome):''); },
-      carregarGratuidade(){ if(!this.origemSel||!this.destinoSel){ this.gratInfo=null; return; }
+      carregarGratuidade(){ if(this._restaurando) return; if(!this.origemSel||!this.destinoSel){ this.gratInfo=null; return; }
         try{ const u=new URL('/passagens/gratuidade', location.origin); u.searchParams.set('origem', this.origemSel); u.searchParams.set('destino', this.destinoSel);
           if(this.embarcacaoSel) u.searchParams.set('embarcacao_id', this.embarcacaoSel); if(this.rotaId) u.searchParams.set('rota_id', this.rotaId); if(this.viagemData) u.searchParams.set('data_viagem', this.viagemData);
           const tok=++this._gratTok; fetch(u,{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.ok?r.json():null).then(j=>{ if(tok!==this._gratTok) return; this.gratInfo=(j&&j.idoso&&j.idoso.ativo)?j.idoso:null; this.pcdInfo=(j&&j.pcd&&j.pcd.ativo)?j.pcd:null; this.idosoMeiaInfo=null; }).catch(()=>{}); }catch(e){} },
@@ -1118,7 +1113,7 @@
       async fatCriar(){ const nome=(this.fatNome||'').trim(); if(!nome) return; try{ const r=await fetch(@js(route('passagens.cliente-faturado.criar')),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},credentials:'same-origin',body:JSON.stringify({nome:nome, empresa:(this.fatEmpresa||'').trim()||null, documento:(this.fatDoc||'').trim()||null})}); const j=await r.json(); if(j&&j.ok&&j.cliente){ this.fatSelecionar(j.cliente); this.fatNome=''; this.fatEmpresa=''; this.fatDoc=''; this.fatDocTipo=''; } else { alert('Nao deu pra cadastrar o cliente.'); } }catch(e){ alert('Erro ao cadastrar cliente.'); } },
       async salvar(ev){
         if(this.salvando) return;
-        if(this.fila.length){ return this.finalizarFila(ev); }
+        if(this.abas.length>1){ return this.finalizarAbas(ev); }
         if(!this.validarPassageiros()) return;
         if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Falta lançar '+FBRE.moeda(this.devido)+'. Lance o valor nas formas ou use Faturado pra deixar a receber.'); return; }
         this.salvando=true;
@@ -1133,29 +1128,48 @@
           window.location.href='{{ route('passagens.create') }}';
         }catch(e){ alert('Não foi possível salvar: '+e.message); this.salvando=false; }
       },
-      // ---------- FILA DE VENDAS (múltiplas vendas separadas) ----------
-      get filaTotal(){ return this.fila.reduce((s,it)=>s+(Number(it.resumo?.total)||0),0); },
-      get filaCount(){ return this.fila.length + (this.passageiros.some(p=>(p.nome||'').trim()) ? 1 : 0); },
-      _filaEntry(){ return { dados:this.montarDados(), resumo:{ pax:this.passageiros.length, total:(Number(this.total)||0), trecho:((this.origemSel||'?')+' → '+(this.destinoSel||'?')), nome:(((this.passageiros[0]||{}).nome||'').trim()||'Passageiro') } }; },
-      _vendaOk(){
-        if(!this.validarPassageiros()) return false;
-        if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Falta lançar '+FBRE.moeda(this.devido)+' nesta venda. Feche o pagamento ou use Faturado.'); return false; }
-        return true;
+      // ---------- ABAS DE VENDAS (várias vendas, cada uma editável) ----------
+      _vendaKeys:['origemSel','destinoSel','embarcacaoSel','rotaId','linhaNome','paradasInfo','viagemData','viagemLabel','viagemDia','viagemHora','passageiros','tipoPag','metodosAtivos','credParcel','dividir','pag','proprietarioMaq','parcelas','desconto','agenteId','agenteAcerto','clienteFaturadoId','fatSel','compradorNome','compradorTel','compradorDoc','observacao','documentosGerais'],
+      _clone(v){ try{ return JSON.parse(JSON.stringify(v===undefined?null:v)); }catch(e){ return v; } },
+      _snap(){ const o={}; this._vendaKeys.forEach(k=>{ o[k]=this._clone(this[k]); }); return o; },
+      _load(snap){
+        this._restaurando=true;
+        this._vendaKeys.forEach(k=>{ if(k in snap) this[k]=this._clone(snap[k]); });
+        this.$nextTick(()=>{ this._restaurando=false; try{ this.mudarEmbarcacao(); }catch(e){} try{ this.carregarGratuidade(); }catch(e){} });
       },
-      _resetVenda(){
-        this.passageiros=[]; const np=this.novoPax(); this.aplicarTipo(np); this.passageiros.push(np);
-        this.tipoPag='balcao'; this.metodosAtivos=[this.tipoPag==='online'?'pix':'dinheiro']; this.credParcel=false; this.dividir=false;
-        this.pag={dinheiro:null,pix:null,debito:null,credito:null}; this.proprietarioMaq=false; this.parcelas=1; this.desconto=null;
-        this.agenteId=''; this.agenteAcerto=true; this.clienteFaturadoId=null; this.fatSel=null; this.fatBusca=''; this.fatResultados=[];
-        this.compradorNome=''; this.compradorTel=''; this.compradorDoc=''; this.observacao=''; this.documentosGerais=[];
-        this.destinoSel=''; this.pixCobId=null;
+      _freshVenda(base){
+        const s = base ? this._clone(base) : this._snap();
+        s.passageiros=[]; s.destinoSel='';
+        s.tipoPag='balcao'; s.metodosAtivos=['dinheiro']; s.credParcel=false; s.dividir=false;
+        s.pag={dinheiro:null,pix:null,debito:null,credito:null}; s.proprietarioMaq=false; s.parcelas=1; s.desconto=null;
+        s.agenteId=''; s.agenteAcerto=true; s.clienteFaturadoId=null; s.fatSel=null;
+        s.compradorNome=''; s.compradorTel=''; s.compradorDoc=''; s.observacao=''; s.documentosGerais=[];
+        return s;
       },
-      adicionarVenda(){
+      abaLabel(i){ return 'Venda '+(i+1); },
+      novaAba(){
         if(this.salvando) return;
-        if(!this._vendaOk()) return;
-        this.fila.push(this._filaEntry());
-        this._resetVenda();
+        if(!this.abas.length) this.abas=[this._snap()];
+        this.abas[this.abaAtual]=this._snap();
+        const nova=this._freshVenda(this.abas[this.abaAtual]);
+        this.abas.push(nova); this.abaAtual=this.abas.length-1;
+        this._load(nova);
+        this.$nextTick(()=>{ if(!this.passageiros.length){ const np=this.novoPax(); this.aplicarTipo(np); this.passageiros.push(np); } });
         try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){}
+      },
+      trocarAba(i){
+        if(i===this.abaAtual) return;
+        if(!this.abas.length) this.abas=[this._snap()];
+        this.abas[this.abaAtual]=this._snap();
+        this.abaAtual=i; this._load(this.abas[i]);
+      },
+      fecharAba(i){
+        if(this.abas.length<=1) return;
+        if(!confirm('Remover esta venda da lista?')) return;
+        this.abas.splice(i,1);
+        if(this.abaAtual>i) this.abaAtual--;
+        if(this.abaAtual>this.abas.length-1) this.abaAtual=this.abas.length-1;
+        this._load(this.abas[this.abaAtual]);
       },
       async _printDiretoId(id, so, vias){
         try{
@@ -1167,27 +1181,32 @@
         }catch(e){}
         return false;
       },
-      async finalizarFila(ev){
+      async finalizarAbas(ev){
         if(ev && ev.preventDefault) ev.preventDefault();
         if(this.salvando) return;
-        // inclui a venda em edição se tiver passageiro com nome
-        if(this.passageiros.some(p=>(p.nome||'').trim())){ if(!this._vendaOk()) return; this.fila.push(this._filaEntry()); this._resetVenda(); }
-        if(!this.fila.length){ alert('Nenhuma venda na fila.'); return; }
+        if(!this.abas.length) this.abas=[this._snap()];
+        this.abas[this.abaAtual]=this._snap();
+        const payloads=[];
+        for(let i=0;i<this.abas.length;i++){
+          this.abaAtual=i; this._load(this.abas[i]); await this.$nextTick();
+          if(!this.validarPassageiros()){ return; }
+          if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Venda '+(i+1)+': falta lançar '+FBRE.moeda(this.devido)+'. Feche o pagamento ou use Faturado.'); return; }
+          payloads.push(this.montarDados());
+        }
         this.salvando=true;
-        // pergunta de impressão UMA vez (vale pra todas); respeita direto/não imprimir
         let so=null, vias=1, modo=this.imprimir;
         if(modo==='direto'){ const qs=FBRE.perguntarImpressao('O que imprimir? (vale pra todas as vendas)'); if(qs===null){ modo='nao'; } else { const sp=new URLSearchParams(qs); so=sp.get('so')||'tudo'; vias=Math.max(1,parseInt(sp.get('vias')||'1',10)); } }
-        let ok=0; const falhas=[];
-        for(const it of this.fila){
+        let ok=0, falhas=0;
+        for(const dados of payloads){
           try{
-            const r=await FBREOffline.salvarModulo('passagem', it.dados);
+            const r=await FBREOffline.salvarModulo('passagem', dados);
             if(r.servidor && r.servidor.ok){ ok++; if(modo==='direto' && so){ await this._printDiretoId(r.servidor.id, so, vias); } }
             else if(r.local){ ok++; if(modo!=='nao'){ try{ await FBREOffline.imprimirModuloLocal(r.local); }catch(e){} } }
-            else { falhas.push(it); }
-          }catch(e){ falhas.push(it); }
+            else { falhas++; }
+          }catch(e){ falhas++; }
         }
-        this.fila=[]; this.salvando=false;
-        alert(ok+' venda(s) finalizada(s).'+(falhas.length?(' '+falhas.length+' não subiram — tente de novo.'):''));
+        this.salvando=false;
+        alert(ok+' venda(s) finalizada(s).'+(falhas?(' '+falhas+' não subiram — tente de novo.'):''));
         window.location.href='{{ route('passagens.create') }}';
       },
     };
