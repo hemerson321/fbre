@@ -126,6 +126,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','cadastra') && Route::has('passagens.bloqueios')) $g[] = ['r'=>route('passagens.bloqueios'), 'l'=>'Travar poltronas', 'i'=>'🔒'];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if ($u->ehRevendedor()) $g[] = ['r'=>route('meus-acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
+  if ($u->permite('passagem','atendimento')) $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;
   // Camarote / Suítes (módulo próprio, permissão separada)
   $g = [];
@@ -158,7 +159,6 @@ document.addEventListener('alpine:init', () => {
       if ($u->temModulo('passagem')) array_splice($adm, 4, 0, [['r'=>route('admin.rotas'), 'l'=>'Rotas e horários', 'i'=>'🗺️']]);
       if ($modOn('camarote')) $adm[] = ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'];
       $adm[] = ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'];
-      if ($u->temModulo('passagem')) $adm[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
       $adm[] = ['r'=>route('admin.pagamentos'), 'l'=>'Pagamentos (APIs)', 'i'=>'💳'];
       $adm[] = ['r'=>route('admin.llm'), 'l'=>'Provedores de IA', 'i'=>'🧠'];
       $adm[] = ['r'=>route('admin.agentes'), 'l'=>'Agentes IA', 'i'=>'🤖'];

@@ -131,14 +131,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/checkin', [\App\Http\Controllers\PassagemController::class, 'scanner'])->name('passagens.scanner')->middleware('perm:passagem.baixa');
     Route::get('/passagens/checkin/buscar', [\App\Http\Controllers\PassagemController::class, 'buscarCheckin'])->name('passagens.scanner.buscar')->middleware('perm:passagem.baixa');
     // Canal de atendimento (WhatsApp) — caixa de conversas
-    Route::get('/passagens/atendimento', [AtendimentoController::class, 'index'])->name('atendimento.index')->middleware('perm:passagem.ver');
-    Route::get('/passagens/atendimento-alertas', [AtendimentoController::class, 'alertas'])->name('atendimento.alertas')->middleware('perm:passagem.ver');
-    Route::get('/passagens/atendimento/{conversa}', [AtendimentoController::class, 'show'])->name('atendimento.show')->middleware('perm:passagem.ver');
-    Route::get('/passagens/atendimento/{conversa}/mensagens', [AtendimentoController::class, 'mensagens'])->name('atendimento.mensagens')->middleware('perm:passagem.ver');
-    Route::post('/passagens/atendimento/{conversa}/responder', [AtendimentoController::class, 'responder'])->name('atendimento.responder')->middleware('perm:passagem.ver');
-    Route::post('/passagens/atendimento/{conversa}/assumir', [AtendimentoController::class, 'assumir'])->name('atendimento.assumir')->middleware('perm:passagem.ver');
-    Route::post('/passagens/atendimento/{conversa}/fechar', [AtendimentoController::class, 'fechar'])->name('atendimento.fechar')->middleware('perm:passagem.ver');
-    Route::post('/passagens/atendimento/{conversa}/reiniciar', [AtendimentoController::class, 'reiniciar'])->name('atendimento.reiniciar')->middleware('perm:passagem.ver');
+    Route::get('/passagens/atendimento', [AtendimentoController::class, 'index'])->name('atendimento.index')->middleware('perm:passagem.atendimento');
+    Route::get('/passagens/atendimento-alertas', [AtendimentoController::class, 'alertas'])->name('atendimento.alertas')->middleware('perm:passagem.atendimento');
+    Route::get('/passagens/atendimento/{conversa}', [AtendimentoController::class, 'show'])->name('atendimento.show')->middleware('perm:passagem.atendimento');
+    Route::get('/passagens/atendimento/{conversa}/mensagens', [AtendimentoController::class, 'mensagens'])->name('atendimento.mensagens')->middleware('perm:passagem.atendimento');
+    Route::post('/passagens/atendimento/{conversa}/responder', [AtendimentoController::class, 'responder'])->name('atendimento.responder')->middleware('perm:passagem.atendimento');
+    Route::post('/passagens/atendimento/{conversa}/assumir', [AtendimentoController::class, 'assumir'])->name('atendimento.assumir')->middleware('perm:passagem.atendimento');
+    Route::post('/passagens/atendimento/{conversa}/fechar', [AtendimentoController::class, 'fechar'])->name('atendimento.fechar')->middleware('perm:passagem.atendimento');
+    Route::post('/passagens/atendimento/{conversa}/reiniciar', [AtendimentoController::class, 'reiniciar'])->name('atendimento.reiniciar')->middleware('perm:passagem.atendimento');
     Route::post('/passagens/captura/novo', [CapturaController::class, 'novo'])->name('captura.novo')->middleware('perm:passagem');
     Route::get('/passagens/captura/pendentes', [CapturaController::class, 'pendentes'])->name('captura.pendentes')->middleware('perm:passagem');
     Route::post('/passagens/captura/ocr', [CapturaController::class, 'ocrDireto'])->name('captura.ocr')->middleware('perm:passagem');

@@ -188,7 +188,7 @@ class User extends Authenticatable
     /** Ações (possibilidades) de CADA módulo — aparecem na tela de permissões. */
     public const ACOES_MODULO = [
         'encomenda'  => ['cadastra' => 'Cadastrar', 'ver' => 'Ver lista / filtro', 'baixa' => 'Dar baixa', 'imprimir' => 'Imprimir', 'precadastro' => 'Pré-cadastros'],
-        'passagem'   => ['cadastra' => 'Vender passagem', 'ver' => 'Ver lista / embarque', 'baixa' => 'Dar baixa / embarque', 'imprimir' => 'Imprimir'],
+        'passagem'   => ['cadastra' => 'Vender passagem', 'ver' => 'Ver lista / embarque', 'baixa' => 'Dar baixa / embarque', 'imprimir' => 'Imprimir', 'atendimento' => 'Atendimento WhatsApp'],
         'frete'      => ['cadastra' => 'Cadastrar frete', 'ver' => 'Ver lista', 'baixa' => 'Dar baixa / entrega', 'imprimir' => 'Imprimir'],
         'camarote'   => ['cadastra' => 'Reservar', 'ver' => 'Ver lista', 'baixa' => 'Dar baixa', 'imprimir' => 'Imprimir'],
         'lanchonete' => ['vender' => 'Vender', 'ver' => 'Ver vendas', 'imprimir' => 'Imprimir', 'estoque' => 'Controle de estoque'],
@@ -241,6 +241,7 @@ class User extends Authenticatable
     public function temModulo(string $mod): bool
     {
         foreach (array_keys(self::ACOES_MODULO[$mod] ?? []) as $acao) {
+            if ($acao === 'atendimento') continue; // acesso ao chat de atendimento é à parte: não libera o módulo todo
             if ($this->permite($mod, $acao)) return true;
         }
         return false;

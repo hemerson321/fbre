@@ -66,7 +66,7 @@ class AgenteBot
             $texto = $this->tratarPax($conversa, $texto);
             $texto = $this->tratarHumano($conversa, $texto, $demo);
             $res = $this->tratarPix($agente, $conversa, $texto, $demo);
-            $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia');
+            $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia', null, $agente?->nome);
             if (! empty($res['pix'])) {
                 $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
             }
@@ -93,7 +93,7 @@ class AgenteBot
             $r = app(\App\Services\LeitorDocumento::class)->extrair($dataUri, $cfg);
 
             if (! ($r['ok'] ?? false) || empty($r['campos'])) {
-                $this->atendimento->registrarSaida($conversa, "Recebi a foto, mas não consegui ler direito. Pode me mandar por escrito o nome completo, o documento (RG ou CPF) e a data de nascimento?", 'ia');
+                $this->atendimento->registrarSaida($conversa, "Recebi a foto, mas não consegui ler direito. Pode me mandar por escrito o nome completo, o documento (RG ou CPF) e a data de nascimento?", 'ia', null, $agente?->nome);
                 return;
             }
 
@@ -126,7 +126,7 @@ class AgenteBot
 
             $rr = $this->llm->chat($prov, $hist, $sistema, 400);
             if ($rr['ok'] ?? false) {
-                $this->atendimento->registrarSaida($conversa, trim((string) $rr['texto']), 'ia');
+                $this->atendimento->registrarSaida($conversa, trim((string) $rr['texto']), 'ia', null, $agente?->nome);
             }
             app(\App\Services\ConfirmaPagamento::class)->tentarCriarPassagem($conversa);
         } catch (\Throwable $e) {

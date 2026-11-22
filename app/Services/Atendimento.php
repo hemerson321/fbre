@@ -67,11 +67,18 @@ class Atendimento
     }
 
     /** Mensagem enviada ao cliente (humano/ia/sistema) -> envia pelo WhatsApp e grava. */
-    public function registrarSaida(Conversa $conversa, string $texto, string $origem = 'humano', ?int $userId = null): array
+    public function registrarSaida(Conversa $conversa, string $texto, string $origem = 'humano', ?int $userId = null, ?string $remetente = null): array
     {
+        // Nome de quem fala aparece pro cliente no WhatsApp (operador que assumiu ou o agente).
+        // O texto é salvo limpo; o prefixo vai só no que sai pelo WhatsApp.
+        if ($remetente === null && $origem === 'humano' && $userId) {
+            $remetente = optional(\App\Models\User::find($userId))->name;
+        }
+        $textoWa = $remetente ? '*'.trim($remetente)."*\n".$texto : $texto;
+
         $conexao = $conversa->conexao;
         $envio = $conexao
-            ? $this->wa->enviarTexto($conexao, $conversa->cliente_telefone, $texto)
+            ? $this->wa->enviarTexto($conexao, $conversa->cliente_telefone, $textoWa)
             : ['ok' => false, 'erro' => 'Conversa sem conexão de WhatsApp.'];
 
         $msg = Mensagem::create([
