@@ -18,7 +18,7 @@ class ManifestoCaixa
         $totDesconto = 0.0;
         $totGeral = 0.0;
         $totDevolvido = 0.0;
-        $nPax = 0; $nIdosos = 0; $nColos = 0; $nDevolvidas = 0; $nPcd = 0; $nOutros = 0;
+        $nPax = 0; $nIdosos = 0; $nColos = 0; $nDevolvidas = 0; $nCancelados = 0; $nPcd = 0; $nOutros = 0;
         $nr = 0;
 
         foreach ($passagens as $p) {
@@ -68,7 +68,7 @@ class ManifestoCaixa
             }
 
             if ($cancelada) {
-                $nDevolvidas++;
+                if (($p->cancel_tipo ?? '') === 'cancelamento') $nCancelados++; else $nDevolvidas++;
                 $totDevolvido += (float) $p->total;
             } else {
                 foreach ($p->pagamentos as $pg) {
@@ -88,7 +88,7 @@ class ManifestoCaixa
             'totGeral' => $totGeral,
             'totRecebido' => array_sum($totForma),
             'totDevolvido' => $totDevolvido,
-            'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nPcd' => $nPcd, 'nOutros' => $nOutros, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas,
+            'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nPcd' => $nPcd, 'nOutros' => $nOutros, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas, 'nCancelados' => $nCancelados,
         ];
     }
 }

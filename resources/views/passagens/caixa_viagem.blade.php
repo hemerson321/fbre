@@ -83,6 +83,7 @@
     <div class="lin"><span>Outros</span><b>{{ $nOutros ?? 0 }}</b></div>
     <div class="lin"><span>Bebês de colo</span><b>{{ $nColos }}</b></div>
     <div class="lin"><span>Devolvidas</span><b>{{ $nDevolvidas }}</b></div>
+    <div class="lin"><span>Cancelados</span><b>{{ $nCancelados ?? 0 }}</b></div>
   </div>
   <div class="bloco">
     <h2>Caixa da viagem</h2>

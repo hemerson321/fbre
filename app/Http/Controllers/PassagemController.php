@@ -792,7 +792,7 @@ class PassagemController extends Controller
         $totDesconto = $m['totDesconto'];
         $totGeral = $m['totGeral'];
         $totDevolvido = $m['totDevolvido'];
-        $nPax = $m['nPax']; $nIdosos = $m['nIdosos']; $nColos = $m['nColos']; $nDevolvidas = $m['nDevolvidas']; $nPcd = $m['nPcd'] ?? 0; $nOutros = $m['nOutros'] ?? 0;
+        $nPax = $m['nPax']; $nIdosos = $m['nIdosos']; $nColos = $m['nColos']; $nDevolvidas = $m['nDevolvidas']; $nCancelados = $m['nCancelados'] ?? 0; $nPcd = $m['nPcd'] ?? 0; $nOutros = $m['nOutros'] ?? 0;
 
         $totRecebido = array_sum($totForma);
         $embs = $passagens->map(fn ($p) => $p->embarcacao?->nome)->filter()->unique()->values();
@@ -872,7 +872,7 @@ class PassagemController extends Controller
             'totGeral' => $totGeral,
             'totRecebido' => $totRecebido,
             'totDevolvido' => $totDevolvido,
-            'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nPcd' => $nPcd, 'nOutros' => $nOutros, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas,
+            'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nPcd' => $nPcd, 'nOutros' => $nOutros, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas, 'nCancelados' => $nCancelados,
             'embs' => $embs, 'datas' => $datas, 'f' => $f, 'prestacao' => $prestacao, 'porCategoria' => $porCategoria,
             'auto' => $request->boolean('print'),
         ]);
