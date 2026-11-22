@@ -43,20 +43,18 @@
       <input type="date" class="field !min-h-0 !py-1 w-32 text-sm" x-model="lancamentoEm" :max="hojeISO">
     </div>
     @endif
+    {{-- ABAS DE VENDAS (ao lado do título) --}}
+    <div class="flex items-center gap-1 flex-wrap">
+      <template x-for="(a,ai) in abas" :key="ai">
+        <div x-show="abas.length>1" class="flex items-center shrink-0 rounded-lg border-2 overflow-hidden" :class="ai===abaAtual ? 'border-[var(--cor1)]' : 'border-slate-200'">
+          <button type="button" @click="trocarAba(ai)" class="px-2.5 py-1 text-[12px] font-bold whitespace-nowrap" :class="ai===abaAtual ? 'text-white' : 'text-slate-600 bg-white'" :style="ai===abaAtual ? 'background:var(--cor1)' : ''" x-text="abaLabel(ai)"></button>
+          <button type="button" @click="fecharAba(ai)" class="px-1.5 py-1 text-[13px] font-extrabold leading-none" :class="ai===abaAtual ? 'text-white/85' : 'text-slate-400 bg-white'" :style="ai===abaAtual ? 'background:var(--cor1)' : ''" title="Remover esta venda">×</button>
+        </div>
+      </template>
+      <button type="button" @click="novaAba()" class="shrink-0 rounded-lg border-2 border-dashed px-2.5 py-1 text-[12px] font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)">＋ <span x-text="abas.length>1 ? 'Nova venda' : 'Outra venda'"></span></button>
+    </div>
   </div>
 
-</div>
-
-{{-- ABAS DE VENDAS (várias vendas numa tacada) --}}
-<div class="flex items-center gap-1 overflow-x-auto pb-1 mt-1">
-  <template x-for="(a,ai) in abas" :key="ai">
-    <div x-show="abas.length>1" class="flex items-center shrink-0 rounded-xl border-2 overflow-hidden" :class="ai===abaAtual ? 'border-[var(--cor1)]' : 'border-slate-200'">
-      <button type="button" @click="trocarAba(ai)" class="px-3 py-1.5 text-[13px] font-bold whitespace-nowrap" :class="ai===abaAtual ? 'text-white' : 'text-slate-600 bg-white'" :style="ai===abaAtual ? 'background:var(--cor1)' : ''" x-text="abaLabel(ai)"></button>
-      <button type="button" @click="fecharAba(ai)" class="px-2 py-1.5 text-[14px] font-extrabold leading-none" :class="ai===abaAtual ? 'text-white/85' : 'text-slate-400 bg-white'" :style="ai===abaAtual ? 'background:var(--cor1)' : ''" title="Remover esta venda">×</button>
-    </div>
-  </template>
-  <button type="button" @click="novaAba()" class="shrink-0 rounded-xl border-2 border-dashed px-3 py-1.5 text-[13px] font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)">＋ <span x-text="abas.length>1 ? 'Nova venda' : 'Outra venda'"></span></button>
-  <span x-show="abas.length>1" x-cloak class="shrink-0 text-[11px] text-slate-400 ml-1 whitespace-nowrap">clique numa aba pra editar · finaliza todas de uma vez</span>
 </div>
 
 <div class="grid gap-2 lg:grid-cols-12 items-start">
