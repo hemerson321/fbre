@@ -27,6 +27,12 @@
         <label class="label text-xs">Token OpenAI p/ áudio</label>
         <input name="regras[audio_token]" type="password" class="input font-mono text-sm" autocomplete="off" placeholder="{{ !empty($r['audio_token']) ? '•••• salvo — deixe em branco p/ manter' : 'sk-...' }}">
         <p class="text-[11px] text-slate-400 mt-0.5">Cole o token da OpenAI. Ele ouve o áudio do cliente e gera a voz da resposta. @if(!empty($r['audio_token']))<span class="text-emerald-600 font-semibold">Token salvo ✓</span>@endif</p>
+        @if($a)
+        <div class="flex items-center gap-2 mt-1 flex-wrap">
+          <button type="button" class="btn btn-ghost btn-sm !py-1 !text-xs" onclick="testarAudioAgente(this,'{{ route('admin.agentes.testar-audio',$a) }}')">🔌 Testar API de áudio</button>
+          <span class="text-xs" data-audio-result></span>
+        </div>
+        @endif
       </div>
       <div>
         <label class="label text-xs">Voz da resposta</label>
@@ -79,4 +85,25 @@
   <button class="btn btn-ghost btn-sm">🧪 Testar agente</button>
 </form>
 @endif
+@once
+@push('scripts')
+<script>
+async function testarAudioAgente(btn, url){
+  var form = btn.closest('form');
+  var inp = form ? form.querySelector('input[name="regras[audio_token]"]') : null;
+  var tok = inp ? (inp.value || '') : '';
+  var res = btn.parentElement.querySelector('[data-audio-result]');
+  res.textContent = 'testando a OpenAI...'; res.className = 'text-xs text-slate-500';
+  btn.disabled = true;
+  try {
+    var r = await fetch(url, {method:'POST', headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Content-Type':'application/json','X-Requested-With':'fetch'}, body: JSON.stringify({token: tok})});
+    var j = await r.json();
+    res.textContent = j.msg || (j.ok ? 'ok' : 'erro');
+    res.className = 'text-xs font-semibold ' + (j.ok ? 'text-emerald-600' : 'text-rose-600');
+  } catch (e) { res.textContent = 'Erro de rede: ' + e; res.className = 'text-xs text-rose-600'; }
+  btn.disabled = false;
+}
+</script>
+@endpush
+@endonce
 @if($a)<form id="del-{{ $a->id }}" method="post" action="{{ route('admin.agentes.excluir',$a) }}" class="hidden" onsubmit="return confirm('Remover agente?')">@csrf @method('delete')</form>@endif

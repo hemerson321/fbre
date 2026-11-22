@@ -90,6 +90,52 @@ class AgenteController extends Controller
         return back()->with('ok', 'Agente criado.');
     }
 
+    /** Testa a API de áudio da OpenAI (valida o token e gera uma voz de teste). */
+    public function testarAudio(Request $request, Agente $agente)
+    {
+        abort_unless($agente->empresa_id === Tenant::id(), 404);
+        $tok = trim((string) $request->input('token'));
+        if ($tok === '') $tok = trim((string) ($agente->regras['audio_token'] ?? ''));
+        if ($tok === '') {
+            return response()->json(['ok' => false, 'msg' => '❌ Sem token. Cole o token no campo (ou salve o agente) e teste de novo.']);
+        }
+
+        // 1) Token válido? (lista de modelos)
+        try {
+            $m = \Illuminate\Support\Facades\Http::timeout(20)->withToken($tok)->get('https://api.openai.com/v1/models');
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'msg' => '❌ Não conectou na OpenAI: '.$e->getMessage()]);
+        }
+        if ($m->status() === 401) {
+            return response()->json(['ok' => false, 'msg' => '❌ Token inválido (401). Crie uma chave nova em platform.openai.com/api-keys e cole aqui.']);
+        }
+        if (! $m->successful()) {
+            return response()->json(['ok' => false, 'msg' => '❌ OpenAI recusou ('.$m->status().'): '.mb_substr($m->body(), 0, 160)]);
+        }
+
+        // 2) Gera uma voz de teste (valida acesso a áudio + crédito)
+        $voz = (string) ($agente->regras['audio_voz'] ?? 'alloy') ?: 'alloy';
+        try {
+            $t = \Illuminate\Support\Facades\Http::timeout(30)->withToken($tok)->post('https://api.openai.com/v1/audio/speech', [
+                'model' => 'tts-1', 'voice' => $voz, 'input' => 'Teste de voz do agente. Está funcionando.', 'response_format' => 'mp3',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'msg' => '❌ Erro ao gerar voz: '.$e->getMessage()]);
+        }
+        if ($t->successful() && strlen((string) $t->body()) > 500) {
+            $kb = (int) round(strlen((string) $t->body()) / 1024);
+            return response()->json(['ok' => true, 'msg' => "✅ Tudo certo! Token válido e voz gerada ({$kb} KB). O áudio vai funcionar."]);
+        }
+        $err = mb_strtolower((string) $t->body());
+        if (str_contains($err, 'insufficient_quota') || str_contains($err, 'quota') || str_contains($err, 'billing')) {
+            return response()->json(['ok' => false, 'msg' => '❌ A chave é válida, mas o projeto está SEM crédito/billing ativo na OpenAI. Adicione crédito e teste de novo.']);
+        }
+        if (str_contains($err, 'model')) {
+            return response()->json(['ok' => false, 'msg' => '❌ Essa chave não tem acesso ao modelo de voz (tts-1). Gere a chave com permissões "All".']);
+        }
+        return response()->json(['ok' => false, 'msg' => '❌ Falhou ao gerar voz ('.$t->status().'): '.mb_substr($t->body(), 0, 160)]);
+    }
+
     public function testar(Request $request, Agente $agente, AgenteBot $bot)
     {
         abort_unless($agente->empresa_id === Tenant::id(), 404);

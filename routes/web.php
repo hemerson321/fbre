@@ -292,6 +292,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/agentes/{agente?}', [AgenteController::class, 'salvar'])->name('agentes.salvar');
         Route::delete('/agentes/{agente}', [AgenteController::class, 'excluir'])->name('agentes.excluir');
         Route::post('/agentes/{agente}/testar', [AgenteController::class, 'testar'])->name('agentes.testar');
+        Route::post('/agentes/{agente}/testar-audio', [AgenteController::class, 'testarAudio'])->name('agentes.testar-audio');
         // Demo / chat de teste do agente (sem WhatsApp real, sem cobranca real)
         Route::get('/agentes/{agente}/demo', [AgenteDemoController::class, 'chat'])->name('agentes.demo');
         Route::get('/agentes/{agente}/demo/mensagens', [AgenteDemoController::class, 'mensagens'])->name('agentes.demo.mensagens');
