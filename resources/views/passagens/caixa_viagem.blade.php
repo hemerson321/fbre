@@ -79,6 +79,8 @@
     <h2>Contagem</h2>
     <div class="lin"><span>Total de passageiros</span><b>{{ $nPax }}</b></div>
     <div class="lin"><span>Idosos</span><b>{{ $nIdosos }}</b></div>
+    <div class="lin"><span>PCD</span><b>{{ $nPcd ?? 0 }}</b></div>
+    <div class="lin"><span>Outros</span><b>{{ $nOutros ?? 0 }}</b></div>
     <div class="lin"><span>Bebês de colo</span><b>{{ $nColos }}</b></div>
     <div class="lin"><span>Devolvidas</span><b>{{ $nDevolvidas }}</b></div>
   </div>

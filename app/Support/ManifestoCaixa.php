@@ -18,7 +18,7 @@ class ManifestoCaixa
         $totDesconto = 0.0;
         $totGeral = 0.0;
         $totDevolvido = 0.0;
-        $nPax = 0; $nIdosos = 0; $nColos = 0; $nDevolvidas = 0;
+        $nPax = 0; $nIdosos = 0; $nColos = 0; $nDevolvidas = 0; $nPcd = 0; $nOutros = 0;
         $nr = 0;
 
         foreach ($passagens as $p) {
@@ -38,6 +38,7 @@ class ManifestoCaixa
                 $tipoTxt = (string) ($pax->papel ?: $pax->tipo);
                 $ehIdoso = mb_stripos($tipoTxt, 'idoso') !== false;
                 $ehPcd = mb_stripos($tipoTxt, 'pcd') !== false || mb_stripos($tipoTxt, 'defic') !== false;
+                $ehOutros = mb_stripos($tipoTxt, 'outro') !== false;
                 $linhas->push((object) [
                     'nr' => $nr,
                     'ticket' => $p->numeroFormatado(),
@@ -62,7 +63,7 @@ class ManifestoCaixa
                     'embarcou' => (bool) $p->embarcou,
                     'checkin' => (bool) ($pax->checkin ?? false),
                 ]);
-                if (! $cancPax && ! $ehColo) { $nPax++; if ($ehIdoso) $nIdosos++; }
+                if (! $cancPax && ! $ehColo) { $nPax++; if ($ehIdoso) $nIdosos++; if ($ehPcd) $nPcd++; if ($ehOutros) $nOutros++; }
                 if ($ehColo && ! $cancPax) $nColos++;
             }
 
@@ -87,7 +88,7 @@ class ManifestoCaixa
             'totGeral' => $totGeral,
             'totRecebido' => array_sum($totForma),
             'totDevolvido' => $totDevolvido,
-            'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas,
+            'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nPcd' => $nPcd, 'nOutros' => $nOutros, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas,
         ];
     }
 }
