@@ -290,7 +290,7 @@
           </label>
           @endif
           <label x-show="forma!=='faturado'" class="flex items-center gap-1.5 text-[12px] font-semibold text-emerald-800 cursor-pointer rounded-lg border px-2 py-1.5" :class="pagoProprietario?'border-emerald-400 bg-emerald-50':'border-emerald-200 bg-emerald-50/70'">
-            <input type="checkbox" x-model="pagoProprietario" @change="if(pagoProprietario && !(Number(pagProp.valor)>0)) pagProp.valor=devidoSemProp()" class="w-4 h-4 rounded shrink-0"> 🚤 Maquineta do prop.
+            <input type="checkbox" x-model="pagoProprietario" @change="if(pagoProprietario && !(Number(pagProp.valor)>0)) pagProp.valor=devidoSemProp()" class="w-4 h-4 rounded shrink-0"> 🚤 Caixa do proprietário
           </label>
         </div>
         @if(($agentes ?? collect())->count())
@@ -310,7 +310,7 @@
         <div x-show="pagoProprietario && forma!=='faturado'" x-cloak class="mt-1.5 rounded-xl border border-emerald-300 bg-emerald-50 p-2">
           <div class="flex gap-2 items-end">
             <div class="flex-1">
-              <label class="lbl">Valor na maquineta do proprietário</label>
+              <label class="lbl">Valor que entra no caixa do proprietário</label>
               <div class="flex gap-1">
                 <input class="field text-right font-semibold w-full" x-money="pagProp.valor">
                 <button type="button" @click="pagProp.valor=devidoSemProp()" title="Lançar o valor que falta" class="shrink-0 rounded-xl border-2 w-11 flex items-center justify-center font-extrabold text-lg" style="border-color:var(--cor1);color:var(--cor1)">=</button>
@@ -321,7 +321,7 @@
               <select class="field w-full" x-model="pagProp.meio"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select>
             </div>
           </div>
-          <p class="text-[11px] text-emerald-700/90 mt-1 leading-snug">Passou na <b>maquineta do proprietário</b>. O valor entra <b>no caixa da empresa</b> normal — é só identificação (Prop.). Fecha a venda como pago.</p>
+          <p class="text-[11px] text-emerald-700/90 mt-1 leading-snug">Padrão é entrar no caixa da empresa. Marque aqui quando o valor entra <b>no caixa do proprietário</b> (maquineta dele) — aí <b>abate do acerto</b> com ele. Fecha a venda como pago.</p>
         </div>
         <div x-show="forma!=='faturado' && forma!=='online'" class="grid grid-cols-2 gap-2">
           <template x-for="m in meios" :key="m.k">
