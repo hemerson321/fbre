@@ -214,9 +214,10 @@ class AgenteBot
         $linhas = [];
 
         if ($normal) {
+            try { TrechoPreco::curarOrfaos(); } catch (\Throwable $e) {} // preços presos num tipo antigo voltam pro normal
             $trechos = TrechoPreco::where('ativo', true)
                 ->when($normal, fn ($q) => $q->where('tipo_passageiro_id', $normal->id))
-                ->orderBy('origem')->limit(60)->get();
+                ->orderBy('origem')->orderBy('destino')->limit(400)->get();
             if ($trechos->isNotEmpty()) {
                 $linhas[] = "Preços (passageiro adulto, por trecho):";
                 foreach ($trechos as $t) {
