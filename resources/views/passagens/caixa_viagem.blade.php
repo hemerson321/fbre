@@ -1,5 +1,14 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>Caixa por viagem</title>
+<html lang="pt-BR"><head><meta charset="utf-8">
+@php
+  $titP = [($ehRelatorio ?? false) ? 'Relatorio por viagem' : 'Caixa por viagem'];
+  if($embs->count()) $titP[] = $embs->implode(', ');
+  if($datas->count()) $titP[] = $datas->map(fn($d)=>\Illuminate\Support\Carbon::parse($d)->format('d-m-Y'))->implode(' ');
+  elseif(!empty($f['inicio']) || !empty($f['fim'])) $titP[] = (!empty($f['inicio'])?\Illuminate\Support\Carbon::parse($f['inicio'])->format('d-m-Y'):'').(!empty($f['fim']) && ($f['fim']??'')!==($f['inicio']??'')?(' a '.\Illuminate\Support\Carbon::parse($f['fim'])->format('d-m-Y')):'');
+  foreach(['Operador','Forma','Origem','Destino','Status','Cliente faturado'] as $fk){ if(!empty($filtros[$fk])) $titP[] = $filtros[$fk]; }
+  $tituloPdf = \Illuminate\Support\Str::of(implode(' - ', array_filter($titP)))->replace(['/','\\',':','*','?','"','<','>','|'], '-');
+@endphp
+<title>{{ $tituloPdf }}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   *{box-sizing:border-box}
