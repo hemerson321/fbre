@@ -6,6 +6,7 @@ use App\Models\Conversa;
 use App\Services\Atendimento;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Caixa de atendimento do WhatsApp (humano). O agente IA entra na próxima etapa.
@@ -28,7 +29,7 @@ class AtendimentoController extends Controller
             'conversas' => $conversas,
             'filtro' => $filtro,
             'aguardando' => Conversa::where('status', 'aguardando')->count(),
-            'precisaHumano' => Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada')->count(),
+            'precisaHumano' => $this->precisaHumanoCount(),
             'conversa' => null,
         ]);
     }
@@ -46,7 +47,7 @@ class AtendimentoController extends Controller
             'conversas' => $lista,
             'filtro' => 'ativas',
             'aguardando' => Conversa::where('status', 'aguardando')->count(),
-            'precisaHumano' => Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada')->count(),
+            'precisaHumano' => $this->precisaHumanoCount(),
             'conversa' => $conversa,
         ]);
     }
@@ -94,8 +95,15 @@ class AtendimentoController extends Controller
     }
 
     /** Polling do painel: conversas que a IA transferiu e aguardam atendente (p/ bip + lista). */
+    protected function precisaHumanoCount(): int
+    {
+        if (! Schema::hasColumn('conversas', 'precisa_humano')) return 0;
+        return Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada')->count();
+    }
+
     public function alertas()
     {
+        if (! Schema::hasColumn('conversas', 'precisa_humano')) return response()->json(['precisa' => 0, 'itens' => []]);
         $itens = Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada')
             ->orderByDesc('transferida_em')->limit(50)->get()
             ->map(fn ($c) => [
