@@ -270,62 +270,92 @@
     <section class="sec shrink-0">
       <div class="sec-h"><span class="n">4</span><span class="ic">💳</span><span class="t">Pagamento</span></div>
       <div class="sec-b">
-        {{-- TIPO de pagamento --}}
-        <div class="grid grid-cols-2 gap-1.5" x-ref="fForma">
-          <button type="button" class="forma" :class="tipoPag==='balcao' && 'on'" @click="setTipo('balcao')">🏬 Balcão</button>
+        {{-- TIPO de pagamento (1 linha) --}}
+        <div class="grid grid-cols-4 gap-1" x-ref="fForma">
+          <button type="button" class="forma !py-1.5 !text-[12px]" :class="tipoPag==='balcao' && 'on'" @click="setTipo('balcao')">🏬 Balcão</button>
           @if(empty($soAvista) && ($agentes ?? collect())->count())
-          <button type="button" class="forma" :class="tipoPag==='agente' && 'on'" @click="setTipo('agente')">🤝 Agente</button>
+          <button type="button" class="forma !py-1.5 !text-[12px]" :class="tipoPag==='agente' && 'on'" @click="setTipo('agente')">🤝 Agente</button>
+          @else
+          <button type="button" class="forma !py-1.5 !text-[12px] opacity-30 pointer-events-none">🤝 Agente</button>
           @endif
           @if(empty($soAvista) && in_array('faturado', $formasPermitidas ?? []))
-          <button type="button" class="forma" :class="tipoPag==='faturado' && 'on'" @click="setTipo('faturado')">🧾 Faturado</button>
+          <button type="button" class="forma !py-1.5 !text-[12px]" :class="tipoPag==='faturado' && 'on'" @click="setTipo('faturado')">🧾 Faturado</button>
+          @else
+          <button type="button" class="forma !py-1.5 !text-[12px] opacity-30 pointer-events-none">🧾 Faturado</button>
           @endif
           @if(empty($soAvista) && in_array('online', $formasPermitidas ?? []))
-          <button type="button" class="forma" :class="tipoPag==='online' && 'on'" @click="setTipo('online')">🌐 Online</button>
+          <button type="button" class="forma !py-1.5 !text-[12px]" :class="tipoPag==='online' && 'on'" @click="setTipo('online')">🌐 Online</button>
+          @else
+          <button type="button" class="forma !py-1.5 !text-[12px] opacity-30 pointer-events-none">🌐 Online</button>
           @endif
         </div>
 
-        {{-- AGENTE: seletor + acerto --}}
+        {{-- AGENTE --}}
         @if(($agentes ?? collect())->count())
-        <div x-show="tipoPag==='agente'" x-cloak class="mt-2 rounded-xl border border-indigo-200 bg-indigo-50/60 p-2 space-y-1.5">
+        <div x-show="tipoPag==='agente'" x-cloak class="rounded-xl border border-indigo-200 bg-indigo-50/60 p-1.5 space-y-1">
           <select x-model="agenteId" class="field w-full"><option value="">— escolha o agente —</option>@foreach($agentes as $ag)<option value="{{ $ag->id }}">{{ $ag->name }}</option>@endforeach</select>
-          <div class="flex gap-2">
-            <button type="button" class="forma flex-1" :class="agenteAcerto && 'on'" @click="agenteAcerto=true">Com acerto</button>
-            <button type="button" class="forma flex-1" :class="!agenteAcerto && 'on'" @click="agenteAcerto=false">Sem acerto</button>
+          <div class="flex gap-1">
+            <button type="button" class="forma flex-1 !py-1 !text-[11px]" :class="agenteAcerto && 'on'" @click="agenteAcerto=true">Com acerto</button>
+            <button type="button" class="forma flex-1 !py-1 !text-[11px]" :class="!agenteAcerto && 'on'" @click="agenteAcerto=false">Sem acerto</button>
           </div>
-          <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="agenteAcerto">Com acerto: gera pendência pra acertar com o agente depois.</p>
-          <p class="text-[11px] text-indigo-700/80 leading-snug" x-show="!agenteAcerto">Sem acerto: só registra a venda no nome do agente.</p>
         </div>
         @endif
 
-        {{-- BALCÃO: maquineta empresa x proprietário --}}
-        <div x-show="tipoPag==='balcao'" class="mt-2 flex items-center gap-1.5">
-          <span class="lbl !mb-0 shrink-0">Maquineta:</span>
-          <button type="button" class="forma flex-1" :class="!proprietarioMaq && 'on'" @click="proprietarioMaq=false">🏢 Empresa</button>
-          <button type="button" class="forma flex-1" :class="proprietarioMaq && 'on'" @click="proprietarioMaq=true">🚤 Proprietário</button>
+        {{-- BALCÃO: maquineta --}}
+        <div x-show="tipoPag==='balcao'" class="flex items-center gap-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Maquin.</span>
+          <button type="button" class="forma flex-1 !py-1 !text-[11px]" :class="!proprietarioMaq && 'on'" @click="proprietarioMaq=false">🏢 Empresa</button>
+          <button type="button" class="forma flex-1 !py-1 !text-[11px]" :class="proprietarioMaq && 'on'" @click="proprietarioMaq=true">🚤 Proprietário</button>
         </div>
 
-        {{-- FORMAS (métodos) — ausente no faturado --}}
-        <div x-show="tipoPag!=='faturado'" class="mt-2">
-          <div class="lbl">Forma de pagamento</div>
-          <div class="grid grid-cols-3 gap-1.5">
-            <template x-for="m in metodosDisponiveis()" :key="m.k">
-              <button type="button" class="forma !text-[11.5px] !px-1" :class="metodoPag===m.k && 'on'" @click="metodoPag=m.k" x-text="m.l"></button>
+        {{-- MÉTODOS --}}
+        <div x-show="tipoPag!=='faturado'">
+          <div class="flex items-center justify-between mb-0.5">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Forma</span>
+            <button type="button" @click="toggleDividir()" class="text-[11px] font-bold px-1.5 py-0.5 rounded-lg border" :class="dividir ? 'border-[var(--cor1)] text-[var(--cor1)] bg-[color-mix(in_srgb,var(--cor1)_10%,white)]' : 'border-slate-200 text-slate-500'" x-text="dividir ? '✓ Dividindo' : '🔀 Dividir'"></button>
+          </div>
+          <div class="grid grid-cols-5 gap-1">
+            <template x-for="m in metodosChips()" :key="m.k">
+              <button type="button" class="forma !py-1.5 !px-0.5 !text-[10.5px] leading-tight" :class="metodoOn(m.k) && 'on'" @click="toggleMetodo(m.k)" x-text="m.l"></button>
             </template>
           </div>
-          <div x-show="metodoPag==='credito_parcelado'" x-cloak class="flex items-center gap-2 mt-1.5">
-            <span class="lbl !mb-0 shrink-0">Parcelas</span>
-            <select x-model.number="parcelas" class="field w-auto font-semibold"><template x-for="n in 12" :key="n"><option :value="n" x-text="n+'x'"></option></template></select>
+
+          {{-- valores por forma (só no modo dividir) --}}
+          <div x-show="dividir" x-cloak class="mt-1 space-y-1">
+            <template x-for="k in metodosAtivos" :key="k">
+              <div class="flex items-center gap-1">
+                <span class="text-[11px] font-semibold text-slate-600 w-20 shrink-0 truncate" x-text="rotuloMetodo(k)"></span>
+                <input class="field text-right font-semibold flex-1 !min-h-[32px] !py-1" x-money="pag[k]">
+                <button type="button" @click="preencherRestante(k)" title="Lançar o que falta" class="shrink-0 rounded-lg border-2 w-9 h-8 flex items-center justify-center font-extrabold" style="border-color:var(--cor1);color:var(--cor1)">=</button>
+              </div>
+            </template>
+            <div class="flex justify-between text-[11px] font-bold px-0.5" :class="devido>0.009 ? 'text-amber-600' : 'text-emerald-600'">
+              <span x-text="devido>0.009 ? 'Falta lançar' : 'Fechado ✓'"></span>
+              <span x-show="devido>0.009" x-text="FBRE.moeda(devido)"></span>
+            </div>
           </div>
-          <div x-show="metodoPag==='pix' && (pixDinamico || pixEstatico)" x-cloak class="mt-1.5">
-            <button type="button" @click="pixEstatico ? gerarPixEstatico() : gerarPixDinamico()" class="w-full rounded-lg border-2 py-1.5 text-[12px] font-bold" style="border-color:var(--cor1);color:var(--cor1)">💠 Gerar QR PIX</button>
+
+          {{-- parcelas (crédito parcelado) --}}
+          <div x-show="metodoOn('credito_parcelado')" x-cloak class="flex items-center gap-2 mt-1">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Parcelas</span>
+            <select x-model.number="parcelas" class="field w-auto font-semibold !min-h-[32px] !py-1"><template x-for="n in 12" :key="n"><option :value="n" x-text="n+'x'"></option></template></select>
           </div>
+
+          {{-- PIX QR --}}
+          <div x-show="metodoOn('pix') && (pixDinamico || pixEstatico)" x-cloak class="mt-1">
+            <button type="button" @click="pixEstatico ? gerarPixEstatico() : gerarPixDinamico()" class="w-full rounded-lg border-2 py-1 text-[11px] font-bold" style="border-color:var(--cor1);color:var(--cor1)">💠 Gerar QR PIX</button>
+          </div>
+
           @if(auth()->user()?->podeDesconto())
-          <div class="mt-1.5"><label class="lbl">Desconto</label><input class="field text-right" x-money="desconto"></div>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Desconto</span>
+            <input class="field text-right flex-1 !min-h-[32px] !py-1" x-money="desconto">
+          </div>
           @endif
         </div>
 
         @if(!empty($soAvista))
-        <p class="text-xs text-slate-500 mt-1">Revendedor: venda à vista. O acerto é entre você e a empresa.</p>
+        <p class="text-[11px] text-slate-500">Revendedor: venda à vista. O acerto é entre você e a empresa.</p>
         @endif
 
         <div x-show="forma==='faturado'" x-cloak class="rounded-xl border border-amber-200 bg-amber-50/70 p-2 space-y-2">
@@ -365,16 +395,14 @@
           <p class="text-[11px] text-amber-700/80">Faturado: nada é recebido agora. Fica a receber no nome do cliente acima.</p>
         </div>
 
-        <div class="rounded-2xl p-2.5 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
-          <div class="flex justify-between text-xs opacity-75"><span>Tarifa de Transporte</span><span x-text="FBRE.moeda(subPassagem)"></span></div>
-          <div class="flex justify-between text-xs opacity-75"><span>Alimentação + Adicional</span><span x-text="FBRE.moeda(subAlim+subTaxa)"></span></div>
-          <div class="flex justify-between text-xs opacity-75" x-show="desconto>0"><span>Desconto</span><span x-text="'- '+FBRE.moeda(desconto)"></span></div>
-          <div class="flex justify-between items-baseline mt-0.5"><span class="text-sm font-semibold opacity-90">Total</span><span class="text-xl font-extrabold tracking-tight" x-text="FBRE.moeda(total)"></span></div>
-          <div class="h-px bg-white/20 my-1"></div>
-          <div class="flex justify-between text-sm"><span>Pago</span><span x-text="FBRE.moeda(pago)"></span></div>
-          <div class="flex justify-between items-center text-sm font-bold mt-0.5">
-            <span>Devido</span>
-            <span class="rounded-lg px-2 py-0.5" :class="devido>0.009 ? 'bg-amber-400 text-slate-900' : 'bg-emerald-400 text-slate-900'" x-text="devido>0.009 ? FBRE.moeda(devido) : 'Pago ✓'"></span>
+        <div class="rounded-xl p-2 text-white" style="background: linear-gradient(160deg, var(--cor1), color-mix(in srgb, var(--cor1) 75%, black))">
+          <div class="flex justify-between text-[10px] opacity-70 leading-tight"><span x-text="'Tarifa '+FBRE.moeda(subPassagem)+'  ·  Alim/Adic '+FBRE.moeda(subAlim+subTaxa)"></span><span x-show="desconto>0" x-text="'Desc - '+FBRE.moeda(desconto)"></span></div>
+          <div class="flex justify-between items-center mt-0.5">
+            <div class="flex items-baseline gap-1.5"><span class="text-xs font-semibold opacity-90">Total</span><span class="text-xl font-extrabold tracking-tight" x-text="FBRE.moeda(total)"></span></div>
+            <div class="flex items-center gap-1.5 text-[11px]">
+              <span class="opacity-80" x-text="'Pago '+FBRE.moeda(pago)"></span>
+              <span class="rounded-lg px-2 py-0.5 font-bold" :class="devido>0.009 ? 'bg-amber-400 text-slate-900' : 'bg-emerald-400 text-slate-900'" x-text="devido>0.009 ? ('Falta '+FBRE.moeda(devido)) : 'Pago ✓'"></span>
+            </div>
           </div>
         </div>
       </div>
@@ -549,7 +577,7 @@
 
   function novaPassagem(){
     return {
-      salvando:false, tipoPag:'balcao', metodoPag:'dinheiro', proprietarioMaq:false, parcelas:1, imprimir:'direto',
+      salvando:false, tipoPag:'balcao', metodosAtivos:['dinheiro'], credParcel:false, dividir:false, pag:{dinheiro:null,pix:null,debito:null,credito:null}, proprietarioMaq:false, parcelas:1, imprimir:'direto',
       agenteId:'', agenteAcerto:true,
       fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
@@ -617,8 +645,26 @@
         // Pagamento: o operador escolhe o meio; nada vem preenchido por padrao.
       },
       ajustarAvista(){ /* desativado: operador escolhe o meio de pagamento, nao preenche dinheiro automatico */ },
-      metodosDisponiveis(){ const base=[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'},{k:'credito_parcelado',l:'Créd. Parcelado'}]; return this.tipoPag==='online' ? base.filter(m=>m.k!=='dinheiro') : base; },
-      setTipo(t){ this.tipoPag=t; if(t==='online' && this.metodoPag==='dinheiro') this.metodoPag='pix'; },
+      metodosChips(){ const base=[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'},{k:'credito_parcelado',l:'Parcelado'}]; return this.tipoPag==='online' ? base.filter(m=>m.k!=='dinheiro') : base; },
+      setTipo(t){ this.tipoPag=t; if(t==='online'){ this.metodosAtivos=this.metodosAtivos.filter(k=>k!=='dinheiro'); this.pag.dinheiro=null; if(!this.metodosAtivos.length) this.metodosAtivos=['pix']; } },
+      restante(){ const soma=this.metodosAtivos.reduce((a,k)=>a+(Number(this.pag[k])||0),0); return Math.round(Math.max((Number(this.total)||0)-soma,0)*100)/100; },
+      preencherRestante(k){ this.pag[k]=Math.round(((Number(this.pag[k])||0)+this.restante())*100)/100; },
+      rotuloMetodo(k){ if(k==='credito') return this.credParcel ? ('Crédito '+(Number(this.parcelas)||1)+'x') : 'Crédito'; return ({dinheiro:'Dinheiro',pix:'PIX',debito:'Débito'})[k]||k; },
+      metodoOn(k){ if(k==='credito') return this.metodosAtivos.includes('credito') && !this.credParcel; if(k==='credito_parcelado') return this.metodosAtivos.includes('credito') && this.credParcel; return this.metodosAtivos.includes(k); },
+      toggleMetodo(k){
+        const slot=(k==='credito'||k==='credito_parcelado')?'credito':k; const wantP=(k==='credito_parcelado');
+        if(!this.dividir){ this.metodosAtivos=[slot]; this.credParcel=(slot==='credito')?wantP:false; if(slot==='credito' && !wantP) this.parcelas=1; this.pag={dinheiro:null,pix:null,debito:null,credito:null}; return; }
+        if(slot==='credito'){ const on=this.metodosAtivos.includes('credito');
+          if(on && this.credParcel===wantP){ this.metodosAtivos=this.metodosAtivos.filter(x=>x!=='credito'); this.pag.credito=null; this.credParcel=false; }
+          else if(on){ this.credParcel=wantP; if(!wantP) this.parcelas=1; }
+          else { this.metodosAtivos.push('credito'); this.credParcel=wantP; if(!wantP) this.parcelas=1; this.pag.credito=this.restante(); }
+          return; }
+        const i=this.metodosAtivos.indexOf(slot);
+        if(i>=0){ this.metodosAtivos.splice(i,1); this.pag[slot]=null; } else { this.metodosAtivos.push(slot); this.pag[slot]=this.restante(); }
+      },
+      toggleDividir(){ this.dividir=!this.dividir; const k=this.metodosAtivos[0]||(this.tipoPag==='online'?'pix':'dinheiro');
+        if(this.dividir){ this.pag={dinheiro:null,pix:null,debito:null,credito:null}; this.metodosAtivos=[k]; this.pag[k]=Math.round((Number(this.total)||0)*100)/100; }
+        else { this.metodosAtivos=[k]; this.pag={dinheiro:null,pix:null,debito:null,credito:null}; } },
 
       // ---- passageiros ----
       _fileToDataUrl(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); },
@@ -911,7 +957,7 @@
       get forma(){ if(this.tipoPag==='faturado') return 'faturado'; if(this.tipoPag==='online') return 'online'; return 'avista'; },
       get agenteOn(){ return this.tipoPag==='agente'; },
       get pagoProprietario(){ return this.tipoPag==='balcao' && this.proprietarioMaq; },
-      get pago(){ return this.tipoPag==='faturado' ? 0 : (Number(this.total)||0); },
+      get pago(){ if(this.tipoPag==='faturado') return 0; if(!this.dividir) return (Number(this.total)||0); return this.metodosAtivos.reduce((s,k)=>s+(Number(this.pag[k])||0),0); },
       get devido(){ return Math.max((Number(this.total)||0)-this.pago,0); },
 
       fmtPix(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); },
@@ -1040,12 +1086,12 @@
           origem:this.origemSel, destino:this.destinoSel,
           embarcacao_id:this.embarcacaoSel||null, rota_id:this.rotaId||null, data_viagem:this.viagemData||null,
           comprador_nome:this.compradorNome||null, comprador_telefone:this.compradorTel||null, comprador_documento:this.compradorDoc||null,
-          forma:this.forma, parcelas:(this.metodoPag==='credito_parcelado'?(Number(this.parcelas)||1):1), desconto:Number(this.desconto)||0, observacao:this.observacao||null,
+          forma:this.forma, parcelas:((this.metodosAtivos.includes('credito') && this.credParcel)?(Number(this.parcelas)||1):1), desconto:Number(this.desconto)||0, observacao:this.observacao||null,
           agente_id:(this.tipoPag==='agente' && this.agenteId)?Number(this.agenteId):null, agente_acerto:(this.tipoPag==='agente' && this.agenteAcerto)?1:0,
           cliente_faturado_id:(this.tipoPag==='faturado' && this.clienteFaturadoId)?Number(this.clienteFaturadoId):null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.papel||null, bebe_colo:((p.temColo && (p.bebeColo.nome||'').trim()) ? {nome:p.bebeColo.nome.trim(), documento:(p.bebeColo.documento||'').trim()||null, nascimento:p.bebeColo.nascimento||null} : null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
-          pagamentos:this.tipoPag==='faturado'?[]:[{meio:(this.metodoPag==='credito_parcelado'?'credito':this.metodoPag), valor:this.total, proprietario:(this.pagoProprietario?1:0)}],
+          pagamentos:this.tipoPag==='faturado'?[]:(this.dividir ? this.metodosAtivos.filter(k=>Number(this.pag[k])>0).map(k=>({meio:k, valor:Number(this.pag[k]), proprietario:(this.pagoProprietario?1:0)})) : [{meio:(this.metodosAtivos[0]||'dinheiro'), valor:this.total, proprietario:(this.pagoProprietario?1:0)}]),
         };
       },
       fatDocTipoCalc(){ const d=(this.fatDoc||'').replace(/\D/g,''); this.fatDocTipo = d.length===14?'CNPJ':(d.length>=11?'CPF':''); },
@@ -1056,7 +1102,7 @@
       async salvar(ev){
         if(this.salvando) return;
         if(!this.validarPassageiros()) return;
-        if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Essa forma precisa fechar o valor total (PIX, débito ou crédito). Para deixar saldo em aberto, use "Parcelado".'); return; }
+        if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Falta lançar '+FBRE.moeda(this.devido)+'. Lance o valor nas formas ou use Faturado pra deixar a receber.'); return; }
         this.salvando=true;
         try{ if(this.origemSel) localStorage.setItem('fbre_origem',this.origemSel); if(this.embarcacaoSel) localStorage.setItem('fbre_transporte',this.embarcacaoSel); }catch(e){}
         const dados=this.montarDados();
