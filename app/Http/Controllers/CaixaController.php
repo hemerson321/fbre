@@ -202,11 +202,12 @@ class CaixaController extends Controller
                     $pct = (int) $e->comissao_empresa_pct;
                     $p = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
                         ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
-                        ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total),0) as bruto, COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->first();
+                        ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total),0) as bruto, COALESCE(SUM(devido),0) as devido, COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->first();
                     $deb = round(
                         (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
                         - (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
                     $deb = max(0.0, $deb);
+                    $deb = round($deb + (float) $p->devido, 2); // em aberto é débito do proprietário
                     $comissao = round((float) $p->bruto - (float) $p->v, 2);
                     $passIdsDono = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
                         ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))->pluck('id');
@@ -236,6 +237,7 @@ class CaixaController extends Controller
                 (float) \App\Models\Pagamento::whereIn('embarcacao_id', $embIdsG)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
                 - (float) \App\Models\Pagamento::whereIn('embarcacao_id', $embIdsG)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
             $debitoG = max(0.0, $debitoG);
+            $debitoG = round($debitoG + (float) (clone $pqG)->sum('devido'), 2); // em aberto é débito do proprietário
             $despesasG = round($comissaoG + $debitoG + $cartaoG + $credPropG, 2);
             // rótulo do transporte e %: nome quando 1 só, senão "Todos os transportes"
             $nomeG = $embIdsG->count() === 1 ? (optional(\App\Models\Embarcacao::find($embIdsG->first()))->nome ?? 'Transporte') : 'Todos os transportes';

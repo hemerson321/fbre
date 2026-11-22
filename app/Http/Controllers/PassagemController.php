@@ -813,6 +813,7 @@ class PassagemController extends Controller
                 (float) Pagamento::whereIn('embarcacao_id', $embIdsP)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
                 - (float) Pagamento::whereIn('embarcacao_id', $embIdsP)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
             $debitoF = max(0.0, $debitoF);
+            $debitoF = round($debitoF + (float) $validas->sum('devido'), 2); // em aberto (não coletado) é débito do proprietário
             $despesasF = round($comissaoF + $debitoF + $cartaoF + $credPropF, 2);
             $nomeP = $embIdsP->count() === 1 ? (optional(Embarcacao::find($embIdsP->first()))->nome ?? 'Transporte') : 'Todos os transportes';
             $pctP = $embIdsP->count() === 1 ? (int) ($pctsP[$embIdsP->first()] ?? 0) : null;

@@ -255,6 +255,7 @@ class MeuTransporteController extends Controller
             (float) Pagamento::where('embarcacao_id', $embarcacao->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
             - (float) Pagamento::where('embarcacao_id', $embarcacao->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
         $debitoProp = max(0.0, $debitoProp);
+        $debitoProp = round($debitoProp + (float) $passagens->sum('devido'), 2); // em aberto (não coletado) é débito do proprietário
         // Despesas = comissão + débito + cartão + crédito do proprietário (entradas já adiantadas)
         $despesas = round($comissao + $debitoProp + $cartaoCredito + $creditoProp, 2);
         $liquido = round($bruto - $despesas, 2);
