@@ -90,17 +90,30 @@
               </div>
               <div class="grid grid-cols-7 gap-0.5">
                 <template x-for="c in calDias" :key="c.iso">
-                  <button type="button" :disabled="!(c.valido||c.validoOutra)" @click="c.valido ? escolherDia(c.iso) : (c.validoOutra && escolherDiaOutra(c.iso, c.outra.embId))"
-                    :title="c.outra ? ('🚤 '+c.outra.embNome+(c.outra.hora?(' · '+c.outra.hora):'')+' — clique pra trocar') : ''"
+                  <button type="button" :disabled="!c.valido" @click="clicarDia(c)"
+                    :title="c.viagens.length>1 ? (c.viagens.length+' lanchas — clique p/ escolher') : (c.viagens.length===1 && !c.temAtual ? ('🚤 '+c.viagens[0].embNome+(c.viagens[0].hora?(' · '+c.viagens[0].hora):'')+' — clique pra trocar') : '')"
                     class="h-9 rounded text-sm transition relative"
-                    :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.validoOutra ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed')))"
-                    :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : (c.validoOutra ? 'color:#b45309;background:#fff7ed;border:1px dashed #f59e0b' : ''))"
-                    x-text="c.dia"></button>
+                    :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed'))"
+                    :style="c.sel ? 'background:var(--cor1)' : (c.valido ? (c.temAtual ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : 'color:#b45309;background:#fff7ed;border:1px dashed #f59e0b') : '')">
+                    <span x-text="c.dia"></span>
+                    <template x-if="c.valido && c.viagens.length>1"><span class="absolute top-0.5 right-0.5 text-[8px] font-extrabold" style="color:#f59e0b" x-text="c.viagens.length"></span></template>
+                  </button>
                 </template>
               </div>
-              <div class="text-[10px] text-slate-400 mt-2 text-center leading-snug">
+              {{-- seletor quando há mais de uma lancha no dia --}}
+              <div x-show="calEscolha" x-cloak class="mt-2 border-t pt-2">
+                <div class="text-[11px] font-bold text-slate-500 mb-1">Mais de uma lancha nesse dia — escolha:</div>
+                <template x-for="o in (calEscolha ? calEscolha.opcoes : [])" :key="o.embId">
+                  <button type="button" @click="escolherDiaEmb(calEscolha.iso, o.embId)" class="w-full text-left rounded-lg border px-2 py-1.5 mb-1 text-sm font-semibold hover:bg-slate-50 flex items-center justify-between" :class="o.embId===(embarcacaoSel?String(embarcacaoSel):'') ? 'border-[var(--cor1)]' : 'border-slate-200'">
+                    <span>🚤 <span x-text="o.embNome"></span><span x-show="o.embId===(embarcacaoSel?String(embarcacaoSel):'')" class="text-[10px] text-slate-400"> (atual)</span></span>
+                    <span class="text-slate-400 text-[12px]" x-text="o.hora"></span>
+                  </button>
+                </template>
+                <button type="button" @click="calEscolha=null" class="text-[11px] text-slate-400">cancelar</button>
+              </div>
+              <div class="text-[10px] text-slate-400 mt-2 text-center leading-snug" x-show="!calEscolha">
                 <span style="color:var(--cor1)">■</span> desta lancha
-                <template x-if="Object.keys(mapaViagens).length"><span> · <span style="color:#f59e0b">▨</span> outra lancha (clique pra trocar)</span></template>
+                <template x-if="calDias.some(c=>c.valido && !c.temAtual)"><span> · <span style="color:#f59e0b">▨</span> outra lancha (clique pra trocar)</span></template>
               </div>
             </div>
           </div>
@@ -619,7 +632,7 @@
       paxLista:[], paxAberto:-1,
       nonce: Math.random().toString(36).slice(2,10),  // nome de campo aleatorio -> mata o autofill do Chrome
       // viagem
-      rotaId:'', linhaNome:'', paradasInfo:[], viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null,
+      rotaId:'', linhaNome:'', paradasInfo:[], viagemData:'', viagemLabel:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null, calEscolha:null,
       diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
       // poltrona
       usaPoltrona:false, qtdPoltronas:0, colunasPoltrona:4, poltronasLayout:'', temLayout:false, ocupadas:[], reservadas:[], travadas:[], _rtTimer:null, mapaAberto:false, paxAtual:0,
@@ -865,29 +878,30 @@
       mudarMes(n){ const d=new Date(this.calMes); d.setMonth(d.getMonth()+n); this.calMes=d; },
       get nomeMes(){ return this.calMes ? this.calMes.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) : ''; },
       embNome(id){ const e=(this.embarcacoesData||[]).find(x=>String(x.id)===String(id)); return e && e.nome ? e.nome : 'Outra lancha'; },
-      get mapaViagens(){ // dia-da-semana -> {embId, embNome, hora} das OUTRAS lanchas que saem da origem atual
+      get mapaDias(){ // dia-da-semana -> [{embId, embNome, hora}] de TODAS as lanchas que saem da origem atual
         const map={}; if(!this.origemSel) return map;
-        const _n=x=>String(x||'').trim().toLowerCase(); const cur=this.embarcacaoSel?String(this.embarcacaoSel):'';
+        const _n=x=>String(x||'').trim().toLowerCase();
         for(const L of this.linhas){ const ps=L.paradas||[]; const idx=ps.findIndex(x=>_n(x.n)===_n(this.origemSel));
           if(idx<0 || idx>=ps.length-1) continue; const p=ps[idx]; if(p.d===null||p.d===undefined||p.d==='') continue;
-          const embId=String(L.embarcacao_id||''); if(!embId || embId===cur) continue; const w=Number(p.d);
-          if(map[w]===undefined) map[w]={embId, embNome:this.embNome(embId), hora:p.h||''}; }
+          const embId=String(L.embarcacao_id||''); if(!embId) continue; const w=Number(p.d);
+          if(!map[w]) map[w]=[]; if(!map[w].some(o=>o.embId===embId)) map[w].push({embId, embNome:this.embNome(embId), hora:p.h||''}); }
         return map;
       },
       get calDias(){
         if(!this.calMes) return [];
         const ano=this.calMes.getFullYear(), mes=this.calMes.getMonth();
         const ini=new Date(ano,mes,1); ini.setDate(1-ini.getDay());
-        const mv=this.mapaViagens; const out=[];
+        const md=this.mapaDias; const cur=this.embarcacaoSel?String(this.embarcacaoSel):''; const out=[];
         for(let i=0;i<42;i++){ const d=new Date(ini); d.setDate(ini.getDate()+i); const iso=this.isoLocal(d); const outroMes=d.getMonth()!==mes; const w=d.getDay();
           const dataOk=(this.podeRetroativo || iso>=this.hojeISO);
-          const ehAtual=!outroMes && w===this.viagemDia;
-          const outra=(!outroMes && !ehAtual && mv[w]) ? mv[w] : null;
-          const valido=ehAtual && dataOk;
-          const validoOutra=!!outra && dataOk;
-          out.push({iso,dia:d.getDate(),valido,validoOutra,outra,outroMes,sel:iso===this.viagemData}); }
+          const viagens=(!outroMes && md[w]) ? md[w] : [];
+          const temAtual=viagens.some(o=>o.embId===cur);
+          const valido=viagens.length>0 && dataOk;
+          out.push({iso,dia:d.getDate(),valido,viagens,temAtual,outroMes,sel:iso===this.viagemData}); }
         return out;
       },
+      clicarDia(c){ if(!c.valido) return; if(c.viagens.length===1){ this.escolherDiaEmb(c.iso, c.viagens[0].embId); } else { this.calEscolha={ iso:c.iso, opcoes:c.viagens }; } },
+      escolherDiaEmb(iso, embId){ const cur=this.embarcacaoSel?String(this.embarcacaoSel):''; this.calEscolha=null; if(String(embId)===cur){ this.escolherDia(iso); } else { this.escolherDiaOutra(iso, embId); } },
       escolherDia(iso){ this.viagemData=iso; this.viagemLabel=this.rotulo(iso); this.calAberto=false; },
       escolherDiaOutra(iso, embId){ if(!embId) return; this.embarcacaoSel=String(embId); this.$nextTick(()=>{ this.viagemData=iso; this.viagemLabel=this.rotulo(iso); this.calAberto=false; }); },
       get linhasTransporte(){

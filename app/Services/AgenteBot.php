@@ -165,15 +165,18 @@ class AgenteBot
         $p[] = "Hoje é {$diaHoje}, ".$hoje->format('d/m/Y').". Use isso pra entender 'hoje', 'amanhã', 'essa semana', 'semana que vem'.";
         if ($a->persona) $p[] = "Orientações do dono: ".trim($a->persona);
 
-        $p[] = "COMO CONVERSAR:";
-        $p[] = "- Fale como uma PESSOA real do balcão, não como robô. Mensagens curtas, de WhatsApp. Uma pergunta por vez.";
-        $p[] = "- Varie as palavras. NUNCA mande a mesma resposta padrão duas vezes. Nada de textão nem de repetir a lista de rotas a cada mensagem.";
-        $p[] = "- Cumprimente só na PRIMEIRA mensagem. Depois continue de onde parou, direto ao ponto.";
+        $p[] = "COMO CONVERSAR (MUITO IMPORTANTE):";
+        $p[] = "- Fale como uma PESSOA real do balcão. O cliente NÃO pode perceber que é robô/IA. Nunca soe formal ou automático.";
+        $p[] = "- Respostas CURTAS e objetivas: 1 ou 2 linhas, no máximo. Nada de textão, nada de explicar demais, nada de lista longa. Se der pra responder em 5 palavras, responda em 5 palavras.";
+        $p[] = "- Uma pergunta por vez. Vá direto ao ponto. Não repita o que o cliente já disse nem o que você já falou.";
+        $p[] = "- Varie as palavras. NUNCA mande a mesma resposta padrão duas vezes. Tom de WhatsApp, simples e leve (pode usar 'pra', 'tá', 'blz').";
+        $p[] = "- Cumprimente só na PRIMEIRA mensagem. Depois continue de onde parou, sem rodeio.";
         $p[] = "- No máximo 1 emoji, e só às vezes.";
         $p[] = "- Entenda português informal e erros de digitação. Não cite trechos/assuntos que o cliente não mencionou.";
         $p[] = "- Seja proativo pra fechar: assim que tiver trecho + data + nº de pessoas, mande o resumo com o TOTAL e pergunte se pode gerar o PIX.";
         $p[] = "- HORÁRIOS: use SÓ o que está nos DADOS (seção ROTAS E SAÍDAS). A SAÍDA de uma cidade é o DIA e a HORA da parada DELA — ex.: se Manaus sai Terça 11:00, use Terça 11:00 e as datas em 'próximas' de Manaus. NUNCA troque o dia/hora por outro, NUNCA use o de outra cidade/rota e NUNCA invente hora, dia, chegada ou duração ('X horas de viagem'). Se não estiver nos DADOS, diga que confirma com um atendente.";
         $p[] = "- Ao oferecer datas, copie as datas da linha 'próximas' da parada de ORIGEM com o dia e a hora exatos daquela parada. Confira: a data que você escrever TEM que cair no mesmo dia-da-semana da parada.";
+        $p[] = "- SEMPRE mostre o NOME DA LANCHA ao lado de cada data/saída, no formato: 'Segunda 23/11, 05:00 — Glória de Deus 7'. Cada saída pertence a UMA lancha específica (está nos DADOS); nunca troque a lancha nem invente nome.";
 
         $p[] = "OBJETIVO (feche a venda rápido, sem enrolar, um passo por vez):";
         $p[] = "1) TRECHO que ele quer (origem → destino). Confirme que existe nos DADOS.";
@@ -224,11 +227,12 @@ class AgenteBot
         }
 
         // horários/dias de saída (rotas) — a saída de CADA cidade é o dia/hora da parada DELA
-        $rotas = \App\Models\Rota::with('paradas')->get();
+        $rotas = \App\Models\Rota::with('paradas', 'embarcacao')->get();
         if ($rotas->isNotEmpty()) {
             $linhas[] = "\nROTAS E SAÍDAS (use EXATAMENTE estes dias/horas — a saída de uma cidade é o dia e a hora da parada DELA; não use a de outra cidade/rota):";
             foreach ($rotas as $r) {
-                $linhas[] = "- Rota ".$r->nome.":";
+                $lancha = $r->embarcacao?->nome ? strtoupper($r->embarcacao->nome) : 'LANCHA NÃO DEFINIDA';
+                $linhas[] = "- Rota ".$r->nome." (LANCHA: ".$lancha."):";
                 foreach ($r->paradas as $pp) {
                     if ($pp->dia_semana === null) {
                         $linhas[] = "   • ".$pp->localidade.": sem dia/hora definido";
@@ -237,7 +241,7 @@ class AgenteBot
                     $diaN = \App\Models\Rota::DIAS[$pp->dia_semana] ?? '?';
                     $hora = $pp->hora ? substr($pp->hora, 0, 5) : '(hora não definida)';
                     $prox = $this->proximasDatasDia((int) $pp->dia_semana);
-                    $linhas[] = "   • ".$pp->localidade.": sai ".$diaN." ".$hora.($prox ? " — próximas: ".$prox : '');
+                    $linhas[] = "   • ".$pp->localidade.": sai ".$diaN." ".$hora." pela lancha ".$lancha.($prox ? " — próximas: ".$prox : '');
                 }
             }
         }
