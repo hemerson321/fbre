@@ -339,10 +339,13 @@ class PassagemService
         $comAcerto = (bool) ($data['agente_acerto'] ?? true);
         $p->forceFill([
             'revendedor_id' => $ag->id,
+            'user_id' => $ag->id, // o DONO da venda é o agente (não o operador que digitou)
             'acerto_empresa_valor' => $ag->repasseDe($total),
             'acerto_empresa' => ! $comAcerto, // sem acerto = já acertado (não fica pendente)
             'acerto_revendedor_valor' => 0,
         ])->save();
+        // os pagamentos dessa venda também ficam no nome do agente
+        \App\Models\Pagamento::where('modulo', 'passagem')->where('origem_id', $p->id)->update(['user_id' => $ag->id]);
     }
 
     /**
