@@ -171,18 +171,21 @@ class CaixaController extends Controller
         }
         $linhasCaixa = \App\Support\ManifestoCaixa::dados($passCx)['linhas'];
 
-        // 3 categorias de venda: Balcão · Proprietário · Agente (interior)
-        $porCategoria = [
-            'balcao'       => ['qtd' => 0, 'total' => 0.0],
-            'proprietario' => ['qtd' => 0, 'total' => 0.0],
-            'agente'       => ['qtd' => 0, 'total' => 0.0],
-        ];
+        // 3 categorias de venda (Balcão · Proprietário · Agente interior), cada uma por forma de pagamento.
+        $novaCat = fn () => ['qtd' => 0, 'total' => 0.0, 'dinheiro' => 0.0, 'pix' => 0.0, 'debito' => 0.0, 'credito' => 0.0, 'areceber' => 0.0];
+        $porCategoria = ['balcao' => $novaCat(), 'proprietario' => $novaCat(), 'agente' => $novaCat()];
         foreach ($passCx->where('cancelada', false) as $p) {
             $cat = $p->revendedor_id
                 ? 'agente'
                 : ($p->pagamentos->contains(fn ($pg) => (bool) ($pg->pago_proprietario ?? false)) ? 'proprietario' : 'balcao');
             $porCategoria[$cat]['qtd']++;
             $porCategoria[$cat]['total'] += (float) $p->total;
+            $porCategoria[$cat]['areceber'] += (float) $p->devido; // parcelado / em aberto
+            foreach ($p->pagamentos as $pg) {
+                if ($pg->meio === 'desconto' || (float) $pg->valor <= 0) continue;
+                $k = $pg->meio === 'pix' ? 'pix' : $pg->meio;
+                if (isset($porCategoria[$cat][$k])) $porCategoria[$cat][$k] += (float) $pg->valor;
+            }
         }
 
         // VENDAS (BRUTO): valor total vendido no filtro, independente de ter entrado no caixa (ex.: venda de agente ainda nao repassada)

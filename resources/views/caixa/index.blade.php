@@ -177,22 +177,26 @@
 
 <div class="card overflow-hidden">
   <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">📊 Vendas por categoria <span class="text-[10px] font-normal text-slate-400">· só pra prestação (tudo entra normal no caixa)</span></div>
-  <div class="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x text-center">
-    <div class="p-3">
-      <div class="text-[11px] text-slate-500 uppercase font-semibold">🏬 Balcão</div>
-      <div class="text-lg font-bold text-slate-800">R$ {{ number_format($porCategoria['balcao']['total'] ?? 0,2,',','.') }}</div>
-      <div class="text-[11px] text-slate-400">{{ $porCategoria['balcao']['qtd'] ?? 0 }} venda(s)</div>
-    </div>
-    <div class="p-3 bg-emerald-50/60">
-      <div class="text-[11px] text-emerald-700 uppercase font-semibold">🚤 Proprietário</div>
-      <div class="text-lg font-bold text-emerald-700">R$ {{ number_format($porCategoria['proprietario']['total'] ?? 0,2,',','.') }}</div>
-      <div class="text-[11px] text-slate-400">{{ $porCategoria['proprietario']['qtd'] ?? 0 }} venda(s)</div>
-    </div>
-    <div class="p-3 bg-blue-50/60">
-      <div class="text-[11px] text-blue-700 uppercase font-semibold">🤝 Agente interior</div>
-      <div class="text-lg font-bold text-blue-700">R$ {{ number_format($porCategoria['agente']['total'] ?? 0,2,',','.') }}</div>
-      <div class="text-[11px] text-slate-400">{{ $porCategoria['agente']['qtd'] ?? 0 }} venda(s)</div>
-    </div>
+  <div class="overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-[11px] uppercase text-slate-500"><tr>
+      <th class="p-2 text-left">Categoria</th><th class="p-2 text-right">Dinheiro</th><th class="p-2 text-right">PIX</th><th class="p-2 text-right">Débito</th><th class="p-2 text-right">Crédito</th><th class="p-2 text-right">A Receber</th><th class="p-2 text-right">Total</th>
+    </tr></thead>
+    <tbody class="divide-y">
+      @foreach(['balcao'=>'🏬 Balcão','proprietario'=>'🚤 Proprietário','agente'=>'🤝 Agente interior'] as $ck=>$cl)
+      @php $c = $porCategoria[$ck] ?? []; @endphp
+      <tr @class(['bg-emerald-50/50'=>$ck==='proprietario','bg-blue-50/50'=>$ck==='agente'])>
+        <td class="p-2 font-semibold whitespace-nowrap">{{ $cl }} <span class="text-[11px] text-slate-400 font-normal">· {{ $c['qtd'] ?? 0 }}</span></td>
+        <td class="p-2 text-right">{{ number_format($c['dinheiro'] ?? 0,2,',','.') }}</td>
+        <td class="p-2 text-right">{{ number_format($c['pix'] ?? 0,2,',','.') }}</td>
+        <td class="p-2 text-right">{{ number_format($c['debito'] ?? 0,2,',','.') }}</td>
+        <td class="p-2 text-right">{{ number_format($c['credito'] ?? 0,2,',','.') }}</td>
+        <td class="p-2 text-right text-amber-600">{{ number_format($c['areceber'] ?? 0,2,',','.') }}</td>
+        <td class="p-2 text-right font-bold">{{ number_format($c['total'] ?? 0,2,',','.') }}</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
   </div>
 </div>
 

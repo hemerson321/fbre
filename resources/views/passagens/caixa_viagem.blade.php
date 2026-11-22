@@ -80,6 +80,31 @@
   @endif
 </div>
 
+@if(!empty($porCategoria))
+<div style="margin-top:14px">
+  <h2 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#374151;border-bottom:2px solid #111;padding-bottom:3px;margin:0 0 6px">Vendas por categoria × forma</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+    <thead><tr style="background:#f1f5f9">
+      <th style="text-align:left;padding:3px 6px">Categoria</th><th style="text-align:right;padding:3px 6px">Dinheiro</th><th style="text-align:right;padding:3px 6px">PIX</th><th style="text-align:right;padding:3px 6px">Débito</th><th style="text-align:right;padding:3px 6px">Crédito</th><th style="text-align:right;padding:3px 6px">A Receber</th><th style="text-align:right;padding:3px 6px">Total</th>
+    </tr></thead>
+    <tbody>
+      @foreach(['balcao'=>'Balcão','proprietario'=>'Proprietário','agente'=>'Agente interior'] as $ck=>$cl)
+      @php $c=$porCategoria[$ck] ?? []; @endphp
+      <tr style="border-bottom:1px solid #e5e7eb">
+        <td style="text-align:left;padding:3px 6px;font-weight:600">{{ $cl }} <span style="color:#999;font-weight:400">· {{ $c['qtd'] ?? 0 }}</span></td>
+        <td style="text-align:right;padding:3px 6px">{{ number_format($c['dinheiro'] ?? 0,2,',','.') }}</td>
+        <td style="text-align:right;padding:3px 6px">{{ number_format($c['pix'] ?? 0,2,',','.') }}</td>
+        <td style="text-align:right;padding:3px 6px">{{ number_format($c['debito'] ?? 0,2,',','.') }}</td>
+        <td style="text-align:right;padding:3px 6px">{{ number_format($c['credito'] ?? 0,2,',','.') }}</td>
+        <td style="text-align:right;padding:3px 6px;color:#b45309">{{ number_format($c['areceber'] ?? 0,2,',','.') }}</td>
+        <td style="text-align:right;padding:3px 6px;font-weight:700">{{ number_format($c['total'] ?? 0,2,',','.') }}</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
+</div>
+@endif
+
 <div class="leg">
   Legenda:
   <span style="background:#dbeafe">Agente / Município</span>

@@ -825,6 +825,23 @@ class PassagemController extends Controller
             ];
         }
 
+        // Quebra por categoria (Balcão/Proprietário/Agente) × forma, pra prestação.
+        $novaCat = fn () => ['qtd' => 0, 'total' => 0.0, 'dinheiro' => 0.0, 'pix' => 0.0, 'debito' => 0.0, 'credito' => 0.0, 'areceber' => 0.0];
+        $porCategoria = ['balcao' => $novaCat(), 'proprietario' => $novaCat(), 'agente' => $novaCat()];
+        foreach ($passagens->where('cancelada', false)->where('transferida', false) as $pp) {
+            $cat = $pp->revendedor_id
+                ? 'agente'
+                : ($pp->pagamentos->contains(fn ($pg) => (bool) ($pg->pago_proprietario ?? false)) ? 'proprietario' : 'balcao');
+            $porCategoria[$cat]['qtd']++;
+            $porCategoria[$cat]['total'] += (float) $pp->total;
+            $porCategoria[$cat]['areceber'] += (float) $pp->devido;
+            foreach ($pp->pagamentos as $pg) {
+                if ($pg->meio === 'desconto' || (float) $pg->valor <= 0) continue;
+                $k = $pg->meio === 'pix' ? 'pix' : $pg->meio;
+                if (isset($porCategoria[$cat][$k])) $porCategoria[$cat][$k] += (float) $pg->valor;
+            }
+        }
+
         return view('passagens.caixa_viagem', [
             'linhas' => $linhas,
             'totForma' => $totForma,
@@ -833,7 +850,7 @@ class PassagemController extends Controller
             'totRecebido' => $totRecebido,
             'totDevolvido' => $totDevolvido,
             'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas,
-            'embs' => $embs, 'datas' => $datas, 'f' => $f, 'prestacao' => $prestacao,
+            'embs' => $embs, 'datas' => $datas, 'f' => $f, 'prestacao' => $prestacao, 'porCategoria' => $porCategoria,
             'auto' => $request->boolean('print'),
         ]);
     }
