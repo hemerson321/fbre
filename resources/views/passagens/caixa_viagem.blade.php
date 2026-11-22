@@ -33,7 +33,8 @@
   .bar{margin-bottom:12px;display:flex;gap:8px}
   .btn{display:inline-block;padding:7px 14px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;cursor:pointer;font-weight:700;text-decoration:none;color:#111}
   .btn.p{background:#0b1a33;color:#fff;border-color:#0b1a33}
-  @media print{ body{padding:0} .noprint{display:none} th{position:static} }
+  @page{ size: A4 landscape; margin: 8mm; }
+  @media print{ body{padding:0;font-size:11px} .noprint{display:none} th{position:static} }
 </style></head>
 <body>
 <div class="bar noprint">
