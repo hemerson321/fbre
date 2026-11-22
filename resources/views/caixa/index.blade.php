@@ -184,6 +184,7 @@
     </tr></thead>
     <tbody class="divide-y">
       @foreach(['balcao'=>'🏬 Balcão','proprietario'=>'🚤 Proprietário','agente'=>'🤝 Agente interior'] as $ck=>$cl)
+      @continue($ck==='agente' && !($ehRelatorio ?? false)) {{-- caixa: só balcão e proprietário; agente só no relatório --}}
       @php $c = $porCategoria[$ck] ?? []; @endphp
       <tr @class(['bg-emerald-50/50'=>$ck==='proprietario','bg-blue-50/50'=>$ck==='agente'])>
         <td class="p-2 font-semibold whitespace-nowrap">{{ $cl }} <span class="text-[11px] text-slate-400 font-normal">· {{ $c['qtd'] ?? 0 }}</span></td>

@@ -238,6 +238,7 @@ class CaixaController extends Controller
         // Prestação GERAL do filtro: soma TODAS as passagens do filtro atual (comissão certa por transporte).
         $prestacaoTransporte = null;
         $pqG = \App\Models\Passagem::where('cancelada', false)->where('transferida', false)
+            ->when(! $ehRelatorio, fn ($q) => $q->whereNull('revendedor_id')) // caixa: sem agente externo (só aparece no relatório)
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]));
