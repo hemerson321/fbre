@@ -90,14 +90,18 @@
               </div>
               <div class="grid grid-cols-7 gap-0.5">
                 <template x-for="c in calDias" :key="c.iso">
-                  <button type="button" :disabled="!c.valido" @click="c.valido && escolherDia(c.iso)"
-                    class="h-9 rounded text-sm transition"
-                    :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed'))"
-                    :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : '')"
+                  <button type="button" :disabled="!(c.valido||c.validoOutra)" @click="c.valido ? escolherDia(c.iso) : (c.validoOutra && escolherDiaOutra(c.iso, c.outra.embId))"
+                    :title="c.outra ? ('🚤 '+c.outra.embNome+(c.outra.hora?(' · '+c.outra.hora):'')+' — clique pra trocar') : ''"
+                    class="h-9 rounded text-sm transition relative"
+                    :class="c.sel ? 'text-white font-bold' : (c.valido ? 'font-bold hover:brightness-95' : (c.validoOutra ? 'font-bold hover:brightness-95' : (c.outroMes ? 'text-slate-200' : 'text-slate-300 cursor-not-allowed')))"
+                    :style="c.sel ? 'background:var(--cor1)' : (c.valido ? 'color:var(--cor1);background:color-mix(in srgb, var(--cor2) 20%, white)' : (c.validoOutra ? 'color:#b45309;background:#fff7ed;border:1px dashed #f59e0b' : ''))"
                     x-text="c.dia"></button>
                 </template>
               </div>
-              <div class="text-[10px] text-slate-400 mt-2 text-center">Só os dias de viagem da linha ficam disponíveis.</div>
+              <div class="text-[10px] text-slate-400 mt-2 text-center leading-snug">
+                <span style="color:var(--cor1)">■</span> desta lancha
+                <template x-if="Object.keys(mapaViagens).length"><span> · <span style="color:#f59e0b">▨</span> outra lancha (clique pra trocar)</span></template>
+              </div>
             </div>
           </div>
         </div>
@@ -597,7 +601,7 @@
       pixEstDados: @js(['chave'=>auth()->user()->pix_chave, 'nome'=>auth()->user()->pix_recebedor, 'cidade'=>auth()->user()->pix_cidade]),
       pixEstModal:false, pixEstCopia:'',
       cidades:@js($cidades), linhas:@js($linhas), tipos:@js($tipos), trechoPrecos:@js($trechoPrecos), taxas:@js($taxas), normalId:@js($normalId),
-      embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4),'layout'=>(string)($e->poltronas_lista ?? '')])->values()),
+      embarcacoesData:@js($embarcacoes->map(fn($e)=>['id'=>(string)$e->id,'nome'=>(string)$e->nome,'poltrona'=>(bool)$e->usa_poltrona,'qtd'=>(int)$e->poltronas_qtd,'colunas'=>(int)($e->poltronas_colunas ?: 4),'layout'=>(string)($e->poltronas_lista ?? '')])->values()),
       regrasIdade:@js($regrasIdade ?? []),
       gratInfo:null, pcdInfo:null, idosoMeiaInfo:null, _gratTok:0,
       podeRetroativo:@js($podeRetroativo), checkinAuto:@js($checkinAuto ?? true),
@@ -860,17 +864,32 @@
       abrirCal(){ if(this.viagemDia===null) return; const base=this.viagemData||this.hojeISO; const [y,m]=base.split('-').map(Number); this.calMes=new Date(y,m-1,1); this.calAberto=true; },
       mudarMes(n){ const d=new Date(this.calMes); d.setMonth(d.getMonth()+n); this.calMes=d; },
       get nomeMes(){ return this.calMes ? this.calMes.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) : ''; },
+      embNome(id){ const e=(this.embarcacoesData||[]).find(x=>String(x.id)===String(id)); return e && e.nome ? e.nome : 'Outra lancha'; },
+      get mapaViagens(){ // dia-da-semana -> {embId, embNome, hora} das OUTRAS lanchas que saem da origem atual
+        const map={}; if(!this.origemSel) return map;
+        const _n=x=>String(x||'').trim().toLowerCase(); const cur=this.embarcacaoSel?String(this.embarcacaoSel):'';
+        for(const L of this.linhas){ const ps=L.paradas||[]; const idx=ps.findIndex(x=>_n(x.n)===_n(this.origemSel));
+          if(idx<0 || idx>=ps.length-1) continue; const p=ps[idx]; if(p.d===null||p.d===undefined||p.d==='') continue;
+          const embId=String(L.embarcacao_id||''); if(!embId || embId===cur) continue; const w=Number(p.d);
+          if(map[w]===undefined) map[w]={embId, embNome:this.embNome(embId), hora:p.h||''}; }
+        return map;
+      },
       get calDias(){
         if(!this.calMes) return [];
         const ano=this.calMes.getFullYear(), mes=this.calMes.getMonth();
         const ini=new Date(ano,mes,1); ini.setDate(1-ini.getDay());
-        const out=[];
-        for(let i=0;i<42;i++){ const d=new Date(ini); d.setDate(ini.getDate()+i); const iso=this.isoLocal(d); const outroMes=d.getMonth()!==mes;
-          const valido=!outroMes && d.getDay()===this.viagemDia && (this.podeRetroativo || iso>=this.hojeISO);
-          out.push({iso,dia:d.getDate(),valido,outroMes,sel:iso===this.viagemData}); }
+        const mv=this.mapaViagens; const out=[];
+        for(let i=0;i<42;i++){ const d=new Date(ini); d.setDate(ini.getDate()+i); const iso=this.isoLocal(d); const outroMes=d.getMonth()!==mes; const w=d.getDay();
+          const dataOk=(this.podeRetroativo || iso>=this.hojeISO);
+          const ehAtual=!outroMes && w===this.viagemDia;
+          const outra=(!outroMes && !ehAtual && mv[w]) ? mv[w] : null;
+          const valido=ehAtual && dataOk;
+          const validoOutra=!!outra && dataOk;
+          out.push({iso,dia:d.getDate(),valido,validoOutra,outra,outroMes,sel:iso===this.viagemData}); }
         return out;
       },
       escolherDia(iso){ this.viagemData=iso; this.viagemLabel=this.rotulo(iso); this.calAberto=false; },
+      escolherDiaOutra(iso, embId){ if(!embId) return; this.embarcacaoSel=String(embId); this.$nextTick(()=>{ this.viagemData=iso; this.viagemLabel=this.rotulo(iso); this.calAberto=false; }); },
       get linhasTransporte(){
         const emb=this.embarcacaoSel?String(this.embarcacaoSel):'';
         if(!emb) return [];
