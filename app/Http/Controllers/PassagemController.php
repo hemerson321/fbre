@@ -791,7 +791,7 @@ class PassagemController extends Controller
         $totForma = $m['totForma'];
         $totDesconto = $m['totDesconto'];
         $totGeral = $m['totGeral'];
-        $totDevolvido = $m['totDevolvido'];
+        $totDevolvido = $m['totDevolvido']; $totCancelado = $m['totCancelado'] ?? 0;
         $nPax = $m['nPax']; $nIdosos = $m['nIdosos']; $nColos = $m['nColos']; $nDevolvidas = $m['nDevolvidas']; $nCancelados = $m['nCancelados'] ?? 0; $nPcd = $m['nPcd'] ?? 0; $nOutros = $m['nOutros'] ?? 0;
 
         $totRecebido = array_sum($totForma);
@@ -871,7 +871,7 @@ class PassagemController extends Controller
             'totDesconto' => $totDesconto,
             'totGeral' => $totGeral,
             'totRecebido' => $totRecebido,
-            'totDevolvido' => $totDevolvido,
+            'totDevolvido' => $totDevolvido, 'totCancelado' => $totCancelado,
             'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nPcd' => $nPcd, 'nOutros' => $nOutros, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas, 'nCancelados' => $nCancelados,
             'embs' => $embs, 'datas' => $datas, 'f' => $f, 'prestacao' => $prestacao, 'porCategoria' => $porCategoria,
             'auto' => $request->boolean('print'),

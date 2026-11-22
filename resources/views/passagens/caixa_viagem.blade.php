@@ -92,6 +92,7 @@
     @endforeach
     @if($totDesconto > 0.009)<div class="lin" style="color:#b45309"><span>Desconto concedido</span><b>- R$ {{ number_format($totDesconto,2,',','.') }}</b></div>@endif
     <div class="lin g"><span>Total recebido</span><span>R$ {{ number_format($totRecebido,2,',','.') }}</span></div>
+    @if(($totCancelado ?? 0) > 0.009)<div class="lin" style="color:#b91c1c"><span>Cancelado (fora do caixa)</span><b>- R$ {{ number_format($totCancelado,2,',','.') }}</b></div>@endif
     @if($totDevolvido > 0.009)<div class="lin" style="color:#b91c1c"><span>Devolvido (fora do caixa)</span><b>- R$ {{ number_format($totDevolvido,2,',','.') }}</b></div>@endif
   </div>
   @if($prestacao ?? false)
