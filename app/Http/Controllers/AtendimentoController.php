@@ -28,6 +28,7 @@ class AtendimentoController extends Controller
             'conversas' => $conversas,
             'filtro' => $filtro,
             'aguardando' => Conversa::where('status', 'aguardando')->count(),
+            'precisaHumano' => Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada')->count(),
             'conversa' => null,
         ]);
     }
@@ -45,6 +46,7 @@ class AtendimentoController extends Controller
             'conversas' => $lista,
             'filtro' => 'ativas',
             'aguardando' => Conversa::where('status', 'aguardando')->count(),
+            'precisaHumano' => Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada')->count(),
             'conversa' => $conversa,
         ]);
     }
@@ -78,6 +80,7 @@ class AtendimentoController extends Controller
             'funil' => 'novo',
             'status' => 'aguardando',
             'ia_ativa' => false,
+            'precisa_humano' => false,
             'assumida_por' => null,
         ])->save();
         return back()->with('ok', 'Sessão reiniciada — o agente vai atender como novo a partir da próxima mensagem.');
@@ -88,6 +91,20 @@ class AtendimentoController extends Controller
         abort_unless($conversa->empresa_id === Tenant::id(), 404);
         $conversa->update(['status' => 'fechada', 'atendida' => true, 'nao_lidas' => 0, 'funil' => 'finalizado']);
         return redirect()->route('atendimento.index')->with('ok', 'Pedido finalizado.');
+    }
+
+    /** Polling do painel: conversas que a IA transferiu e aguardam atendente (p/ bip + lista). */
+    public function alertas()
+    {
+        $itens = Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada')
+            ->orderByDesc('transferida_em')->limit(50)->get()
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'nome' => $c->cliente_nome ?: $c->cliente_telefone,
+                'telefone' => $c->cliente_telefone,
+                'motivo' => $c->transferida_motivo,
+            ]);
+        return response()->json(['precisa' => $itens->count(), 'itens' => $itens]);
     }
 
     /** Polling: mensagens novas desde um id (JSON). */

@@ -29,6 +29,7 @@ class AgenteBot
             $agente = $agente ?: Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
             if (! $agente) return;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
+            if (! $demo && ($conversa->precisa_humano ?? false)) return; // já transferido pro humano: agente fica em silêncio
 
             $prov = $agente->llm;
             if (! $prov) { Log::info('Agente sem provedor de IA.'); return; }
@@ -63,6 +64,7 @@ class AgenteBot
 
             $texto = $this->tratarVenda($conversa, $texto);
             $texto = $this->tratarPax($conversa, $texto);
+            $texto = $this->tratarHumano($conversa, $texto, $demo);
             $res = $this->tratarPix($agente, $conversa, $texto, $demo);
             $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia');
             if (! empty($res['pix'])) {
@@ -195,8 +197,9 @@ class AgenteBot
         if ($a->regra('nao_revela_robo')) {
             $p[] = "Você é um atendente da empresa. NUNCA diga que é IA, robô, bot ou assistente virtual.";
         }
+        $p[] = "QUANDO PRECISAR DE UM ATENDENTE (desconto por quantidade, reclamação/reembolso/cancelamento, pergunta fora do sistema, ou algo que você não resolve): avise o cliente de forma curta e natural (ex.: 'Já vou chamar um atendente pra te ajudar com isso, só um instante 😊') E emita numa linha isolada (o cliente NÃO vê): [[HUMANO: motivo curto]]. Isso põe a conversa na fila do atendente com um alerta. Depois disso, PARE de responder — quem segue é o atendente.";
         if ($a->regra('sensiveis_humano')) {
-            $p[] = "Se for reclamação, reembolso, cancelamento ou problema, não resolva: diga que vai chamar um atendente.";
+            $p[] = "Se for reclamação, reembolso, cancelamento ou problema, não resolva: chame o atendente com [[HUMANO: ...]].";
         }
         $p[] = "Use SOMENTE os trechos e preços dos DADOS abaixo. Se o cliente pedir um trecho que NÃO está nos DADOS, diga que não tem esse trecho e mostre os que existem — NUNCA invente cidade, rota ou preço.";
 
@@ -366,6 +369,14 @@ class AgenteBot
         return trim(str_replace($m[0], '', $texto));
     }
 
+    /** Detecta [[HUMANO:motivo]]: transfere a conversa pro atendente (entra na fila com alerta) e limpa o marcador. */
+    protected function tratarHumano(Conversa $c, string $texto, bool $demo = false): string
+    {
+        if (! preg_match('/\[\[HUMANO:?\s*([^\]]*)\]\]/i', $texto, $m)) return $texto;
+        if (! $demo) { try { $this->atendimento->transferir($c, trim($m[1]) ?: 'Transferido pelo agente'); } catch (\Throwable $e) {} }
+        return trim(str_replace($m[0], '', $texto));
+    }
+
     /** Detecta [[PIX:valor;descricao]], gera a cobrança no Mercado Pago. Retorna texto limpo + o código PIX à parte. */
     protected function tratarPix(Agente $a, Conversa $c, string $texto, bool $demo = false): array
     {
@@ -411,7 +422,8 @@ class AgenteBot
         $r = $this->mp->cobrarPix($api, $valor, $descricao, ['nome' => $c->cliente_nome, 'telefone' => $c->cliente_telefone]);
         if (! $r['ok']) {
             Log::warning('Agente PIX falhou: '.($r['erro'] ?? ''));
-            return ['texto' => trim(str_replace($marcador, "\n(No momento não consegui gerar o PIX, um atendente vai te ajudar.)", $texto)), 'pix' => null];
+            if (! $demo) { try { $this->atendimento->transferir($c, 'Falha ao gerar PIX'); } catch (\Throwable $e) {} }
+            return ['texto' => trim(str_replace($marcador, "\nSó um instante que um atendente vai finalizar seu PIX aqui, tá?", $texto)), 'pix' => null];
         }
 
         Cobranca::create([

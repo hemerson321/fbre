@@ -132,6 +132,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/checkin/buscar', [\App\Http\Controllers\PassagemController::class, 'buscarCheckin'])->name('passagens.scanner.buscar')->middleware('perm:passagem.baixa');
     // Canal de atendimento (WhatsApp) — caixa de conversas
     Route::get('/passagens/atendimento', [AtendimentoController::class, 'index'])->name('atendimento.index')->middleware('perm:passagem.ver');
+    Route::get('/passagens/atendimento-alertas', [AtendimentoController::class, 'alertas'])->name('atendimento.alertas')->middleware('perm:passagem.ver');
     Route::get('/passagens/atendimento/{conversa}', [AtendimentoController::class, 'show'])->name('atendimento.show')->middleware('perm:passagem.ver');
     Route::get('/passagens/atendimento/{conversa}/mensagens', [AtendimentoController::class, 'mensagens'])->name('atendimento.mensagens')->middleware('perm:passagem.ver');
     Route::post('/passagens/atendimento/{conversa}/responder', [AtendimentoController::class, 'responder'])->name('atendimento.responder')->middleware('perm:passagem.ver');

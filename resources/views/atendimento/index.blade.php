@@ -8,12 +8,19 @@
   <div class="lg:col-span-1 flex flex-col min-h-0 {{ $sel ? 'hidden lg:flex' : 'flex' }}">
     <div class="flex items-center justify-between mb-2">
       <h1 class="text-lg font-bold">Atendimento</h1>
+      <div class="flex items-center gap-1.5">
       @if($aguardando)<span class="chip bg-amber-100 text-amber-700 text-xs font-bold">{{ $aguardando }} aguardando</span>@endif
+      <span id="badgePrecisa" class="chip bg-rose-100 text-rose-700 text-xs font-bold" style="{{ ($precisaHumano ?? 0) ? '' : 'display:none' }}">🔔 {{ $precisaHumano ?? 0 }}</span>
+      </div>
     </div>
     <div class="flex gap-1 mb-2 text-xs">
       @foreach(['ativas'=>'Ativas','aguardando'=>'Aguardando','humano'=>'Comigo','fechadas'=>'Fechadas'] as $k=>$l)
         <a href="{{ route('atendimento.index',['status'=>$k]) }}" class="px-2.5 py-1 rounded-full font-semibold {{ $filtro===$k ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600' }}">{{ $l }}</a>
       @endforeach
+    </div>
+    <div id="alertaAtend" class="mb-2 rounded-xl border border-rose-300 bg-rose-50 p-2" style="{{ ($precisaHumano ?? 0) ? '' : 'display:none' }}">
+      <div class="text-xs font-bold text-rose-700 mb-1">🔔 <span data-n>{{ $precisaHumano ?? 0 }}</span> cliente(s) esperando atendente</div>
+      <div data-lista class="space-y-0.5"></div>
     </div>
     <div class="card flex-1 overflow-y-auto divide-y">
       @forelse($conversas as $c)
@@ -28,7 +35,7 @@
               <span class="text-xs text-slate-500 truncate flex-1">{{ $c->ultima_msg_texto }}</span>
               @if($c->nao_lidas)<span class="min-w-[18px] text-center rounded-full bg-emerald-500 text-white text-[10px] font-bold px-1">{{ $c->nao_lidas }}</span>@endif
             </div>
-            <span class="chip text-[10px] bg-{{ $c->cor() }}-100 text-{{ $c->cor() }}-700 mt-0.5">{{ $c->statusLabel() }}</span>@if($c->funilLabel())<span class="chip text-[10px] bg-indigo-100 text-indigo-700 mt-0.5 ml-1">{{ $c->funilLabel() }}</span>@endif
+            <span class="chip text-[10px] bg-{{ $c->cor() }}-100 text-{{ $c->cor() }}-700 mt-0.5">{{ $c->statusLabel() }}</span>@if($c->funilLabel())<span class="chip text-[10px] bg-indigo-100 text-indigo-700 mt-0.5 ml-1">{{ $c->funilLabel() }}</span>@endif@if($c->precisa_humano)<span class="chip text-[10px] bg-rose-100 text-rose-700 mt-0.5 ml-1 font-bold">🔔 precisa atendente@if($c->transferida_motivo) · {{ $c->transferida_motivo }}@endif</span>@endif@if($c->atendente)<span class="chip text-[10px] bg-emerald-100 text-emerald-700 mt-0.5 ml-1">👤 {{ $c->atendente->name }}</span>@endif
           </div>
         </a>
       @empty
@@ -110,5 +117,31 @@ function chat(id, ultimoId){
     }
   }
 }
+</script>
+<script>
+(function(){
+  var last = null;
+  var banner = document.getElementById('alertaAtend');
+  function beep(){ try{ var a=new (window.AudioContext||window.webkitAudioContext)(); var o=a.createOscillator(); var g=a.createGain(); o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.value=880; g.gain.value=0.12; o.start(); setTimeout(function(){o.frequency.value=660;},150); setTimeout(function(){o.stop();a.close();},340);}catch(e){} }
+  function notif(n){ try{ if(window.Notification && Notification.permission==='granted'){ new Notification('WhatsApp — novo atendimento', {body:n+' cliente(s) esperando atendente'}); } }catch(e){} }
+  async function poll(){
+    try{
+      var r = await fetch('{{ route('atendimento.alertas') }}', {headers:{'X-Requested-With':'fetch'}});
+      if(!r.ok) return;
+      var d = await r.json(); var n = d.precisa||0;
+      var b=document.getElementById('badgePrecisa'); if(b){ b.textContent='🔔 '+n; b.style.display = n>0?'':'none'; }
+      if(banner){
+        if(n>0){ banner.style.display=''; var cn=banner.querySelector('[data-n]'); if(cn) cn.textContent=n;
+          var ul=banner.querySelector('[data-lista]'); ul.innerHTML='';
+          (d.itens||[]).forEach(function(it){ var a=document.createElement('a'); a.href='/passagens/atendimento/'+it.id; a.className='block text-sm font-semibold text-rose-700 hover:underline'; a.textContent='🔔 '+it.nome+(it.motivo?(' — '+it.motivo):''); ul.appendChild(a); });
+        } else banner.style.display='none';
+      }
+      if(last!==null && n>last){ beep(); notif(n); }
+      last=n;
+    }catch(e){}
+  }
+  try{ if(window.Notification && Notification.permission==='default'){ Notification.requestPermission(); } }catch(e){}
+  poll(); setInterval(poll, 5000);
+})();
 </script>
 @endsection

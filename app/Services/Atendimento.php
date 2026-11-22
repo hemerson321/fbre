@@ -99,9 +99,23 @@ class Atendimento
     {
         $conversa->status = 'humano';
         $conversa->ia_ativa = false;
+        $conversa->precisa_humano = false;
         $conversa->assumida_por = $userId;
         $conversa->atendida = true;
         $conversa->nao_lidas = 0;
         $conversa->save();
+    }
+
+    /** A IA transferiu pro humano: entra na fila de atendimento com alerta/bip. */
+    public function transferir(Conversa $conversa, ?string $motivo = null): void
+    {
+        $conversa->forceFill([
+            'status' => 'aguardando',
+            'ia_ativa' => false,
+            'precisa_humano' => true,
+            'transferida_motivo' => $motivo ? mb_substr($motivo, 0, 160) : null,
+            'transferida_em' => now(),
+            'atendida' => false,
+        ])->save();
     }
 }

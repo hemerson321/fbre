@@ -16,6 +16,8 @@ class Conversa extends Model
     protected $casts = [
         'atendida' => 'boolean',
         'ia_ativa' => 'boolean',
+        'precisa_humano' => 'boolean',
+        'transferida_em' => 'datetime',
         'contexto' => 'array',
         'ultima_msg_em' => 'datetime',
         'cliente_respondeu_em' => 'datetime',
