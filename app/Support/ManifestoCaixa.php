@@ -34,6 +34,8 @@ class ManifestoCaixa
             foreach ($p->passageiros as $pax) {
                 $ehColo = ($pax->papel ?? '') === 'colo';
                 $cancPax = $cancelada || (bool) ($pax->cancelado ?? false);
+                $cancTipo = $cancPax ? ($cancelada ? ((string) ($p->cancel_tipo ?? 'devolucao')) : ((string) ($pax->cancelado_tipo ?? 'devolucao'))) : null;
+                $ehCancelamento = $cancTipo === 'cancelamento';
                 $nr++;
                 $tipoTxt = (string) ($pax->papel ?: $pax->tipo);
                 $ehIdoso = mb_stripos($tipoTxt, 'idoso') !== false;
@@ -52,7 +54,8 @@ class ManifestoCaixa
                     'tipo' => $tipoTxt,
                     'p' => $ehColo ? 'C' : mb_strtoupper(mb_substr(trim($tipoTxt) ?: 'A', 0, 1)),
                     'agencia' => (string) ($p->revendedor?->name ?? ''),
-                    'status' => $cancPax ? 'Devolvida' : ((float) $p->devido > 0.009 ? 'Em aberto' : ($ehProp ? 'Pago · Proprietário' : 'Paga')),
+                    'status' => $cancPax ? ($ehCancelamento ? 'Cancelada' : 'Devolvida') : ((float) $p->devido > 0.009 ? 'Em aberto' : ($ehProp ? 'Pago · Proprietário' : 'Paga')),
+                    'cancel_label' => $ehCancelamento ? 'CANCELADA' : 'DEVOLVIDA',
                     'forma' => $formaTxt,
                     'idoso' => $ehIdoso && ! $cancPax,
                     'pcd' => $ehPcd && ! $cancPax,

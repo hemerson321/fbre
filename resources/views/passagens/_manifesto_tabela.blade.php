@@ -30,7 +30,7 @@
       <td>{{ $l->nr }}</td>
       <td>{{ $l->ticket }}</td>
       <td>{{ $l->trecho }}</td>
-      <td class="nome">{{ strtoupper($l->nome ?: 'PASSAGEIRO') }}@if($l->cancelado) <span class="tag" style="background:#b91c1c;color:#fff">DEVOLVIDA</span>@elseif($l->colo) <span class="tag" style="background:#e0f2fe;color:#075985">COLO</span>@endif</td>
+      <td class="nome">{{ strtoupper($l->nome ?: 'PASSAGEIRO') }}@if($l->cancelado) <span class="tag" style="background:#b91c1c;color:#fff">{{ $l->cancel_label ?? 'DEVOLVIDA' }}</span>@elseif($l->colo) <span class="tag" style="background:#e0f2fe;color:#075985">COLO</span>@endif</td>
       <td>{{ $l->data_compra?->format('d/m/Y') }}</td>
       <td>{{ $l->vendedor }}</td>
       <td class="r">R$ {{ number_format($l->valor,2,',','.') }}</td>
