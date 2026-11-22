@@ -804,24 +804,28 @@ class PassagemController extends Controller
         $embIdsP = $validas->pluck('embarcacao_id')->filter()->unique()->values();
         if ($validas->count() > 0 && $embIdsP->count() > 0) {
             $pctsP = Embarcacao::whereIn('id', $embIdsP)->pluck('comissao_empresa_pct', 'id');
-            $pgs = $validas->flatMap(fn ($p) => $p->pagamentos)->filter(fn ($pg) => ! $pg->estornado);
+            $pgs = $validas->flatMap(fn ($p) => $p->pagamentos)->filter(fn ($pg) => ! $pg->estornado && $pg->meio !== 'desconto');
             $brutoF = round((float) $validas->sum('total'), 2);
             $comissaoF = round((float) $validas->sum(fn ($p) => (float) $p->total * (int) ($pctsP[$p->embarcacao_id] ?? 0) / 100), 2);
-            $cartaoF = round((float) $pgs->where('meio', 'credito')->sum('valor'), 2);
-            $credPropF = round((float) $pgs->filter(fn ($pg) => (bool) ($pg->pago_proprietario ?? false))->sum('valor'), 2);
-            $debitoF = round(
-                (float) Pagamento::whereIn('embarcacao_id', $embIdsP)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
-                - (float) Pagamento::whereIn('embarcacao_id', $embIdsP)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
-            $debitoF = max(0.0, $debitoF);
-            $debitoF = round($debitoF + (float) $validas->sum('devido'), 2); // em aberto (não coletado) é débito do proprietário
-            $despesasF = round($comissaoF + $debitoF + $cartaoF + $credPropF, 2);
+            // Maquineta do PROPRIETÁRIO por forma (o dono já recebeu → abate)
+            $somaProp = fn ($meio) => round((float) $pgs->filter(fn ($pg) => (bool) ($pg->pago_proprietario ?? false) && $pg->meio === $meio)->sum('valor'), 2);
+            $debProp = $somaProp('debito'); $pixProp = $somaProp('pix'); $credProp = $somaProp('credito'); $dinProp = $somaProp('dinheiro');
+            $maqProp = round($debProp + $pixProp + $credProp + $dinProp, 2);
+            // Cartão de crédito da EMPRESA (cai depois → abate)
+            $cartaoEmpresa = round((float) $pgs->filter(fn ($pg) => ! (bool) ($pg->pago_proprietario ?? false) && $pg->meio === 'credito')->sum('valor'), 2);
+            // Saídas operacionais (despesas) no período do filtro
+            $iniF = $f['inicio'] ?? null; $fimF = $f['fim'] ?? null;
+            $saidasF = round((float) Pagamento::where('estornado', false)->where('tipo_mov', 'saida')
+                ->when($iniF, fn ($q) => $q->whereDate('created_at', '>=', $iniF))
+                ->when($fimF, fn ($q) => $q->whereDate('created_at', '<=', $fimF))
+                ->sum('valor'), 2);
+            $liquidoF = round($brutoF - $comissaoF - $maqProp - $cartaoEmpresa - $saidasF, 2);
             $nomeP = $embIdsP->count() === 1 ? (optional(Embarcacao::find($embIdsP->first()))->nome ?? 'Transporte') : 'Todos os transportes';
             $pctP = $embIdsP->count() === 1 ? (int) ($pctsP[$embIdsP->first()] ?? 0) : null;
             $prestacao = (object) [
-                'nome' => $nomeP, 'pct' => $pctP,
-                'bruto' => $brutoF, 'comissao' => $comissaoF, 'debito' => $debitoF,
-                'cartao' => $cartaoF, 'credProp' => $credPropF, 'despesas' => $despesasF,
-                'liquido' => round($brutoF - $despesasF, 2),
+                'nome' => $nomeP, 'pct' => $pctP, 'bruto' => $brutoF, 'comissao' => $comissaoF,
+                'debProp' => $debProp, 'pixProp' => $pixProp, 'credProp' => $credProp, 'dinProp' => $dinProp,
+                'cartao' => $cartaoEmpresa, 'saidas' => $saidasF, 'liquido' => $liquidoF,
             ];
         }
 

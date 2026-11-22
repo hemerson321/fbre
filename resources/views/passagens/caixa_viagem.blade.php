@@ -71,10 +71,12 @@
     <h2>Prestação de contas</h2>
     <div class="lin"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacao->bruto,2,',','.') }}</b></div>
     <div class="lin"><span>Comissão de Agência{{ !is_null($prestacao->pct) ? ' ('.$prestacao->pct.'%)' : '' }}</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
-    <div class="lin"><span>Débito Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->debito,2,',','.') }}</b></div>
+    @if($prestacao->debProp > 0.009)<div class="lin"><span>Débito Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->debProp,2,',','.') }}</b></div>@endif
+    @if($prestacao->pixProp > 0.009)<div class="lin"><span>Pix Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->pixProp,2,',','.') }}</b></div>@endif
+    @if($prestacao->credProp > 0.009)<div class="lin"><span>Crédito Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->credProp,2,',','.') }}</b></div>@endif
+    @if($prestacao->dinProp > 0.009)<div class="lin"><span>Dinheiro Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->dinProp,2,',','.') }}</b></div>@endif
     <div class="lin"><span>Cartão de crédito</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
-    <div class="lin"><span>Crédito Prop. (Entradas)</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->credProp,2,',','.') }}</b></div>
-    <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px;color:#b45309"><span>Total Geral de Despesas</span><b>R$ {{ number_format($prestacao->despesas,2,',','.') }}</b></div>
+    <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px;color:#b45309"><span>Total Geral de Despesas <span style="font-weight:400;color:#777">(saídas)</span></span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->saidas,2,',','.') }}</b></div>
     <div class="lin g" style="color:#067d3b"><span>Total Geral Líquido</span><span>R$ {{ number_format($prestacao->liquido,2,',','.') }}</span></div>
   </div>
   @endif
