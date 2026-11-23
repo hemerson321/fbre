@@ -1,10 +1,30 @@
 @extends('layouts.app')
 @section('titulo', ($ehRelatorio ?? false) ? 'Relatório' : 'Caixa')
 @section('conteudo')
-@php $focoPrest = request('foco') === 'prestacoes'; @endphp
-<div class="space-y-4">
-<div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ $focoPrest ? '🧾 Prestações de contas' : (($ehRelatorio ?? false) ? ($verTodos ? '📋 Relatório geral' : '📋 Meu relatório') : ($verTodos ? 'Caixa geral' : 'Meu caixa')) }}</h1>
-  <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null)])) }}" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div></div>
+@php
+  $focoPrest = request('foco') === 'prestacoes';
+  $ehRel = (bool) ($ehRelatorio ?? false);
+  // identidade de cada página: [cor, cor escura, ícone, título, subtítulo]
+  $tema = $focoPrest
+    ? ['#d97706', '#92400e', '🧾', 'Prestação de Contas', 'O que falta acertar com os proprietários · fechamento, histórico e desfazer']
+    : ($ehRel
+      ? ['#4f46e5', '#312e81', '📋', ($verTodos ? 'Relatório geral' : 'Meu relatório'), 'Vendas e movimento por período, transporte e viagem']
+      : ['#059669', '#065f46', '💰', ($verTodos ? 'Caixa geral' : 'Meu caixa'), 'Dinheiro da agência · entradas, saídas e comissão']);
+  $abertoTotal = $focoPrest ? (float) $donosBalcao->sum(fn ($d) => max(0, (float) $d->liquido)) : 0;
+@endphp
+<div class="space-y-4" style="--cor1:{{ $tema[0] }}">
+<div class="rounded-2xl px-4 py-3.5 text-white flex items-center justify-between gap-3 flex-wrap shadow-md" style="background:linear-gradient(110deg, {{ $tema[0] }}, {{ $tema[1] }})">
+  <div class="flex items-center gap-3 min-w-0">
+    <div class="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center text-2xl shrink-0">{{ $tema[2] }}</div>
+    <div class="min-w-0"><h1 class="text-xl font-extrabold leading-tight">{{ $tema[3] }}</h1><div class="text-[12px] opacity-85">{{ $tema[4] }}</div></div>
+  </div>
+  @if($focoPrest)
+  <div class="flex items-center gap-2 flex-wrap">
+    <div class="rounded-xl bg-white/15 px-3 py-1.5 text-right"><div class="text-[10px] uppercase tracking-wide opacity-80">Em aberto com proprietários</div><div class="text-lg font-extrabold leading-tight">R$ {{ number_format($abertoTotal,2,',','.') }} <span class="text-[11px] font-semibold opacity-80">· {{ $donosBalcao->count() }} transporte(s)</span></div></div>
+    @if(auth()->user()->podeAcerto() && \Illuminate\Support\Facades\Route::has('admin.acertos'))<a href="{{ route('admin.acertos', ['aba'=>'operadores']) }}" class="no-print rounded-xl bg-white text-amber-700 px-3 py-2 text-[13px] font-bold whitespace-nowrap hover:bg-amber-50">💵 Acerto de operadores</a>@endif
+  </div>
+  @endif
+  <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null)])) }}" class="rounded-xl bg-white/15 hover:bg-white/25 text-white px-3 py-2 text-[13px] font-semibold whitespace-nowrap">📄 Prestação (PDF)</a><button onclick="window.print()" class="rounded-xl bg-white/15 hover:bg-white/25 text-white px-3 py-2 text-[13px] font-semibold whitespace-nowrap">🖨 Imprimir</button></div></div>
 
 @if($podeAvulso)
 <div x-data="{open:false, tipo:'entrada', emb:''}" class="no-print">
@@ -126,6 +146,7 @@
 </div>
 @endif
 
+@if($focoPrest)
 @if($donosBalcao->isNotEmpty())
 <div class="card overflow-hidden border border-amber-200">
   <div class="p-3 border-b bg-amber-50 flex items-center justify-between flex-wrap gap-2">
@@ -293,7 +314,17 @@
   </div>
 </div>
 @endif
+@if($donosBalcao->isEmpty())
+<div class="card p-6 text-center text-slate-500"><div class="text-3xl mb-1">✅</div><div class="font-semibold">Nenhuma prestação em aberto{{ $transporteId ? ' para este transporte' : '' }}.</div><div class="text-[12px] text-slate-400">As vendas novas de balcão aparecem aqui para você fechar com o proprietário.</div></div>
+@endif
+@if(($podeDesfazerTransporte ?? false))
+<div class="card overflow-hidden">
+  @include('caixa._desfazer_transporte')
+</div>
+@endif
+@endif
 
+@unless($focoPrest)
 <div class="card overflow-hidden">
   <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b">📊 Vendas por categoria <span class="text-[10px] font-normal text-slate-400">· só pra prestação (tudo entra normal no caixa)</span></div>
   <div class="overflow-x-auto">
@@ -362,17 +393,7 @@
     <span style="background:#fef9c3;padding:1px 7px;border-radius:4px">PCD</span>
     <span style="background:#fee2e2;color:#b91c1c;padding:1px 7px;border-radius:4px">Cancelado/Devolvido</span>
   </div>
-  @if(($podeDesfazerTransporte ?? false))
-  <div class="px-3 py-3 border-b bg-amber-50 flex items-center justify-between gap-2 flex-wrap">
-    <div class="text-[12px] text-amber-800">↩️ Este transporte já teve o acerto feito ({{ $acertoDesfazivel }} passagem(ns){{ $dataViagem ? ' · viagem '.\Illuminate\Support\Carbon::parse($dataViagem)->format('d/m/Y') : '' }}). Dá pra desfazer e voltar pra em aberto.</div>
-    <form method="post" action="{{ route('prestacoes.desfazer-transporte', $transporteId) }}" onsubmit="return confirm('Desfazer o acerto deste transporte/viagem? As {{ $acertoDesfazivel }} passagem(ns) voltam pra EM ABERTO e os lançamentos são estornados.')">
-      @csrf
-      <input type="hidden" name="viagem_id" value="{{ $viagemId }}">
-      <input type="hidden" name="data_viagem" value="{{ $dataViagem }}">
-      <button class="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 whitespace-nowrap">↩️ Desfazer acerto deste transporte</button>
-    </form>
-  </div>
-  @endif
+  @include('caixa._desfazer_transporte')
 
   @php $temOutros = collect($movimentos->items())->contains(fn($m)=>($m->modulo ?? '')!=='passagem'); @endphp
   @if($temOutros)<div class="px-3 pt-3 font-bold text-[11px] text-slate-400 uppercase">Encomendas / avulsos / outros</div>@endif
@@ -400,6 +421,7 @@
   </div>
   <div class="p-3">{{ $movimentos->links() }}</div>
 </div>
+@endunless
 </div>
 @include('partials.pulse')
 @endsection

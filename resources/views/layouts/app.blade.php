@@ -140,15 +140,11 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('frete','cadastra')) $g[] = ['r'=>route('fretes.create'), 'l'=>'Novo frete', 'i'=>'🚢'];
   if ($u->permite('frete','ver'))      $g[] = ['r'=>route('fretes.index'), 'l'=>'Fretes / entrega', 'i'=>'📦'];
   if ($g && $modOn('frete')) $grupos['Fretes'] = $g;
-  $g = [];
-  if ($u->podeVerCaixa())  $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰'];
-  if ($u->podeRelatorio()) $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
-  if ($u->podeVerCaixa() && $u->caixaTodos()) $g[] = ['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestações de contas', 'i'=>'🧾'];
-  if ($u->podeAcerto() && $u->temModulo('passagem')) {
-      // Acerto Agentes/Transporte sairam do menu: agente paga direto o proprietário e o proprietário acerta sozinho no "Meu transporte".
-      $g[] = ['r'=>route('admin.acertos', ['aba'=>'operadores']), 'l'=>'Acerto Operadores / Proprietário', 'i'=>'💵'];
-  }
-  if ($g) $grupos['Caixa'] = $g;
+  // Três botões diretos no topo, cada um com sua cor e sua página: Caixa · Prestação de Contas · Relatório.
+  if ($u->podeVerCaixa())  $grupos['Caixa'] = [['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰']];
+  if ($u->podeVerCaixa() && $u->caixaTodos()) $grupos['Prestação de Contas'] = [['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestação de contas', 'i'=>'🧾']];
+  if ($u->podeRelatorio()) $grupos['Relatório'] = [['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋']];
+  $gruposDiretos = ['Caixa', 'Prestação de Contas', 'Relatório'];
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isAdmin() || $u->isSuper()) {
       $adm = [
@@ -195,9 +191,14 @@ document.addEventListener('alpine:init', () => {
     'GERATEC'       => ['🛠️', '#334155'],
   ];
   if (! $coresPorModulo) { foreach ($metaGrupo as $k => $v) { $metaGrupo[$k][1] = $cor1; } }
+  // Cores fixas do financeiro (sempre diferentes entre si, cada uma com a sua página).
+  $metaGrupo['Caixa'] = ['💰', '#059669'];
+  $metaGrupo['Prestação de Contas'] = ['🧾', '#d97706'];
+  $metaGrupo['Relatório'] = ['📋', '#4f46e5'];
   $ativo = function ($r) {
       if (request()->url() !== strtok($r, '?')) return false;
       parse_str(parse_url($r, PHP_URL_QUERY) ?: '', $qq);
+      if (! isset($qq['foco']) && request()->filled('foco')) return false; // /caixa?foco=prestacoes não acende o botão Caixa
       foreach ($qq as $k => $v) { if ((string) request()->input($k) !== (string) $v) return false; }
       return true;
   };
@@ -240,6 +241,14 @@ document.addEventListener('alpine:init', () => {
       </a>@endif
       @foreach($grupos as $titulo => $itens)
         @php [$gi,$gc] = $metaGrupo[$titulo] ?? ['•','#475569']; $temAtivo = collect($itens)->contains(fn($it)=>$ativo($it['r'])); @endphp
+        @if(in_array($titulo, $gruposDiretos ?? [], true) && count($itens) === 1)
+        <a href="{{ $itens[0]['r'] }}"
+           class="flex items-center gap-2 rounded-lg px-3 py-2 my-1 text-[13px] font-bold whitespace-nowrap transition hover:brightness-95"
+           style="{{ $temAtivo ? 'color:#fff;background:'.$gc.';box-shadow:0 2px 8px -2px '.$gc : 'color:'.$gc.';background:color-mix(in srgb,'.$gc.' 10%,white)' }}">
+          <span class="text-base">{{ $gi }}</span>{{ $titulo }}
+        </a>
+        @continue
+        @endif
         <div class="relative flex items-center">
           <button type="button" @click="aberto = (aberto==='{{ $titulo }}' ? null : '{{ $titulo }}')"
             class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-slate-50"
