@@ -257,12 +257,22 @@ class CaixaController extends Controller
 
         // Prestação GERAL do filtro: soma as passagens + avulsos do(s) transporte(s) do filtro.
         $prestacaoTransporte = null;
-        $comissaoAgencia = 0.0; $ownerShareG = 0.0; $vendasPassG = 0.0;
-        $pqG = \App\Models\Passagem::where('cancelada', false)->where('transferida', false)
+        $comissaoAgencia = 0.0; $ownerShareG = 0.0;
+        // TODAS as passagens do filtro: comissão da agência no CAIXA (não zera quando o dono é acertado).
+        $pqAll = \App\Models\Passagem::where('cancelada', false)->where('transferida', false)
             ->when(! $ehRelatorio, fn ($q) => $q->whereNull('revendedor_id')) // caixa: sem agente externo (só aparece no relatório)
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]));
+        $passAll = (clone $pqAll)->get(['id', 'embarcacao_id', 'total']);
+        if ($passAll->count() > 0) {
+            $embIdsA = $passAll->pluck('embarcacao_id')->filter()->unique()->values();
+            $pctsA = \App\Models\Embarcacao::whereIn('id', $embIdsA)->pluck('comissao_empresa_pct', 'id');
+            $comissaoAgencia = round((float) $passAll->sum(fn ($p) => (float) $p->total * (int) ($pctsA[$p->embarcacao_id] ?? 0) / 100), 2);
+            $ownerShareG = round((float) $passAll->sum(fn ($p) => (float) $p->total * (100 - (int) ($pctsA[$p->embarcacao_id] ?? 0)) / 100), 2);
+        }
+        // PENDENTE (acerto_dono=false): é o que a PRESTAÇÃO mostra — zera depois do fechamento.
+        $pqG = (clone $pqAll)->where('acerto_dono', false);
         $passG = (clone $pqG)->get(['id', 'embarcacao_id', 'total']);
         // Entradas/saídas AVULSAS amarradas ao transporte: entram na PRESTAÇÃO (não no caixa da agência).
         $avBase = Pagamento::where('modulo', 'avulso')->where('estornado', false)->whereNotNull('embarcacao_id')
@@ -278,7 +288,6 @@ class CaixaController extends Controller
                 $pcts = \App\Models\Embarcacao::whereIn('id', $embIdsG)->pluck('comissao_empresa_pct', 'id');
                 $brutoG = round((float) $passG->sum('total'), 2);
                 $comissaoG = round((float) $passG->sum(fn ($p) => (float) $p->total * (int) ($pcts[$p->embarcacao_id] ?? 0) / 100), 2);
-                $comissaoAgencia = $comissaoG; $vendasPassG = $brutoG; $ownerShareG = round($brutoG - $comissaoG, 2);
                 $idsG = $passG->pluck('id');
                 $cartaoG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
                 $credPropG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
