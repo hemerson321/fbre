@@ -44,10 +44,21 @@ class LLM
             'role' => $m['role'] === 'assistant' ? 'assistant' : 'user',
             'content' => (string) $m['content'],
         ], $msgs)];
-        if ($sistema !== '') $body['system'] = $sistema;
+        // Prompt caching: o system (grande e estável) é enviado 1x e reusado nas próximas
+        // mensagens da mesma conversa a ~10% do custo. Corta MUITO o consumo de API.
+        if ($sistema !== '') {
+            $body['system'] = [[
+                'type' => 'text',
+                'text' => $sistema,
+                'cache_control' => ['type' => 'ephemeral'],
+            ]];
+        }
 
         $r = Http::timeout(40)->withHeaders([
-            'x-api-key' => $token, 'anthropic-version' => '2023-06-01', 'Content-Type' => 'application/json',
+            'x-api-key' => $token,
+            'anthropic-version' => '2023-06-01',
+            'anthropic-beta' => 'prompt-caching-2024-07-31',
+            'Content-Type' => 'application/json',
         ])->post('https://api.anthropic.com/v1/messages', $body);
 
         if (! $r->successful()) return ['ok' => false, 'status' => $r->status(), 'body' => $r->body()];

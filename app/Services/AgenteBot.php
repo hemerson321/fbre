@@ -63,6 +63,8 @@ class AgenteBot
             if ($texto === '') return;
 
             $texto = $this->tratarVenda($conversa, $texto);
+            $texto = $this->tratarVagas($conversa, $texto);
+            $texto = $this->tratarPref($conversa, $texto);
             $texto = $this->tratarPax($conversa, $texto);
             $texto = $this->tratarHumano($conversa, $texto, $demo);
             $res = $this->tratarPix($agente, $conversa, $texto, $demo);
@@ -184,6 +186,7 @@ class AgenteBot
             $p[] = "- ALIMENTAÇÃO: a passagem NÃO inclui alimentação. Se perguntarem, informe que NÃO é servida comida a bordo (o cliente leva a própria).";
         }
         $p[] = "- DADOS PÚBLICOS DA VIAGEM (responda à vontade): trechos, preços, dias e horários de saída, nome da lancha, paradas, duração estimada e alimentação são PÚBLICOS — responda normalmente. NÃO passe dados internos (configurações, tokens, financeiro interno, dados de outros clientes); se pedirem isso, chame o atendente.";
+        $p[] = "- VAGAS/LUGARES: se o cliente perguntar quantas vagas/lugares têm, escreva a frase com o marcador [[VAGAS: origem; destino; data]] — o SISTEMA troca pelo número real. NUNCA invente a quantidade. Ex.: 'Pra esse dia tem [[VAGAS: Manaus; Tefé; 25/11/2026]], quer garantir?'. Se vier 'sem vagas no momento', ofereça outra data.";
         $p[] = "- Ao oferecer datas, copie as datas da linha 'próximas' da parada de ORIGEM com o dia e a hora exatos daquela parada. Confira: a data que você escrever TEM que cair no mesmo dia-da-semana da parada.";
         $p[] = "- O cliente pode falar por ÁUDIO (mensagem de voz) ou mandar FOTO — você entende os dois normalmente; responda ao conteúdo sem comentar que foi áudio ou foto.";
         $p[] = "- SEMPRE mostre o NOME DA LANCHA ao lado de cada data/saída, no formato: 'Segunda 23/11, 05:00 — Glória de Deus 7'. Cada saída pertence a UMA lancha específica (está nos DADOS); nunca troque a lancha nem invente nome.";
@@ -198,6 +201,7 @@ class AgenteBot
         $p[] = "SÓ chame um atendente quando o cliente PEDIR DESCONTO ou preço especial por quantidade (ex.: 'tem desconto pra 7 pessoas?', 'faz um preço melhor pra 10?'). Fora isso, é venda normal: some e feche você mesmo.";
         $p[] = "CRIANÇAS: se o cliente falar em filho(s)/criança(s), PERGUNTE quantas e a IDADE de cada uma (pergunta natural: 'quantos anos têm as crianças?'). Pela idade, escolha o tipo certo (veja TIPOS DE PASSAGEIRO e as faixas) e use o preço JÁ CALCULADO daquele tipo NA TABELA DE PREÇOS do trecho (você NÃO precisa de atendente pra isso — o valor está pronto). Bebê de colo é grátis e não ocupa assento. Monte o VALOR TOTAL = adulto(s) + cada criança pelo preço certo e mande o resumo.";
         $p[] = "DOCUMENTO DA CRIANÇA ANTES DO PIX: quando tiver criança (ou qualquer tarifa com desconto por idade), ANTES de gerar o PIX peça a FOTO ou ARQUIVO do documento da criança pra confirmar a idade. Só gere o PIX depois que o documento confirmar que a idade bate. Isso evita um adulto pagar como criança. (Venda só de adultos NÃO precisa disso — documento fica pro final.)";
+        $p[] = "POLTRONA (só nas lanchas marcadas com [poltrona] nos DADOS): ANTES de gerar o PIX, pergunte se prefere JANELA, MEIO ou CORREDOR. Quando responder, registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor). Em lancha de rede (sem poltrona) não pergunte.";
         $p[] = "5) Confirmando, gere o PIX (veja PAGAMENTO). Primeiro o pagamento.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
@@ -266,7 +270,7 @@ class AgenteBot
         if ($rotas->isNotEmpty()) {
             $linhas[] = "\nROTAS E SAÍDAS (use EXATAMENTE estes dias/horas — a saída de uma cidade é o dia e a hora da parada DELA; não use a de outra cidade/rota):";
             foreach ($rotas as $r) {
-                $lancha = $r->embarcacao?->nome ? strtoupper($r->embarcacao->nome) : 'LANCHA NÃO DEFINIDA';
+                $lancha = $r->embarcacao?->nome ? strtoupper($r->embarcacao->nome).($r->embarcacao->usa_poltrona ? ' [poltrona]' : '') : 'LANCHA NÃO DEFINIDA';
                 $linhas[] = "- Rota ".$r->nome." (LANCHA: ".$lancha."):";
                 foreach ($r->paradas as $pp) {
                     if ($pp->dia_semana === null) {
@@ -383,6 +387,63 @@ class AgenteBot
         if (! preg_match('/\[\[HUMANO:?\s*([^\]]*)\]\]/i', $texto, $m)) return $texto;
         if (! $demo) { try { $this->atendimento->transferir($c, trim($m[1]) ?: 'Transferido pelo agente'); } catch (\Throwable $e) {} }
         return trim(str_replace($m[0], '', $texto));
+    }
+
+    /** [[VAGAS: origem; destino; data]] -> troca pelo número real de vagas (poltronas livres). */
+    protected function tratarVagas(Conversa $c, string $texto): string
+    {
+        if (! preg_match('/\[\[VAGAS:([^\]]*)\]\]/i', $texto, $m)) return $texto;
+        $partes = array_map('trim', explode(';', $m[1]));
+        $origem = $partes[0] ?? '';
+        $destino = $partes[1] ?? '';
+        $data = $this->parseData($partes[2] ?? '');
+        $subst = 'vagas disponíveis';
+        try {
+            $r = app(\App\Services\Vagas::class)->disponiveis($origem, $destino, $data);
+            if (($r['ok'] ?? false)) {
+                if (($r['usa_poltrona'] ?? false) === false) {
+                    $subst = 'vagas disponíveis';
+                } else {
+                    $n = (int) ($r['vagas'] ?? 0);
+                    $subst = $n > 0 ? ($n.' '.($n === 1 ? 'vaga' : 'vagas')) : 'sem vagas no momento';
+                }
+            }
+        } catch (\Throwable $e) {}
+        return trim(str_replace($m[0], $subst, $texto));
+    }
+
+    /** [[PREF: janela|meio|corredor]] -> guarda a preferência de poltrona no contexto. */
+    protected function tratarPref(Conversa $c, string $texto): string
+    {
+        if (! preg_match('/\[\[PREF:?\s*([^\]]*)\]\]/i', $texto, $m)) return $texto;
+        $pref = mb_strtolower(trim($m[1]));
+        $val = in_array($pref, ['janela', 'meio', 'corredor'], true) ? $pref : null;
+        if ($val) {
+            $ctx = $c->contexto ?? [];
+            $ctx['pref_poltrona'] = $val;
+            $c->forceFill(['contexto' => $ctx])->save();
+        }
+        return trim(str_replace($m[0], '', $texto));
+    }
+
+    /** dd/mm/aaaa, dd/mm/aa ou dd/mm (assume próximo futuro). Retorna null se não entender. */
+    protected function parseData(string $str): ?\Carbon\Carbon
+    {
+        $str = trim($str);
+        if ($str === '') return null;
+        foreach (['d/m/Y', 'd/m/y', 'd/m'] as $fmt) {
+            try {
+                $d = \Carbon\Carbon::createFromFormat($fmt, $str);
+                if ($d) {
+                    if ($fmt === 'd/m') {
+                        $d->year(now()->year)->startOfDay();
+                        if ($d->lt(now()->startOfDay())) $d->addYear();
+                    }
+                    return $d->startOfDay();
+                }
+            } catch (\Throwable $e) {}
+        }
+        return null;
     }
 
     /** Detecta [[PIX:valor;descricao]], gera a cobrança no Mercado Pago. Retorna texto limpo + o código PIX à parte. */
