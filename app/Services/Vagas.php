@@ -60,6 +60,25 @@ class Vagas
         return ['ok' => true, 'usa_poltrona' => true, 'tipos' => $cont, 'lancha' => (string) $emb->nome];
     }
 
+    /** Primeira poltrona LIVRE de um tipo (janela/meio/corredor) no trecho/data. Retorna o nome (ex.: 03J) ou null. */
+    public function primeiraLivre(string $origem, string $destino, ?Carbon $data, string $tipo): ?string
+    {
+        $rota = $this->rotaDoTrecho($origem, $destino);
+        if (! $rota || ! $rota->embarcacao || ! $rota->embarcacao->usa_poltrona) return null;
+        $emb = $rota->embarcacao;
+        $mapaTipo = $this->classificar((string) ($emb->poltronas_lista ?? ''));
+        if (! $mapaTipo) return null;
+
+        $ocup = $this->ocupadas($emb->id, $data?->toDateString(), $rota->id, $origem, $destino)
+            ->map(fn ($x) => mb_strtolower((string) $x))->all();
+        $tipo = mb_strtolower(trim($tipo));
+
+        foreach ($mapaTipo as $sel => $t) {
+            if ($t === $tipo && ! in_array(mb_strtolower((string) $sel), $ocup, true)) return (string) $sel;
+        }
+        return null;
+    }
+
     /** Classifica cada poltrona do layout em janela/meio/corredor pela POSIÇÃO na fileira. */
     protected function classificar(string $layout): array
     {
