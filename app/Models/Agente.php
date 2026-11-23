@@ -26,6 +26,7 @@ class Agente extends Model
     ];
 
     public function llm(): BelongsTo        { return $this->belongsTo(LlmProvedor::class, 'llm_provedor_id'); }
+    public function llmEscalonar(): BelongsTo { return $this->belongsTo(LlmProvedor::class, 'llm_escalonar_id'); }
     public function conexao(): BelongsTo     { return $this->belongsTo(WhatsappConexao::class, 'whatsapp_conexao_id'); }
     public function pagamentoApi(): BelongsTo { return $this->belongsTo(PagamentoApi::class, 'pagamento_api_id'); }
 

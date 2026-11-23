@@ -214,15 +214,20 @@ class ConfirmaPagamento
             $n = max(count($paxList), 1);
             $unit = round(((float) $cob->valor) / $n, 2);
 
-            $passageiros = array_map(fn ($px) => [
-                'nome' => $px['nome'] ?? 'Passageiro',
-                'tipo' => 'Adulto',
-                'documento' => $px['documento'] ?? null,
-                'nascimento' => $this->dataIso($px['nascimento'] ?? null),
-                'valor_passagem' => $unit,
-                'valor_integral' => $unit,
-                'checkin' => $checkinAuto,
-            ], $paxList);
+            $poltronas = array_values((array) ($ctx['poltronas_agente'] ?? []));
+            $passageiros = [];
+            foreach (array_values($paxList) as $i => $px) {
+                $passageiros[] = [
+                    'nome' => $px['nome'] ?? 'Passageiro',
+                    'tipo' => 'Adulto',
+                    'documento' => $px['documento'] ?? null,
+                    'nascimento' => $this->dataIso($px['nascimento'] ?? null),
+                    'valor_passagem' => $unit,
+                    'valor_integral' => $unit,
+                    'checkin' => $checkinAuto,
+                    'poltrona' => $poltronas[$i] ?? null,
+                ];
+            }
 
             $dados = [
                 'origem' => $venda['origem'],
@@ -234,6 +239,7 @@ class ConfirmaPagamento
                 'passageiros' => $passageiros,
             ];
             $p = $this->pas->criar($dados, (int) $op->id);
+            try { app(\App\Services\Vagas::class)->liberarConversa($conv->id); } catch (\Throwable $e) {} // reservas viram venda
 
             // registra o pagamento PIX SEM embarcar (o cliente embarca depois, no check-in)
             \App\Models\Pagamento::create([

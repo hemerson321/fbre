@@ -39,7 +39,7 @@
             @if($c->funilLabel())<span class="chip text-[10px] bg-indigo-100 text-indigo-700 mt-0.5 ml-1">{{ $c->funilLabel() }}</span>@endif
             @if($c->precisa_humano)<span class="chip text-[10px] bg-rose-100 text-rose-700 mt-0.5 ml-1 font-bold">🔔 precisa atendente{{ $c->transferida_motivo ? ' · '.$c->transferida_motivo : '' }}</span>@endif
             @if($c->atendente)<span class="chip text-[10px] bg-emerald-100 text-emerald-700 mt-0.5 ml-1">👤 {{ $c->atendente->name }}</span>@endif
-            @if(!empty($c->contexto['pref_poltrona']))<span class="chip text-[10px] bg-sky-100 text-sky-700 mt-0.5 ml-1">🪑 {{ ucfirst($c->contexto['pref_poltrona']) }}{{ !empty($c->contexto['poltrona_agente']) ? ' · '.$c->contexto['poltrona_agente'] : '' }}</span>@endif
+            @if(!empty($c->contexto['pref_poltrona']))<span class="chip text-[10px] bg-sky-100 text-sky-700 mt-0.5 ml-1">🪑 {{ ucfirst($c->contexto['pref_poltrona']) }}{{ !empty($c->contexto['poltronas_agente']) ? ' · '.implode(', ', (array) $c->contexto['poltronas_agente']) : '' }}</span>@endif
           </div>
         </a>
       @empty
@@ -59,7 +59,7 @@
         <div class="min-w-0 flex-1">
           <div class="font-bold truncate">{{ $sel->nomeExibicao() }}</div>
           <div class="text-xs text-slate-500">{{ $sel->cliente_telefone }} · <span class="font-semibold text-{{ $sel->cor() }}-600">{{ $sel->statusLabel() }}</span>{{ $sel->atendente ? ' · '.$sel->atendente->name : '' }}@if($sel->funilLabel()) · <span class="chip bg-indigo-100 text-indigo-700 text-[10px] font-bold">{{ $sel->funilLabel() }}</span>@endif
-          @if(!empty($sel->contexto['pref_poltrona'])) · <span class="chip bg-sky-100 text-sky-700 text-[10px] font-bold">🪑 Prefere {{ ucfirst($sel->contexto['pref_poltrona']) }}{{ !empty($sel->contexto['poltrona_agente']) ? ' · poltrona '.$sel->contexto['poltrona_agente'] : '' }}</span>@endif</div>
+          @if(!empty($sel->contexto['pref_poltrona'])) · <span class="chip bg-sky-100 text-sky-700 text-[10px] font-bold">🪑 Prefere {{ ucfirst($sel->contexto['pref_poltrona']) }}{{ !empty($sel->contexto['poltronas_agente']) ? ' · poltrona '.implode(', ', (array) $sel->contexto['poltronas_agente']) : '' }}</span>@endif</div>
         </div>
         @if($sel->status!=='humano')
         <form method="post" action="{{ route('atendimento.assumir',$sel) }}">@csrf<button class="btn btn-primary btn-sm" style="background:var(--cor1)">Assumir</button></form>

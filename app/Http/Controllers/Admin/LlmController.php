@@ -19,7 +19,7 @@ class LlmController extends Controller
     {
         $data = $request->validate([
             'nome' => 'required|string|max:80',
-            'provider' => 'required|in:claude,openai',
+            'provider' => 'required|in:claude,openai,gemini',
             'token' => 'nullable|string|max:500',
             'modelo' => 'nullable|string|max:80',
             'base_url' => 'nullable|string|max:255',

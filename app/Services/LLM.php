@@ -17,7 +17,7 @@ class LLM
     {
         $token = (string) $p->token;
         if ($token === '') return ['ok' => false, 'erro' => 'Provedor sem token.'];
-        $provider = $p->provider === 'openai' ? 'openai' : 'claude';
+        $provider = in_array($p->provider, ['openai', 'gemini'], true) ? $p->provider : 'claude';
 
         $candidatos = array_values(array_filter(array_unique(array_merge(
             [trim((string) $p->modelo)],
@@ -27,9 +27,11 @@ class LLM
 
         $ultErro = 'falha';
         foreach ($candidatos as $modelo) {
-            $r = $provider === 'openai'
-                ? $this->openai($token, $modelo, $mensagens, $sistema, $maxTokens)
-                : $this->claude($token, $modelo, $mensagens, $sistema, $maxTokens);
+            $r = match ($provider) {
+                'openai' => $this->openai($token, $modelo, $mensagens, $sistema, $maxTokens),
+                'gemini' => $this->gemini($token, $modelo, $mensagens, $sistema, $maxTokens),
+                default  => $this->claude($token, $modelo, $mensagens, $sistema, $maxTokens),
+            };
             if ($r['ok']) return ['ok' => true, 'texto' => $r['texto'], 'modelo' => $modelo];
             $ultErro = 'HTTP '.$r['status'].' ('.$modelo.'): '.mb_substr($r['body'], 0, 200);
             $invalido = $r['status'] === 404 || str_contains(mb_strtolower($r['body']), 'model');
@@ -83,6 +85,29 @@ class LLM
         return ['ok' => true, 'texto' => trim((string) $r->json('choices.0.message.content'))];
     }
 
+    protected function gemini(string $token, string $modelo, array $msgs, string $sistema, int $max): array
+    {
+        $contents = [];
+        foreach ($msgs as $m) {
+            $contents[] = [
+                'role' => $m['role'] === 'assistant' ? 'model' : 'user',
+                'parts' => [['text' => (string) $m['content']]],
+            ];
+        }
+        $body = ['contents' => $contents, 'generationConfig' => ['maxOutputTokens' => $max]];
+        if ($sistema !== '') $body['systemInstruction'] = ['parts' => [['text' => $sistema]]];
+
+        $r = Http::timeout(40)->withHeaders(['x-goog-api-key' => $token])
+            ->post("https://generativelanguage.googleapis.com/v1beta/models/{$modelo}:generateContent", $body);
+
+        if (! $r->successful()) return ['ok' => false, 'status' => $r->status(), 'body' => $r->body()];
+        $txt = '';
+        foreach ((array) $r->json('candidates.0.content.parts', []) as $parte) {
+            $txt .= $parte['text'] ?? '';
+        }
+        return ['ok' => true, 'texto' => trim($txt)];
+    }
+
     /** Modelos de texto disponíveis na conta (fallback). */
     protected function descobrir(string $provider, string $token): array
     {
@@ -94,6 +119,16 @@ class LLM
                     ->filter(fn ($id) => str_contains($id, 'gpt'))->values()->all();
                 $pref = array_values(array_filter($ids, fn ($id) => str_contains($id, 'mini')));
                 return array_slice(array_merge($pref, $ids), 0, 4);
+            }
+            if ($provider === 'gemini') {
+                $r = Http::timeout(15)->withHeaders(['x-goog-api-key' => $token])
+                    ->get('https://generativelanguage.googleapis.com/v1beta/models');
+                if (! $r->successful()) return [];
+                $ids = collect($r->json('models', []))->pluck('name')
+                    ->map(fn ($n) => str_replace('models/', '', (string) $n))
+                    ->filter(fn ($id) => str_contains($id, 'gemini'))->values()->all();
+                $flash = array_values(array_filter($ids, fn ($id) => str_contains($id, 'flash')));
+                return array_slice(array_merge($flash, $ids), 0, 4);
             }
             $r = Http::timeout(15)->withHeaders(['x-api-key' => $token, 'anthropic-version' => '2023-06-01'])
                 ->get('https://api.anthropic.com/v1/models?limit=100');

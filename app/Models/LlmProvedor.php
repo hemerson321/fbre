@@ -13,7 +13,7 @@ class LlmProvedor extends Model
     protected $guarded = [];
     protected $casts = ['ativo' => 'boolean', 'config' => 'array'];
 
-    public const PROVIDERS = ['claude' => 'Claude (Anthropic)', 'openai' => 'OpenAI'];
+    public const PROVIDERS = ['claude' => 'Claude (Anthropic)', 'openai' => 'OpenAI', 'gemini' => 'Google Gemini'];
 
     public function rotulo(): string
     {

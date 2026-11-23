@@ -56,7 +56,7 @@ class AgenteBot
                 ->all();
             if (! $historico) return;
 
-            $r = $this->llm->chat($prov, $historico, $sistema, 600);
+            $r = $this->conversarCascata($agente, $historico, $sistema, 600);
             if (! $r['ok']) { Log::warning('Agente IA falhou: '.($r['erro'] ?? '')); return; }
 
             $texto = trim((string) $r['texto']);
@@ -87,7 +87,7 @@ class AgenteBot
             $agente = $agente ?: Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
             if (! $agente) return;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
-            $prov = $agente->llm;
+            $prov = $this->provedorVisao($agente); // imagem precisa de Claude/OpenAI (Gemini não entra aqui)
             if (! $prov) return;
 
             $conversa->forceFill(['status' => 'ia', 'ia_ativa' => true, 'atendida' => true])->save();
@@ -159,6 +159,34 @@ class AgenteBot
         };
     }
 
+    /** Conversa com cascata de custo: modelo principal (barato) -> escalona pro esperto se falhar ou pedir [[ESCALAR]]. */
+    protected function conversarCascata(Agente $agente, array $hist, string $sistema, int $max = 600): array
+    {
+        $prim = $agente->llm;
+        $esc = $agente->llmEscalonar;
+
+        $r = $prim ? $this->llm->chat($prim, $hist, $sistema, $max) : ['ok' => false, 'erro' => 'sem provedor principal'];
+        $texto = ($r['ok'] ?? false) ? trim((string) $r['texto']) : '';
+        $pediuAjuda = $texto !== '' && preg_match('/\[\[ESCALAR[^\]]*\]\]/i', $texto);
+
+        if ($esc && $esc->id !== ($prim->id ?? null) && ((! ($r['ok'] ?? false)) || $pediuAjuda)) {
+            $r2 = $this->llm->chat($esc, $hist, $sistema, $max);
+            if ($r2['ok'] ?? false) { $r = $r2; $texto = trim((string) $r2['texto']); }
+        }
+
+        $texto = trim(preg_replace('/\[\[ESCALAR[^\]]*\]\]/i', '', $texto));
+        return ['ok' => $r['ok'] ?? false, 'texto' => $texto, 'erro' => $r['erro'] ?? null];
+    }
+
+    /** Provedor que lê IMAGEM (Claude/OpenAI). Prefere o de escalonamento; senão o principal; senão qualquer um ativo. */
+    protected function provedorVisao(Agente $agente): ?\App\Models\LlmProvedor
+    {
+        foreach ([$agente->llmEscalonar, $agente->llm] as $pv) {
+            if ($pv && in_array($pv->provider, ['claude', 'openai'], true)) return $pv;
+        }
+        return \App\Models\LlmProvedor::where('ativo', true)->whereIn('provider', ['claude', 'openai'])->orderByDesc('id')->first();
+    }
+
     protected function promptSistema(Agente $a): string
     {
         $empresa = Tenant::empresa();
@@ -204,7 +232,9 @@ class AgenteBot
         $p[] = "CRIANÇAS: se o cliente falar em filho(s)/criança(s), PERGUNTE quantas e a IDADE de cada uma (pergunta natural: 'quantos anos têm as crianças?'). Pela idade, escolha o tipo certo (veja TIPOS DE PASSAGEIRO e as faixas) e use o preço JÁ CALCULADO daquele tipo NA TABELA DE PREÇOS do trecho (você NÃO precisa de atendente pra isso — o valor está pronto). Bebê de colo é grátis e não ocupa assento. Monte o VALOR TOTAL = adulto(s) + cada criança pelo preço certo e mande o resumo.";
         $p[] = "DOCUMENTO DA CRIANÇA ANTES DO PIX: quando tiver criança (ou qualquer tarifa com desconto por idade), ANTES de gerar o PIX peça a FOTO ou ARQUIVO do documento da criança pra confirmar a idade. Só gere o PIX depois que o documento confirmar que a idade bate. Isso evita um adulto pagar como criança. (Venda só de adultos NÃO precisa disso — documento fica pro final.)";
         $p[] = "POLTRONA (só nas lanchas com [poltrona] nos DADOS): ANTES do PIX, veja os livres por tipo com [[POLTRONAS: origem; destino; data]] — o SISTEMA troca por QUANTIDADES (ex.: '29 de janela, 34 de corredor, 32 de meio'). ATENÇÃO: esses números são QUANTIDADE de lugares livres, NÃO são número de poltrona. Apresente natural (ex.: 'tem bastante: 29 de janela, 34 de corredor e 32 de meio — qual prefere?') e ofereça só os tipos com vaga.";
-        $p[] = "Quando o cliente ESCOLHER um tipo disponível, pegue uma poltrona REAL daquele tipo escrevendo [[POLTRONA: origem; destino; data; tipo]] — o SISTEMA troca pelo NOME da poltrona (ex.: 03J). Confirme assim: 'fechado, sua poltrona é a 03J (janela) 😉' e registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor). Se vier 'esgotada', ofereça outro tipo. A poltrona é confirmada no embarque. Em lancha de rede não pergunte.";
+        $p[] = "Quando o cliente ESCOLHER o tipo, RESERVE a(s) poltrona(s) real(is) escrevendo [[POLTRONA: origem; destino; data; tipo; QTD]] (QTD = nº de passageiros; 1 se for só ele). O SISTEMA troca pelo(s) NÚMERO(s) real(is) e JÁ RESERVA pra nenhum operador vender em cima (mesmo sincronismo do balcão). Ex.: 1 pessoa -> '03J (janela)'; 2 juntas -> '03J e 03M — juntas (janela)'. Confirme citando o número (ex.: 'fechei a 03J na janela pra você 😉') e registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor).";
+        $p[] = "GRUPO (2 ou mais pessoas): pergunte se querem sentar JUNTOS. Se sim, use a QTD no marcador. Se o SISTEMA responder 'NAO tem N juntas; essas sao as mais proximas', REPASSE com sinceridade e já mostrando os números (ex.: 'não consegui 2 juntas na janela — tenho a 03J na janela e a 05C no corredor; serve assim ou prefere outra data?') e deixe o cliente decidir. NUNCA diga que são juntas se o sistema não confirmou 'juntas'.";
+        $p[] = "Se vier 'esgotada', ofereça outro tipo ou outra data. A poltrona é confirmada no embarque. Em lancha de rede não pergunte.";
         $p[] = "5) Confirmando, gere o PIX (veja PAGAMENTO). Primeiro o pagamento.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
@@ -212,6 +242,7 @@ class AgenteBot
         if ($a->regra('nao_revela_robo')) {
             $p[] = "Você é um atendente da empresa. NUNCA diga que é IA, robô, bot ou assistente virtual.";
         }
+        $p[] = "SE A CONVERSA FICAR COMPLEXA e você ficar em dúvida da melhor resposta (pedido confuso, situação fora do comum, conta difícil, cliente insatisfeito), NÃO invente nem chame o humano direto: escreva numa linha isolada que o cliente NÃO vê: [[ESCALAR]] — o sistema passa pra um modelo mais forte continuar na hora. Use isso ANTES de pensar em humano.";
         $p[] = "QUANDO PRECISAR DE UM ATENDENTE (desconto por quantidade, reclamação/reembolso/cancelamento, pergunta fora do sistema, ou algo que você não resolve): avise o cliente de forma curta e natural (ex.: 'Já vou chamar um atendente pra te ajudar com isso, só um instante 😊') E emita numa linha isolada (o cliente NÃO vê): [[HUMANO: motivo curto]]. Isso põe a conversa na fila do atendente com um alerta. Depois disso, PARE de responder — quem segue é o atendente.";
         if ($a->regra('sensiveis_humano')) {
             $p[] = "Se for reclamação, reembolso, cancelamento ou problema, não resolva: chame o atendente com [[HUMANO: ...]].";
@@ -423,18 +454,22 @@ class AgenteBot
         $origem = $partes[0] ?? '';
         $destino = $partes[1] ?? '';
         $data = $this->parseData($partes[2] ?? '');
-        $tipo = mb_strtolower($partes[3] ?? '');
+        $tipo = mb_strtolower($partes[3] ?? 'janela');
+        $nq = max(1, (int) ($partes[4] ?? 1));
         $subst = 'definida no embarque';
         try {
-            $sel = app(\App\Services\Vagas::class)->primeiraLivre($origem, $destino, $data, $tipo);
-            if ($sel) {
-                $subst = $sel;
-                $ctx = $c->contexto ?? [];
-                $ctx['poltrona_agente'] = $sel;
-                if (in_array($tipo, ['janela', 'meio', 'corredor'], true)) $ctx['pref_poltrona'] = $tipo;
-                $c->forceFill(['contexto' => $ctx])->save();
-            } else {
-                $subst = 'esgotada';
+            $r = app(\App\Services\Vagas::class)->atribuir($origem, $destino, $data, $tipo, $nq, $c->id);
+            if (($r['ok'] ?? false)) {
+                if (! empty($r['esgotado'])) {
+                    $subst = 'esgotada';
+                } elseif (! empty($r['seats'])) {
+                    $subst = (string) $r['descricao'];
+                    $ctx = $c->contexto ?? [];
+                    $ctx['poltronas_agente'] = $r['seats'];
+                    $ctx['poltrona_agente'] = $r['seats'][0];
+                    if (in_array($tipo, ['janela', 'meio', 'corredor'], true)) $ctx['pref_poltrona'] = $tipo;
+                    $c->forceFill(['contexto' => $ctx])->save();
+                }
             }
         } catch (\Throwable $e) {}
         return trim(str_replace($m[0], $subst, $texto));
