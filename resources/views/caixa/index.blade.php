@@ -13,18 +13,17 @@
   $abertoTotal = $focoPrest ? (float) $donosBalcao->sum(fn ($d) => max(0, (float) $d->liquido)) : 0;
 @endphp
 <div id="rt-root" class="space-y-4" style="--cor1:{{ $tema[0] }}">
-<div class="rounded-2xl px-4 py-3.5 text-white flex items-center justify-between gap-3 flex-wrap shadow-md" style="background:linear-gradient(110deg, {{ $tema[0] }}, {{ $tema[1] }})">
+<div class="rounded-2xl bg-white px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
+     style="border:1px solid color-mix(in srgb, {{ $tema[0] }} 22%, white); box-shadow: inset 4px 0 0 {{ $tema[0] }}, 0 1px 2px rgba(15,23,42,.04)">
   <div class="flex items-center gap-3 min-w-0">
-    <div class="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center text-2xl shrink-0">{{ $tema[2] }}</div>
-    <div class="min-w-0"><h1 class="text-xl font-extrabold leading-tight flex items-center gap-2">{{ $tema[3] }} <span data-rt-live class="no-print inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition"><span class="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>ao vivo</span></h1><div class="text-[12px] opacity-85">{{ $tema[4] }}</div></div>
+    <div class="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style="background:color-mix(in srgb, {{ $tema[0] }} 12%, white)">{{ $tema[2] }}</div>
+    <div class="min-w-0">
+      <h1 class="text-lg font-extrabold leading-tight flex items-center gap-2" style="color:{{ $tema[1] }}">{{ $tema[3] }}
+        <span data-rt-live class="no-print inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition" style="background:color-mix(in srgb, {{ $tema[0] }} 10%, white); color:{{ $tema[0] }}"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>ao vivo</span></h1>
+      <div class="text-[12px] text-slate-500">{{ $tema[4] }}</div>
+    </div>
   </div>
-  @if($focoPrest)
-  <div class="flex items-center gap-2 flex-wrap">
-    <div class="rounded-xl bg-white/15 px-3 py-1.5 text-right"><div class="text-[10px] uppercase tracking-wide opacity-80">Em aberto com proprietários</div><div class="text-lg font-extrabold leading-tight">R$ {{ number_format($abertoTotal,2,',','.') }} <span class="text-[11px] font-semibold opacity-80">· {{ $donosBalcao->count() }} transporte(s)</span></div></div>
-    @if(auth()->user()->podeAcerto() && \Illuminate\Support\Facades\Route::has('admin.acertos'))<a href="{{ route('admin.acertos', ['aba'=>'operadores']) }}" class="no-print rounded-xl bg-white text-amber-700 px-3 py-2 text-[13px] font-bold whitespace-nowrap hover:bg-amber-50">💵 Acerto de operadores</a>@endif
-  </div>
-  @endif
-  <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null)])) }}" class="rounded-xl bg-white/15 hover:bg-white/25 text-white px-3 py-2 text-[13px] font-semibold whitespace-nowrap">📄 Prestação (PDF)</a><button onclick="window.print()" class="rounded-xl bg-white/15 hover:bg-white/25 text-white px-3 py-2 text-[13px] font-semibold whitespace-nowrap">🖨 Imprimir</button></div></div>
+  <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null)])) }}" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>@if($focoPrest && auth()->user()->podeAcerto() && \Illuminate\Support\Facades\Route::has('admin.acertos'))<a href="{{ route('admin.acertos', ['aba'=>'operadores']) }}" class="btn btn-ghost btn-sm">💵 Acerto de operadores</a>@endif</div></div>
 
 @if($podeAvulso)
 <div x-data="{open:false, tipo:'entrada', emb:''}" class="no-print">

@@ -12,7 +12,7 @@
   }
   function pisca(){
     var b = document.querySelector('[data-rt-live]'); if(!b) return;
-    b.classList.add('ring-2','ring-white'); setTimeout(function(){ b.classList.remove('ring-2','ring-white'); }, 900);
+    b.classList.add('ring-2','ring-emerald-400'); setTimeout(function(){ b.classList.remove('ring-2','ring-emerald-400'); }, 900);
   }
   async function atualizar(){
     if (!soft) { location.reload(); return true; }
