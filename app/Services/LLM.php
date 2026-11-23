@@ -94,7 +94,11 @@ class LLM
                 'parts' => [['text' => (string) $m['content']]],
             ];
         }
-        $body = ['contents' => $contents, 'generationConfig' => ['maxOutputTokens' => $max]];
+        $body = ['contents' => $contents, 'generationConfig' => [
+            'maxOutputTokens' => $max,
+            // desliga o 'thinking' (raciocínio interno) — desnecessário p/ chat de venda e é o que mais encarece
+            'thinkingConfig' => ['thinkingBudget' => 0],
+        ]];
         if ($sistema !== '') $body['systemInstruction'] = ['parts' => [['text' => $sistema]]];
 
         $r = Http::timeout(40)->withHeaders(['x-goog-api-key' => $token])
@@ -127,8 +131,9 @@ class LLM
                 $ids = collect($r->json('models', []))->pluck('name')
                     ->map(fn ($n) => str_replace('models/', '', (string) $n))
                     ->filter(fn ($id) => str_contains($id, 'gemini'))->values()->all();
+                $lite = array_values(array_filter($ids, fn ($id) => str_contains($id, 'flash') && str_contains($id, 'lite')));
                 $flash = array_values(array_filter($ids, fn ($id) => str_contains($id, 'flash')));
-                return array_slice(array_merge($flash, $ids), 0, 4);
+                return array_slice(array_merge($lite, $flash, $ids), 0, 4);
             }
             $r = Http::timeout(15)->withHeaders(['x-api-key' => $token, 'anthropic-version' => '2023-06-01'])
                 ->get('https://api.anthropic.com/v1/models?limit=100');

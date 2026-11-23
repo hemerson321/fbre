@@ -51,7 +51,7 @@ class AgenteBot
             // últimas 16 mensagens em ordem CRONOLÓGICA (mais antiga -> mais nova)
             $historico = $conversa->mensagens()->reorder()
                 ->when($reinicio > 0, fn ($q) => $q->where('id', '>=', $reinicio))
-                ->orderByDesc('id')->limit(16)->get()
+                ->orderByDesc('id')->limit(12)->get()
                 ->sortBy('id')->values()
                 ->map(fn ($m) => ['role' => $m->direcao === 'entrada' ? 'user' : 'assistant', 'content' => (string) $m->texto])
                 ->all();
@@ -124,7 +124,7 @@ class AgenteBot
             $sistema = $this->promptSistema($agente)."\n\n".$lido
                 ." Confirme esses dados com o cliente de forma natural (ex.: 'Peguei aqui: Fulano, nascimento tal, confere?') e siga a venda.";
 
-            $hist = $conversa->mensagens()->reorder()->orderByDesc('id')->limit(16)->get()
+            $hist = $conversa->mensagens()->reorder()->orderByDesc('id')->limit(12)->get()
                 ->sortBy('id')->values()
                 ->map(fn ($m) => ['role' => $m->direcao === 'entrada' ? 'user' : 'assistant', 'content' => (string) $m->texto])
                 ->all();
@@ -348,7 +348,7 @@ class AgenteBot
         $d = now()->startOfDay();
         $limite = now()->startOfDay()->addMonths(max(1, $meses));
         $datas = [];
-        while ($d->lte($limite) && count($datas) < 10) {
+        while ($d->lte($limite) && count($datas) < 4) {
             if ($d->dayOfWeek === $dia) $datas[] = $d->format('d/m');
             $d->addDay();
         }
