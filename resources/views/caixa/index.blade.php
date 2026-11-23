@@ -1,8 +1,9 @@
 @extends('layouts.app')
 @section('titulo', ($ehRelatorio ?? false) ? 'Relatório' : 'Caixa')
 @section('conteudo')
+@php $focoPrest = request('foco') === 'prestacoes'; @endphp
 <div class="space-y-4">
-<div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ ($ehRelatorio ?? false) ? ($verTodos ? '📋 Relatório geral' : '📋 Meu relatório') : ($verTodos ? 'Caixa geral' : 'Meu caixa') }}</h1>
+<div class="flex items-center justify-between"><h1 class="text-xl font-bold">{{ $focoPrest ? '🧾 Prestações de contas' : (($ehRelatorio ?? false) ? ($verTodos ? '📋 Relatório geral' : '📋 Meu relatório') : ($verTodos ? 'Caixa geral' : 'Meu caixa')) }}</h1>
   <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null)])) }}" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div></div>
 
 @if($podeAvulso)
@@ -76,6 +77,7 @@
 </x-periodo>
 @if($viagemId)<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Mostrando o caixa da viagem selecionada (o período acima é ignorado).</div>@endif
 
+@unless($focoPrest)
 <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2">
   <div class="card p-3 text-white" style="background:var(--cor1)"><div class="text-[11px] uppercase opacity-70">Caixa líquido (agência)</div><div class="text-2xl font-extrabold">R$ {{ number_format($liquidoAgencia ?? $total,2,',','.') }}</div><div class="text-[10px] opacity-70">comissão {{ number_format($comissaoAgencia ?? 0,2,',','.') }} · saídas {{ number_format($saidas,2,',','.') }}</div></div>
   <div class="card p-3" style="border:2px solid var(--cor1)"><div class="text-[11px] uppercase text-slate-500">💰 Vendas (bruto)</div><div class="text-2xl font-extrabold" style="color:var(--cor1)">R$ {{ number_format($vendasBruto ?? 0,2,',','.') }}</div><div class="text-[10px] text-slate-400">só balcão (operadores)</div></div>
@@ -96,6 +98,7 @@
     <span class="text-slate-500">❌ Cancelados <b class="text-slate-800 ml-1">{{ $cancelados->qtd ?? 0 }} · R$ {{ number_format($cancelados->valor ?? 0,2,',','.') }}</b></span>
   </div>
 </div>
+@endunless
 
 @if($prestacaoTransporte ?? false)
 <div class="card overflow-hidden border-2 border-indigo-300">
