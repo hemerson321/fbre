@@ -13,6 +13,8 @@ return new class extends Migration
                 $t->id();
                 $t->unsignedBigInteger('empresa_id')->index();
                 $t->unsignedBigInteger('embarcacao_id')->nullable()->index();
+                $t->unsignedBigInteger('viagem_id')->nullable()->index();
+                $t->date('data_viagem')->nullable()->index();
                 $t->unsignedBigInteger('revendedor_id')->nullable()->index(); // null = balcão (empresa)
                 $t->string('tipo', 10)->default('balcao'); // balcao|agente
                 $t->string('lote', 40)->index();
@@ -40,6 +42,12 @@ return new class extends Migration
         }
         if (! Schema::hasColumn('pagamentos', 'prestacao_id')) {
             Schema::table('pagamentos', fn (Blueprint $t) => $t->unsignedBigInteger('prestacao_id')->nullable()->index());
+        }
+        if (! Schema::hasColumn('pagamentos', 'viagem_id')) {
+            Schema::table('pagamentos', fn (Blueprint $t) => $t->unsignedBigInteger('viagem_id')->nullable()->index());
+        }
+        if (! Schema::hasColumn('pagamentos', 'data_viagem')) {
+            Schema::table('pagamentos', fn (Blueprint $t) => $t->date('data_viagem')->nullable()->index());
         }
     }
 

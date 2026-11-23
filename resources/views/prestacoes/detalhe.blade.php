@@ -12,6 +12,7 @@
       <div><div class="text-[11px] uppercase text-slate-400">Transporte</div><div class="font-semibold">🚤 {{ optional($prestacao->embarcacao)->nome ?? '—' }}</div></div>
       <div><div class="text-[11px] uppercase text-slate-400">Fechada em</div><div class="font-semibold">{{ optional($prestacao->fechada_em)->format('d/m/Y H:i') }}</div></div>
       <div><div class="text-[11px] uppercase text-slate-400">Operador</div><div class="font-semibold">{{ optional($prestacao->fechadaPor)->name ?? '—' }}</div></div>
+      <div><div class="text-[11px] uppercase text-slate-400">Viagem</div><div class="font-semibold">{{ $prestacao->data_viagem ? \Illuminate\Support\Carbon::parse($prestacao->data_viagem)->format('d/m/Y') : 'Todas pendentes' }}</div></div>
       <div><div class="text-[11px] uppercase text-slate-400">Passagens</div><div class="font-semibold">{{ $prestacao->qtd }}</div></div>
       <div><div class="text-[11px] uppercase text-slate-400">Forma</div><div class="font-semibold capitalize">{{ $prestacao->forma }}</div></div>
       <div><div class="text-[11px] uppercase text-slate-400">Status</div><div><span class="chip {{ $prestacao->status==='acertada' ? 'bg-emerald-100 text-emerald-700' : ($prestacao->status==='parcial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600') }}">{{ $prestacao->statusLabel() }}</span></div></div>

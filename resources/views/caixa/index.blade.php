@@ -133,6 +133,8 @@
         @if($d->valor > 0)
         <form method="post" action="{{ route('prestacoes.fechar', $d->emb) }}" class="flex items-end gap-1.5 flex-wrap justify-end" onsubmit="return confirm('Fechar a prestação de {{ $d->emb->nome }}? As passagens deste ciclo saem das vendas atuais e vão para o histórico (podem ser desfeitas lá). Devido R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}.')">
           @csrf
+          <input type="hidden" name="viagem_id" value="{{ $viagemId }}">
+          <input type="hidden" name="data_viagem" value="{{ $dataViagem }}">
           <div>
             <label class="block text-[9px] uppercase tracking-wide text-slate-400">Forma</label>
             <select name="forma" class="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm">

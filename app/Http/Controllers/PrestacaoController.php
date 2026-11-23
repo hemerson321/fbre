@@ -46,12 +46,13 @@ class PrestacaoController extends Controller
         return max(0.0, round($deb, 2));
     }
 
-    protected function registrarPagamento(Prestacao $p, Embarcacao $e, float $valor, string $forma, string $lote): void
+    protected function registrarPagamento(Prestacao $p, Embarcacao $e, float $valor, string $forma, string $lote, ?int $viagemId = null, ?string $dataViagem = null): void
     {
         if ($valor <= 0) return;
         Pagamento::create([
             'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
-            'embarcacao_id' => $e->id, 'meio' => $forma, 'valor' => $valor, 'user_id' => auth()->id(),
+            'embarcacao_id' => $e->id, 'viagem_id' => $viagemId, 'data_viagem' => $dataViagem,
+            'meio' => $forma, 'valor' => $valor, 'user_id' => auth()->id(),
             'momento' => 'baixa', 'tipo_mov' => 'saida',
             'categoria' => 'Pagamento ao dono (balcão)',
             'descricao' => 'Prestação #'.$p->numero.' — repasse do balcão ao dono - '.$e->nome,
@@ -65,9 +66,13 @@ class PrestacaoController extends Controller
     {
         $this->gate($embarcacao);
         $pct = (int) $embarcacao->comissao_empresa_pct;
+        $viagemId = $request->input('viagem_id') ?: null;
+        $dataViagem = $request->input('data_viagem') ?: null;
 
         $q = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)
-            ->where('acerto_dono', false)->whereNull('revendedor_id');
+            ->where('acerto_dono', false)->whereNull('revendedor_id')
+            ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
+            ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
         $ids = (clone $q)->pluck('id');
         if ($ids->isEmpty()) return back()->with('erro', 'Não há passagens pendentes desse transporte para fechar.');
 
@@ -85,10 +90,11 @@ class PrestacaoController extends Controller
         $pagarAgora = $request->filled('valor') ? $this->parseValor($request->input('valor')) : $totalDevido;
         $pagarAgora = max(0.0, min($pagarAgora, $totalDevido));
 
-        DB::transaction(function () use ($embarcacao, $ids, $qtd, $bruto, $pct, $comissao, $totalDevido, $abate, $forma, $pagarAgora) {
+        DB::transaction(function () use ($embarcacao, $ids, $qtd, $bruto, $pct, $comissao, $totalDevido, $abate, $forma, $pagarAgora, $viagemId, $dataViagem) {
             $lote = (string) Str::uuid();
             $prest = Prestacao::create([
-                'empresa_id' => Tenant::id(), 'embarcacao_id' => $embarcacao->id, 'revendedor_id' => null, 'tipo' => 'balcao',
+                'empresa_id' => Tenant::id(), 'embarcacao_id' => $embarcacao->id, 'viagem_id' => $viagemId, 'data_viagem' => $dataViagem,
+                'revendedor_id' => null, 'tipo' => 'balcao',
                 'lote' => $lote, 'numero' => Prestacao::proximoNumero(), 'qtd' => $qtd,
                 'total_bruto' => $bruto, 'comissao_pct' => $pct, 'comissao' => $comissao, 'total_devido' => $totalDevido,
                 'valor_pago' => 0, 'saldo' => $totalDevido, 'forma' => $forma, 'status' => 'pendente',
@@ -101,13 +107,14 @@ class PrestacaoController extends Controller
             if ($abate > 0) {
                 Pagamento::create([
                     'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'embarcacao_id' => $embarcacao->id,
+                    'viagem_id' => $viagemId, 'data_viagem' => $dataViagem,
                     'meio' => 'dinheiro', 'valor' => $abate, 'user_id' => auth()->id(),
                     'momento' => 'baixa', 'tipo_mov' => 'entrada', 'categoria' => 'Débito do dono — abatido',
                     'descricao' => 'Prestação #'.$prest->numero.' — débito de devolução abatido - '.$embarcacao->nome,
                     'acerto_lote' => $lote, 'prestacao_id' => $prest->id,
                 ]);
             }
-            $this->registrarPagamento($prest, $embarcacao, $pagarAgora, $forma, $lote);
+            $this->registrarPagamento($prest, $embarcacao, $pagarAgora, $forma, $lote, $viagemId, $dataViagem);
             $prest->valor_pago = $pagarAgora;
             $prest->recalcularSaldo();
             $prest->save();
@@ -134,7 +141,7 @@ class PrestacaoController extends Controller
         if ($v <= 0) return back()->with('erro', 'Valor inválido.');
 
         DB::transaction(function () use ($prestacao, $emb, $v, $forma) {
-            $this->registrarPagamento($prestacao, $emb, $v, $forma, $prestacao->lote);
+            $this->registrarPagamento($prestacao, $emb, $v, $forma, $prestacao->lote, $prestacao->viagem_id, $prestacao->data_viagem ? \Illuminate\Support\Carbon::parse($prestacao->data_viagem)->toDateString() : null);
             $prestacao->valor_pago = round((float) $prestacao->valor_pago + $v, 2);
             $prestacao->forma = $forma;
             $prestacao->recalcularSaldo();

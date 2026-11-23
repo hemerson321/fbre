@@ -22,10 +22,11 @@ class Prestacao extends Model
     protected $casts = [
         'total_bruto' => 'decimal:2', 'comissao_pct' => 'decimal:2', 'comissao' => 'decimal:2',
         'total_devido' => 'decimal:2', 'valor_pago' => 'decimal:2', 'saldo' => 'decimal:2',
-        'desfeita' => 'boolean', 'fechada_em' => 'datetime', 'desfeita_em' => 'datetime',
+        'desfeita' => 'boolean', 'fechada_em' => 'datetime', 'desfeita_em' => 'datetime', 'data_viagem' => 'date',
     ];
 
     public function embarcacao(): BelongsTo { return $this->belongsTo(Embarcacao::class); }
+    public function viagem(): BelongsTo { return $this->belongsTo(Viagem::class); }
     public function revendedor(): BelongsTo { return $this->belongsTo(User::class, 'revendedor_id'); }
     public function fechadaPor(): BelongsTo { return $this->belongsTo(User::class, 'fechada_por'); }
     public function passagens(): HasMany { return $this->hasMany(Passagem::class); }
