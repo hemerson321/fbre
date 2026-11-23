@@ -143,7 +143,7 @@
 @if($modo !== 'relatorio')
 <div style="margin-top:14px">
   <h2 style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
-    <span>Entradas e saídas avulsas</span>
+    <span>{{ $modo === 'prestacao' ? 'Pré-avulsos (entradas e saídas em aberto)' : 'Entradas e saídas avulsas' }}</span>
     <span style="font-size:11px;font-weight:700">
       <span style="color:#067d3b">Entradas R$ {{ number_format($avEntradas ?? 0,2,',','.') }}</span> ·
       <span style="color:#b91c1c">Saídas R$ {{ number_format($avSaidas ?? 0,2,',','.') }}</span> ·
