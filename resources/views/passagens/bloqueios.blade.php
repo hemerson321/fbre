@@ -91,6 +91,23 @@
           </div>
         </template>
 
+        <div class="mb-2" x-data="{esc:'todos'}">
+          <label class="label">Travar para</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <select name="escopo_tipo" x-model="esc" class="input w-full">
+              <option value="todos">Todos (ninguém vende)</option>
+              <option value="operadores">Só operadores (balcão)</option>
+              <option value="revendedores">Só revendedores / agentes</option>
+              <option value="ia">Só a IA (WhatsApp)</option>
+              <option value="usuario">Uma pessoa específica…</option>
+            </select>
+            <select name="escopo_id" class="input w-full" x-show="esc==='usuario'" x-cloak>
+              <option value="">— escolha a pessoa —</option>
+              @foreach($usuarios as $us)<option value="{{ $us->id }}">{{ $us->name }}{{ $us->is_revendedor ? ' (revendedor)' : '' }}</option>@endforeach
+            </select>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Ex.: "Só a IA" reserva a poltrona pro balcão (o robô não vende). "Uma pessoa" trava só pra aquele operador/revendedor.</p>
+        </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 items-end">
           <div><label class="label">Observação (opcional)</label><input type="text" name="motivo" class="input w-full" placeholder="Ex.: dono pediu pra travar, assento quebrado, reservado"></div>
           <div class="text-right">
@@ -111,6 +128,7 @@
             <span class="text-sm text-slate-600 ml-1">
               @if($b->data_viagem)viagem {{ \Illuminate\Support\Carbon::parse($b->data_viagem)->format('d/m/Y') }}@else<b>todas as viagens</b>@endif
             </span>
+            <span class="chip bg-slate-100 text-slate-600 text-[10px] ml-1">👥 {{ $b->escopoLabel() }}</span>
             @if($b->motivo)<span class="text-xs text-slate-400">· {{ $b->motivo }}</span>@endif
           </div>
           <form method="post" action="{{ route('passagens.desbloquear') }}" onsubmit="return confirm('Liberar a poltrona {{ $b->poltrona }} pra venda?')">

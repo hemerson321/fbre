@@ -564,8 +564,11 @@ class PassagemController extends Controller
             foreach ($pg->passageiros as $pax) if ($pax->poltrona) $ocup->push((string) $pax->poltrona);
         }
 
-        // Poltronas TRAVADAS (não vendáveis) entram como ocupadas.
-        $bq = \App\Models\PoltronaBloqueada::where('embarcacao_id', $embarcacaoId)->where('ativo', true);
+        // Poltronas TRAVADAS (não vendáveis) entram como ocupadas — só as travas que valem pro canal de quem vende.
+        $uu = auth()->user();
+        $canalU = ($uu && $uu->ehRevendedor()) ? 'revendedor' : 'operador';
+        $bq = \App\Models\PoltronaBloqueada::where('embarcacao_id', $embarcacaoId)->where('ativo', true)
+            ->aplicaveis($canalU, $uu?->id);
         if ($dataViagem) $bq->where(fn ($w) => $w->whereNull('data_viagem')->orWhereDate('data_viagem', $dataViagem));
         foreach ($bq->pluck('poltrona') as $pol) if ($pol !== null && $pol !== '') $ocup->push((string) $pol);
 
@@ -611,10 +614,12 @@ class PassagemController extends Controller
     /** Poltronas TRAVADAS (não vendáveis) com a observação — trava a viagem inteira (todo o trecho) daquela data; data nula = todas as viagens. */
     protected function travadas($embarcacaoId, $dataViagem): array
     {
-        $q = PoltronaBloqueada::where('embarcacao_id', $embarcacaoId)->where('ativo', true);
+        $uu = auth()->user();
+        $q = PoltronaBloqueada::where('embarcacao_id', $embarcacaoId)->where('ativo', true)
+            ->aplicaveis(($uu && $uu->ehRevendedor()) ? 'revendedor' : 'operador', $uu?->id);
         if ($dataViagem) $q->where(fn ($w) => $w->whereNull('data_viagem')->orWhereDate('data_viagem', $dataViagem));
-        return $q->get(['poltrona', 'motivo', 'data_viagem'])
-            ->map(fn ($b) => ['poltrona' => (string) $b->poltrona, 'motivo' => (string) ($b->motivo ?? ''), 'todas' => $b->data_viagem === null])
+        return $q->get()
+            ->map(fn ($b) => ['poltrona' => (string) $b->poltrona, 'motivo' => trim(((string) ($b->motivo ?? '')).' ('.$b->escopoLabel().')'), 'todas' => $b->data_viagem === null])
             ->values()->all();
     }
 
@@ -1577,7 +1582,9 @@ class PassagemController extends Controller
             $datasDisponiveis = $datas->unique()->sort()->values();
         }
 
-        return view('passagens.bloqueios', compact('embarcacoes', 'embId', 'dataViagem', 'emb', 'vendidas', 'bloqueadas', 'datasDisponiveis'));
+        $usuarios = \App\Models\User::where('ativo', true)->orderBy('name')->get(['id', 'name', 'is_revendedor']);
+
+        return view('passagens.bloqueios', compact('embarcacoes', 'embId', 'dataViagem', 'emb', 'vendidas', 'bloqueadas', 'datasDisponiveis', 'usuarios'));
     }
 
     /** Trava uma ou mais poltronas pra não serem vendidas. */
@@ -1589,15 +1596,23 @@ class PassagemController extends Controller
             'motivo' => 'nullable|string|max:120',
             'poltronas' => 'required|array|min:1',
             'poltronas.*' => 'string|max:10',
+            'escopo_tipo' => 'nullable|in:todos,operadores,revendedores,ia,usuario',
+            'escopo_id' => 'nullable|integer',
         ]);
         $emb = Embarcacao::findOrFail($data['embarcacao_id']);
         $dataViagem = $data['data_viagem'] ?? null;
+
+        $escopoTipo = $data['escopo_tipo'] ?? 'todos';
+        $escopoId = $escopoTipo === 'usuario' ? ($data['escopo_id'] ?? null) : null;
+        if ($escopoTipo === 'usuario' && ! $escopoId) $escopoTipo = 'todos'; // escolheu "pessoa" mas não indicou quem -> todos
 
         $n = 0;
         foreach (array_unique($data['poltronas']) as $pol) {
             $pol = trim((string) $pol);
             if ($pol === '') continue;
             $existe = PoltronaBloqueada::where('embarcacao_id', $emb->id)->where('poltrona', $pol)->where('ativo', true)
+                ->where('escopo_tipo', $escopoTipo)
+                ->when($escopoTipo === 'usuario', fn ($q) => $q->where('escopo_id', $escopoId))
                 ->where(function ($w) use ($dataViagem) {
                     $w->whereNull('data_viagem');
                     if ($dataViagem) $w->orWhereDate('data_viagem', $dataViagem);
@@ -1607,6 +1622,7 @@ class PassagemController extends Controller
                 'empresa_id' => Tenant::id(), 'embarcacao_id' => $emb->id, 'poltrona' => $pol,
                 'data_viagem' => $dataViagem, 'motivo' => $data['motivo'] ?? null,
                 'ativo' => true, 'user_id' => auth()->id(),
+                'escopo_tipo' => $escopoTipo, 'escopo_id' => $escopoId,
             ]);
             $n++;
         }
