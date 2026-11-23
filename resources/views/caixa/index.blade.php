@@ -6,7 +6,7 @@
   <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null)])) }}" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div></div>
 
 @if($podeAvulso)
-<div x-data="{open:false, tipo:'entrada'}" class="no-print">
+<div x-data="{open:false, tipo:'entrada', emb:''}" class="no-print">
   <div class="flex gap-2">
     <button type="button" @click="tipo='entrada';open=true" class="btn btn-sm text-white" style="background:#059669">➕ Entrada avulsa</button>
     <button type="button" @click="tipo='saida';open=true" class="btn btn-sm text-white" style="background:#e11d48">➖ Saída avulsa</button>
@@ -26,6 +26,12 @@
       <div><label class="label">Valor</label><input name="valor" class="input" x-money></div>
       <div><label class="label">Forma</label>
         <select name="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select></div>
+      <div><label class="label">Transporte (p/ prestação) — vazio = caixa da agência</label>
+        <select name="embarcacao_id" class="input" x-model="emb">
+          <option value="">— caixa da agência —</option>
+          @foreach($transportes as $t)<option value="{{ $t->id }}">{{ $t->nome }}</option>@endforeach
+        </select></div>
+      <div x-show="emb" x-cloak><label class="label">Data da viagem</label><input type="date" name="data_viagem" class="input"></div>
       <div><label class="label">Descrição (opcional)</label><input name="descricao" class="input" maxlength="200"></div>
       <div class="flex gap-2 pt-1">
         <button type="button" class="btn btn-ghost flex-1" @click="open=false">Cancelar</button>
@@ -108,6 +114,8 @@
       <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Débito Prop.</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->debito,2,',','.') }}</b></div>
       <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Cartão de crédito</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->cartao,2,',','.') }}</b></div>
       <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Crédito Prop. (Entradas)</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->credProp,2,',','.') }}</b></div>
+      @if(($prestacaoTransporte->avEntrada ?? 0) > 0)<div class="flex justify-between py-1.5 border-b border-slate-100"><span>Entradas avulsas (transporte)</span><b class="text-emerald-600">+ R$ {{ number_format($prestacaoTransporte->avEntrada,2,',','.') }}</b></div>@endif
+      @if(($prestacaoTransporte->avSaida ?? 0) > 0)<div class="flex justify-between py-1.5 border-b border-slate-100"><span>Saídas avulsas (transporte)</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->avSaida,2,',','.') }}</b></div>@endif
       <div class="flex justify-between py-2 border-t-2 border-slate-300 font-bold text-amber-700"><span>Total Geral de Despesas</span><b>R$ {{ number_format($prestacaoTransporte->despesas,2,',','.') }}</b></div>
       <div class="flex justify-between items-center mt-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3"><span class="font-bold text-emerald-800">TOTAL GERAL LÍQUIDO</span><b class="text-2xl text-emerald-700">R$ {{ number_format($prestacaoTransporte->liquido,2,',','.') }}</b></div>
     </div>

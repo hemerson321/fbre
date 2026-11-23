@@ -255,7 +255,7 @@ class CaixaController extends Controller
                 })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0)->values();
         }
 
-        // Prestação GERAL do filtro: soma TODAS as passagens do filtro atual (comissão certa por transporte).
+        // Prestação GERAL do filtro: soma as passagens + avulsos do(s) transporte(s) do filtro.
         $prestacaoTransporte = null;
         $comissaoAgencia = 0.0; $ownerShareG = 0.0; $vendasPassG = 0.0;
         $pqG = \App\Models\Passagem::where('cancelada', false)->where('transferida', false)
@@ -264,29 +264,44 @@ class CaixaController extends Controller
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]));
         $passG = (clone $pqG)->get(['id', 'embarcacao_id', 'total']);
-        if ($passG->count() > 0) {
-            $embIdsG = $passG->pluck('embarcacao_id')->filter()->unique()->values();
-            $pcts = \App\Models\Embarcacao::whereIn('id', $embIdsG)->pluck('comissao_empresa_pct', 'id');
-            $brutoG = round((float) $passG->sum('total'), 2);
-            $comissaoG = round((float) $passG->sum(fn ($p) => (float) $p->total * (int) ($pcts[$p->embarcacao_id] ?? 0) / 100), 2);
-            $comissaoAgencia = $comissaoG; $vendasPassG = $brutoG; $ownerShareG = round($brutoG - $comissaoG, 2);
-            $idsG = $passG->pluck('id');
-            $cartaoG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
-            $credPropG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
-            $debitoG = round(
-                (float) \App\Models\Pagamento::whereIn('embarcacao_id', $embIdsG)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
-                - (float) \App\Models\Pagamento::whereIn('embarcacao_id', $embIdsG)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
-            $debitoG = max(0.0, $debitoG);
-            $debitoG = round($debitoG + (float) (clone $pqG)->sum('devido'), 2); // em aberto é débito do proprietário
+        // Entradas/saídas AVULSAS amarradas ao transporte: entram na PRESTAÇÃO (não no caixa da agência).
+        $avBase = Pagamento::where('modulo', 'avulso')->where('estornado', false)->whereNotNull('embarcacao_id')
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]));
+        $avEntrada = round((float) (clone $avBase)->where('tipo_mov', 'entrada')->sum('valor'), 2);
+        $avSaida = round((float) (clone $avBase)->where('tipo_mov', 'saida')->sum('valor'), 2);
+        if ($passG->count() > 0 || $avEntrada > 0 || $avSaida > 0) {
+            $brutoG = 0.0; $comissaoG = 0.0; $debitoG = 0.0; $cartaoG = 0.0; $credPropG = 0.0;
+            $nomeG = 'Todos os transportes'; $pctG = null;
+            if ($passG->count() > 0) {
+                $embIdsG = $passG->pluck('embarcacao_id')->filter()->unique()->values();
+                $pcts = \App\Models\Embarcacao::whereIn('id', $embIdsG)->pluck('comissao_empresa_pct', 'id');
+                $brutoG = round((float) $passG->sum('total'), 2);
+                $comissaoG = round((float) $passG->sum(fn ($p) => (float) $p->total * (int) ($pcts[$p->embarcacao_id] ?? 0) / 100), 2);
+                $comissaoAgencia = $comissaoG; $vendasPassG = $brutoG; $ownerShareG = round($brutoG - $comissaoG, 2);
+                $idsG = $passG->pluck('id');
+                $cartaoG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
+                $credPropG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
+                $debitoG = round(
+                    (float) \App\Models\Pagamento::whereIn('embarcacao_id', $embIdsG)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
+                    - (float) \App\Models\Pagamento::whereIn('embarcacao_id', $embIdsG)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
+                $debitoG = max(0.0, $debitoG);
+                $debitoG = round($debitoG + (float) (clone $pqG)->sum('devido'), 2); // em aberto é débito do proprietário
+                $nomeG = $embIdsG->count() === 1 ? (optional(\App\Models\Embarcacao::find($embIdsG->first()))->nome ?? 'Transporte') : 'Todos os transportes';
+                $pctG = $embIdsG->count() === 1 ? (int) ($pcts[$embIdsG->first()] ?? 0) : null;
+            } elseif ($transporteId) {
+                $embX = \App\Models\Embarcacao::find($transporteId);
+                $nomeG = optional($embX)->nome ?? 'Transporte';
+                $pctG = (int) optional($embX)->comissao_empresa_pct;
+            }
             $despesasG = round($comissaoG + $debitoG + $cartaoG + $credPropG, 2);
-            // rótulo do transporte e %: nome quando 1 só, senão "Todos os transportes"
-            $nomeG = $embIdsG->count() === 1 ? (optional(\App\Models\Embarcacao::find($embIdsG->first()))->nome ?? 'Transporte') : 'Todos os transportes';
-            $pctG = $embIdsG->count() === 1 ? (int) ($pcts[$embIdsG->first()] ?? 0) : null;
             $prestacaoTransporte = (object) [
                 'nome' => $nomeG, 'pct' => $pctG, 'qtd' => $passG->count(),
                 'bruto' => $brutoG, 'comissao' => $comissaoG, 'debito' => $debitoG,
-                'cartao' => $cartaoG, 'credProp' => $credPropG, 'despesas' => $despesasG,
-                'liquido' => round($brutoG - $despesasG, 2),
+                'cartao' => $cartaoG, 'credProp' => $credPropG,
+                'avEntrada' => $avEntrada, 'avSaida' => $avSaida,
+                'despesas' => $despesasG,
+                'liquido' => round($brutoG - $despesasG + $avEntrada - $avSaida, 2),
             ];
         }
 
@@ -391,7 +406,14 @@ class CaixaController extends Controller
             'valor' => 'required|numeric|min:0.01',
             'meio' => 'required|in:dinheiro,pix,debito,credito',
             'descricao' => 'nullable|string|max:200',
+            'embarcacao_id' => 'nullable|integer',
+            'data_viagem' => 'nullable|date',
         ]);
+        // Avulso amarrado a um transporte: pertence à PRESTAÇÃO daquele transporte/viagem, NÃO ao caixa da agência.
+        $embId = ! empty($data['embarcacao_id'])
+            ? (int) optional(\App\Models\Embarcacao::where('id', $data['embarcacao_id'])->where('empresa_id', Tenant::id())->first())->id
+            : null;
+        $dataViagemAv = $embId ? ($data['data_viagem'] ?? null) : null;
         $cat = ! empty($data['categoria']) ? AvulsoCategoria::where('nome', $data['categoria'])->first() : null;
         Pagamento::create([
             'empresa_id' => Tenant::id(),
@@ -405,6 +427,8 @@ class CaixaController extends Controller
             'tipo_mov' => $data['tipo_mov'],
             'categoria' => $data['categoria'] ?? null,
             'descricao' => $data['descricao'] ?? null,
+            'embarcacao_id' => $embId,
+            'data_viagem' => $dataViagemAv,
             'acerto_conta' => $cat ? (bool) $cat->conta_acerto : true,
             'acerto_pct' => $cat ? (int) $cat->comissao_pct : 0,
         ]);
