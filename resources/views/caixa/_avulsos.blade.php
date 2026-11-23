@@ -5,7 +5,7 @@
 @endphp
 <div class="card overflow-hidden">
   <div class="p-3 border-b flex items-center justify-between gap-2 flex-wrap">
-    <div class="font-bold text-sm text-slate-700">↕️ Entradas e saídas avulsas <span class="text-[11px] font-normal text-slate-400">· {{ $focoPrest ? 'do transporte / viagem' : 'da agência' }}</span></div>
+    <div class="font-bold text-sm text-slate-700">↕️ Entradas e saídas avulsas</div>
     <div class="flex items-center gap-2 flex-wrap text-[12px]">
       <span class="rounded-lg bg-emerald-50 text-emerald-700 px-2.5 py-1 font-semibold">Entradas <b>R$ {{ number_format($avE,2,',','.') }}</b></span>
       <span class="rounded-lg bg-rose-50 text-rose-700 px-2.5 py-1 font-semibold">Saídas <b>R$ {{ number_format($avS,2,',','.') }}</b></span>
