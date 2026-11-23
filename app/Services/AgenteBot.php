@@ -72,6 +72,8 @@ class AgenteBot
             $texto = $this->tratarPax($conversa, $texto);
             $texto = $this->tratarHumano($conversa, $texto, $demo);
             $res = $this->tratarPix($agente, $conversa, $texto, $demo);
+            $res['texto'] = $this->limparMarcadores($res['texto']);
+            if ($res['texto'] === '') $res['texto'] = 'Só um segundo…';
             $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia', null, $agente?->nome, $audioModo);
             if (! empty($res['pix'])) {
                 $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
@@ -132,7 +134,7 @@ class AgenteBot
 
             $rr = $this->llm->chat($prov, $hist, $sistema, 400);
             if ($rr['ok'] ?? false) {
-                $this->atendimento->registrarSaida($conversa, trim((string) $rr['texto']), 'ia', null, $agente?->nome);
+                $this->atendimento->registrarSaida($conversa, $this->limparMarcadores(trim((string) $rr['texto'])), 'ia', null, $agente?->nome);
             }
             app(\App\Services\ConfirmaPagamento::class)->tentarCriarPassagem($conversa);
         } catch (\Throwable $e) {
@@ -187,6 +189,15 @@ class AgenteBot
             if ($pv && in_array($pv->provider, ['claude', 'openai'], true)) return $pv;
         }
         return \App\Models\LlmProvedor::where('ativo', true)->whereIn('provider', ['claude', 'openai'])->orderByDesc('id')->first();
+    }
+
+    /** Rede de segurança: remove QUALQUER marcador que tenha sobrado (completo ou truncado) pra não vazar pro cliente. */
+    protected function limparMarcadores(string $t): string
+    {
+        $t = preg_replace('/\[\[[^\]]*\]\]/', '', $t); // marcadores completos que sobraram
+        $t = preg_replace('/\[\[[^\]]*$/s', '', $t);      // marcador aberto e cortado (ex.: "[[POLTRONA: ...")
+        $t = preg_replace('/[ \t]+\n/', "\n", (string) $t);
+        return trim((string) $t);
     }
 
     protected function promptSistema(Agente $a): string
@@ -454,9 +465,10 @@ class AgenteBot
     {
         if (! preg_match('/\[\[POLTRONA:([^\]]*)\]\]/i', $texto, $m)) return $texto;
         $partes = array_map('trim', explode(';', $m[1]));
-        $origem = $partes[0] ?? '';
-        $destino = $partes[1] ?? '';
-        $data = $this->parseData($partes[2] ?? '');
+        $venda = $c->contexto['venda'] ?? [];
+        $origem = ! empty($venda['origem']) ? $venda['origem'] : ($partes[0] ?? '');
+        $destino = ! empty($venda['destino']) ? $venda['destino'] : ($partes[1] ?? '');
+        $data = $this->parseData(! empty($venda['data']) ? $venda['data'] : ($partes[2] ?? ''));
         $tipo = mb_strtolower($partes[3] ?? 'janela');
         $nq = max(1, (int) ($partes[4] ?? 1));
         $subst = 'definida no embarque';
