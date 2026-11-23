@@ -270,11 +270,23 @@ class Vagas
     /** Poltronas ocupadas (vendidas + travadas) no trecho/data — mesma regra de segmento da venda. */
     protected function ocupadas($embarcacaoId, ?string $dataViagem, $rotaId, string $origem, string $destino): \Illuminate\Support\Collection
     {
+        // MESMA regra do mapa do operador (PassagemController::ocupadas): em viagem de horário
+        // fixo a venda fica amarrada ao viagem_id e o data_viagem pode estar nulo. Se filtrar só
+        // por data, o agente NÃO enxerga a venda e revende a poltrona ocupada. Então resolve o
+        // viagem_id pela rota+data e filtra igualzinho.
+        $rota = $rotaId ? Rota::find($rotaId) : null;
+        $viagemId = null; $viagemAberta = false;
+        if ($rota && $dataViagem) {
+            try { $viagemId = optional($rota->viagemPara(Carbon::parse($dataViagem)))->id; } catch (\Throwable $e) {}
+        }
+        if ($viagemId) { $vg = \App\Models\Viagem::find($viagemId); $viagemAberta = ! $vg || $vg->data_partida === null; }
+
         $q = Passagem::where('embarcacao_id', $embarcacaoId)->where('cancelada', false)
-            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem));
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->when(($viagemAberta || ! $viagemId) && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem));
 
         $ordem = [];
-        if ($rotaId && ($rota = Rota::find($rotaId))) $ordem = array_map('mb_strtolower', $rota->localidades());
+        if ($rota) $ordem = array_map('mb_strtolower', $rota->localidades());
         $idx = fn ($cidade) => array_search(mb_strtolower((string) $cidade), $ordem, true);
         $reqS = $idx($origem);
         $reqD = $idx($destino);
