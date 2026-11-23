@@ -860,6 +860,8 @@ class PassagemController extends Controller
         $modo = (string) ($request->input('modo') ?: ($request->boolean('relatorio') ? 'relatorio' : 'caixa'));
         if (! in_array($modo, ['caixa', 'prestacao', 'relatorio'], true)) $modo = 'caixa';
         if ($modo === 'caixa') $passagens = $passagens->filter(fn ($p) => ! $p->revendedor_id)->values();
+        // Pré-prestação: só o que ainda está EM ABERTO (o que já foi fechado sai pelo botão da prestação no histórico).
+        if ($modo === 'prestacao') $passagens = $passagens->filter(fn ($p) => ! $p->acerto_dono)->values();
 
         // Entradas/saídas AVULSAS: caixa = as da agência; prestação = as do transporte/viagem; relatório não tem.
         $avulsos = collect();

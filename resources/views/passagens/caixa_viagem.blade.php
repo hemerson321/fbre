@@ -2,7 +2,7 @@
 <html lang="pt-BR"><head><meta charset="utf-8">
 @php
   $modo = $modo ?? (($ehRelatorio ?? false) ? 'relatorio' : 'caixa');
-  $titP = [['caixa'=>'Caixa por viagem','prestacao'=>'Prestacao de contas','relatorio'=>'Relatorio por viagem'][$modo]];
+  $titP = [['caixa'=>'Caixa por viagem','prestacao'=>'Pre-prestacao de contas','relatorio'=>'Relatorio por viagem'][$modo]];
   if($embs->count()) $titP[] = $embs->implode(', ');
   if($datas->count()) $titP[] = $datas->map(fn($d)=>\Illuminate\Support\Carbon::parse($d)->format('d-m-Y'))->implode(' ');
   elseif(!empty($f['inicio']) || !empty($f['fim'])) $titP[] = (!empty($f['inicio'])?\Illuminate\Support\Carbon::parse($f['inicio'])->format('d-m-Y'):'').(!empty($f['fim']) && ($f['fim']??'')!==($f['inicio']??'')?(' a '.\Illuminate\Support\Carbon::parse($f['fim'])->format('d-m-Y')):'');
@@ -56,7 +56,7 @@
   @if($e?->logo)<img src="/{{ $e->logo }}" alt="" style="height:44px;max-width:130px;object-fit:contain">@endif
   <div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      @php $mt = ['caixa'=>['💰 Caixa por viagem','CAIXA','background:#dcfce7;color:#166534'],'prestacao'=>['🧾 Prestação de contas','PRESTAÇÃO DE CONTAS','background:#fef3c7;color:#92400e'],'relatorio'=>['📋 Relatório por viagem','RELATÓRIO','background:#e0e7ff;color:#3730a3']][$modo]; @endphp
+      @php $mt = ['caixa'=>['💰 Caixa por viagem','CAIXA','background:#dcfce7;color:#166534'],'prestacao'=>['🧾 Pré-prestação de contas','PRÉ-PRESTAÇÃO · EM ABERTO','background:#fef3c7;color:#92400e'],'relatorio'=>['📋 Relatório por viagem','RELATÓRIO','background:#e0e7ff;color:#3730a3']][$modo]; @endphp
       <h1 style="margin:0">{{ $mt[0] }}</h1>
       <span style="font-size:10px;font-weight:900;letter-spacing:.08em;padding:2px 8px;border-radius:6px;{{ $mt[2] }}">{{ $mt[1] }}</span>
     </div>
