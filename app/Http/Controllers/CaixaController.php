@@ -24,6 +24,15 @@ class CaixaController extends Controller
             ->selectRaw("COUNT(*) c, COALESCE(MAX(created_at), '') m, COALESCE(SUM(valor), 0) v")->first();
         return response()->json(['hash' => md5(($pg->c ?? 0).'|'.($pg->m ?? '').'|'.($py->c ?? 0).'|'.($py->m ?? '').'|'.($py->v ?? 0))]);
     }
+
+    /** Contadores dos badges do menu (atendimento aguardando, pré-cadastros) em tempo real. */
+    public function badges()
+    {
+        $atend = 0; $pre = 0;
+        try { $atend = \App\Models\Conversa::where('status', 'aguardando')->count(); } catch (\Throwable $e) {}
+        try { $pre = \App\Models\PreCadastro::where('status', 'pendente')->count(); } catch (\Throwable $e) {}
+        return response()->json(['atendimento' => $atend, 'precadastro' => $pre]);
+    }
     /** RELATÓRIO = mesma dashboard do caixa (mesmo layout), escopada pra relatório. */
     public function relatorio(Request $request)
     {

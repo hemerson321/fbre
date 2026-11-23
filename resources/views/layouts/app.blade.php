@@ -114,7 +114,7 @@ document.addEventListener('alpine:init', () => {
   $g = [];
   if ($u->permite('encomenda','cadastra')) $g[] = ['r'=>route('encomendas.create'), 'l'=>'Nova encomenda', 'i'=>'➕'];
   if ($u->permite('encomenda','ver')) $g[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📦'];
-  if ($u->permite('encomenda','precadastro')) $g[] = ['r'=>route('pre.index'), 'l'=>'Pré-cadastros', 'i'=>'🪧', 'b'=>(\App\Models\PreCadastro::where('status','pendente')->count() ?: null)];
+  if ($u->permite('encomenda','precadastro')) $g[] = ['r'=>route('pre.index'), 'l'=>'Pré-cadastros', 'i'=>'🪧', 'bk'=>'precadastro', 'b'=>(\App\Models\PreCadastro::where('status','pendente')->count() ?: null)];
   if ($g && $modOn('encomenda')) $grupos['Encomendas'] = $g;
   // Passagem (só aparece se o operador tiver o módulo liberado)
   $g = [];
@@ -126,7 +126,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','cadastra') && Route::has('passagens.bloqueios')) $g[] = ['r'=>route('passagens.bloqueios'), 'l'=>'Travar poltronas', 'i'=>'🔒'];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if ($u->ehRevendedor()) $g[] = ['r'=>route('meus-acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
-  if ($u->permite('passagem','atendimento')) $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
+  if ($u->permite('passagem','atendimento')) $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'bk'=>'atendimento', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;
   // Camarote / Suítes (módulo próprio, permissão separada)
   $g = [];
@@ -244,8 +244,8 @@ document.addEventListener('alpine:init', () => {
             style="{{ $temAtivo ? 'color:'.$gc.';background:color-mix(in srgb,'.$gc.' 12%,white);box-shadow:inset 0 -3px 0 '.$gc : 'color:#334155' }}">
             <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $gc }}"></span>
             <span class="text-base">{{ $gi }}</span>{{ $titulo }}
-            @php $badge = collect($itens)->sum(fn($it)=>(int)($it['b'] ?? 0)); @endphp
-            @if($badge)<span class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $badge }}</span>@endif
+            @php $badge = collect($itens)->sum(fn($it)=>(int)($it['b'] ?? 0)); $bkeys = collect($itens)->pluck('bk')->filter()->implode(' '); @endphp
+            @if($bkeys)<span data-badge-keys="{{ $bkeys }}" class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5" @if(!$badge) style="display:none" @endif>{{ $badge ?: '' }}</span>@elseif($badge)<span class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $badge }}</span>@endif
             <svg class="w-3.5 h-3.5 opacity-50 transition" :class="aberto==='{{ $titulo }}'?'rotate-180':''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div x-show="aberto==='{{ $titulo }}'" x-cloak x-transition.origin.top.left
@@ -257,7 +257,7 @@ document.addEventListener('alpine:init', () => {
                         {{ $ativo($it['r']) ? 'text-white' : 'text-slate-700 hover:bg-slate-50' }}"
                  @if($ativo($it['r'])) style="background:{{ $gc }}" @endif>
                 <span class="text-lg w-6 text-center">{{ $it['i'] }}</span>{{ $it['l'] }}
-                @if(!empty($it['b']))<span class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $it['b'] }}</span>@endif
+                @if(!empty($it['bk']))<span data-badge-item="{{ $it['bk'] }}" class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5" @if(empty($it['b'])) style="display:none" @endif>{{ $it['b'] ?: '' }}</span>@elseif(!empty($it['b']))<span class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $it['b'] }}</span>@endif
               </a>
             @endforeach
           </div>
@@ -284,7 +284,7 @@ document.addEventListener('alpine:init', () => {
         @foreach($itens as $it)
           <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif @if($ativo($it['r'])) style="border-left:4px solid var(--cor1)" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo($it['r']) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
             <span class="text-lg w-6 text-center">{{ $it['i'] }}</span>{{ $it['l'] }}
-            @if(!empty($it['b']))<span class="ml-auto min-w-[20px] text-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5">{{ $it['b'] }}</span>@endif</a>
+            @if(!empty($it['bk']))<span data-badge-item="{{ $it['bk'] }}" class="ml-auto min-w-[20px] text-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5" @if(empty($it['b'])) style="display:none" @endif>{{ $it['b'] ?: '' }}</span>@elseif(!empty($it['b']))<span class="ml-auto min-w-[20px] text-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5">{{ $it['b'] }}</span>@endif</a>
         @endforeach
       </div>
     @endforeach
@@ -533,6 +533,21 @@ document.addEventListener('alpine:init', () => {
       return false;
     },
   };
+</script>
+<script>
+(function(){
+  var url='{{ route('sync.badges') }}';
+  function setB(el,n){ if(!el) return; if(n>0){ el.textContent=n; el.style.display=''; } else { el.textContent=''; el.style.display='none'; } }
+  async function tick(){
+    try{
+      var r=await fetch(url,{headers:{'X-Requested-With':'fetch'},credentials:'same-origin'}); if(!r.ok) return;
+      var c=await r.json();
+      document.querySelectorAll('[data-badge-item]').forEach(function(el){ setB(el, c[el.getAttribute('data-badge-item')]||0); });
+      document.querySelectorAll('[data-badge-keys]').forEach(function(el){ var tot=0; el.getAttribute('data-badge-keys').split(/\s+/).forEach(function(k){ if(k) tot+=(c[k]||0); }); setB(el, tot); });
+    }catch(e){}
+  }
+  setInterval(tick, 10000);
+})();
 </script>
 @stack('scripts')
 </body>
