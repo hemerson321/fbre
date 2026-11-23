@@ -22,29 +22,8 @@
       <div class="text-xs font-bold text-rose-700 mb-1">🔔 <span data-n>{{ $precisaHumano ?? 0 }}</span> cliente(s) esperando atendente</div>
       <div data-lista class="space-y-0.5"></div>
     </div>
-    <div class="card flex-1 overflow-y-auto divide-y">
-      @forelse($conversas as $c)
-        <a href="{{ route('atendimento.show',$c) }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 {{ $sel && $sel->id===$c->id ? 'bg-slate-100' : '' }}">
-          <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 shrink-0">{{ mb_strtoupper(mb_substr($c->nomeExibicao(),0,1)) }}</div>
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center justify-between gap-2">
-              <span class="font-semibold truncate">{{ $c->nomeExibicao() }}</span>
-              <span class="text-[10px] text-slate-400 shrink-0">{{ optional($c->ultima_msg_em)->format('d/m H:i') }}</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="text-xs text-slate-500 truncate flex-1">{{ $c->ultima_msg_texto }}</span>
-              @if($c->nao_lidas)<span class="min-w-[18px] text-center rounded-full bg-emerald-500 text-white text-[10px] font-bold px-1">{{ $c->nao_lidas }}</span>@endif
-            </div>
-            <span class="chip text-[10px] bg-{{ $c->cor() }}-100 text-{{ $c->cor() }}-700 mt-0.5">{{ $c->statusLabel() }}</span>
-            @if($c->funilLabel())<span class="chip text-[10px] bg-indigo-100 text-indigo-700 mt-0.5 ml-1">{{ $c->funilLabel() }}</span>@endif
-            @if($c->precisa_humano)<span class="chip text-[10px] bg-rose-100 text-rose-700 mt-0.5 ml-1 font-bold">🔔 precisa atendente{{ $c->transferida_motivo ? ' · '.$c->transferida_motivo : '' }}</span>@endif
-            @if($c->atendente)<span class="chip text-[10px] bg-emerald-100 text-emerald-700 mt-0.5 ml-1">👤 {{ $c->atendente->name }}</span>@endif
-            @if(!empty($c->contexto['pref_poltrona']))<span class="chip text-[10px] bg-sky-100 text-sky-700 mt-0.5 ml-1">🪑 {{ ucfirst($c->contexto['pref_poltrona']) }}{{ !empty($c->contexto['poltronas_agente']) ? ' · '.implode(', ', (array) $c->contexto['poltronas_agente']) : '' }}</span>@endif
-          </div>
-        </a>
-      @empty
-        <div class="p-8 text-center text-slate-400 text-sm">Nenhuma conversa.</div>
-      @endforelse
+    <div id="listaConversas" class="card flex-1 overflow-y-auto divide-y">
+      @include('atendimento._lista', ['conversas' => $conversas, 'sel' => $sel])
     </div>
   </div>
 
@@ -126,7 +105,19 @@ function chat(id, ultimoId){
 <script>
 (function(){
   var last = null;
+  var lastHash = null;
   var banner = document.getElementById('alertaAtend');
+  var listaUrl = '{{ route('atendimento.lista') }}';
+  var curFiltro = @json($filtro);
+  var curSel = {{ $sel->id ?? 'null' }};
+  async function refreshLista(){
+    try{
+      var r = await fetch(listaUrl+'?status='+encodeURIComponent(curFiltro)+'&sel='+(curSel||''), {headers:{'X-Requested-With':'fetch'}});
+      if(!r.ok) return; var d = await r.json();
+      var box = document.getElementById('listaConversas'); if(box && typeof d.html==='string') box.innerHTML = d.html;
+      if(d.hash) lastHash = d.hash;
+    }catch(e){}
+  }
   function beep(){ try{ var a=new (window.AudioContext||window.webkitAudioContext)(); var o=a.createOscillator(); var g=a.createGain(); o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.value=880; g.gain.value=0.12; o.start(); setTimeout(function(){o.frequency.value=660;},150); setTimeout(function(){o.stop();a.close();},340);}catch(e){} }
   function notif(n){ try{ if(window.Notification && Notification.permission==='granted'){ new Notification('WhatsApp — novo atendimento', {body:n+' cliente(s) esperando atendente'}); } }catch(e){} }
   async function poll(){
@@ -143,6 +134,7 @@ function chat(id, ultimoId){
       }
       if(last!==null && n>last){ beep(); notif(n); }
       last=n;
+      if(d.hash){ if(lastHash===null){ lastHash=d.hash; } else if(d.hash!==lastHash){ refreshLista(); } }
     }catch(e){}
   }
   try{ if(window.Notification && Notification.permission==='default'){ Notification.requestPermission(); } }catch(e){}

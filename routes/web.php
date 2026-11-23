@@ -133,6 +133,7 @@ Route::middleware('auth')->group(function () {
     // Canal de atendimento (WhatsApp) — caixa de conversas
     Route::get('/passagens/atendimento', [AtendimentoController::class, 'index'])->name('atendimento.index')->middleware('perm:passagem.atendimento');
     Route::get('/passagens/atendimento-alertas', [AtendimentoController::class, 'alertas'])->name('atendimento.alertas')->middleware('perm:passagem.atendimento');
+    Route::get('/passagens/atendimento-lista', [AtendimentoController::class, 'lista'])->name('atendimento.lista')->middleware('perm:passagem.atendimento');
     Route::get('/passagens/atendimento/{conversa}', [AtendimentoController::class, 'show'])->name('atendimento.show')->middleware('perm:passagem.atendimento');
     Route::get('/passagens/atendimento/{conversa}/mensagens', [AtendimentoController::class, 'mensagens'])->name('atendimento.mensagens')->middleware('perm:passagem.atendimento');
     Route::post('/passagens/atendimento/{conversa}/responder', [AtendimentoController::class, 'responder'])->name('atendimento.responder')->middleware('perm:passagem.atendimento');

@@ -105,7 +105,7 @@ class AtendimentoController extends Controller
 
     public function alertas()
     {
-        if (! Schema::hasColumn('conversas', 'precisa_humano')) return response()->json(['precisa' => 0, 'itens' => []]);
+        if (! Schema::hasColumn('conversas', 'precisa_humano')) return response()->json(['precisa' => 0, 'itens' => [], 'hash' => $this->listaHash()]);
         $itens = Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada')
             ->orderByDesc('transferida_em')->limit(50)->get()
             ->map(fn ($c) => [
@@ -114,7 +114,37 @@ class AtendimentoController extends Controller
                 'telefone' => $c->cliente_telefone,
                 'motivo' => $c->transferida_motivo,
             ]);
-        return response()->json(['precisa' => $itens->count(), 'itens' => $itens]);
+        return response()->json(['precisa' => $itens->count(), 'itens' => $itens, 'hash' => $this->listaHash()]);
+    }
+
+    /** Impressão digital barata da lista (muda quando chega msg, assume, lê, abre/fecha conversa). */
+    protected function listaHash(): string
+    {
+        $a = Conversa::where('status', '!=', 'fechada')
+            ->selectRaw("COUNT(*) c, COALESCE(MAX(ultima_msg_em), '') m, COALESCE(SUM(nao_lidas), 0) n, COALESCE(MAX(updated_at), '') u")
+            ->first();
+        return md5(($a->c ?? 0).'|'.($a->m ?? '').'|'.($a->n ?? 0).'|'.($a->u ?? ''));
+    }
+
+    /** Lista de conversas renderizada (p/ atualizar sozinho sem recarregar a página). */
+    public function lista(Request $request)
+    {
+        $filtro = $request->query('status', 'ativas');
+        $q = Conversa::query()->with('atendente');
+        $q = match ($filtro) {
+            'aguardando' => $q->where('status', 'aguardando'),
+            'humano'     => $q->where('status', 'humano'),
+            'fechadas'   => $q->where('status', 'fechada'),
+            default      => $q->where('status', '!=', 'fechada'),
+        };
+        $conversas = $q->orderByRaw('COALESCE(ultima_msg_em, created_at) desc')->limit(100)->get();
+        $selId = $request->integer('sel') ?: null;
+        $sel = $selId ? $conversas->firstWhere('id', $selId) : null;
+
+        return response()->json([
+            'hash' => $this->listaHash(),
+            'html' => view('atendimento._lista', ['conversas' => $conversas, 'sel' => $sel])->render(),
+        ]);
     }
 
     /** Polling: mensagens novas desde um id (JSON). */
