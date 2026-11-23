@@ -17,7 +17,7 @@
       <input type="hidden" name="tipo_mov" :value="tipo">
       <div class="font-bold text-lg" x-text="tipo==='entrada' ? '➕ Entrada avulsa' : '➖ Saída avulsa'"></div>
       <div><label class="label">Categoria</label>
-        <select name="categoria" class="input" required>
+        <select name="categoria" class="input" :required="!emb">
           <option value="">— escolher —</option>
           @foreach($categorias as $c)<option value="{{ $c->nome }}" x-show="'{{ $c->tipo }}'==='ambos' || '{{ $c->tipo }}'===tipo">{{ $c->nome }}</option>@endforeach
         </select>
