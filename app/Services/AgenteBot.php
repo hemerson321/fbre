@@ -30,6 +30,7 @@ class AgenteBot
             if (! $agente) return;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
             if (! $demo && ($conversa->precisa_humano ?? false)) return; // já transferido pro humano: agente fica em silêncio
+            try { app(\App\Services\Vagas::class)->renovarConversa($conversa->id, 2); } catch (\Throwable $e) {} // mantém a reserva enquanto o cliente responde
 
             $prov = $agente->llm;
             if (! $prov) { Log::info('Agente sem provedor de IA.'); return; }
@@ -66,6 +67,7 @@ class AgenteBot
             $texto = $this->tratarVagas($conversa, $texto);
             $texto = $this->tratarPoltronas($conversa, $texto);
             $texto = $this->tratarPoltrona($conversa, $texto);
+            $texto = $this->tratarLiberar($conversa, $texto);
             $texto = $this->tratarPref($conversa, $texto);
             $texto = $this->tratarPax($conversa, $texto);
             $texto = $this->tratarHumano($conversa, $texto, $demo);
@@ -235,6 +237,7 @@ class AgenteBot
         $p[] = "Quando o cliente ESCOLHER o tipo, RESERVE a(s) poltrona(s) real(is) escrevendo [[POLTRONA: origem; destino; data; tipo; QTD]] (QTD = nº de passageiros; 1 se for só ele). O SISTEMA troca pelo(s) NÚMERO(s) real(is) e JÁ RESERVA pra nenhum operador vender em cima (mesmo sincronismo do balcão). Ex.: 1 pessoa -> '03J (janela)'; 2 juntas -> '03J e 03M — juntas (janela)'. Confirme citando o número (ex.: 'fechei a 03J na janela pra você 😉') e registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor).";
         $p[] = "GRUPO (2 ou mais pessoas): pergunte se querem sentar JUNTOS. Se sim, use a QTD no marcador. Se o SISTEMA responder 'NAO tem N juntas; essas sao as mais proximas', REPASSE com sinceridade e já mostrando os números (ex.: 'não consegui 2 juntas na janela — tenho a 03J na janela e a 05C no corredor; serve assim ou prefere outra data?') e deixe o cliente decidir. NUNCA diga que são juntas se o sistema não confirmou 'juntas'.";
         $p[] = "Se vier 'esgotada', ofereça outro tipo ou outra data. A poltrona é confirmada no embarque. Em lancha de rede não pergunte.";
+        $p[] = "Se o cliente DESISTIR, mudar de ideia, disser que não vai mais viajar, que vai em outra data/viagem, ou cancelar a compra, LIBERE a poltrona escrevendo numa linha isolada que o cliente NÃO vê: [[LIBERAR]]. (A reserva também solta sozinha depois de ~2 min sem ele responder.)";
         $p[] = "5) Confirmando, gere o PIX (veja PAGAMENTO). Primeiro o pagamento.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
@@ -502,6 +505,17 @@ class AgenteBot
             }
         } catch (\Throwable $e) {}
         return trim(str_replace($m[0], $subst, $texto));
+    }
+
+    /** [[LIBERAR]] -> solta a reserva de poltrona da conversa (cliente desistiu/mudou de ideia). */
+    protected function tratarLiberar(Conversa $c, string $texto): string
+    {
+        if (! preg_match('/\[\[LIBERAR[^\]]*\]\]/i', $texto, $m)) return $texto;
+        try { app(\App\Services\Vagas::class)->liberarConversa($c->id); } catch (\Throwable $e) {}
+        $ctx = $c->contexto ?? [];
+        unset($ctx['poltronas_agente'], $ctx['poltrona_agente'], $ctx['pref_poltrona']);
+        $c->forceFill(['contexto' => $ctx])->save();
+        return trim(str_replace($m[0], '', $texto));
     }
 
     /** [[PREF: janela|meio|corredor]] -> guarda a preferência de poltrona no contexto. */

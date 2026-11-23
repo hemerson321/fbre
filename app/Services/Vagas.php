@@ -156,7 +156,7 @@ class Vagas
             \App\Models\PoltronaHold::create([
                 'empresa_id' => $emb->empresa_id, 'embarcacao_id' => $emb->id, 'viagem_id' => $viagemId,
                 'data_viagem' => $data?->toDateString(), 'poltrona' => $sel, 'origem' => $origem, 'destino' => $destino,
-                'user_id' => 0, 'conversa_id' => $conversaId, 'expires_at' => now()->addMinutes(45),
+                'user_id' => 0, 'conversa_id' => $conversaId, 'expires_at' => now()->addMinutes(2),
             ]);
         }
 
@@ -170,6 +170,14 @@ class Vagas
     public function liberarConversa(int $conversaId): void
     {
         \App\Models\PoltronaHold::where('conversa_id', $conversaId)->delete();
+    }
+
+    /** Renova (estende) as reservas ativas da conversa — chamado a cada mensagem do cliente. Se já expirou, NÃO ressuscita. */
+    public function renovarConversa(int $conversaId, int $minutos = 2): void
+    {
+        \App\Models\PoltronaHold::where('conversa_id', $conversaId)
+            ->where('expires_at', '>', now())
+            ->update(['expires_at' => now()->addMinutes(max(1, $minutos))]);
     }
 
     /** Poltronas indisponíveis p/ o agente: vendidas + travadas(IA) + holds de operadores/outras conversas. */
