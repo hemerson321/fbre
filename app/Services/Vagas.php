@@ -35,6 +35,65 @@ class Vagas
         return ['ok' => true, 'usa_poltrona' => true, 'vagas' => $vagas, 'capacidade' => (int) $emb->poltronas_qtd, 'lancha' => (string) $emb->nome];
     }
 
+    /**
+     * Lugares LIVRES por tipo (janela/meio/corredor) no trecho/data, lendo o mapa real da lancha.
+     * @return array{ok:bool, usa_poltrona?:bool, tipos?:?array, lancha?:string}
+     */
+    public function tiposDisponiveis(string $origem, string $destino, ?Carbon $data = null): array
+    {
+        $rota = $this->rotaDoTrecho($origem, $destino);
+        if (! $rota || ! $rota->embarcacao) return ['ok' => false];
+        $emb = $rota->embarcacao;
+        if (! $emb->usa_poltrona) return ['ok' => true, 'usa_poltrona' => false, 'tipos' => []];
+
+        $mapaTipo = $this->classificar((string) ($emb->poltronas_lista ?? ''));
+        if (! $mapaTipo) return ['ok' => true, 'usa_poltrona' => true, 'tipos' => null, 'lancha' => (string) $emb->nome]; // sem mapa desenhado
+
+        $ocup = $this->ocupadas($emb->id, $data?->toDateString(), $rota->id, $origem, $destino)
+            ->map(fn ($x) => mb_strtolower((string) $x))->all();
+
+        $cont = ['janela' => 0, 'meio' => 0, 'corredor' => 0];
+        foreach ($mapaTipo as $sel => $tipo) {
+            if (in_array(mb_strtolower((string) $sel), $ocup, true)) continue;
+            if (isset($cont[$tipo])) $cont[$tipo]++;
+        }
+        return ['ok' => true, 'usa_poltrona' => true, 'tipos' => $cont, 'lancha' => (string) $emb->nome];
+    }
+
+    /** Classifica cada poltrona do layout em janela/meio/corredor pela POSIÇÃO na fileira. */
+    protected function classificar(string $layout): array
+    {
+        $layout = str_replace("\r", '', trim($layout));
+        if ($layout === '') return [];
+        $map = [];
+        foreach (preg_split('/\n[ \t]*\n/', $layout) as $bloco) {
+            foreach (preg_split('/\n/', $bloco) as $linha) {
+                if (trim($linha) === '') continue;
+                $p = explode('|', $linha);
+                $esq = array_values(array_filter(preg_split('/\s+/', trim($p[0] ?? '')), fn ($x) => $x !== ''));
+                $dir = array_values(array_filter(preg_split('/\s+/', trim($p[1] ?? '')), fn ($x) => $x !== ''));
+                $this->classBloco($esq, 'esq', $map);
+                $this->classBloco($dir, 'dir', $map);
+            }
+        }
+        return $map;
+    }
+
+    protected function classBloco(array $seats, string $lado, array &$map): void
+    {
+        $n = count($seats);
+        foreach ($seats as $i => $sel) {
+            if ($n === 1) {
+                $t = 'janela';
+            } elseif ($lado === 'esq') {
+                $t = $i === 0 ? 'janela' : ($i === $n - 1 ? 'corredor' : 'meio');
+            } else {
+                $t = $i === $n - 1 ? 'janela' : ($i === 0 ? 'corredor' : 'meio');
+            }
+            $map[$sel] = $t;
+        }
+    }
+
     /** Acha a rota ATIVA cujas paradas contêm origem E destino. */
     protected function rotaDoTrecho(string $origem, string $destino): ?Rota
     {

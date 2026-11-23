@@ -64,6 +64,7 @@ class AgenteBot
 
             $texto = $this->tratarVenda($conversa, $texto);
             $texto = $this->tratarVagas($conversa, $texto);
+            $texto = $this->tratarPoltronas($conversa, $texto);
             $texto = $this->tratarPref($conversa, $texto);
             $texto = $this->tratarPax($conversa, $texto);
             $texto = $this->tratarHumano($conversa, $texto, $demo);
@@ -201,7 +202,7 @@ class AgenteBot
         $p[] = "SÓ chame um atendente quando o cliente PEDIR DESCONTO ou preço especial por quantidade (ex.: 'tem desconto pra 7 pessoas?', 'faz um preço melhor pra 10?'). Fora isso, é venda normal: some e feche você mesmo.";
         $p[] = "CRIANÇAS: se o cliente falar em filho(s)/criança(s), PERGUNTE quantas e a IDADE de cada uma (pergunta natural: 'quantos anos têm as crianças?'). Pela idade, escolha o tipo certo (veja TIPOS DE PASSAGEIRO e as faixas) e use o preço JÁ CALCULADO daquele tipo NA TABELA DE PREÇOS do trecho (você NÃO precisa de atendente pra isso — o valor está pronto). Bebê de colo é grátis e não ocupa assento. Monte o VALOR TOTAL = adulto(s) + cada criança pelo preço certo e mande o resumo.";
         $p[] = "DOCUMENTO DA CRIANÇA ANTES DO PIX: quando tiver criança (ou qualquer tarifa com desconto por idade), ANTES de gerar o PIX peça a FOTO ou ARQUIVO do documento da criança pra confirmar a idade. Só gere o PIX depois que o documento confirmar que a idade bate. Isso evita um adulto pagar como criança. (Venda só de adultos NÃO precisa disso — documento fica pro final.)";
-        $p[] = "POLTRONA (só nas lanchas marcadas com [poltrona] nos DADOS): ANTES de gerar o PIX, pergunte se prefere JANELA, MEIO ou CORREDOR. Quando responder, registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor). Em lancha de rede (sem poltrona) não pergunte.";
+        $p[] = "POLTRONA (só nas lanchas com [poltrona] nos DADOS): ANTES do PIX, CONSULTE os lugares livres por tipo escrevendo [[POLTRONAS: origem; destino; data]] — o SISTEMA troca pelos tipos com vaga (ex.: 'janela: 5 | corredor: 3'). Ofereça ao cliente SÓ os tipos que aparecerem. Quando ele escolher um tipo DISPONÍVEL, registre numa linha isolada que ele NÃO vê: [[PREF: janela]] (ou meio/corredor). Se o tipo que ele quer não estiver na lista (esgotado), avise e ofereça os que têm. NUNCA prometa um tipo que não apareça livre. A poltrona exata é marcada no embarque. Em lancha de rede não pergunte.";
         $p[] = "5) Confirmando, gere o PIX (veja PAGAMENTO). Primeiro o pagamento.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
@@ -406,6 +407,35 @@ class AgenteBot
                 } else {
                     $n = (int) ($r['vagas'] ?? 0);
                     $subst = $n > 0 ? ($n.' '.($n === 1 ? 'vaga' : 'vagas')) : 'sem vagas no momento';
+                }
+            }
+        } catch (\Throwable $e) {}
+        return trim(str_replace($m[0], $subst, $texto));
+    }
+
+    /** [[POLTRONAS: origem; destino; data]] -> troca pelos tipos de poltrona LIVRES (janela/meio/corredor) lendo o mapa real. */
+    protected function tratarPoltronas(Conversa $c, string $texto): string
+    {
+        if (! preg_match('/\[\[POLTRONAS:([^\]]*)\]\]/i', $texto, $m)) return $texto;
+        $partes = array_map('trim', explode(';', $m[1]));
+        $origem = $partes[0] ?? '';
+        $destino = $partes[1] ?? '';
+        $data = $this->parseData($partes[2] ?? '');
+        $subst = 'poltrona definida no embarque';
+        try {
+            $r = app(\App\Services\Vagas::class)->tiposDisponiveis($origem, $destino, $data);
+            if (($r['ok'] ?? false)) {
+                if (($r['usa_poltrona'] ?? false) === false) {
+                    $subst = 'lugar livre (lancha sem marcacao de poltrona)';
+                } elseif (($r['tipos'] ?? null) === null) {
+                    $subst = 'poltrona definida no embarque';
+                } else {
+                    $t = $r['tipos'];
+                    $parts = [];
+                    foreach (['janela', 'corredor', 'meio'] as $k) {
+                        if ((int) ($t[$k] ?? 0) > 0) $parts[] = $k.': '.(int) $t[$k];
+                    }
+                    $subst = $parts ? implode(' | ', $parts) : 'sem poltrona livre no momento';
                 }
             }
         } catch (\Throwable $e) {}
