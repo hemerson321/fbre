@@ -611,6 +611,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
   window.FBRE_OP = @js(['prefixo'=>auth()->user()->prefixo ?: 'OP'.auth()->id(), 'proximoSeq'=>(int)(auth()->user()->proximo_seq ?: 1)]);
+  window.FBRE_PREFILL = @js($prefill ?? null);
 
   function novaPassagem(){
     return {
@@ -679,7 +680,22 @@
         // modelo correto. Limpa e re-aplica no próximo tick, quando as opções já existem.
         this.$nextTick(()=>{ const _o=this.origemSel; if(_o){ this.origemSel=''; this.$nextTick(()=>{ this.origemSel=_o; }); } });
         this.iniciarCaptura();
+        this.aplicarPrefill();
         // Pagamento: o operador escolhe o meio; nada vem preenchido por padrao.
+      },
+      aplicarPrefill(){
+        try{
+          var pf=window.FBRE_PREFILL; if(!pf) return;
+          var n=function(x){ return String(x||'').trim().toLowerCase(); };
+          var acha=function(val,lista){ val=n(val); return (lista||[]).find(function(c){return n(c)===val;})||null; };
+          this.$nextTick(()=>{
+            if(pf.origem){ var o=acha(pf.origem,this.cidades); if(o) this.origemSel=o; }
+            this.$nextTick(()=>{
+              if(pf.destino){ var lista=(this.destinos&&this.destinos.length)?this.destinos:this.cidades; var d=acha(pf.destino,lista); if(d){ this.destinoSel=d; if(this.onRota) this.onRota(); } }
+              if(pf.nome && this.passageiros && this.passageiros[0]) this.passageiros[0].nome=pf.nome;
+            });
+          });
+        }catch(e){}
       },
       ajustarAvista(){ /* desativado: operador escolhe o meio de pagamento, nao preenche dinheiro automatico */ },
       metodosChips(){ const base=[{k:'dinheiro',l:'Dinheiro'},{k:'pix',l:'PIX'},{k:'debito',l:'Débito'},{k:'credito',l:'Crédito'},{k:'credito_parcelado',l:'Parcelado'}]; return this.tipoPag==='online' ? base.filter(m=>m.k!=='dinheiro') : base; },

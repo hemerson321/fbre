@@ -163,6 +163,7 @@ class AtendimentoController extends Controller
             'pref' => $ctx['pref_poltrona'] ?? null,
             'poltronas' => array_values((array) ($ctx['poltronas_agente'] ?? [])),
             'funil' => $conversa->funilLabel(),
+            'cliente' => $conversa->nomeExibicao(),
         ];
     }
 

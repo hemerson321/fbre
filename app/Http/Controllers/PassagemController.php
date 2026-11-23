@@ -86,7 +86,7 @@ class PassagemController extends Controller
     }
 
     // ---------------- CADASTRO ----------------
-    public function create()
+    public function create(Request $request)
     {
         $u = auth()->user();
         TrechoPreco::curarOrfaos();
@@ -145,7 +145,26 @@ class PassagemController extends Controller
             'paradas' => $r->paradas->map(fn ($p) => ['n' => $p->localidade, 'd' => $p->dia_semana, 'h' => $p->hora ? substr($p->hora, 0, 5) : null])->values(),
         ])->values();
 
+        // Pré-preenchimento (quando aberto pelo botão "Vender" do Atendimento). Não afeta a venda normal.
+        $prefill = null;
+        if ($request->filled('origem') || $request->filled('destino')) {
+            $dataIso = null; $dq = trim((string) $request->query('data'));
+            if ($dq !== '') {
+                foreach (['d/m/Y', 'd/m/y', 'Y-m-d'] as $fmt) {
+                    try { $dd = \Carbon\Carbon::createFromFormat($fmt, $dq); if ($dd) { $dataIso = $dd->format('Y-m-d'); break; } } catch (\Throwable $e) {}
+                }
+            }
+            $prefill = [
+                'origem' => (string) $request->query('origem', ''),
+                'destino' => (string) $request->query('destino', ''),
+                'data' => $dataIso,
+                'poltrona' => (string) $request->query('poltrona', ''),
+                'nome' => (string) $request->query('nome', ''),
+            ];
+        }
+
         return view('passagens.create', [
+            'prefill' => $prefill,
             'embarcacoes' => $embarcacoes,
             'regrasIdade' => $embarcacoes->mapWithKeys(fn ($e) => [(string) $e->id => ($e->bandasIdade() ?: [])])->filter(fn ($v) => ! empty($v)),
             'tipos' => $tipos,

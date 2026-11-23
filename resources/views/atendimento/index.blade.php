@@ -40,6 +40,7 @@
           <div class="text-xs text-slate-500">{{ $sel->cliente_telefone }} · <span class="font-semibold text-{{ $sel->cor() }}-600">{{ $sel->statusLabel() }}</span>{{ $sel->atendente ? ' · '.$sel->atendente->name : '' }}@if($sel->funilLabel()) · <span class="chip bg-indigo-100 text-indigo-700 text-[10px] font-bold">{{ $sel->funilLabel() }}</span>@endif
           @if(!empty($sel->contexto['pref_poltrona'])) · <span class="chip bg-sky-100 text-sky-700 text-[10px] font-bold">🪑 Prefere {{ ucfirst($sel->contexto['pref_poltrona']) }}{{ !empty($sel->contexto['poltronas_agente']) ? ' · poltrona '.implode(', ', (array) $sel->contexto['poltronas_agente']) : '' }}</span>@endif</div>
         </div>
+        <a :href="vendaUrl()" target="_blank" x-show="venda && venda.origem && venda.destino" x-cloak class="btn btn-primary btn-sm" style="background:var(--cor2)" title="Abrir Nova passagem já preenchida">🎫 Vender</a>
         @if($sel->status!=='humano')
         <form method="post" action="{{ route('atendimento.assumir',$sel) }}">@csrf<button class="btn btn-primary btn-sm" style="background:var(--cor1)">Assumir</button></form>
         @endif
@@ -89,6 +90,7 @@ function chat(id, ultimoId, vendaIni){
   return {
     ultimo: ultimoId,
     venda: vendaIni || null,
+    vendaUrl(){ var v=this.venda||{}; var q=new URLSearchParams(); if(v.origem)q.set('origem',v.origem); if(v.destino)q.set('destino',v.destino); if(v.data)q.set('data',v.data); if(v.poltronas&&v.poltronas.length)q.set('poltrona',v.poltronas[0]); if(v.cliente)q.set('nome',v.cliente); return '{{ route('passagens.create') }}?'+q.toString(); },
     init(){ this.rolar(); this.timer = setInterval(()=>this.puxar(), 4000); },
     rolar(){ this.$nextTick(()=>{ var m=this.$refs.msgs; if(m) m.scrollTop=m.scrollHeight; }); },
     async puxar(){
