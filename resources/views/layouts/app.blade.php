@@ -107,6 +107,7 @@ document.addEventListener('alpine:init', () => {
 @stack('head')
 </head>
 <body class="font-sans text-slate-800 min-h-screen" x-data="{ menu:false }">
+@php $embed = request()->boolean('embed'); @endphp
 @php
   // ---------- menu por módulo (uma definição, usada no topo e na gaveta) ----------
   $grupos = [];
@@ -201,6 +202,7 @@ document.addEventListener('alpine:init', () => {
   };
 @endphp
 
+@unless($embed)
 {{-- ===== BARRA DA EMPRESA ===== --}}
 <header class="no-print sticky top-0 z-30 text-white shadow-md transition-colors duration-300" style="background: {{ $headerGrad }}">
   <div class="mx-auto max-w-[1440px] flex items-center gap-3 px-3 sm:px-4 h-14">
@@ -266,7 +268,9 @@ document.addEventListener('alpine:init', () => {
     </div>
   </nav>
 </header>
+@endunless
 
+@unless($embed)
 {{-- ===== GAVETA (mobile) ===== --}}
 <aside class="no-print fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-2xl transform transition lg:hidden flex flex-col"
        :class="menu ? 'translate-x-0' : '-translate-x-full'" x-cloak>
@@ -293,6 +297,7 @@ document.addEventListener('alpine:init', () => {
     </form>@endif
   </nav>
 </aside>
+@endunless
 <div class="no-print fixed inset-0 z-30 bg-black/40 lg:hidden" x-show="menu" @click="menu=false" x-cloak></div>
 
 {{-- ===== CONTEÚDO ===== --}}

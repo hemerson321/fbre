@@ -30,7 +30,15 @@
   {{-- CONVERSA --}}
   <div class="lg:col-span-2 flex flex-col min-h-0 {{ $sel ? 'flex' : 'hidden lg:flex' }}">
     @if($sel)
-    <div x-data="chat({{ $sel->id }}, {{ optional($sel->mensagens->last())->id ?? 0 }}, @js($vendaResumo))" class="flex flex-col h-full card overflow-hidden">
+    <div x-data="chat({{ $sel->id }}, {{ optional($sel->mensagens->last())->id ?? 0 }}, @js($vendaResumo))" class="relative flex flex-col h-full card overflow-hidden">
+      {{-- PAINEL DE VENDA INLINE --}}
+      <div x-show="vendendo" x-cloak class="absolute inset-0 z-30 bg-white flex flex-col">
+        <div class="flex items-center justify-between gap-2 p-2 border-b bg-slate-50">
+          <div class="font-bold text-sm">🎫 Venda — <span x-text="(venda&&venda.cliente)||''"></span></div>
+          <button type="button" @click="vendendo=false" class="btn btn-ghost btn-sm">✕ Voltar à conversa</button>
+        </div>
+        <iframe :src="vendaSrc" x-show="vendaSrc" class="flex-1 w-full border-0"></iframe>
+      </div>
       {{-- header --}}
       <div class="flex items-center gap-3 p-3 border-b bg-slate-50">
         <a href="{{ route('atendimento.index') }}" class="lg:hidden text-slate-500">←</a>
@@ -40,7 +48,7 @@
           <div class="text-xs text-slate-500">{{ $sel->cliente_telefone }} · <span class="font-semibold text-{{ $sel->cor() }}-600">{{ $sel->statusLabel() }}</span>{{ $sel->atendente ? ' · '.$sel->atendente->name : '' }}@if($sel->funilLabel()) · <span class="chip bg-indigo-100 text-indigo-700 text-[10px] font-bold">{{ $sel->funilLabel() }}</span>@endif
           @if(!empty($sel->contexto['pref_poltrona'])) · <span class="chip bg-sky-100 text-sky-700 text-[10px] font-bold">🪑 Prefere {{ ucfirst($sel->contexto['pref_poltrona']) }}{{ !empty($sel->contexto['poltronas_agente']) ? ' · poltrona '.implode(', ', (array) $sel->contexto['poltronas_agente']) : '' }}</span>@endif</div>
         </div>
-        <a :href="vendaUrl()" target="_blank" x-show="venda && venda.origem && venda.destino" x-cloak class="btn btn-primary btn-sm" style="background:var(--cor2)" title="Abrir Nova passagem já preenchida">🎫 Vender</a>
+        <button type="button" @click="abrirVenda()" x-show="venda && venda.origem && venda.destino" x-cloak class="btn btn-primary btn-sm" style="background:var(--cor2)" title="Vender aqui mesmo">🎫 Vender</button>
         @if($sel->status!=='humano')
         <form method="post" action="{{ route('atendimento.assumir',$sel) }}">@csrf<button class="btn btn-primary btn-sm" style="background:var(--cor1)">Assumir</button></form>
         @endif
@@ -90,7 +98,10 @@ function chat(id, ultimoId, vendaIni){
   return {
     ultimo: ultimoId,
     venda: vendaIni || null,
-    vendaUrl(){ var v=this.venda||{}; var q=new URLSearchParams(); if(v.origem)q.set('origem',v.origem); if(v.destino)q.set('destino',v.destino); if(v.data)q.set('data',v.data); if(v.poltronas&&v.poltronas.length)q.set('poltrona',v.poltronas[0]); if(v.cliente)q.set('nome',v.cliente); return '{{ route('passagens.create') }}?'+q.toString(); },
+    vendendo: false,
+    vendaSrc: '',
+    vendaUrl(){ var v=this.venda||{}; var q=new URLSearchParams(); if(v.origem)q.set('origem',v.origem); if(v.destino)q.set('destino',v.destino); if(v.data)q.set('data',v.data); if(v.poltronas&&v.poltronas.length)q.set('poltrona',v.poltronas[0]); if(v.cliente)q.set('nome',v.cliente); q.set('embed','1'); return '{{ route('passagens.create') }}?'+q.toString(); },
+    abrirVenda(){ this.vendaSrc = this.vendaUrl(); this.vendendo = true; },
     init(){ this.rolar(); this.timer = setInterval(()=>this.puxar(), 4000); },
     rolar(){ this.$nextTick(()=>{ var m=this.$refs.msgs; if(m) m.scrollTop=m.scrollHeight; }); },
     async puxar(){
