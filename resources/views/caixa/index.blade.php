@@ -131,25 +131,54 @@
           @if($d->debito > 0)<div class="text-[10px] text-slate-400">bruto {{ number_format($d->valor,2,',','.') }} − dívida {{ number_format($d->debito,2,',','.') }}</div>@endif
         </div>
         @if($d->valor > 0)
-        <form method="post" action="{{ route('prestacoes.fechar', $d->emb) }}" class="flex items-end gap-1.5 flex-wrap justify-end" onsubmit="return confirm('Fechar a prestação de {{ $d->emb->nome }}? As passagens deste ciclo saem das vendas atuais e vão para o histórico (podem ser desfeitas lá). Devido R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}.')">
+        <form method="post" action="{{ route('prestacoes.fechar', $d->emb) }}" class="flex flex-col items-stretch gap-1.5 min-w-[230px]"
+              x-data="{ max: {{ $d->liquido > 0 ? $d->liquido : 0 }}, forma:'dinheiro', dividir:false, valorUnico:'{{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}', linhas:[{meio:'dinheiro',valor:''},{meio:'pix',valor:''}], parse(x){return parseFloat((x||'').toString().replace('.','').replace(',','.'))||0}, get soma(){return this.linhas.reduce((s,l)=>s+this.parse(l.valor),0)}, fmt(n){return (Math.round(n*100)/100).toFixed(2).replace('.',',')}, get splitJson(){return this.dividir?JSON.stringify(this.linhas.filter(l=>this.parse(l.valor)>0)):''} }"
+              onsubmit="return confirm('Fechar a prestação de {{ $d->emb->nome }}? As passagens deste ciclo saem das vendas atuais e vão para o histórico (podem ser desfeitas lá). Devido R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}.')">
           @csrf
           <input type="hidden" name="viagem_id" value="{{ $viagemId }}">
           <input type="hidden" name="data_viagem" value="{{ $dataViagem }}">
-          <div>
-            <label class="block text-[9px] uppercase tracking-wide text-slate-400">Forma</label>
-            <select name="forma" class="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm">
-              <option value="dinheiro">Dinheiro</option>
-              <option value="pix">PIX</option>
-              <option value="transferencia">Transferência</option>
-              <option value="debito">Débito</option>
-              <option value="credito">Crédito</option>
-            </select>
+          <input type="hidden" name="forma" :value="forma">
+          <input type="hidden" name="formas_json" :value="splitJson">
+          <input type="hidden" name="valor" :value="dividir ? '' : valorUnico">
+          <div class="flex flex-wrap items-center gap-1 justify-end">
+            <template x-if="!dividir">
+              <div class="flex gap-1">
+                <button type="button" @click="forma='dinheiro'" :class="forma==='dinheiro' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300'" class="rounded-lg border px-2.5 py-1 text-xs font-semibold">Dinheiro</button>
+                <button type="button" @click="forma='pix'" :class="forma==='pix' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300'" class="rounded-lg border px-2.5 py-1 text-xs font-semibold">PIX</button>
+                <button type="button" @click="forma='deposito'" :class="forma==='deposito' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300'" class="rounded-lg border px-2.5 py-1 text-xs font-semibold">Depósito</button>
+              </div>
+            </template>
+            <button type="button" @click="dividir=!dividir" :class="dividir ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-600 border-slate-300'" class="rounded-lg border px-2.5 py-1 text-xs font-semibold" title="Pagar em mais de uma forma">⇄ Dividir</button>
           </div>
-          <div>
-            <label class="block text-[9px] uppercase tracking-wide text-slate-400">Pagar agora</label>
-            <input name="valor" value="{{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}" inputmode="decimal" class="w-28 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm">
-          </div>
-          <button class="btn btn-accent btn-sm whitespace-nowrap">Fechar prestação</button>
+          <template x-if="!dividir">
+            <div class="flex items-end gap-1.5 justify-end">
+              <div>
+                <label class="block text-[9px] uppercase tracking-wide text-slate-400 text-right">Pagar agora</label>
+                <input x-model="valorUnico" inputmode="decimal" class="w-28 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm">
+              </div>
+              <button class="btn btn-accent btn-sm whitespace-nowrap">Fechar prestação</button>
+            </div>
+          </template>
+          <template x-if="dividir">
+            <div class="rounded-xl border border-slate-200 p-2 space-y-1 bg-slate-50">
+              <template x-for="(l,i) in linhas" :key="i">
+                <div class="flex items-center gap-1">
+                  <select x-model="l.meio" class="rounded-lg border border-slate-300 bg-white px-1.5 py-1 text-xs">
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="pix">PIX</option>
+                    <option value="deposito">Depósito</option>
+                  </select>
+                  <input x-model="l.valor" inputmode="decimal" placeholder="0,00" class="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-xs">
+                  <button type="button" @click="linhas.splice(i,1)" x-show="linhas.length>1" class="text-rose-500 px-1 text-sm">×</button>
+                </div>
+              </template>
+              <div class="flex items-center justify-between pt-1">
+                <button type="button" @click="linhas.push({meio:'dinheiro',valor:''})" class="text-xs text-indigo-600 font-semibold">+ forma</button>
+                <span class="text-xs text-slate-500">Soma: R$ <b x-text="fmt(soma)"></b> / {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}</span>
+              </div>
+              <button class="btn btn-accent btn-sm w-full whitespace-nowrap mt-1">Fechar prestação (dividido)</button>
+            </div>
+          </template>
         </form>
         @endif
       </div>

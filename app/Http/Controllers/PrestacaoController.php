@@ -38,6 +38,41 @@ class PrestacaoController extends Controller
         return round((float) $v, 2);
     }
 
+    /**
+     * Lê as formas de pagamento: "Dividir" manda formas_json ([{meio,valor},...]);
+     * senão usa forma+valor único. Soma é limitada ao máximo (devido/saldo).
+     */
+    protected function lerSplits(Request $request, float $max, string $formaUnica): array
+    {
+        $out = [];
+        $raw = $request->input('formas_json');
+        $temRaw = $raw !== null && $raw !== '';
+        if ($raw) {
+            $arr = json_decode((string) $raw, true);
+            if (is_array($arr)) {
+                foreach ($arr as $l) {
+                    $m = mb_strtolower(trim((string) ($l['meio'] ?? '')));
+                    $v = $this->parseValor($l['valor'] ?? 0);
+                    if ($m !== '' && $v > 0) $out[] = ['meio' => $m, 'valor' => $v];
+                }
+            }
+        }
+        if (! $out && ! $temRaw) { // sem Dividir: forma única + valor
+            $v = $request->filled('valor') ? $this->parseValor($request->input('valor')) : $max;
+            $out = [['meio' => $formaUnica, 'valor' => $v]];
+        }
+        // limita a soma ao máximo (apara a partir do fim)
+        $acc = 0.0; $final = [];
+        foreach ($out as $o) {
+            if ($acc >= $max) break;
+            $v = min((float) $o['valor'], round($max - $acc, 2));
+            if ($v <= 0) continue;
+            $final[] = ['meio' => $o['meio'], 'valor' => round($v, 2)];
+            $acc = round($acc + $v, 2);
+        }
+        return $final;
+    }
+
     /** Dívida de devolução ainda em aberto do dono (devoluções já acertadas menos o que já foi abatido). */
     protected function debitoDono(Embarcacao $e): float
     {
@@ -87,10 +122,10 @@ class PrestacaoController extends Controller
         $totalDevido = round($devidoBruto - $abate, 2);
 
         $forma = (string) ($request->input('forma') ?: 'dinheiro');
-        $pagarAgora = $request->filled('valor') ? $this->parseValor($request->input('valor')) : $totalDevido;
-        $pagarAgora = max(0.0, min($pagarAgora, $totalDevido));
+        $splits = $this->lerSplits($request, $totalDevido, $forma);
+        $pagarAgora = round(array_sum(array_column($splits, 'valor')), 2);
 
-        DB::transaction(function () use ($embarcacao, $ids, $qtd, $bruto, $pct, $comissao, $totalDevido, $abate, $forma, $pagarAgora, $viagemId, $dataViagem) {
+        DB::transaction(function () use ($embarcacao, $ids, $qtd, $bruto, $pct, $comissao, $totalDevido, $abate, $forma, $splits, $pagarAgora, $viagemId, $dataViagem) {
             $lote = (string) Str::uuid();
             $prest = Prestacao::create([
                 'empresa_id' => Tenant::id(), 'embarcacao_id' => $embarcacao->id, 'viagem_id' => $viagemId, 'data_viagem' => $dataViagem,
@@ -114,8 +149,11 @@ class PrestacaoController extends Controller
                     'acerto_lote' => $lote, 'prestacao_id' => $prest->id,
                 ]);
             }
-            $this->registrarPagamento($prest, $embarcacao, $pagarAgora, $forma, $lote, $viagemId, $dataViagem);
+            foreach ($splits as $sp) {
+                $this->registrarPagamento($prest, $embarcacao, (float) $sp['valor'], (string) $sp['meio'], $lote, $viagemId, $dataViagem);
+            }
             $prest->valor_pago = $pagarAgora;
+            $prest->forma = count($splits) > 1 ? 'dividido' : (string) ($splits[0]['meio'] ?? $forma);
             $prest->recalcularSaldo();
             $prest->save();
         });
@@ -136,14 +174,17 @@ class PrestacaoController extends Controller
         if ($saldo <= 0) return back()->with('erro', 'Prestação já está quitada.');
 
         $forma = (string) ($request->input('forma') ?: ($prestacao->forma ?: 'dinheiro'));
-        $v = $request->filled('valor') ? $this->parseValor($request->input('valor')) : $saldo;
-        $v = max(0.0, min($v, $saldo));
+        $splits = $this->lerSplits($request, $saldo, $forma);
+        $v = round(array_sum(array_column($splits, 'valor')), 2);
         if ($v <= 0) return back()->with('erro', 'Valor inválido.');
+        $dv = $prestacao->data_viagem ? \Illuminate\Support\Carbon::parse($prestacao->data_viagem)->toDateString() : null;
 
-        DB::transaction(function () use ($prestacao, $emb, $v, $forma) {
-            $this->registrarPagamento($prestacao, $emb, $v, $forma, $prestacao->lote, $prestacao->viagem_id, $prestacao->data_viagem ? \Illuminate\Support\Carbon::parse($prestacao->data_viagem)->toDateString() : null);
+        DB::transaction(function () use ($prestacao, $emb, $splits, $v, $forma, $dv) {
+            foreach ($splits as $sp) {
+                $this->registrarPagamento($prestacao, $emb, (float) $sp['valor'], (string) $sp['meio'], $prestacao->lote, $prestacao->viagem_id, $dv);
+            }
             $prestacao->valor_pago = round((float) $prestacao->valor_pago + $v, 2);
-            $prestacao->forma = $forma;
+            $prestacao->forma = count($splits) > 1 ? 'dividido' : (string) ($splits[0]['meio'] ?? $forma);
             $prestacao->recalcularSaldo();
             $prestacao->save();
         });
