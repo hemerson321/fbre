@@ -293,6 +293,7 @@ class CaixaController extends Controller
         $acertosRecentes = collect();
         if ($permiteDesfazer && auth()->user()->caixaTodos()) {
             $acertosRecentes = Pagamento::whereNotNull('acerto_lote')->where('estornado', false)
+                ->whereNull('prestacao_id') // acertos de prestação têm card próprio (histórico)
                 ->whereIn('categoria', ['Pagamento ao dono (balcão)', 'Repasse do agente'])
                 ->when($inicio, fn ($x) => $x->where('created_at', '>=', $inicio))
                 ->when($fim, fn ($x) => $x->where('created_at', '<=', $fim))
@@ -309,6 +310,14 @@ class CaixaController extends Controller
                         'quem' => optional($f->user)->name,
                     ];
                 })->values();
+        }
+
+        // Histórico de prestações fechadas (card separado das vendas atuais) — mais recentes primeiro.
+        $prestacoesFechadas = collect();
+        if (auth()->user()->caixaTodos()) {
+            $prestacoesFechadas = \App\Models\Prestacao::ativas()
+                ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+                ->with('embarcacao')->orderByDesc('fechada_em')->orderByDesc('id')->limit(100)->get();
         }
 
         if ($request->boolean('pdf')) {
@@ -351,7 +360,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'porCategoria'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'porCategoria'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 

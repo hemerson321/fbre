@@ -131,14 +131,87 @@
           @if($d->debito > 0)<div class="text-[10px] text-slate-400">bruto {{ number_format($d->valor,2,',','.') }} − dívida {{ number_format($d->debito,2,',','.') }}</div>@endif
         </div>
         @if($d->valor > 0)
-        <form method="post" action="{{ route('meu-transporte.baixa-balcao', $d->emb) }}" onsubmit="return confirm('Pagar o proprietário de {{ $d->emb->nome }}? Paga R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}@if($d->debito > 0) (já abatendo R$ {{ number_format(min($d->debito,$d->valor),2,',','.') }} de devolução)@endif e fica só a comissão da empresa.')">
+        <form method="post" action="{{ route('prestacoes.fechar', $d->emb) }}" class="flex items-end gap-1.5 flex-wrap justify-end" onsubmit="return confirm('Fechar a prestação de {{ $d->emb->nome }}? As passagens deste ciclo saem das vendas atuais e vão para o histórico (podem ser desfeitas lá). Devido R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}.')">
           @csrf
-          <button class="btn btn-accent btn-sm whitespace-nowrap">Pagar proprietário</button>
+          <div>
+            <label class="block text-[9px] uppercase tracking-wide text-slate-400">Forma</label>
+            <select name="forma" class="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm">
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">PIX</option>
+              <option value="transferencia">Transferência</option>
+              <option value="debito">Débito</option>
+              <option value="credito">Crédito</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[9px] uppercase tracking-wide text-slate-400">Pagar agora</label>
+            <input name="valor" value="{{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}" inputmode="decimal" class="w-28 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm">
+          </div>
+          <button class="btn btn-accent btn-sm whitespace-nowrap">Fechar prestação</button>
         </form>
         @endif
       </div>
     </div>
     @endforeach
+  </div>
+</div>
+@endif
+
+@if(isset($prestacoesFechadas) && $prestacoesFechadas->isNotEmpty())
+<div class="card overflow-hidden border border-slate-200">
+  <div class="p-3 border-b bg-slate-50 flex items-center justify-between flex-wrap gap-2">
+    <div class="font-bold text-sm text-slate-700">📚 Histórico de prestações</div>
+    <div class="text-[11px] text-slate-400">prestações fechadas — mais recentes primeiro</div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-50">
+        <tr>
+          <th class="text-left p-2">Nº</th>
+          <th class="text-left p-2">Data</th>
+          <th class="text-left p-2">Proprietário / Transporte</th>
+          <th class="text-right p-2">Total</th>
+          <th class="text-right p-2">Pago</th>
+          <th class="text-right p-2">Saldo</th>
+          <th class="text-left p-2">Forma</th>
+          <th class="text-center p-2">Status</th>
+          <th class="text-right p-2">Ações</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        @foreach($prestacoesFechadas as $pr)
+        <tr>
+          <td class="p-2 font-semibold whitespace-nowrap">#{{ $pr->numero }}</td>
+          <td class="p-2 text-slate-500 whitespace-nowrap">{{ optional($pr->fechada_em)->format('d/m/Y H:i') }}</td>
+          <td class="p-2">
+            <div class="font-medium truncate">🚤 {{ optional($pr->embarcacao)->nome ?? 'Transporte' }}</div>
+            <div class="text-[11px] text-slate-400">{{ $pr->qtd }} passagem(ns)</div>
+          </td>
+          <td class="p-2 text-right whitespace-nowrap">R$ {{ number_format($pr->total_devido,2,',','.') }}</td>
+          <td class="p-2 text-right whitespace-nowrap text-emerald-700">R$ {{ number_format($pr->valor_pago,2,',','.') }}</td>
+          <td class="p-2 text-right whitespace-nowrap {{ $pr->saldo > 0 ? 'text-rose-600 font-semibold' : 'text-slate-400' }}">R$ {{ number_format($pr->saldo,2,',','.') }}</td>
+          <td class="p-2 capitalize text-slate-500 whitespace-nowrap">{{ $pr->forma }}</td>
+          <td class="p-2 text-center"><span class="chip {{ $pr->status==='acertada' ? 'bg-emerald-100 text-emerald-700' : ($pr->status==='parcial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600') }}">{{ $pr->statusLabel() }}</span></td>
+          <td class="p-2">
+            <div class="flex items-center gap-1 justify-end flex-wrap">
+              <a href="{{ route('prestacoes.detalhe', $pr) }}" class="inline-flex items-center rounded-lg border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50" title="Detalhes">🔎</a>
+              @if($pr->saldo > 0)
+              <form method="post" action="{{ route('prestacoes.pagar', $pr) }}" class="flex items-center gap-1" onsubmit="return confirm('Baixar saldo da prestação #{{ $pr->numero }}?')">
+                @csrf
+                <input name="valor" value="{{ number_format($pr->saldo,2,',','.') }}" inputmode="decimal" class="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right text-xs">
+                <button class="rounded-lg bg-amber-500 px-2 py-1 text-xs font-semibold text-white whitespace-nowrap">Baixar</button>
+              </form>
+              @endif
+              <form method="post" action="{{ route('prestacoes.desfazer', $pr) }}" onsubmit="return confirm('Desfazer a prestação #{{ $pr->numero }}? As passagens voltam para EM ABERTO e os lançamentos são estornados.')">
+                @csrf
+                <button class="rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50" title="Desfazer">↩️</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        @endforeach
+      </tbody>
+    </table>
   </div>
 </div>
 @endif
