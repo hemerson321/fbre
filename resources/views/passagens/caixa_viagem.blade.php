@@ -90,7 +90,7 @@
     <div class="lin"><span>Cancelados</span><b>{{ $nCancelados ?? 0 }}</b></div>
   </div>
   <div class="bloco">
-    <h2>Caixa da viagem</h2>
+    <h2>Formas de Pagamentos</h2>
     @foreach($totForma as $meio => $val)
     <div class="lin"><span>{{ \App\Models\Pagamento::MEIOS[$meio] ?? ucfirst($meio) }}</span><b>R$ {{ number_format($val,2,',','.') }}</b></div>
     @endforeach
