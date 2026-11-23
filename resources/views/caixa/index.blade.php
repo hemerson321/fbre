@@ -325,6 +325,12 @@
                 @csrf
                 <button class="rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50" title="Desfazer">↩️</button>
               </form>
+              @if(auth()->user()->podeExcluirPrestacao())
+              <form method="post" action="{{ route('prestacoes.excluir', $pr) }}" onsubmit="return confirm('EXCLUIR a prestação #{{ $pr->numero }} do sistema?\n\nAs passagens voltam para EM ABERTO, os pagamentos são estornados e o registro é apagado de vez. Não dá para recuperar.')">
+                @csrf
+                <button class="rounded-lg bg-rose-600 px-2 py-1 text-xs text-white hover:bg-rose-700" title="Excluir do sistema">🗑</button>
+              </form>
+              @endif
             </div>
           </td>
         </tr>

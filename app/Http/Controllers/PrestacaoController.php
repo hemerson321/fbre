@@ -213,6 +213,27 @@ class PrestacaoController extends Controller
         return back()->with('ok', 'Prestação #'.$prestacao->numero.' desfeita: passagens voltaram para em aberto e os lançamentos foram estornados.');
     }
 
+    /**
+     * EXCLUI a prestação de vez (só com permissão perm_excluir_prestacao). Antes de apagar, desfaz o acerto:
+     * passagens voltam pra em aberto e os lançamentos são estornados — nada fica órfão. O registro some do sistema.
+     */
+    public function excluir(Request $request, Prestacao $prestacao)
+    {
+        $this->gatePrest($prestacao);
+        abort_unless(auth()->user()->podeExcluirPrestacao(), 403, 'Você não tem permissão para excluir prestações.');
+        $num = $prestacao->numero;
+        DB::transaction(function () use ($prestacao) {
+            Passagem::where('prestacao_id', $prestacao->id)->update([
+                'acerto_dono' => false, 'acerto_dono_em' => null, 'acerto_dono_por' => null,
+                'acerto_lote' => null, 'prestacao_id' => null,
+            ]);
+            Pagamento::where('prestacao_id', $prestacao->id)->where('estornado', false)->update(['estornado' => true]);
+            $prestacao->delete();
+        });
+        \Illuminate\Support\Facades\Log::info('Prestação excluída', ['numero' => $num, 'por' => auth()->id(), 'empresa' => Tenant::id()]);
+        return back()->with('ok', 'Prestação #'.$num.' excluída: passagens voltaram para em aberto e os pagamentos foram estornados.');
+    }
+
     /** JSON: vendas de balcão ainda em aberto de um transporte (modal "Ver vendas" da Prestação de Contas). */
     public function pendentes(Request $request, Embarcacao $embarcacao)
     {

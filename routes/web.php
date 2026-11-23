@@ -231,6 +231,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/prestacoes/fechar/{embarcacao}', [PrestacaoController::class, 'fechar'])->name('prestacoes.fechar')->middleware('perm:caixa');
     Route::post('/prestacoes/{prestacao}/pagar', [PrestacaoController::class, 'pagar'])->name('prestacoes.pagar')->middleware('perm:caixa');
     Route::post('/prestacoes/{prestacao}/desfazer', [PrestacaoController::class, 'desfazer'])->name('prestacoes.desfazer')->middleware('perm:caixa');
+    Route::post('/prestacoes/{prestacao}/excluir', [PrestacaoController::class, 'excluir'])->name('prestacoes.excluir')->middleware('perm:caixa');
     Route::post('/prestacoes/desfazer-transporte/{embarcacao}', [PrestacaoController::class, 'desfazerTransporte'])->name('prestacoes.desfazer-transporte')->middleware('perm:caixa');
     Route::get('/prestacoes/pendentes/{embarcacao}', [PrestacaoController::class, 'pendentes'])->name('prestacoes.pendentes')->middleware('perm:caixa');
     Route::get('/prestacoes/{prestacao}', [PrestacaoController::class, 'detalhe'])->name('prestacoes.detalhe')->middleware('perm:caixa');

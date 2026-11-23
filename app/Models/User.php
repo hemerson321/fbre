@@ -47,6 +47,7 @@ class User extends Authenticatable
             'relatorio_todos' => 'boolean',
             'perm_zerar' => 'boolean',
             'perm_editar_passagem' => 'boolean',
+            'perm_excluir_prestacao' => 'boolean',
             'perm_excluir_passagem' => 'boolean',
             'perm_passagem' => 'boolean',
             'perm_frete' => 'boolean',
@@ -145,6 +146,8 @@ class User extends Authenticatable
     public function isAdmin(): bool       { return $this->admin; }
     public function isSuper(): bool       { return $this->super_admin; }
     public function podeZerar(): bool     { return $this->super_admin || (bool) $this->perm_zerar; }
+    /** Apagar prestação de contas de vez: só quem tem a permissão marcada (padrão: não, inclusive admin). */
+    public function podeExcluirPrestacao(): bool { return $this->super_admin || (bool) $this->perm_excluir_prestacao; }
     public function podeEditarPassagem(): bool { return $this->super_admin || $this->admin || $this->gerente() || (bool) $this->perm_editar_passagem; }
 
     /** Excluir (apagar de vez) passagem — padrão desligado; só super admin ou quem tiver a permissão. */
