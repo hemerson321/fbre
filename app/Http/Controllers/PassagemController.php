@@ -856,6 +856,29 @@ class PassagemController extends Controller
             ->with(['passageiros', 'operador', 'pagamentos', 'embarcacao', 'camarote', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])
             ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
 
+        // Modo da impressão: caixa (sem agente externo) · prestacao (todas as vendas) · relatorio (todas as vendas)
+        $modo = (string) ($request->input('modo') ?: ($request->boolean('relatorio') ? 'relatorio' : 'caixa'));
+        if (! in_array($modo, ['caixa', 'prestacao', 'relatorio'], true)) $modo = 'caixa';
+        if ($modo === 'caixa') $passagens = $passagens->filter(fn ($p) => ! $p->revendedor_id)->values();
+
+        // Entradas/saídas AVULSAS: caixa = as da agência; prestação = as do transporte/viagem; relatório não tem.
+        $avulsos = collect();
+        if ($modo !== 'relatorio') {
+            $iniA = $f['inicio'] ?? null; $fimA = $f['fim'] ?? null;
+            $avQ = Pagamento::where('modulo', 'avulso')->where('estornado', false)->where('momento', 'cadastro')->with(['user:id,name', 'embarcacao:id,nome']);
+            $porPeriodo = fn ($q) => $q->when($iniA, fn ($x) => $x->whereDate('created_at', '>=', $iniA))->when($fimA, fn ($x) => $x->whereDate('created_at', '<=', $fimA));
+            if ($modo === 'caixa') {
+                $avQ->whereNull('embarcacao_id')->when(! empty($f['user_id']), fn ($q) => $q->where('user_id', $f['user_id']));
+                $porPeriodo($avQ);
+            } else {
+                $avQ->whereNotNull('embarcacao_id')->when(! empty($f['embarcacao_id']), fn ($q) => $q->where('embarcacao_id', $f['embarcacao_id']));
+                if (! empty($f['data_viagem'])) $avQ->whereDate('data_viagem', $f['data_viagem']); else $porPeriodo($avQ);
+            }
+            $avulsos = $avQ->orderBy('created_at')->limit(500)->get();
+        }
+        $avEntradas = round((float) $avulsos->where('tipo_mov', 'entrada')->sum('valor'), 2);
+        $avSaidas = round((float) $avulsos->where('tipo_mov', 'saida')->sum('valor'), 2);
+
         $m = \App\Support\ManifestoCaixa::dados($passagens);
         $linhas = $m['linhas'];
         $totForma = $m['totForma'];
@@ -884,18 +907,14 @@ class PassagemController extends Controller
             // Cartão de crédito da EMPRESA (cai depois → abate)
             $cartaoEmpresa = round((float) $pgs->filter(fn ($pg) => ! (bool) ($pg->pago_proprietario ?? false) && $pg->meio === 'credito')->sum('valor'), 2);
             // Saídas operacionais (despesas) no período do filtro
-            $iniF = $f['inicio'] ?? null; $fimF = $f['fim'] ?? null;
-            $saidasF = round((float) Pagamento::where('estornado', false)->where('tipo_mov', 'saida')
-                ->when($iniF, fn ($q) => $q->whereDate('created_at', '>=', $iniF))
-                ->when($fimF, fn ($q) => $q->whereDate('created_at', '<=', $fimF))
-                ->sum('valor'), 2);
-            $liquidoF = round($brutoF - $comissaoF - $maqProp - $cartaoEmpresa - $saidasF, 2);
+            $saidasF = $avSaidas; $entradasF = $avEntradas; // só os avulsos deste modo (antes somava toda saída do período)
+            $liquidoF = round($brutoF - $comissaoF - $maqProp - $cartaoEmpresa - $saidasF + $entradasF, 2);
             $nomeP = $embIdsP->count() === 1 ? (optional(Embarcacao::find($embIdsP->first()))->nome ?? 'Transporte') : 'Todos os transportes';
             $pctP = $embIdsP->count() === 1 ? (int) ($pctsP[$embIdsP->first()] ?? 0) : null;
             $prestacao = (object) [
                 'nome' => $nomeP, 'pct' => $pctP, 'bruto' => $brutoF, 'comissao' => $comissaoF,
                 'debProp' => $debProp, 'pixProp' => $pixProp, 'credProp' => $credProp, 'dinProp' => $dinProp,
-                'cartao' => $cartaoEmpresa, 'saidas' => $saidasF, 'liquido' => $liquidoF,
+                'cartao' => $cartaoEmpresa, 'saidas' => $saidasF, 'entradas' => $entradasF, 'liquido' => $liquidoF,
             ];
         }
 
@@ -921,7 +940,7 @@ class PassagemController extends Controller
         }
 
         // Cabeçalho: modo (caixa/relatório) + filtros aplicados (só os que existem)
-        $ehRelatorio = $request->boolean('relatorio');
+        $ehRelatorio = $modo === 'relatorio';
         $filtros = [];
         if ($embs->count()) $filtros['Transporte'] = $embs->implode(', ');
         if (! empty($f['user_id'])) $filtros['Operador'] = optional(\App\Models\User::find($f['user_id']))->name;
@@ -945,6 +964,7 @@ class PassagemController extends Controller
             'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nPcd' => $nPcd, 'nOutros' => $nOutros, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas, 'nCancelados' => $nCancelados,
             'embs' => $embs, 'datas' => $datas, 'f' => $f, 'prestacao' => $prestacao, 'porCategoria' => $porCategoria,
             'auto' => $request->boolean('print'),
+            'modo' => $modo, 'avulsos' => $avulsos, 'avEntradas' => $avEntradas, 'avSaidas' => $avSaidas,
         ]);
     }
 

@@ -23,7 +23,7 @@
       <div class="text-[12px] text-slate-500">{{ $tema[4] }}</div>
     </div>
   </div>
-  <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null)])) }}" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>@if($focoPrest && auth()->user()->podeAcerto() && \Illuminate\Support\Facades\Route::has('admin.acertos'))<a href="{{ route('admin.acertos', ['aba'=>'operadores']) }}" class="btn btn-ghost btn-sm">💵 Acerto de operadores</a>@endif</div></div>
+  <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null),'modo'=>($focoPrest ? 'prestacao' : (($ehRelatorio ?? false) ? 'relatorio' : 'caixa'))])) }}" class="btn btn-ghost btn-sm">📄 {{ $focoPrest ? 'Prestação' : ($ehRel ? 'Relatório' : 'Caixa') }} (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>@if($focoPrest && auth()->user()->podeAcerto() && \Illuminate\Support\Facades\Route::has('admin.acertos'))<a href="{{ route('admin.acertos', ['aba'=>'operadores']) }}" class="btn btn-ghost btn-sm">💵 Acerto de operadores</a>@endif</div></div>
 
 @if($podeAvulso)
 <div x-data="{open:false, tipo:'entrada', emb:''}" class="no-print">
@@ -145,6 +145,10 @@
   </div>
 </div>
 @endif
+
+@unless($ehRel)
+@include('caixa._avulsos')
+@endunless
 
 @if($focoPrest)
 <div x-data="{ open:false, carregando:false, nome:'', linhas:[], total:0, dono:0, comissao:0, erro:'',

@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 @php
-  $titP = [($ehRelatorio ?? false) ? 'Relatorio por viagem' : 'Caixa por viagem'];
+  $modo = $modo ?? (($ehRelatorio ?? false) ? 'relatorio' : 'caixa');
+  $titP = [['caixa'=>'Caixa por viagem','prestacao'=>'Prestacao de contas','relatorio'=>'Relatorio por viagem'][$modo]];
   if($embs->count()) $titP[] = $embs->implode(', ');
   if($datas->count()) $titP[] = $datas->map(fn($d)=>\Illuminate\Support\Carbon::parse($d)->format('d-m-Y'))->implode(' ');
   elseif(!empty($f['inicio']) || !empty($f['fim'])) $titP[] = (!empty($f['inicio'])?\Illuminate\Support\Carbon::parse($f['inicio'])->format('d-m-Y'):'').(!empty($f['fim']) && ($f['fim']??'')!==($f['inicio']??'')?(' a '.\Illuminate\Support\Carbon::parse($f['fim'])->format('d-m-Y')):'');
@@ -55,8 +56,9 @@
   @if($e?->logo)<img src="/{{ $e->logo }}" alt="" style="height:44px;max-width:130px;object-fit:contain">@endif
   <div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <h1 style="margin:0">💰 {{ $rel ? 'Relatório por viagem' : 'Caixa por viagem' }}</h1>
-      <span style="font-size:10px;font-weight:900;letter-spacing:.08em;padding:2px 8px;border-radius:6px;{{ $rel ? 'background:#e0e7ff;color:#3730a3' : 'background:#dcfce7;color:#166534' }}">{{ $rel ? 'RELATÓRIO' : 'CAIXA' }}</span>
+      @php $mt = ['caixa'=>['💰 Caixa por viagem','CAIXA','background:#dcfce7;color:#166534'],'prestacao'=>['🧾 Prestação de contas','PRESTAÇÃO DE CONTAS','background:#fef3c7;color:#92400e'],'relatorio'=>['📋 Relatório por viagem','RELATÓRIO','background:#e0e7ff;color:#3730a3']][$modo]; @endphp
+      <h1 style="margin:0">{{ $mt[0] }}</h1>
+      <span style="font-size:10px;font-weight:900;letter-spacing:.08em;padding:2px 8px;border-radius:6px;{{ $mt[2] }}">{{ $mt[1] }}</span>
     </div>
     @if($e)<div style="font-size:12px;color:#555;font-weight:700">{{ $e->nomeExibicao() }}</div>@endif
   </div>
@@ -105,6 +107,7 @@
     @if($prestacao->credProp > 0.009)<div class="lin"><span>Crédito Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->credProp,2,',','.') }}</b></div>@endif
     @if($prestacao->dinProp > 0.009)<div class="lin"><span>Dinheiro Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->dinProp,2,',','.') }}</b></div>@endif
     <div class="lin"><span>Cartão de crédito</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
+    @if(($prestacao->entradas ?? 0) > 0.009)<div class="lin"><span>Entradas avulsas</span><b style="color:#067d3b">+ R$ {{ number_format($prestacao->entradas,2,',','.') }}</b></div>@endif
     <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px;color:#b45309"><span>Total Geral de Despesas <span style="font-weight:400;color:#777">(saídas)</span></span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->saidas,2,',','.') }}</b></div>
     <div class="lin g" style="color:#067d3b"><span>Total Geral Líquido</span><span>R$ {{ number_format($prestacao->liquido,2,',','.') }}</span></div>
   </div>
@@ -132,6 +135,39 @@
         <td style="text-align:right;padding:3px 6px;font-weight:700">{{ number_format($c['total'] ?? 0,2,',','.') }}</td>
       </tr>
       @endforeach
+    </tbody>
+  </table>
+</div>
+@endif
+
+@if($modo !== 'relatorio')
+<div style="margin-top:14px">
+  <h2 style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+    <span>Entradas e saídas avulsas{{ $modo === 'prestacao' ? ' do transporte' : ' da agência' }}</span>
+    <span style="font-size:11px;font-weight:700">
+      <span style="color:#067d3b">Entradas R$ {{ number_format($avEntradas ?? 0,2,',','.') }}</span> ·
+      <span style="color:#b91c1c">Saídas R$ {{ number_format($avSaidas ?? 0,2,',','.') }}</span> ·
+      Saldo R$ {{ number_format(($avEntradas ?? 0) - ($avSaidas ?? 0),2,',','.') }}
+    </span>
+  </h2>
+  <table style="width:100%;border-collapse:collapse;font-size:11px">
+    <thead><tr style="background:#f1f5f9;text-align:left">
+      <th style="padding:4px 6px">Data</th><th style="padding:4px 6px">Tipo</th><th style="padding:4px 6px">Motivo</th>@if($modo === 'prestacao')<th style="padding:4px 6px">Transporte / viagem</th>@endif<th style="padding:4px 6px">Forma</th><th style="padding:4px 6px">Operador</th><th style="padding:4px 6px;text-align:right">Valor</th>
+    </tr></thead>
+    <tbody>
+      @forelse(($avulsos ?? collect()) as $av)
+      <tr style="border-bottom:1px solid #e5e7eb">
+        <td style="padding:4px 6px;white-space:nowrap">{{ optional($av->created_at)->format('d/m/Y H:i') }}</td>
+        <td style="padding:4px 6px;font-weight:700;color:{{ $av->tipo_mov === 'saida' ? '#b91c1c' : '#067d3b' }}">{{ $av->tipo_mov === 'saida' ? 'Saída' : 'Entrada' }}</td>
+        <td style="padding:4px 6px">{{ trim(($av->categoria ? $av->categoria.' · ' : '').($av->descricao ?? ''), ' ·') ?: '—' }}</td>
+        @if($modo === 'prestacao')<td style="padding:4px 6px;white-space:nowrap">{{ optional($av->embarcacao)->nome ?? '—' }}{{ $av->data_viagem ? ' · '.\Illuminate\Support\Carbon::parse($av->data_viagem)->format('d/m/Y') : '' }}</td>@endif
+        <td style="padding:4px 6px">{{ \App\Models\Pagamento::MEIOS[$av->meio] ?? ucfirst((string) $av->meio) }}</td>
+        <td style="padding:4px 6px">{{ optional($av->user)->name ?? '—' }}</td>
+        <td style="padding:4px 6px;text-align:right;font-weight:700;white-space:nowrap;color:{{ $av->tipo_mov === 'saida' ? '#b91c1c' : '#067d3b' }}">{{ $av->tipo_mov === 'saida' ? '−' : '+' }} R$ {{ number_format($av->valor,2,',','.') }}</td>
+      </tr>
+      @empty
+      <tr><td colspan="{{ $modo === 'prestacao' ? 7 : 6 }}" style="padding:8px;text-align:center;color:#777">Nenhuma entrada ou saída avulsa no filtro.</td></tr>
+      @endforelse
     </tbody>
   </table>
 </div>

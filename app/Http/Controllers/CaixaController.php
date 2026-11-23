@@ -293,6 +293,16 @@ class CaixaController extends Controller
         if ($idsComDono !== null) $avBase->whereIn('embarcacao_id', $idsComDono);
         $avEntrada = round((float) (clone $avBase)->where('tipo_mov', 'entrada')->sum('valor'), 2);
         $avSaida = round((float) (clone $avBase)->where('tipo_mov', 'saida')->sum('valor'), 2);
+        // Lista de avulsos da página: Prestação = os do transporte/viagem; Caixa = os da agência; Relatório não tem.
+        $avulsosLista = collect();
+        if ($request->input('foco') === 'prestacoes') {
+            $avulsosLista = (clone $avBase)->with(['user:id,name', 'embarcacao:id,nome'])->orderByDesc('id')->limit(300)->get();
+        } elseif (! $ehRelatorio) {
+            $avulsosLista = Pagamento::where('modulo', 'avulso')->where('estornado', false)->where('momento', 'cadastro')->whereNull('embarcacao_id')
+                ->whereBetween('created_at', [$inicio, $fim])
+                ->when($userId, fn ($q) => $q->where('user_id', $userId))
+                ->with(['user:id,name'])->orderByDesc('id')->limit(300)->get();
+        }
         if ($passG->count() > 0 || $avEntrada > 0 || $avSaida > 0) {
             $brutoG = 0.0; $comissaoG = 0.0; $debitoG = 0.0; $cartaoG = 0.0; $credPropG = 0.0;
             $nomeG = 'Todos os transportes'; $pctG = null;
@@ -421,7 +431,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'porCategoria'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'porCategoria'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 
