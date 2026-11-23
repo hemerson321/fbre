@@ -31,6 +31,7 @@ class AtendimentoController extends Controller
             'aguardando' => Conversa::where('status', 'aguardando')->count(),
             'precisaHumano' => $this->precisaHumanoCount(),
             'conversa' => null,
+            'vendaResumo' => null,
         ]);
     }
 
@@ -49,6 +50,7 @@ class AtendimentoController extends Controller
             'aguardando' => Conversa::where('status', 'aguardando')->count(),
             'precisaHumano' => $this->precisaHumanoCount(),
             'conversa' => $conversa,
+            'vendaResumo' => $this->resumoVenda($conversa),
         ]);
     }
 
@@ -147,6 +149,23 @@ class AtendimentoController extends Controller
         ]);
     }
 
+    /** Resumo da venda que o agente/operador montou nesta conversa (pro painel ao vivo). */
+    public function resumoVenda(Conversa $conversa): array
+    {
+        $ctx = $conversa->contexto ?? [];
+        $venda = $ctx['venda'] ?? [];
+        $pax = $venda['passageiros'] ?? ($ctx['passageiros'] ?? []);
+        return [
+            'origem' => $venda['origem'] ?? null,
+            'destino' => $venda['destino'] ?? null,
+            'data' => $venda['data'] ?? null,
+            'passageiros' => is_array($pax) ? (count($pax) ?: null) : null,
+            'pref' => $ctx['pref_poltrona'] ?? null,
+            'poltronas' => array_values((array) ($ctx['poltronas_agente'] ?? [])),
+            'funil' => $conversa->funilLabel(),
+        ];
+    }
+
     /** Polling: mensagens novas desde um id (JSON). */
     public function mensagens(Request $request, Conversa $conversa)
     {
@@ -164,6 +183,6 @@ class AtendimentoController extends Controller
         if ($msgs->isNotEmpty()) {
             $conversa->update(['nao_lidas' => 0]);
         }
-        return response()->json(['mensagens' => $msgs, 'status' => $conversa->status]);
+        return response()->json(['mensagens' => $msgs, 'status' => $conversa->status, 'venda' => $this->resumoVenda($conversa)]);
     }
 }

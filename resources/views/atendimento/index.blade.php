@@ -30,7 +30,7 @@
   {{-- CONVERSA --}}
   <div class="lg:col-span-2 flex flex-col min-h-0 {{ $sel ? 'flex' : 'hidden lg:flex' }}">
     @if($sel)
-    <div x-data="chat({{ $sel->id }}, {{ optional($sel->mensagens->last())->id ?? 0 }})" class="flex flex-col h-full card overflow-hidden">
+    <div x-data="chat({{ $sel->id }}, {{ optional($sel->mensagens->last())->id ?? 0 }}, @js($vendaResumo))" class="flex flex-col h-full card overflow-hidden">
       {{-- header --}}
       <div class="flex items-center gap-3 p-3 border-b bg-slate-50">
         <a href="{{ route('atendimento.index') }}" class="lg:hidden text-slate-500">←</a>
@@ -45,6 +45,18 @@
         @endif
         <form method="post" action="{{ route('atendimento.reiniciar',$sel) }}" onsubmit="return confirm('Reiniciar a sessão? O agente atende como novo.')">@csrf<button class="btn btn-ghost btn-sm" title="Agente esquece o historico e atende como novo">🔄 Reiniciar</button></form>
         <form method="post" action="{{ route('atendimento.fechar',$sel) }}" onsubmit="return confirm('Finalizar o pedido? A conversa é encerrada e, se o cliente voltar, começa do zero.')">@csrf<button class="btn btn-primary btn-sm" style="background:var(--cor2)">✅ Finalizar</button></form>
+      </div>
+
+      {{-- VENDA AO VIVO --}}
+      <div x-show="venda && (venda.origem || venda.destino || (venda.poltronas&&venda.poltronas.length))" x-cloak class="px-3 py-2 border-b bg-cyan-50/70">
+        <div class="text-[11px] font-bold text-cyan-800 mb-0.5">🧾 Venda em andamento <span class="opacity-60 font-normal" x-text="venda&&venda.funil?('· '+venda.funil):''"></span></div>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-700">
+          <span x-show="venda&&(venda.origem||venda.destino)" class="font-semibold" x-text="(venda.origem||'?')+' → '+(venda.destino||'?')"></span>
+          <span x-show="venda&&venda.data">📅 <span x-text="venda.data"></span></span>
+          <span x-show="venda&&venda.passageiros">👤 <span x-text="venda.passageiros+'x'"></span></span>
+          <span x-show="venda&&venda.pref">🪑 <span x-text="venda.pref"></span></span>
+          <span x-show="venda&&venda.poltronas&&venda.poltronas.length" class="font-bold text-cyan-700">💺 <span x-text="(venda.poltronas||[]).join(', ')"></span></span>
+        </div>
       </div>
 
       {{-- mensagens --}}
@@ -73,9 +85,10 @@
 </div>
 
 <script>
-function chat(id, ultimoId){
+function chat(id, ultimoId, vendaIni){
   return {
     ultimo: ultimoId,
+    venda: vendaIni || null,
     init(){ this.rolar(); this.timer = setInterval(()=>this.puxar(), 4000); },
     rolar(){ this.$nextTick(()=>{ var m=this.$refs.msgs; if(m) m.scrollTop=m.scrollHeight; }); },
     async puxar(){
@@ -83,6 +96,7 @@ function chat(id, ultimoId){
         var r = await fetch('/passagens/atendimento/'+id+'/mensagens?desde='+this.ultimo, {headers:{'X-Requested-With':'fetch'}});
         if(!r.ok) return;
         var d = await r.json();
+        if(d.venda) this.venda = d.venda;
         if(d.mensagens && d.mensagens.length){
           var box = this.$refs.msgs;
           d.mensagens.forEach(function(m){
