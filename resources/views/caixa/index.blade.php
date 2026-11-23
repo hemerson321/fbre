@@ -236,7 +236,8 @@
       <thead class="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-50">
         <tr>
           <th class="text-left p-2">Nº</th>
-          <th class="text-left p-2">Data</th>
+          <th class="text-left p-2">Viagem</th>
+          <th class="text-left p-2">Prestação feita em</th>
           <th class="text-left p-2">Proprietário / Transporte</th>
           <th class="text-right p-2">Total</th>
           <th class="text-right p-2">Pago</th>
@@ -250,6 +251,7 @@
         @foreach($prestacoesFechadas as $pr)
         <tr>
           <td class="p-2 font-semibold whitespace-nowrap">#{{ $pr->numero }}</td>
+          <td class="p-2 font-medium whitespace-nowrap">🗓 {{ $pr->viagens_txt ?? '—' }}</td>
           <td class="p-2 text-slate-500 whitespace-nowrap">{{ optional($pr->fechada_em)->format('d/m/Y H:i') }}</td>
           <td class="p-2">
             <div class="font-medium truncate">🚤 {{ optional($pr->embarcacao)->nome ?? 'Transporte' }}</div>

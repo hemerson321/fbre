@@ -366,6 +366,15 @@ class CaixaController extends Controller
             $prestacoesFechadas = \App\Models\Prestacao::ativas()
                 ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
                 ->with('embarcacao')->orderByDesc('fechada_em')->orderByDesc('id')->limit(100)->get();
+            // Data(s) de viagem de cada prestação: a gravada no fechamento ou, se fechou "todas pendentes", as datas das passagens.
+            $datasPorPrest = \App\Models\Passagem::whereIn('prestacao_id', $prestacoesFechadas->pluck('id'))->whereNotNull('data_viagem')
+                ->select('prestacao_id', 'data_viagem')->distinct()->orderBy('data_viagem')->get()->groupBy('prestacao_id');
+            foreach ($prestacoesFechadas as $pr) {
+                $ds = $pr->data_viagem
+                    ? collect([$pr->data_viagem])
+                    : ($datasPorPrest[$pr->id] ?? collect())->pluck('data_viagem');
+                $pr->viagens_txt = $ds->map(fn ($d) => \Illuminate\Support\Carbon::parse($d)->format('d/m/Y'))->unique()->implode(', ') ?: '—';
+            }
         }
 
         if ($request->boolean('pdf')) {
