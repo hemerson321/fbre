@@ -84,6 +84,7 @@ class AtendimentoController extends Controller
             'precisa_humano' => false,
             'assumida_por' => null,
         ])->save();
+        try { app(\App\Services\Vagas::class)->liberarConversa($conversa->id); } catch (\Throwable $e) {}
         return back()->with('ok', 'Sessão reiniciada — o agente vai atender como novo a partir da próxima mensagem.');
     }
 
@@ -91,6 +92,7 @@ class AtendimentoController extends Controller
     {
         abort_unless($conversa->empresa_id === Tenant::id(), 404);
         $conversa->update(['status' => 'fechada', 'atendida' => true, 'nao_lidas' => 0, 'funil' => 'finalizado']);
+        try { app(\App\Services\Vagas::class)->liberarConversa($conversa->id); } catch (\Throwable $e) {}
         return redirect()->route('atendimento.index')->with('ok', 'Pedido finalizado.');
     }
 
