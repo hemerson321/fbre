@@ -309,6 +309,24 @@ class PrestacaoController extends Controller
         $prestacao->load(['embarcacao', 'fechadaPor']);
         $passagens = Passagem::where('prestacao_id', $prestacao->id)->orderBy('id')->get(['id', 'numero', 'comprador_nome', 'total', 'data_viagem', 'origem', 'destino']);
         $pagamentos = Pagamento::where('prestacao_id', $prestacao->id)->orderBy('id')->get(['id', 'valor', 'meio', 'tipo_mov', 'categoria', 'estornado', 'created_at']);
-        return view('prestacoes.detalhe', compact('prestacao', 'passagens', 'pagamentos'));
+        // Vendas de AGENTE EXTERNO das mesmas viagens: a agência não paga; é o proprietário que cobra do agente.
+        $datas = $prestacao->data_viagem
+            ? [\Illuminate\Support\Carbon::parse($prestacao->data_viagem)->toDateString()]
+            : $passagens->pluck('data_viagem')->filter()->map(fn ($d) => \Illuminate\Support\Carbon::parse($d)->toDateString())->unique()->values()->all();
+        $agentes = collect();
+        if ($datas && $prestacao->embarcacao_id) {
+            $agentes = Passagem::where('embarcacao_id', $prestacao->embarcacao_id)->whereNotNull('revendedor_id')
+                ->where('cancelada', false)->where('transferida', false)
+                ->where(function ($w) use ($datas) { foreach ($datas as $d) $w->orWhereDate('data_viagem', $d); })
+                ->with('revendedor:id,name')->get(['id', 'revendedor_id', 'total', 'acerto_empresa_valor', 'acerto_dono'])
+                ->groupBy('revendedor_id')->map(fn ($g) => (object) [
+                    'nome' => optional($g->first()->revendedor)->name ?? 'Agente externo',
+                    'qtd' => $g->count(),
+                    'vendido' => round((float) $g->sum('total'), 2),
+                    'repasse' => round((float) $g->sum('acerto_empresa_valor'), 2),
+                    'pendente' => round((float) $g->where('acerto_dono', false)->sum('acerto_empresa_valor'), 2),
+                ])->values();
+        }
+        return view('prestacoes.detalhe', compact('prestacao', 'passagens', 'pagamentos', 'agentes'));
     }
 }

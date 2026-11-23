@@ -4,7 +4,7 @@
 <div class="mx-auto max-w-3xl space-y-3">
   <div class="flex items-center justify-between gap-2 flex-wrap">
     <h1 class="text-lg font-extrabold text-slate-800">📋 Prestação #{{ $prestacao->numero }}</h1>
-    <a href="{{ route('caixa.index') }}" class="btn btn-ghost btn-sm">← Voltar ao caixa</a>
+    <div class="flex items-center gap-2 no-print"><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button><a href="{{ route('caixa.index', ['foco'=>'prestacoes']) }}" class="btn btn-ghost btn-sm">← Voltar</a></div>
   </div>
 
   <div class="card p-4">
@@ -49,6 +49,40 @@
       </table>
     </div>
   </div>
+
+  @if(($agentes ?? collect())->isNotEmpty())
+  <div class="card overflow-hidden" style="border:2px solid #93c5fd">
+    <div class="p-3 border-b font-bold text-sm text-blue-800 flex items-center justify-between flex-wrap gap-2" style="background:#dbeafe">
+      <span>🤝 Agentes externos — o proprietário cobra direto</span>
+      <span class="text-[11px] font-semibold text-blue-700">não passa pelo caixa da agência</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="text-[10px] uppercase text-slate-400 bg-slate-50"><tr>
+          <th class="text-left p-2">Agente</th><th class="text-right p-2">Passagens</th><th class="text-right p-2">Vendido</th><th class="text-right p-2">Repasse ao proprietário</th><th class="text-right p-2">Ainda a cobrar</th>
+        </tr></thead>
+        <tbody class="divide-y">
+          @foreach($agentes as $ag)
+          <tr style="background:#eff6ff">
+            <td class="p-2 font-semibold text-blue-900">{{ $ag->nome }}</td>
+            <td class="p-2 text-right">{{ $ag->qtd }}</td>
+            <td class="p-2 text-right whitespace-nowrap">R$ {{ number_format($ag->vendido,2,',','.') }}</td>
+            <td class="p-2 text-right whitespace-nowrap">R$ {{ number_format($ag->repasse,2,',','.') }}</td>
+            <td class="p-2 text-right whitespace-nowrap font-bold {{ $ag->pendente > 0 ? 'text-blue-700' : 'text-slate-400' }}">R$ {{ number_format($ag->pendente,2,',','.') }}</td>
+          </tr>
+          @endforeach
+          <tr class="font-bold" style="background:#dbeafe">
+            <td class="p-2 text-blue-900">Total a cobrar dos agentes</td>
+            <td class="p-2 text-right">{{ $agentes->sum('qtd') }}</td>
+            <td class="p-2 text-right whitespace-nowrap">R$ {{ number_format($agentes->sum('vendido'),2,',','.') }}</td>
+            <td class="p-2 text-right whitespace-nowrap">R$ {{ number_format($agentes->sum('repasse'),2,',','.') }}</td>
+            <td class="p-2 text-right whitespace-nowrap text-blue-800">R$ {{ number_format($agentes->sum('pendente'),2,',','.') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  @endif
 
   <div class="card overflow-hidden">
     <div class="p-3 border-b bg-slate-50 font-bold text-sm text-slate-600">💳 Lançamentos (comprovantes)</div>
