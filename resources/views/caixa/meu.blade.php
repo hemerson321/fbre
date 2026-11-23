@@ -288,4 +288,5 @@ function acertoPix(ac){
 @endif
 @endif
 </div>
+@include('partials.pulse')
 @endsection

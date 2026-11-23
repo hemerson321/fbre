@@ -13,6 +13,17 @@ use Illuminate\Http\Request;
 
 class CaixaController extends Controller
 {
+
+    /** "Pulso" leve: hash da atividade recente (vendas/baixas) pra telas atualizarem sozinhas sem pesar. */
+    public function pulse()
+    {
+        $desde = now()->subDays(3);
+        $pg = \App\Models\Passagem::where('updated_at', '>=', $desde)
+            ->selectRaw("COUNT(*) c, COALESCE(MAX(updated_at), '') m")->first();
+        $py = \App\Models\Pagamento::where('created_at', '>=', $desde)
+            ->selectRaw("COUNT(*) c, COALESCE(MAX(created_at), '') m, COALESCE(SUM(valor), 0) v")->first();
+        return response()->json(['hash' => md5(($pg->c ?? 0).'|'.($pg->m ?? '').'|'.($py->c ?? 0).'|'.($py->m ?? '').'|'.($py->v ?? 0))]);
+    }
     /** RELATÓRIO = mesma dashboard do caixa (mesmo layout), escopada pra relatório. */
     public function relatorio(Request $request)
     {

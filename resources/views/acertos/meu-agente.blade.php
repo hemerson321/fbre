@@ -37,4 +37,5 @@
   @include('acertos._painel')
 
 </div>
+@include('partials.pulse')
 @endsection

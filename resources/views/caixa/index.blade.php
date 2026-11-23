@@ -271,4 +271,5 @@
   <div class="p-3">{{ $movimentos->links() }}</div>
 </div>
 </div>
+@include('partials.pulse')
 @endsection

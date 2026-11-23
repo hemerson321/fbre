@@ -44,4 +44,5 @@
     <span style="background:#fee2e2;color:#b91c1c;padding:1px 7px;border-radius:4px">Cancelado</span>
   </div>
 </div>
+@include('partials.pulse')
 @endsection

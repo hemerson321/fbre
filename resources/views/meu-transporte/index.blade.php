@@ -176,4 +176,5 @@
   @endif
 
 </div>
+@include('partials.pulse')
 @endsection
