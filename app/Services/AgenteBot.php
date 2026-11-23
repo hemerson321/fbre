@@ -238,7 +238,7 @@ class AgenteBot
         $p[] = "GRUPO (2 ou mais pessoas): pergunte se querem sentar JUNTOS. Se sim, use a QTD no marcador. Se o SISTEMA responder 'NAO tem N juntas; essas sao as mais proximas', REPASSE com sinceridade e já mostrando os números (ex.: 'não consegui 2 juntas na janela — tenho a 03J na janela e a 05C no corredor; serve assim ou prefere outra data?') e deixe o cliente decidir. NUNCA diga que são juntas se o sistema não confirmou 'juntas'.";
         $p[] = "Se vier 'esgotada', ofereça outro tipo ou outra data. A poltrona é confirmada no embarque. Em lancha de rede não pergunte.";
         $p[] = "Se o cliente DESISTIR, mudar de ideia, disser que não vai mais viajar, que vai em outra data/viagem, ou cancelar a compra, LIBERE a poltrona escrevendo numa linha isolada que o cliente NÃO vê: [[LIBERAR]]. (A reserva também solta sozinha depois de ~2 min sem ele responder.)";
-        $p[] = "5) Confirmando, gere o PIX (veja PAGAMENTO). Primeiro o pagamento.";
+        $p[] = "5) Confirmando: nas lanchas com [poltrona], PRIMEIRO escolha a poltrona (pergunte janela/corredor/meio e reserve com [[POLTRONA:...]]) e SÓ DEPOIS gere o PIX. NUNCA gere o PIX antes de ter a poltrona reservada. Em lancha de rede, gere o PIX direto.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
 
@@ -559,6 +559,24 @@ class AgenteBot
             return ['texto' => $texto, 'pix' => null];
         }
         $marcador = $m[0];
+
+        // PADRÃO: lancha com poltrona exige assento ESCOLHIDO antes do PIX. Sem assento -> não gera PIX, pede a poltrona.
+        $venda = $c->contexto['venda'] ?? [];
+        $jaTemPoltrona = ! empty($c->contexto['poltronas_agente']);
+        if (! $jaTemPoltrona && ! empty($venda['origem']) && ! empty($venda['destino'])) {
+            try {
+                $tp = app(\App\Services\Vagas::class)->tiposDisponiveis($venda['origem'], $venda['destino'], $this->parseData($venda['data'] ?? ''));
+                if (($tp['ok'] ?? false) && ($tp['usa_poltrona'] ?? false) === true && is_array($tp['tipos'] ?? null)) {
+                    $livres = [];
+                    foreach (['janela', 'corredor', 'meio'] as $k) if ((int) ($tp['tipos'][$k] ?? 0) > 0) $livres[] = $k;
+                    if ($livres) {
+                        $msg = 'Antes de gerar o PIX, escolhe a poltrona: temos '.implode(', ', $livres).'. Qual você prefere?';
+                        return ['texto' => trim(str_replace($marcador, '', $texto))."\n".$msg, 'pix' => null];
+                    }
+                }
+            } catch (\Throwable $e) {}
+        }
+
         $raw = (string) $m[1];
         if (str_contains($raw, ',') && str_contains($raw, '.')) { $raw = str_replace(['.', ','], ['', '.'], $raw); }
         elseif (str_contains($raw, ',')) { $raw = str_replace(',', '.', $raw); }
