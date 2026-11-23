@@ -17,4 +17,9 @@ class PoltronaHold extends Model
     {
         return $q->where('expires_at', '>', now());
     }
+
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

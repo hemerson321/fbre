@@ -607,6 +607,7 @@ class PassagemController extends Controller
             'layout' => (string) ($emb->poltronas_lista ?? ''),
             'ocupadas' => $this->ocupadas($emb->id, $request->input('data_viagem'), $request->input('viagem_id'), $request->input('rota_id'), $request->input('origem'), $request->input('destino'))->values(),
             'reservadas' => $this->reservadas($emb->id, $request->input('data_viagem'), $request->input('viagem_id'), $request->input('rota_id'), $request->input('origem'), $request->input('destino'), auth()->id())->values(),
+            'reservadasInfo' => $this->reservadasDetalhe($emb->id, $request->input('data_viagem'), $request->input('viagem_id'), $request->input('rota_id'), $request->input('origem'), $request->input('destino'), auth()->id()),
             'travadas' => auth()->user()->ehRevendedor() ? [] : $this->travadas($emb->id, $request->input('data_viagem')),
         ];
     }
@@ -656,11 +657,50 @@ class PassagemController extends Controller
         return $res->unique()->values();
     }
 
+    /** Igual reservadas(), mas retorna [poltrona => nome de quem está segurando agora]. user_id 0 = WhatsApp (agente). */
+    protected function reservadasDetalhe($embarcacaoId, $dataViagem, $viagemId, $rotaId = null, $origem = null, $destino = null, $exceptUserId = null): array
+    {
+        $viagemAberta = false;
+        if ($viagemId) { $vg = \App\Models\Viagem::find($viagemId); $viagemAberta = ! $vg || $vg->data_partida === null; }
+        $q = \App\Models\PoltronaHold::ativo()->where('embarcacao_id', $embarcacaoId)
+            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            ->when(($viagemAberta || ! $viagemId) && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+            ->when($exceptUserId, fn ($q) => $q->where('user_id', '!=', $exceptUserId));
+
+        $ordem = [];
+        if ($rotaId && ($rota = \App\Models\Rota::find($rotaId))) $ordem = array_map('mb_strtolower', $rota->localidades());
+        $idx = fn ($c) => array_search(mb_strtolower((string) $c), $ordem, true);
+        $reqS = $origem !== null ? $idx($origem) : false;
+        $reqD = $destino !== null ? $idx($destino) : false;
+        $temTrecho = $ordem && $reqS !== false && $reqD !== false;
+        $reqMin = $temTrecho ? min($reqS, $reqD) : null;
+        $reqMax = $temTrecho ? max($reqS, $reqD) : null;
+
+        $holds = $q->get(['poltrona', 'origem', 'destino', 'user_id']);
+        $uids = $holds->pluck('user_id')->filter(fn ($u) => (int) $u > 0)->unique()->all();
+        $nomes = $uids ? \App\Models\User::withoutGlobalScopes()->whereIn('id', $uids)->pluck('name', 'id') : collect();
+
+        $out = [];
+        foreach ($holds as $h) {
+            if ($temTrecho) {
+                $c = $idx($h->origem); $d = $idx($h->destino);
+                if ($c !== false && $d !== false) {
+                    [$cMin, $cMax] = [min($c, $d), max($c, $d)];
+                    if (! ($reqMin < $cMax && $cMin < $reqMax)) continue;
+                }
+            }
+            if (! $h->poltrona) continue;
+            $out[(string) $h->poltrona] = (int) $h->user_id === 0 ? 'WhatsApp (agente)' : (string) ($nomes[$h->user_id] ?? 'Operador');
+        }
+        return $out;
+    }
+
     protected function ocupacaoJson($embId, array $data, $viagemId, $uid): array
     {
         return [
             'ocupadas' => $this->ocupadas($embId, $data['data_viagem'] ?? null, $viagemId, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null)->values(),
             'reservadas' => $this->reservadas($embId, $data['data_viagem'] ?? null, $viagemId, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null, $uid)->values(),
+            'reservadasInfo' => $this->reservadasDetalhe($embId, $data['data_viagem'] ?? null, $viagemId, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null, $uid),
             'travadas' => (auth()->user() && auth()->user()->ehRevendedor()) ? [] : $this->travadas($embId, $data['data_viagem'] ?? null),
         ];
     }
