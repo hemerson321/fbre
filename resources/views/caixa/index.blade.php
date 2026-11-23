@@ -64,6 +64,7 @@
 @endif
 
 <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
+  @if($focoPrest)<input type="hidden" name="foco" value="prestacoes">@endif
   @if($verTodos)
   <div><label class="label">Operador</label>
     <select name="user_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
