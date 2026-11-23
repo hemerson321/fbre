@@ -175,7 +175,7 @@
             <template x-for="l in linhas" :key="l.id">
               <tr>
                 <td class="p-2 font-semibold whitespace-nowrap"><a :href="l.url" target="_blank" class="text-indigo-600 hover:underline" x-text="l.numero"></a></td>
-                <td class="p-2"><div class="font-medium" x-text="l.comprador || '—'"></div><div class="text-[11px] text-slate-400" x-text="l.pax"></div></td>
+                <td class="p-2"><div class="font-medium"><span x-text="l.comprador || '—'"></span> <span x-show="l.agente" class="ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700" x-text="'🤝 '+l.agente"></span></div><div class="text-[11px] text-slate-400" x-text="l.pax"></div></td>
                 <td class="p-2 whitespace-nowrap text-slate-500" x-text="l.trecho"></td>
                 <td class="p-2 whitespace-nowrap text-slate-500" x-text="l.viagem"></td>
                 <td class="p-2 whitespace-nowrap text-slate-500" x-text="l.vendido"></td>
@@ -189,7 +189,7 @@
       </div>
       <div class="border-t bg-slate-50 px-4 py-3 flex flex-wrap items-center justify-end gap-x-6 gap-y-1 text-sm">
         <span class="text-slate-500">Vendido <b class="text-slate-800" x-text="m(total)"></b></span>
-        <span class="text-slate-500">Comissão da agência <b class="text-indigo-700" x-text="m(comissao)"></b></span>
+        <span class="text-slate-500">Comissões (agência + agentes) <b class="text-indigo-700" x-text="m(comissao)"></b></span>
         <span class="text-slate-500">Parte do proprietário <b class="text-amber-700 text-base" x-text="m(dono)"></b></span>
       </div>
     </div>
@@ -207,8 +207,11 @@
       <div class="min-w-0">
         <div class="font-semibold truncate">🚤 {{ $d->emb->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· proprietário {{ $d->dono }}</span>@endif</div>
         <div class="text-xs text-slate-500">{{ $d->qtd }} passagem(ns) de balcão · vendido <b>R$ {{ number_format($d->bruto ?? 0,2,',','.') }}</b> · comissão {{ (int)$d->emb->comissao_empresa_pct }}% = <b class="text-indigo-700">R$ {{ number_format($d->comissao ?? 0,2,',','.') }}</b></div>
+        @if(($d->qtdAg ?? 0) > 0)
+        <div class="text-xs text-slate-500 mt-0.5">🤝 {{ $d->qtdAg }} passagem(ns) de <b class="text-blue-700">agente externo</b> · vendido <b>R$ {{ number_format($d->brutoAg,2,',','.') }}</b> · repasse ao proprietário <b class="text-blue-700">R$ {{ number_format($d->repasseAg,2,',','.') }}</b> <span class="text-[10px] text-slate-400">(não passa pelo caixa da agência)</span></div>
+        @endif
         <button type="button" class="mt-1 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                @click="$dispatch('ver-vendas', { id: {{ $d->emb->id }}, nome: @js($d->emb->nome) })">👁 Ver vendas ({{ $d->qtd }})</button>
+                @click="$dispatch('ver-vendas', { id: {{ $d->emb->id }}, nome: @js($d->emb->nome) })">👁 Ver vendas ({{ $d->qtd + ($d->qtdAg ?? 0) }})</button>
         @if($d->debito > 0)<div class="text-[11px] text-rose-600 font-semibold mt-0.5">↩ proprietário deve R$ {{ number_format($d->debito,2,',','.') }} (devolução já acertada) — abate no acerto</div>@endif
       </div>
       <div class="flex items-center gap-2">

@@ -242,13 +242,14 @@ class PrestacaoController extends Controller
         $viagemId = $request->input('viagem_id') ?: null;
         $dataViagem = $request->input('data_viagem') ?: null;
         $ps = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)
-            ->where('acerto_dono', false)->whereNull('revendedor_id')
+            ->where('acerto_dono', false)
             ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
             ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem))
-            ->with(['operador:id,name', 'passageiros' => fn ($q) => $q->where('cancelado', false)->select('id', 'passagem_id', 'nome', 'poltrona')])
+            ->with(['operador:id,name', 'revendedor:id,name', 'passageiros' => fn ($q) => $q->where('cancelado', false)->select('id', 'passagem_id', 'nome', 'poltrona')])
             ->orderByDesc('id')->limit(500)->get();
         $total = round((float) $ps->sum('total'), 2);
-        $dono = round($total * (100 - $pct) / 100, 2);
+        // balcão: dono recebe total - comissão; agente externo: dono recebe o repasse combinado
+        $dono = round((float) $ps->sum(fn ($p) => $p->revendedor_id ? (float) $p->acerto_empresa_valor : (float) $p->total * (100 - $pct) / 100), 2);
         return response()->json([
             'total' => $total, 'dono' => $dono, 'comissao' => round($total - $dono, 2),
             'linhas' => $ps->map(fn ($p) => [
@@ -256,6 +257,7 @@ class PrestacaoController extends Controller
                 'numero' => $p->numeroFormatado(),
                 'url' => \Illuminate\Support\Facades\Route::has('passagens.show') ? route('passagens.show', $p) : '#',
                 'comprador' => $p->comprador_nome,
+                'agente' => $p->revendedor_id ? (optional($p->revendedor)->name ?? 'Agente externo') : null,
                 'pax' => $p->passageiros->map(fn ($x) => trim($x->nome.($x->poltrona ? ' ('.$x->poltrona.')' : '')))->filter()->implode(', '),
                 'trecho' => $p->origem.' → '.$p->destino,
                 'viagem' => $p->data_viagem ? \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') : '—',
