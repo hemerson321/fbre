@@ -318,6 +318,15 @@ class CaixaController extends Controller
         $entradasVal = (float) $porMeio->sum('valor');
         $liquidoAgencia = round($entradasVal - $ownerShareG - (float) $saidas, 2);
 
+        // Desfazer acerto direto no relatório (por transporte + viagem). Serve p/ acertos antigos.
+        $acertoDesfazivel = 0; $podeDesfazerTransporte = false;
+        if ($transporteId && auth()->user()->caixaTodos()) {
+            $acertoDesfazivel = \App\Models\Passagem::where('embarcacao_id', $transporteId)->where('cancelada', false)->where('acerto_dono', true)
+                ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+                ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))->count();
+            $podeDesfazerTransporte = $acertoDesfazivel > 0 && ((bool) Tenant::empresa()->config('desfazer_acerto') || auth()->user()->isAdmin() || auth()->user()->isSuper());
+        }
+
         // Acertos recentes (balcão + agente) que podem ser DESFEITOS — só quando a empresa libera.
         $permiteDesfazer = (bool) Tenant::empresa()->config('desfazer_acerto');
         $acertosRecentes = collect();
@@ -390,7 +399,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'porCategoria'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'porCategoria'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 

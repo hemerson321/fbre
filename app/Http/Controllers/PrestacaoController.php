@@ -213,6 +213,40 @@ class PrestacaoController extends Controller
         return back()->with('ok', 'Prestação #'.$prestacao->numero.' desfeita: passagens voltaram para em aberto e os lançamentos foram estornados.');
     }
 
+    /**
+     * Desfaz o acerto de um transporte/viagem direto no relatório (serve p/ acertos antigos,
+     * sem depender do card de "Desfazer acerto" por período). Reverte passagens + estorna lançamentos.
+     */
+    public function desfazerTransporte(Request $request, Embarcacao $embarcacao)
+    {
+        $this->gate($embarcacao);
+        abort_unless((bool) Tenant::empresa()->config('desfazer_acerto') || auth()->user()->isAdmin() || auth()->user()->isSuper(), 403, 'Desfazer acerto está desativado nesta empresa.');
+        $viagemId = $request->input('viagem_id') ?: null;
+        $dataViagem = $request->input('data_viagem') ?: null;
+        $q = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('acerto_dono', true)
+            ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
+            ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
+        $passagens = (clone $q)->get(['id', 'acerto_lote', 'prestacao_id']);
+        if ($passagens->isEmpty()) return back()->with('erro', 'Nenhum acerto desse transporte para desfazer.');
+        $lotes = $passagens->pluck('acerto_lote')->filter()->unique()->values()->all();
+        $prestIds = $passagens->pluck('prestacao_id')->filter()->unique()->values()->all();
+
+        DB::transaction(function () use ($q, $lotes, $prestIds) {
+            (clone $q)->update([
+                'acerto_dono' => false, 'acerto_dono_em' => null, 'acerto_dono_por' => null,
+                'acerto_empresa' => false, 'acerto_empresa_em' => null, 'acerto_empresa_por' => null,
+                'acerto_lote' => null, 'prestacao_id' => null,
+            ]);
+            if ($lotes) Pagamento::whereIn('acerto_lote', $lotes)->where('estornado', false)->update(['estornado' => true]);
+            if ($prestIds) {
+                Pagamento::whereIn('prestacao_id', $prestIds)->where('estornado', false)->update(['estornado' => true]);
+                Prestacao::whereIn('id', $prestIds)->update(['desfeita' => true, 'desfeita_em' => now(), 'desfeita_por' => auth()->id()]);
+            }
+        });
+
+        return back()->with('ok', 'Acerto desfeito: '.$passagens->count().' passagem(ns) voltaram para em aberto e os lançamentos foram estornados.');
+    }
+
     /** Detalhe (passageiros + pagamentos) para "ver detalhes/comprovante". */
     public function detalhe(Prestacao $prestacao)
     {
