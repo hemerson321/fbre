@@ -88,6 +88,12 @@ class PassagemController extends Controller
     // ---------------- CADASTRO ----------------
     public function create(Request $request)
     {
+        return view('passagens.create', $this->dadosFormVenda($request));
+    }
+
+    /** Monta todos os dados do formulário de venda — reusado pelo Atendimento (painel nativo). */
+    public function dadosFormVenda(Request $request): array
+    {
         $u = auth()->user();
         TrechoPreco::curarOrfaos();
         // Só aparecem no seletor de venda os transportes que têm ROTA ativa COM trecho precificado.
@@ -163,7 +169,7 @@ class PassagemController extends Controller
             ];
         }
 
-        return view('passagens.create', [
+        return [
             'prefill' => $prefill,
             'embarcacoes' => $embarcacoes,
             'regrasIdade' => $embarcacoes->mapWithKeys(fn ($e) => [(string) $e->id => ($e->bandasIdade() ?: [])])->filter(fn ($v) => ! empty($v)),
@@ -191,7 +197,7 @@ class PassagemController extends Controller
             'agentes' => ($u->revendedorDono() === null && Tenant::empresa()?->config('usa_revendedores'))
                 ? \App\Models\User::where('is_revendedor', true)->where('ativo', true)->orderBy('name')->get(['id', 'name'])
                 : collect(),
-        ]);
+        ];
     }
 
     public function store(Request $request)

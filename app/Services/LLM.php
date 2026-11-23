@@ -94,7 +94,12 @@ class LLM
                 'parts' => [['text' => (string) $m['content']]],
             ];
         }
-        $body = ['contents' => $contents, 'generationConfig' => ['maxOutputTokens' => $max]];
+        // thinkingBudget limita o 'pensamento' do Gemini 2.5 pra NÃO consumir todo o maxOutputTokens
+        // (era isso que truncava a resposta no meio do marcador, ex.: '[[POLTRONA: ...').
+        $body = ['contents' => $contents, 'generationConfig' => [
+            'maxOutputTokens' => $max,
+            'thinkingConfig' => ['thinkingBudget' => 512],
+        ]];
         if ($sistema !== '') $body['systemInstruction'] = ['parts' => [['text' => $sistema]]];
 
         $r = Http::timeout(40)->withHeaders(['x-goog-api-key' => $token])
@@ -105,7 +110,12 @@ class LLM
         foreach ((array) $r->json('candidates.0.content.parts', []) as $parte) {
             $txt .= $parte['text'] ?? '';
         }
-        return ['ok' => true, 'texto' => trim($txt)];
+        $fim = (string) $r->json('candidates.0.finishReason', '');
+        // Resposta cortada pelo limite SEM texto visível: falha de propósito pra cascata escalar (ex.: Claude).
+        if (trim($txt) === '' && $fim === 'MAX_TOKENS') {
+            return ['ok' => false, 'status' => 'MAX_TOKENS', 'erro' => 'gemini truncou a resposta (thinking)'];
+        }
+        return ['ok' => true, 'texto' => trim($txt), 'fim' => $fim];
     }
 
     /** Modelos de texto disponíveis na conta (fallback). */

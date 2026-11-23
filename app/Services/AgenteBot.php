@@ -57,7 +57,7 @@ class AgenteBot
                 ->all();
             if (! $historico) return;
 
-            $r = $this->conversarCascata($agente, $historico, $sistema, 600);
+            $r = $this->conversarCascata($agente, $historico, $sistema, 1400);
             if (! $r['ok']) { Log::warning('Agente IA falhou: '.($r['erro'] ?? '')); return; }
 
             $texto = trim((string) $r['texto']);
@@ -69,6 +69,7 @@ class AgenteBot
             $texto = $this->tratarPoltrona($conversa, $texto);
             $texto = $this->tratarLiberar($conversa, $texto);
             $texto = $this->tratarPref($conversa, $texto);
+            $texto = $this->guardiaoPoltrona($conversa, $texto);
             $texto = $this->tratarPax($conversa, $texto);
             $texto = $this->tratarHumano($conversa, $texto, $demo);
             $res = $this->tratarPix($agente, $conversa, $texto, $demo);
@@ -164,7 +165,7 @@ class AgenteBot
     }
 
     /** Conversa com cascata de custo: modelo principal (barato) -> escalona pro esperto se falhar ou pedir [[ESCALAR]]. */
-    protected function conversarCascata(Agente $agente, array $hist, string $sistema, int $max = 600): array
+    protected function conversarCascata(Agente $agente, array $hist, string $sistema, int $max = 1400): array
     {
         $prim = $agente->llm;
         $esc = $agente->llmEscalonar;
@@ -245,7 +246,7 @@ class AgenteBot
         $p[] = "CRIANÇAS: se o cliente falar em filho(s)/criança(s), PERGUNTE quantas e a IDADE de cada uma (pergunta natural: 'quantos anos têm as crianças?'). Pela idade, escolha o tipo certo (veja TIPOS DE PASSAGEIRO e as faixas) e use o preço JÁ CALCULADO daquele tipo NA TABELA DE PREÇOS do trecho (você NÃO precisa de atendente pra isso — o valor está pronto). Bebê de colo é grátis e não ocupa assento. Monte o VALOR TOTAL = adulto(s) + cada criança pelo preço certo e mande o resumo.";
         $p[] = "DOCUMENTO DA CRIANÇA ANTES DO PIX: quando tiver criança (ou qualquer tarifa com desconto por idade), ANTES de gerar o PIX peça a FOTO ou ARQUIVO do documento da criança pra confirmar a idade. Só gere o PIX depois que o documento confirmar que a idade bate. Isso evita um adulto pagar como criança. (Venda só de adultos NÃO precisa disso — documento fica pro final.)";
         $p[] = "POLTRONA (só nas lanchas com [poltrona] nos DADOS): ANTES do PIX, veja os livres por tipo com [[POLTRONAS: origem; destino; data]] — o SISTEMA troca por QUANTIDADES (ex.: '29 de janela, 34 de corredor, 32 de meio'). ATENÇÃO: esses números são QUANTIDADE de lugares livres, NÃO são número de poltrona. Apresente natural (ex.: 'tem bastante: 29 de janela, 34 de corredor e 32 de meio — qual prefere?') e ofereça só os tipos com vaga.";
-        $p[] = "Quando o cliente ESCOLHER o tipo, RESERVE a(s) poltrona(s) real(is) escrevendo [[POLTRONA: origem; destino; data; tipo; QTD]] (QTD = nº de passageiros; 1 se for só ele). O SISTEMA troca pelo(s) NÚMERO(s) real(is) e JÁ RESERVA pra nenhum operador vender em cima (mesmo sincronismo do balcão). Ex.: 1 pessoa -> '03J (janela)'; 2 juntas -> '03J e 03M — juntas (janela)'. Confirme citando o número (ex.: 'fechei a 03J na janela pra você 😉') e registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor).";
+        $p[] = "Quando o cliente ESCOLHER o tipo, RESERVE a(s) poltrona(s) real(is) escrevendo [[POLTRONA: origem; destino; data; tipo; QTD]] (QTD = nº de passageiros; 1 se for só ele). O SISTEMA troca pelo(s) NÚMERO(s) real(is) e JÁ RESERVA pra nenhum operador vender em cima (mesmo sincronismo do balcão). Ex.: 1 pessoa -> '03J (janela)'; 2 juntas -> '03J e 03M — juntas (janela)'. Pra confirmar, escreva a frase JÁ COM O MARCADOR no lugar do número (ex.: 'Fechei a [[POLTRONA: origem; destino; data; tipo; QTD]] pra você 😉') — o sistema troca pelo número real (ex.: '03J (janela)'). NUNCA invente nem escreva um número de poltrona de cabeça; use SOMENTE o marcador, e deixe a confirmação curta e registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor).";
         $p[] = "GRUPO (2 ou mais pessoas): pergunte se querem sentar JUNTOS. Se sim, use a QTD no marcador. Se o SISTEMA responder 'NAO tem N juntas; essas sao as mais proximas', REPASSE com sinceridade e já mostrando os números (ex.: 'não consegui 2 juntas na janela — tenho a 03J na janela e a 05C no corredor; serve assim ou prefere outra data?') e deixe o cliente decidir. NUNCA diga que são juntas se o sistema não confirmou 'juntas'.";
         $p[] = "Se vier 'esgotada', ofereça outro tipo ou outra data. A poltrona é confirmada no embarque. Em lancha de rede não pergunte.";
         $p[] = "Se o cliente DESISTIR, mudar de ideia, disser que não vai mais viajar, que vai em outra data/viagem, ou cancelar a compra, LIBERE a poltrona escrevendo numa linha isolada que o cliente NÃO vê: [[LIBERAR]]. (A reserva também solta sozinha depois de ~2 min sem ele responder.)";
@@ -528,6 +529,62 @@ class AgenteBot
         unset($ctx['poltronas_agente'], $ctx['poltrona_agente'], $ctx['pref_poltrona']);
         $c->forceFill(['contexto' => $ctx])->save();
         return trim(str_replace($m[0], '', $texto));
+    }
+
+    /**
+     * GUARDIÃO DE POLTRONA: nenhuma poltrona pode ser afirmada ao cliente se o SISTEMA não a reservou de fato.
+     * Se o modelo citar um número (ex.: '01J') que NÃO está entre as poltronas realmente atribuídas nesta conversa,
+     * o sistema atribui uma poltrona LIVRE de verdade (excluindo vendidas/ocupadas) e troca o número no texto.
+     * Resolve o caso do agente "vender" uma poltrona já ocupada (número inventado após marcador truncado).
+     */
+    protected function guardiaoPoltrona(Conversa $c, string $texto): string
+    {
+        if (! preg_match_all('/(?<![\w\/])(\d{1,3})\s?([JMC])(?![\w])/u', $texto, $ms, PREG_SET_ORDER)) return $texto;
+        $ctx = $c->contexto ?? [];
+        $norm = fn ($x) => mb_strtoupper(preg_replace('/\s+/', '', (string) $x));
+        $assign = array_map($norm, (array) ($ctx['poltronas_agente'] ?? []));
+
+        $mencionados = [];
+        foreach ($ms as $mm) $mencionados[$norm($mm[1].$mm[2])] = true;
+        $mencionados = array_keys($mencionados);
+        $fantasmas = array_values(array_diff($mencionados, $assign));
+        if (! $fantasmas) return $texto; // tudo que ele citou foi de fato reservado pelo sistema -> ok
+
+        $reais = [];
+        if ($assign) {
+            // Já existe poltrona reservada de verdade: o número citado está errado -> usa a real que já está no hold.
+            $reais = $assign;
+        } else {
+            // Nenhuma poltrona reservada ainda: o modelo inventou -> atribui uma LIVRE de verdade agora.
+            $venda = $ctx['venda'] ?? [];
+            $origem = (string) ($venda['origem'] ?? '');
+            $destino = (string) ($venda['destino'] ?? '');
+            $data = $this->parseData((string) ($venda['data'] ?? ''));
+            $letra = substr($fantasmas[0], -1);
+            $tipo = ['J' => 'janela', 'M' => 'meio', 'C' => 'corredor'][$letra] ?? (string) ($ctx['pref_poltrona'] ?? 'janela');
+            if ($origem !== '' && $destino !== '') {
+                try {
+                    $r = app(\App\Services\Vagas::class)->atribuir($origem, $destino, $data, $tipo, max(1, count($fantasmas)), $c->id);
+                    if (($r['ok'] ?? false) && ! empty($r['seats'])) {
+                        $reais = array_map($norm, (array) $r['seats']);
+                        $ctx['poltronas_agente'] = $r['seats'];
+                        $ctx['poltrona_agente'] = $r['seats'][0];
+                        if (in_array($tipo, ['janela', 'meio', 'corredor'], true)) $ctx['pref_poltrona'] = $tipo;
+                        $c->forceFill(['contexto' => $ctx])->save();
+                    }
+                } catch (\Throwable $e) {}
+            }
+        }
+
+        // troca cada número-fantasma pelo real; se não conseguiu atribuir, evita mentir ('a definir').
+        $i = 0;
+        foreach ($fantasmas as $f) {
+            $rep = $reais[$i] ?? 'a definir';
+            $i++;
+            $pat = '/(?<![\w\/])'.preg_quote(substr($f, 0, -1), '/').'\s?'.substr($f, -1).'(?![\w])/u';
+            $texto = preg_replace($pat, $rep, $texto, 1);
+        }
+        return $texto;
     }
 
     /** [[PREF: janela|meio|corredor]] -> guarda a preferência de poltrona no contexto. */
