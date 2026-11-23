@@ -273,11 +273,20 @@ class CaixaController extends Controller
         }
         // PENDENTE (acerto_dono=false): é o que a PRESTAÇÃO mostra — zera depois do fechamento.
         $pqG = (clone $pqAll)->where('acerto_dono', false);
+        $idsComDono = null;
+        if ($request->input('foco') === 'prestacoes') {
+            $idsComDono = \App\Models\Embarcacao::whereNotNull('dono_id')->whereNotIn('id', $meusBarcos ?: [])->pluck('id');
+            $pqG->whereIn('embarcacao_id', $idsComDono);
+        }
         $passG = (clone $pqG)->get(['id', 'embarcacao_id', 'total']);
         // Entradas/saídas AVULSAS amarradas ao transporte: entram na PRESTAÇÃO (não no caixa da agência).
+        // Só avulso LANÇADO pelo operador (momento=cadastro). Pagamento ao dono, repasse de agente e ledger de débito
+        // também são modulo=avulso com embarcacao_id, mas são movimentos do sistema (momento=baixa) e não entram aqui.
         $avBase = Pagamento::where('modulo', 'avulso')->where('estornado', false)->whereNotNull('embarcacao_id')
+            ->where('momento', 'cadastro')->whereNull('prestacao_id')
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]));
+        if ($idsComDono !== null) $avBase->whereIn('embarcacao_id', $idsComDono);
         $avEntrada = round((float) (clone $avBase)->where('tipo_mov', 'entrada')->sum('valor'), 2);
         $avSaida = round((float) (clone $avBase)->where('tipo_mov', 'saida')->sum('valor'), 2);
         if ($passG->count() > 0 || $avEntrada > 0 || $avSaida > 0) {
