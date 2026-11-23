@@ -3,6 +3,7 @@
 @php
   $modo = $modo ?? (($ehRelatorio ?? false) ? 'relatorio' : 'caixa');
   $titP = [['caixa'=>'Caixa por viagem','prestacao'=>'Pre-prestacao de contas','relatorio'=>'Relatorio por viagem'][$modo]];
+  if ($prestFechada ?? null) $titP = ['Prestacao de contas '.$prestFechada->numero];
   if($embs->count()) $titP[] = $embs->implode(', ');
   if($datas->count()) $titP[] = $datas->map(fn($d)=>\Illuminate\Support\Carbon::parse($d)->format('d-m-Y'))->implode(' ');
   elseif(!empty($f['inicio']) || !empty($f['fim'])) $titP[] = (!empty($f['inicio'])?\Illuminate\Support\Carbon::parse($f['inicio'])->format('d-m-Y'):'').(!empty($f['fim']) && ($f['fim']??'')!==($f['inicio']??'')?(' a '.\Illuminate\Support\Carbon::parse($f['fim'])->format('d-m-Y')):'');
@@ -57,6 +58,7 @@
   <div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       @php $mt = ['caixa'=>['💰 Caixa por viagem','CAIXA','background:#dcfce7;color:#166534'],'prestacao'=>['🧾 Pré-prestação de contas','PRÉ-PRESTAÇÃO · EM ABERTO','background:#fef3c7;color:#92400e'],'relatorio'=>['📋 Relatório por viagem','RELATÓRIO','background:#e0e7ff;color:#3730a3']][$modo]; @endphp
+      @php if ($prestFechada ?? null) { $mt = ['🧾 Prestação de contas #'.$prestFechada->numero, 'FECHADA · '.optional($prestFechada->fechada_em)->format('d/m/Y H:i'), 'background:#dcfce7;color:#166534']; } @endphp
       <h1 style="margin:0">{{ $mt[0] }}</h1>
       <span style="font-size:10px;font-weight:900;letter-spacing:.08em;padding:2px 8px;border-radius:6px;{{ $mt[2] }}">{{ $mt[1] }}</span>
     </div>
@@ -110,6 +112,11 @@
     @if(($prestacao->entradas ?? 0) > 0.009)<div class="lin"><span>Entradas avulsas</span><b style="color:#067d3b">+ R$ {{ number_format($prestacao->entradas,2,',','.') }}</b></div>@endif
     <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px;color:#b45309"><span>Total Geral de Despesas <span style="font-weight:400;color:#777">(saídas)</span></span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->saidas,2,',','.') }}</b></div>
     <div class="lin g" style="color:#067d3b"><span>Total Geral Líquido</span><span>R$ {{ number_format($prestacao->liquido,2,',','.') }}</span></div>
+    @if($prestFechada ?? null)
+    <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px"><span>Devido ao proprietário (balcão)</span><b>R$ {{ number_format($prestFechada->total_devido,2,',','.') }}</b></div>
+    <div class="lin"><span>Pago{{ $prestFechada->forma ? ' ('.ucfirst($prestFechada->forma).')' : '' }}</span><b style="color:#067d3b">R$ {{ number_format($prestFechada->valor_pago,2,',','.') }}</b></div>
+    <div class="lin"><span>Saldo pendente</span><b style="color:{{ $prestFechada->saldo > 0 ? '#b91c1c' : '#555' }}">R$ {{ number_format($prestFechada->saldo,2,',','.') }}</b></div>
+    @endif
   </div>
   @endif
 </div>
@@ -143,7 +150,7 @@
 @if($modo !== 'relatorio')
 <div style="margin-top:14px">
   <h2 style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
-    <span>{{ $modo === 'prestacao' ? 'Pré-avulsos (entradas e saídas em aberto)' : 'Entradas e saídas avulsas' }}</span>
+    <span>{{ ($prestFechada ?? null) ? 'Entradas e saídas avulsas desta prestação' : ($modo === 'prestacao' ? 'Pré-avulsos (entradas e saídas em aberto)' : 'Entradas e saídas avulsas') }}</span>
     <span style="font-size:11px;font-weight:700">
       <span style="color:#067d3b">Entradas R$ {{ number_format($avEntradas ?? 0,2,',','.') }}</span> ·
       <span style="color:#b91c1c">Saídas R$ {{ number_format($avSaidas ?? 0,2,',','.') }}</span> ·

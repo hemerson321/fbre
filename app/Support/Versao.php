@@ -8,5 +8,5 @@ namespace App\Support;
  */
 class Versao
 {
-    public const ATUAL = 'v2026.11.21.495';
+    public const ATUAL = 'v2026.11.21.496';
 }

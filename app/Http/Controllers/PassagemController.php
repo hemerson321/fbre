@@ -859,9 +859,31 @@ class PassagemController extends Controller
         // Modo da impressão: caixa (sem agente externo) · prestacao (todas as vendas) · relatorio (todas as vendas)
         $modo = (string) ($request->input('modo') ?: ($request->boolean('relatorio') ? 'relatorio' : 'caixa'));
         if (! in_array($modo, ['caixa', 'prestacao', 'relatorio'], true)) $modo = 'caixa';
+
+        // Prestação JÁ FECHADA (botão do histórico): mesmo layout da pré-prestação, com as vendas e avulsos daquela prestação.
+        $prestFechada = null;
+        if ($request->filled('prestacao_id')) {
+            abort_unless(auth()->user()->caixaTodos(), 403);
+            $prestFechada = \App\Models\Prestacao::findOrFail($request->integer('prestacao_id'));
+            $modo = 'prestacao';
+            $pid = $prestFechada->id; $embP = $prestFechada->embarcacao_id;
+            $datasP = Passagem::where('prestacao_id', $pid)->whereNotNull('data_viagem')->pluck('data_viagem')
+                ->map(fn ($d) => \Illuminate\Support\Carbon::parse($d)->toDateString())->unique()->values()->all();
+            if ($prestFechada->data_viagem) $datasP = array_values(array_unique(array_merge($datasP, [\Illuminate\Support\Carbon::parse($prestFechada->data_viagem)->toDateString()])));
+            $passagens = Passagem::where(function ($w) use ($pid, $embP, $datasP) {
+                    $w->where('prestacao_id', $pid);
+                    // vendas de agente externo das mesmas viagens entram só pra informar (o proprietário cobra direto)
+                    if ($embP && $datasP) {
+                        $w->orWhere(fn ($a) => $a->where('embarcacao_id', $embP)->whereNotNull('revendedor_id')
+                            ->where(function ($d) use ($datasP) { foreach ($datasP as $dt) $d->orWhereDate('data_viagem', $dt); }));
+                    }
+                })
+                ->with(['passageiros', 'operador', 'pagamentos', 'embarcacao', 'camarote', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])
+                ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
+        }
         if ($modo === 'caixa') $passagens = $passagens->filter(fn ($p) => ! $p->revendedor_id)->values();
         // Pré-prestação: só o que ainda está EM ABERTO (o que já foi fechado sai pelo botão da prestação no histórico).
-        if ($modo === 'prestacao') $passagens = $passagens->filter(fn ($p) => ! $p->acerto_dono)->values();
+        if ($modo === 'prestacao' && ! $prestFechada) $passagens = $passagens->filter(fn ($p) => ! $p->acerto_dono)->values();
 
         // Entradas/saídas AVULSAS: caixa = as da agência; prestação = as do transporte/viagem; relatório não tem.
         $avulsos = collect();
@@ -869,7 +891,9 @@ class PassagemController extends Controller
             $iniA = $f['inicio'] ?? null; $fimA = $f['fim'] ?? null;
             $avQ = Pagamento::where('modulo', 'avulso')->where('estornado', false)->where('momento', 'cadastro')->with(['user:id,name', 'embarcacao:id,nome']);
             $porPeriodo = fn ($q) => $q->when($iniA, fn ($x) => $x->whereDate('created_at', '>=', $iniA))->when($fimA, fn ($x) => $x->whereDate('created_at', '<=', $fimA));
-            if ($modo === 'caixa') {
+            if ($prestFechada) {
+                $avQ->where('prestacao_id', $prestFechada->id);
+            } elseif ($modo === 'caixa') {
                 $avQ->whereNull('embarcacao_id')->when(! empty($f['user_id']), fn ($q) => $q->where('user_id', $f['user_id']));
                 $porPeriodo($avQ);
             } else {
@@ -966,7 +990,7 @@ class PassagemController extends Controller
             'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nPcd' => $nPcd, 'nOutros' => $nOutros, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas, 'nCancelados' => $nCancelados,
             'embs' => $embs, 'datas' => $datas, 'f' => $f, 'prestacao' => $prestacao, 'porCategoria' => $porCategoria,
             'auto' => $request->boolean('print'),
-            'modo' => $modo, 'avulsos' => $avulsos, 'avEntradas' => $avEntradas, 'avSaidas' => $avSaidas,
+            'modo' => $modo, 'prestFechada' => $prestFechada, 'avulsos' => $avulsos, 'avEntradas' => $avEntradas, 'avSaidas' => $avSaidas,
         ]);
     }
 
