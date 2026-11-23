@@ -211,6 +211,9 @@
       <div class="min-w-0">
         <div class="font-semibold truncate">🚤 {{ $d->emb->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· proprietário {{ $d->dono }}</span>@endif</div>
         <div class="text-xs text-slate-500">{{ $d->qtd }} passagem(ns) de balcão · vendido <b>R$ {{ number_format($d->bruto ?? 0,2,',','.') }}</b> · comissão {{ (int)$d->emb->comissao_empresa_pct }}% = <b class="text-indigo-700">R$ {{ number_format($d->comissao ?? 0,2,',','.') }}</b></div>
+        @if(($d->avE ?? 0) > 0 || ($d->avS ?? 0) > 0)
+        <div class="text-xs text-slate-500 mt-0.5">↕️ Avulsos desta prestação: @if($d->avE > 0)<b class="text-emerald-700">+ R$ {{ number_format($d->avE,2,',','.') }}</b> @endif @if($d->avS > 0)<b class="text-rose-600">− R$ {{ number_format($d->avS,2,',','.') }}</b> @endif <span class="text-[10px] text-slate-400">(entram no fechamento)</span></div>
+        @endif
         @if(($d->qtdAg ?? 0) > 0)
         <div class="text-xs text-slate-500 mt-0.5">🤝 {{ $d->qtdAg }} passagem(ns) de <b class="text-blue-700">agente externo</b> · vendido <b>R$ {{ number_format($d->brutoAg,2,',','.') }}</b> · repasse ao proprietário <b class="text-blue-700">R$ {{ number_format($d->repasseAg,2,',','.') }}</b> <span class="text-[10px] text-slate-400">(não passa pelo caixa da agência)</span></div>
         @endif
@@ -223,7 +226,7 @@
           <div class="text-lg font-bold text-amber-700">R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}</div>
           @if($d->debito > 0)<div class="text-[10px] text-slate-400">bruto {{ number_format($d->valor,2,',','.') }} − dívida {{ number_format($d->debito,2,',','.') }}</div>@endif
         </div>
-        @if($d->valor > 0)
+        @if($d->valor > 0 || ($d->avE ?? 0) > 0 || ($d->avS ?? 0) > 0)
         <form method="post" action="{{ route('prestacoes.fechar', $d->emb) }}" class="flex flex-col items-stretch gap-1.5 min-w-[230px]"
               x-data="{ max: {{ $d->liquido > 0 ? $d->liquido : 0 }}, forma:'dinheiro', dividir:false, valorUnico:'{{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}', linhas:[{meio:'dinheiro',valor:''},{meio:'pix',valor:''}], parse(x){return parseFloat((x||'').toString().replace('.','').replace(',','.'))||0}, get soma(){return this.linhas.reduce((s,l)=>s+this.parse(l.valor),0)}, fmt(n){return (Math.round(n*100)/100).toFixed(2).replace('.',',')}, get splitJson(){return this.dividir?JSON.stringify(this.linhas.filter(l=>this.parse(l.valor)>0)):''} }"
               onsubmit="return confirm('Fechar a prestação de {{ $d->emb->nome }}? As passagens deste ciclo saem das vendas atuais e vão para o histórico (podem ser desfeitas lá). Devido R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}.')">
@@ -281,6 +284,30 @@
 </div>
 @endif
 
+<div x-data="{ open:false, id:0, numero:0, nome:'', tipo:'saida' }" @avulso-prest.window="id=$event.detail.id; numero=$event.detail.numero; nome=$event.detail.nome; tipo='saida'; open=true" @keydown.escape.window="open=false">
+  <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3" @click="open=false">
+    <form method="post" :action="@js(url('/prestacoes')) + '/' + id + '/avulso'" class="bg-white rounded-2xl p-4 w-full max-w-sm space-y-3" @click.stop>
+      @csrf
+      <input type="hidden" name="tipo_mov" :value="tipo">
+      <div>
+        <div class="font-bold text-lg">↕️ Entrada/Saída na prestação #<span x-text="numero"></span></div>
+        <div class="text-[12px] text-slate-500">🚤 <span x-text="nome"></span> · entra nesta prestação já fechada e recalcula o saldo</div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" @click="tipo='entrada'" :class="tipo==='entrada' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">➕ Entrada</button>
+        <button type="button" @click="tipo='saida'" :class="tipo==='saida' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">➖ Saída</button>
+      </div>
+      <div><label class="label">Valor</label><input name="valor" class="input" inputmode="decimal" placeholder="0,00" required></div>
+      <div><label class="label">Forma</label>
+        <select name="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="deposito">Depósito</option></select></div>
+      <div><label class="label">Motivo</label><input name="descricao" class="input" maxlength="200" required placeholder="Ex.: combustível, vale, ajuste…"></div>
+      <div class="flex gap-2 pt-1">
+        <button type="button" class="btn btn-ghost flex-1" @click="open=false">Cancelar</button>
+        <button class="btn flex-1 text-white" :style="tipo==='entrada'?'background:#059669':'background:#e11d48'">Lançar</button>
+      </div>
+    </form>
+  </div>
+</div>
 @if(isset($prestacoesFechadas) && $prestacoesFechadas->isNotEmpty())
 <div class="card overflow-hidden border border-slate-200">
   <div class="p-3 border-b bg-slate-50 flex items-center justify-between flex-wrap gap-2">
@@ -321,6 +348,9 @@
           <td class="p-2">
             <div class="flex items-center gap-1 justify-end flex-wrap">
               <a href="{{ route('prestacoes.detalhe', $pr) }}" class="inline-flex items-center rounded-lg border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50" title="Detalhes">🔎</a>
+              <a href="{{ route('prestacoes.detalhe', ['prestacao' => $pr, 'imprimir' => 1]) }}" target="_blank" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" title="Abrir/imprimir a prestação de novo">🖨 Prestação</a>
+              <button type="button" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" title="Lançar entrada/saída avulsa nesta prestação"
+                      @click="$dispatch('avulso-prest', { id: {{ $pr->id }}, numero: {{ (int) $pr->numero }}, nome: @js(optional($pr->embarcacao)->nome ?? 'Transporte') })">↕️ Entrada/Saída</button>
               @if($pr->saldo > 0)
               <form method="post" action="{{ route('prestacoes.pagar', $pr) }}" class="flex items-center gap-1" onsubmit="return confirm('Baixar saldo da prestação #{{ $pr->numero }}?')">
                 @csrf

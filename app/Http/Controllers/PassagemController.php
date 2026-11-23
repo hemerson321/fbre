@@ -871,7 +871,7 @@ class PassagemController extends Controller
                 $avQ->whereNull('embarcacao_id')->when(! empty($f['user_id']), fn ($q) => $q->where('user_id', $f['user_id']));
                 $porPeriodo($avQ);
             } else {
-                $avQ->whereNotNull('embarcacao_id')->when(! empty($f['embarcacao_id']), fn ($q) => $q->where('embarcacao_id', $f['embarcacao_id']));
+                $avQ->whereNotNull('embarcacao_id')->whereNull('prestacao_id')->when(! empty($f['embarcacao_id']), fn ($q) => $q->where('embarcacao_id', $f['embarcacao_id']));
                 if (! empty($f['data_viagem'])) $avQ->whereDate('data_viagem', $f['data_viagem']); else $porPeriodo($avQ);
             }
             $avulsos = $avQ->orderBy('created_at')->limit(500)->get();

@@ -109,7 +109,14 @@ class PrestacaoController extends Controller
             ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
             ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
         $ids = (clone $q)->pluck('id');
-        if ($ids->isEmpty()) return back()->with('erro', 'Não há passagens pendentes desse transporte para fechar.');
+        // Avulsos pendentes do transporte/viagem: fecham JUNTO com esta prestação (os lançados depois ficam pra próxima).
+        $avQ = Pagamento::where('modulo', 'avulso')->where('momento', 'cadastro')->where('estornado', false)
+            ->where('embarcacao_id', $embarcacao->id)->whereNull('prestacao_id')
+            ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
+        $avIds = (clone $avQ)->pluck('id');
+        $avE = round((float) (clone $avQ)->where('tipo_mov', 'entrada')->sum('valor'), 2);
+        $avS = round((float) (clone $avQ)->where('tipo_mov', 'saida')->sum('valor'), 2);
+        if ($ids->isEmpty() && $avIds->isEmpty()) return back()->with('erro', 'Não há vendas nem avulsos pendentes desse transporte para fechar.');
 
         $agg = (clone $q)->selectRaw('COUNT(*) qtd, COALESCE(SUM(total),0) bruto, COALESCE(SUM(total*(100-'.$pct.')/100),0) devido')->first();
         $qtd = (int) $agg->qtd;
@@ -119,13 +126,13 @@ class PrestacaoController extends Controller
 
         $deb = $this->debitoDono($embarcacao);
         $abate = round(min($devidoBruto, $deb), 2);
-        $totalDevido = round($devidoBruto - $abate, 2);
+        $totalDevido = max(0.0, round($devidoBruto - $abate + $avE - $avS, 2)); // entrada avulsa soma, saída avulsa abate
 
         $forma = (string) ($request->input('forma') ?: 'dinheiro');
         $splits = $this->lerSplits($request, $totalDevido, $forma);
         $pagarAgora = round(array_sum(array_column($splits, 'valor')), 2);
 
-        DB::transaction(function () use ($embarcacao, $ids, $qtd, $bruto, $pct, $comissao, $totalDevido, $abate, $forma, $splits, $pagarAgora, $viagemId, $dataViagem) {
+        DB::transaction(function () use ($embarcacao, $ids, $qtd, $bruto, $pct, $comissao, $totalDevido, $abate, $forma, $splits, $pagarAgora, $viagemId, $dataViagem, $avIds) {
             $lote = (string) Str::uuid();
             $prest = Prestacao::create([
                 'empresa_id' => Tenant::id(), 'embarcacao_id' => $embarcacao->id, 'viagem_id' => $viagemId, 'data_viagem' => $dataViagem,
@@ -135,6 +142,7 @@ class PrestacaoController extends Controller
                 'valor_pago' => 0, 'saldo' => $totalDevido, 'forma' => $forma, 'status' => 'pendente',
                 'fechada_em' => now(), 'fechada_por' => auth()->id(),
             ]);
+            if ($avIds->isNotEmpty()) Pagamento::whereIn('id', $avIds)->update(['prestacao_id' => $prest->id]);
             Passagem::whereIn('id', $ids)->update([
                 'acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id(),
                 'acerto_lote' => $lote, 'prestacao_id' => $prest->id,
@@ -160,6 +168,7 @@ class PrestacaoController extends Controller
 
         $msg = 'Prestação fechada: '.$qtd.' passagem(ns) · devido R$ '.number_format($totalDevido, 2, ',', '.').' · pago R$ '.number_format($pagarAgora, 2, ',', '.');
         if ($abate > 0) $msg .= ' · abatido R$ '.number_format($abate, 2, ',', '.').' de devolução';
+        if ($avE > 0 || $avS > 0) $msg .= ' · avulsos +R$ '.number_format($avE, 2, ',', '.').' / −R$ '.number_format($avS, 2, ',', '.');
         return back()->with('ok', $msg.'.');
     }
 
@@ -203,6 +212,7 @@ class PrestacaoController extends Controller
                 'acerto_dono' => false, 'acerto_dono_em' => null, 'acerto_dono_por' => null,
                 'acerto_lote' => null, 'prestacao_id' => null,
             ]);
+            Pagamento::where('prestacao_id', $prestacao->id)->where('modulo', 'avulso')->where('momento', 'cadastro')->update(['prestacao_id' => null]); // avulsos voltam a pendente
             Pagamento::where('prestacao_id', $prestacao->id)->where('estornado', false)->update(['estornado' => true]);
             $prestacao->desfeita = true;
             $prestacao->desfeita_em = now();
@@ -227,11 +237,49 @@ class PrestacaoController extends Controller
                 'acerto_dono' => false, 'acerto_dono_em' => null, 'acerto_dono_por' => null,
                 'acerto_lote' => null, 'prestacao_id' => null,
             ]);
+            Pagamento::where('prestacao_id', $prestacao->id)->where('modulo', 'avulso')->where('momento', 'cadastro')->update(['prestacao_id' => null]); // avulsos voltam a pendente
             Pagamento::where('prestacao_id', $prestacao->id)->where('estornado', false)->update(['estornado' => true]);
             $prestacao->delete();
         });
         \Illuminate\Support\Facades\Log::info('Prestação excluída', ['numero' => $num, 'por' => auth()->id(), 'empresa' => Tenant::id()]);
         return back()->with('ok', 'Prestação #'.$num.' excluída: passagens voltaram para em aberto e os pagamentos foram estornados.');
+    }
+
+    /**
+     * Lança entrada/saída avulsa DENTRO de uma prestação já fechada (o operador esqueceu de lançar antes).
+     * Entrada aumenta o que é devido ao proprietário; saída diminui. O saldo/status é recalculado.
+     */
+    public function avulso(Request $request, Prestacao $prestacao)
+    {
+        $this->gatePrest($prestacao);
+        abort_unless($request->user()->podeModulo('avulso') || $request->user()->caixaTodos(), 403, 'Sem permissão para lançar avulso.');
+        if ($prestacao->desfeita) return back()->with('erro', 'Prestação desfeita.');
+        $data = $request->validate([
+            'tipo_mov' => 'required|in:entrada,saida',
+            'valor' => 'required|string|max:20',
+            'meio' => 'required|in:dinheiro,pix,deposito,debito,credito',
+            'descricao' => 'required|string|max:200',
+        ], [], ['descricao' => 'motivo']);
+        $valor = $this->parseValor($data['valor']);
+        if ($valor <= 0) return back()->with('erro', 'Informe um valor válido.');
+
+        DB::transaction(function () use ($prestacao, $data, $valor) {
+            Pagamento::create([
+                'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
+                'embarcacao_id' => $prestacao->embarcacao_id, 'viagem_id' => $prestacao->viagem_id,
+                'data_viagem' => $prestacao->data_viagem ? \Illuminate\Support\Carbon::parse($prestacao->data_viagem)->toDateString() : null,
+                'meio' => $data['meio'], 'valor' => $valor, 'user_id' => auth()->id(),
+                'momento' => 'cadastro', 'tipo_mov' => $data['tipo_mov'],
+                'categoria' => null, 'descricao' => $data['descricao'],
+                'acerto_conta' => true, 'acerto_pct' => 0, 'prestacao_id' => $prestacao->id,
+            ]);
+            $novo = (float) $prestacao->total_devido + ($data['tipo_mov'] === 'entrada' ? $valor : -$valor);
+            $prestacao->total_devido = max(0.0, round($novo, 2));
+            $prestacao->recalcularSaldo();
+            $prestacao->save();
+        });
+
+        return back()->with('ok', ($data['tipo_mov'] === 'entrada' ? 'Entrada' : 'Saída').' avulsa de R$ '.number_format($valor, 2, ',', '.').' lançada na prestação #'.$prestacao->numero.'.');
     }
 
     /** JSON: vendas de balcão ainda em aberto de um transporte (modal "Ver vendas" da Prestação de Contas). */
@@ -294,6 +342,7 @@ class PrestacaoController extends Controller
             ]);
             if ($lotes) Pagamento::whereIn('acerto_lote', $lotes)->where('estornado', false)->update(['estornado' => true]);
             if ($prestIds) {
+                Pagamento::whereIn('prestacao_id', $prestIds)->where('modulo', 'avulso')->where('momento', 'cadastro')->update(['prestacao_id' => null]);
                 Pagamento::whereIn('prestacao_id', $prestIds)->where('estornado', false)->update(['estornado' => true]);
                 Prestacao::whereIn('id', $prestIds)->update(['desfeita' => true, 'desfeita_em' => now(), 'desfeita_por' => auth()->id()]);
             }
@@ -308,7 +357,9 @@ class PrestacaoController extends Controller
         $this->gatePrest($prestacao);
         $prestacao->load(['embarcacao', 'fechadaPor']);
         $passagens = Passagem::where('prestacao_id', $prestacao->id)->orderBy('id')->get(['id', 'numero', 'comprador_nome', 'total', 'data_viagem', 'origem', 'destino']);
-        $pagamentos = Pagamento::where('prestacao_id', $prestacao->id)->orderBy('id')->get(['id', 'valor', 'meio', 'tipo_mov', 'categoria', 'estornado', 'created_at']);
+        $todosPg = Pagamento::where('prestacao_id', $prestacao->id)->with('user:id,name')->orderBy('id')->get();
+        $avulsosPrest = $todosPg->filter(fn ($x) => $x->modulo === 'avulso' && $x->momento === 'cadastro' && ! $x->estornado)->values();
+        $pagamentos = $todosPg->reject(fn ($x) => $x->modulo === 'avulso' && $x->momento === 'cadastro')->values();
         // Vendas de AGENTE EXTERNO das mesmas viagens: a agência não paga; é o proprietário que cobra do agente.
         $datas = $prestacao->data_viagem
             ? [\Illuminate\Support\Carbon::parse($prestacao->data_viagem)->toDateString()]
@@ -327,6 +378,6 @@ class PrestacaoController extends Controller
                     'pendente' => round((float) $g->where('acerto_dono', false)->sum('acerto_empresa_valor'), 2),
                 ])->values();
         }
-        return view('prestacoes.detalhe', compact('prestacao', 'passagens', 'pagamentos', 'agentes'));
+        return view('prestacoes.detalhe', compact('prestacao', 'passagens', 'pagamentos', 'agentes', 'avulsosPrest'));
     }
 }

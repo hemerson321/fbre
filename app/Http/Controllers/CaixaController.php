@@ -243,6 +243,9 @@ class CaixaController extends Controller
                     $ag = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNotNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
                         ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
                         ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total),0) as bruto, COALESCE(SUM(acerto_empresa_valor),0) as repasse')->first();
+                    $avP = \App\Models\Pagamento::where('modulo', 'avulso')->where('momento', 'cadastro')->where('estornado', false)->where('embarcacao_id', $e->id)->whereNull('prestacao_id')
+                        ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+                        ->selectRaw("COALESCE(SUM(CASE WHEN tipo_mov='entrada' THEN valor ELSE 0 END),0) as e, COALESCE(SUM(CASE WHEN tipo_mov='saida' THEN valor ELSE 0 END),0) as s")->first();
                     $deb = round(
                         (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
                         - (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
@@ -254,9 +257,9 @@ class CaixaController extends Controller
                     $cartao = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsDono)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
                     $credProp = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsDono)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
                     $despesas = round($comissao + $deb + $cartao + $credProp, 2);
-                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'bruto' => (float) $p->bruto, 'comissao' => $comissao, 'valor' => (float) $p->v, 'debito' => $deb, 'cartao' => $cartao, 'credProp' => $credProp, 'despesas' => $despesas, 'liquidoPrest' => round((float) $p->bruto - $despesas, 2), 'liquido' => round((float) $p->v - $deb, 2), 'dono' => optional($e->dono)->name ?? $e->dono_nome,
+                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'bruto' => (float) $p->bruto, 'comissao' => $comissao, 'valor' => (float) $p->v, 'debito' => $deb, 'cartao' => $cartao, 'credProp' => $credProp, 'despesas' => $despesas, 'liquidoPrest' => round((float) $p->bruto - $despesas, 2), 'liquido' => round((float) $p->v - $deb + (float) $avP->e - (float) $avP->s, 2), 'avE' => (float) $avP->e, 'avS' => (float) $avP->s, 'dono' => optional($e->dono)->name ?? $e->dono_nome,
                         'qtdAg' => (int) $ag->qtd, 'brutoAg' => (float) $ag->bruto, 'repasseAg' => (float) $ag->repasse];
-                })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0 || $x->qtdAg > 0)->values();
+                })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0 || $x->qtdAg > 0 || $x->avE > 0 || $x->avS > 0)->values();
         }
 
         // Prestação GERAL do filtro: soma as passagens + avulsos do(s) transporte(s) do filtro.

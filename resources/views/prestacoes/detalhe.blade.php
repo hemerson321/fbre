@@ -84,6 +84,27 @@
   </div>
   @endif
 
+  @php $avP = $avulsosPrest ?? collect(); $avPE = (float) $avP->where('tipo_mov','entrada')->sum('valor'); $avPS = (float) $avP->where('tipo_mov','saida')->sum('valor'); @endphp
+  <div class="card overflow-hidden">
+    <div class="p-3 border-b bg-slate-50 font-bold text-sm text-slate-600 flex items-center justify-between gap-2 flex-wrap">
+      <span>↕️ Entradas e saídas avulsas desta prestação</span>
+      <span class="text-[12px] font-semibold"><span class="text-emerald-700">Entradas R$ {{ number_format($avPE,2,',','.') }}</span> · <span class="text-rose-600">Saídas R$ {{ number_format($avPS,2,',','.') }}</span></span>
+    </div>
+    <div class="divide-y text-sm">
+      @forelse($avP as $av)
+      <div class="flex items-center justify-between gap-2 p-3">
+        <div>
+          <div class="font-medium">{{ trim(($av->categoria ? $av->categoria.' · ' : '').($av->descricao ?? ''), ' ·') ?: '—' }}</div>
+          <div class="text-[11px] text-slate-400">{{ optional($av->created_at)->format('d/m/Y H:i') }} · {{ $av->meio }} · {{ optional($av->user)->name ?? '—' }}</div>
+        </div>
+        <div class="font-bold whitespace-nowrap {{ $av->tipo_mov==='saida' ? 'text-rose-600' : 'text-emerald-700' }}">{{ $av->tipo_mov==='saida' ? '−' : '+' }} R$ {{ number_format($av->valor,2,',','.') }}</div>
+      </div>
+      @empty
+      <div class="p-3 text-center text-slate-400">Nenhuma entrada ou saída avulsa nesta prestação.</div>
+      @endforelse
+    </div>
+  </div>
+
   <div class="card overflow-hidden">
     <div class="p-3 border-b bg-slate-50 font-bold text-sm text-slate-600">💳 Lançamentos (comprovantes)</div>
     <div class="divide-y text-sm">
@@ -101,4 +122,7 @@
     </div>
   </div>
 </div>
+@if(request()->boolean('imprimir'))
+<script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 400); });</script>
+@endif
 @endsection
