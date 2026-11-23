@@ -464,6 +464,12 @@
       <span class="chip bg-amber-100 text-amber-700">reservando agora</span>
       <span class="chip" style="background:color-mix(in srgb,var(--cor1) 15%,white);color:var(--cor1)">selecionada</span>
     </div>
+    <div class="flex flex-wrap items-center gap-1.5 text-xs mb-2" x-show="temLayout" x-cloak>
+      <span class="chip bg-emerald-100 text-emerald-700 font-bold" x-text="'✅ Livres: '+contPoltronas.livre+' de '+contPoltronas.total"></span>
+      <span class="chip bg-slate-100 text-slate-600" x-show="contPoltronas.janela>0" x-text="'🪟 janela '+contPoltronas.janela"></span>
+      <span class="chip bg-slate-100 text-slate-600" x-show="contPoltronas.corredor>0" x-text="'🚶 corredor '+contPoltronas.corredor"></span>
+      <span class="chip bg-slate-100 text-slate-600" x-show="contPoltronas.meio>0" x-text="'↔️ meio '+contPoltronas.meio"></span>
+    </div>
     <template x-if="temLayout">
       <div class="mx-auto" style="max-width:360px">
         <div class="text-center text-[11px] font-bold text-slate-400 mb-1">⬆ PROA (frente)</div>
@@ -990,6 +996,22 @@
             return { esq:(p[0]||'').trim().split(/\s+/).filter(Boolean), dir:(p[1]||'').trim().split(/\s+/).filter(Boolean) };
           })
         ).filter(b=>b.length);
+      },
+
+      // contagem de poltronas livres (total + por tipo), pra mostrar no topo do mapa
+      get contPoltronas(){
+        const occ=new Set((this.ocupadas||[]).map(String));
+        const res=new Set((this.reservadas||[]).map(String));
+        const trv=new Set((this.travadas||[]).map(t=>String(t.poltrona)));
+        const c={total:0,livre:0,janela:0,meio:0,corredor:0};
+        const classe=(seats,lado)=>{ const n=seats.length; return seats.map((s,i)=>{ let t; if(n===1)t='janela'; else if(lado==='esq')t=(i===0?'janela':(i===n-1?'corredor':'meio')); else t=(i===n-1?'janela':(i===0?'corredor':'meio')); return {s:String(s),t}; }); };
+        (this.blocosPoltrona||[]).forEach(bloco=>bloco.forEach(row=>{
+          [...classe(row.esq||[],'esq'), ...classe(row.dir||[],'dir')].forEach(({s,t})=>{
+            c.total++;
+            if(!occ.has(s)&&!res.has(s)&&!trv.has(s)){ c.livre++; if(c[t]!==undefined)c[t]++; }
+          });
+        }));
+        return c;
       },
 
       // ---- totais ----
