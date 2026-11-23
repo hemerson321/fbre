@@ -12,11 +12,11 @@
       : ['#059669', '#065f46', '💰', ($verTodos ? 'Caixa geral' : 'Meu caixa'), 'Dinheiro da agência · entradas, saídas e comissão']);
   $abertoTotal = $focoPrest ? (float) $donosBalcao->sum(fn ($d) => max(0, (float) $d->liquido)) : 0;
 @endphp
-<div class="space-y-4" style="--cor1:{{ $tema[0] }}">
+<div id="rt-root" class="space-y-4" style="--cor1:{{ $tema[0] }}">
 <div class="rounded-2xl px-4 py-3.5 text-white flex items-center justify-between gap-3 flex-wrap shadow-md" style="background:linear-gradient(110deg, {{ $tema[0] }}, {{ $tema[1] }})">
   <div class="flex items-center gap-3 min-w-0">
     <div class="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center text-2xl shrink-0">{{ $tema[2] }}</div>
-    <div class="min-w-0"><h1 class="text-xl font-extrabold leading-tight">{{ $tema[3] }}</h1><div class="text-[12px] opacity-85">{{ $tema[4] }}</div></div>
+    <div class="min-w-0"><h1 class="text-xl font-extrabold leading-tight flex items-center gap-2">{{ $tema[3] }} <span data-rt-live class="no-print inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition"><span class="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>ao vivo</span></h1><div class="text-[12px] opacity-85">{{ $tema[4] }}</div></div>
   </div>
   @if($focoPrest)
   <div class="flex items-center gap-2 flex-wrap">
@@ -148,6 +148,54 @@
 @endif
 
 @if($focoPrest)
+<div x-data="{ open:false, carregando:false, nome:'', linhas:[], total:0, dono:0, comissao:0, erro:'',
+      async ver(d){ this.open=true; this.carregando=true; this.erro=''; this.nome=d.nome; this.linhas=[];
+        try{ const u=new URL(@js(url('/prestacoes/pendentes'))+'/'+d.id, location.origin);
+          const vg=@js((string) ($viagemId ?? '')), dv=@js((string) ($dataViagem ?? ''));
+          if(vg)u.searchParams.set('viagem_id',vg); if(dv)u.searchParams.set('data_viagem',dv);
+          const r=await fetch(u,{headers:{Accept:'application/json'},credentials:'same-origin'}); const j=await r.json();
+          this.linhas=j.linhas||[]; this.total=j.total||0; this.dono=j.dono||0; this.comissao=j.comissao||0;
+        }catch(e){ this.erro='Não foi possível carregar as vendas.'; }
+        this.carregando=false; },
+      m(n){ return 'R$ '+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); } }"
+     @ver-vendas.window="ver($event.detail)" @keydown.escape.window="open=false">
+  <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3" @click="open=false">
+    <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden shadow-2xl" @click.stop>
+      <div class="px-4 py-3 text-white flex items-center justify-between" style="background:linear-gradient(110deg,#d97706,#92400e)">
+        <div><div class="text-[11px] uppercase tracking-wide opacity-80">Vendas em aberto desta prestação</div><div class="font-extrabold text-lg leading-tight">🚤 <span x-text="nome"></span></div></div>
+        <button type="button" class="rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5 text-sm font-bold" @click="open=false">✕ Fechar</button>
+      </div>
+      <div class="flex-1 overflow-auto">
+        <div x-show="carregando" class="p-8 text-center text-slate-400">Carregando…</div>
+        <div x-show="erro" class="p-8 text-center text-rose-600" x-text="erro"></div>
+        <table x-show="!carregando && !erro" class="w-full text-sm">
+          <thead class="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400"><tr>
+            <th class="text-left p-2">Bilhete</th><th class="text-left p-2">Comprador / passageiros</th><th class="text-left p-2">Trecho</th><th class="text-left p-2">Viagem</th><th class="text-left p-2">Vendido em</th><th class="text-left p-2">Operador</th><th class="text-right p-2">Valor</th>
+          </tr></thead>
+          <tbody class="divide-y">
+            <template x-for="l in linhas" :key="l.id">
+              <tr>
+                <td class="p-2 font-semibold whitespace-nowrap"><a :href="l.url" target="_blank" class="text-indigo-600 hover:underline" x-text="l.numero"></a></td>
+                <td class="p-2"><div class="font-medium" x-text="l.comprador || '—'"></div><div class="text-[11px] text-slate-400" x-text="l.pax"></div></td>
+                <td class="p-2 whitespace-nowrap text-slate-500" x-text="l.trecho"></td>
+                <td class="p-2 whitespace-nowrap text-slate-500" x-text="l.viagem"></td>
+                <td class="p-2 whitespace-nowrap text-slate-500" x-text="l.vendido"></td>
+                <td class="p-2 whitespace-nowrap text-slate-500" x-text="l.operador"></td>
+                <td class="p-2 text-right font-bold whitespace-nowrap" x-text="m(l.total)"></td>
+              </tr>
+            </template>
+            <tr x-show="!linhas.length"><td colspan="7" class="p-6 text-center text-slate-400">Nenhuma venda em aberto.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="border-t bg-slate-50 px-4 py-3 flex flex-wrap items-center justify-end gap-x-6 gap-y-1 text-sm">
+        <span class="text-slate-500">Vendido <b class="text-slate-800" x-text="m(total)"></b></span>
+        <span class="text-slate-500">Comissão da agência <b class="text-indigo-700" x-text="m(comissao)"></b></span>
+        <span class="text-slate-500">Parte do proprietário <b class="text-amber-700 text-base" x-text="m(dono)"></b></span>
+      </div>
+    </div>
+  </div>
+</div>
 @if($donosBalcao->isNotEmpty())
 <div class="card overflow-hidden border border-amber-200">
   <div class="p-3 border-b bg-amber-50 flex items-center justify-between flex-wrap gap-2">
@@ -160,6 +208,8 @@
       <div class="min-w-0">
         <div class="font-semibold truncate">🚤 {{ $d->emb->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· proprietário {{ $d->dono }}</span>@endif</div>
         <div class="text-xs text-slate-500">{{ $d->qtd }} passagem(ns) de balcão · vendido <b>R$ {{ number_format($d->bruto ?? 0,2,',','.') }}</b> · comissão {{ (int)$d->emb->comissao_empresa_pct }}% = <b class="text-indigo-700">R$ {{ number_format($d->comissao ?? 0,2,',','.') }}</b></div>
+        <button type="button" class="mt-1 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                @click="$dispatch('ver-vendas', { id: {{ $d->emb->id }}, nome: @js($d->emb->nome) })">👁 Ver vendas ({{ $d->qtd }})</button>
         @if($d->debito > 0)<div class="text-[11px] text-rose-600 font-semibold mt-0.5">↩ proprietário deve R$ {{ number_format($d->debito,2,',','.') }} (devolução já acertada) — abate no acerto</div>@endif
       </div>
       <div class="flex items-center gap-2">
@@ -197,7 +247,7 @@
             </div>
           </template>
           <template x-if="dividir">
-            <div class="rounded-xl border border-slate-200 p-2 space-y-1 bg-slate-50">
+            <div data-rt-hold class="rounded-xl border border-slate-200 p-2 space-y-1 bg-slate-50">
               <template x-for="(l,i) in linhas" :key="i">
                 <div class="flex items-center gap-1">
                   <select x-model="l.meio" class="rounded-lg border border-slate-300 bg-white px-1.5 py-1 text-xs">
@@ -426,5 +476,5 @@
 </div>
 @endunless
 </div>
-@include('partials.pulse')
+@include('partials.pulse', ['soft' => '#rt-root', 'intervalo' => 5000])
 @endsection

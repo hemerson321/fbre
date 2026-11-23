@@ -213,6 +213,38 @@ class PrestacaoController extends Controller
         return back()->with('ok', 'Prestação #'.$prestacao->numero.' desfeita: passagens voltaram para em aberto e os lançamentos foram estornados.');
     }
 
+    /** JSON: vendas de balcão ainda em aberto de um transporte (modal "Ver vendas" da Prestação de Contas). */
+    public function pendentes(Request $request, Embarcacao $embarcacao)
+    {
+        $this->gate($embarcacao);
+        $pct = (int) $embarcacao->comissao_empresa_pct;
+        $viagemId = $request->input('viagem_id') ?: null;
+        $dataViagem = $request->input('data_viagem') ?: null;
+        $ps = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)
+            ->where('acerto_dono', false)->whereNull('revendedor_id')
+            ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
+            ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem))
+            ->with(['operador:id,name', 'passageiros' => fn ($q) => $q->where('cancelado', false)->select('id', 'passagem_id', 'nome', 'poltrona')])
+            ->orderByDesc('id')->limit(500)->get();
+        $total = round((float) $ps->sum('total'), 2);
+        $dono = round($total * (100 - $pct) / 100, 2);
+        return response()->json([
+            'total' => $total, 'dono' => $dono, 'comissao' => round($total - $dono, 2),
+            'linhas' => $ps->map(fn ($p) => [
+                'id' => $p->id,
+                'numero' => $p->numeroFormatado(),
+                'url' => \Illuminate\Support\Facades\Route::has('passagens.show') ? route('passagens.show', $p) : '#',
+                'comprador' => $p->comprador_nome,
+                'pax' => $p->passageiros->map(fn ($x) => trim($x->nome.($x->poltrona ? ' ('.$x->poltrona.')' : '')))->filter()->implode(', '),
+                'trecho' => $p->origem.' → '.$p->destino,
+                'viagem' => $p->data_viagem ? \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') : '—',
+                'vendido' => optional($p->created_at)->format('d/m/Y H:i'),
+                'operador' => optional($p->operador)->name ?? '—',
+                'total' => (float) $p->total,
+            ])->values(),
+        ]);
+    }
+
     /**
      * Desfaz o acerto de um transporte/viagem direto no relatório (serve p/ acertos antigos,
      * sem depender do card de "Desfazer acerto" por período). Reverte passagens + estorna lançamentos.

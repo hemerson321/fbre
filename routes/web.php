@@ -232,6 +232,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/prestacoes/{prestacao}/pagar', [PrestacaoController::class, 'pagar'])->name('prestacoes.pagar')->middleware('perm:caixa');
     Route::post('/prestacoes/{prestacao}/desfazer', [PrestacaoController::class, 'desfazer'])->name('prestacoes.desfazer')->middleware('perm:caixa');
     Route::post('/prestacoes/desfazer-transporte/{embarcacao}', [PrestacaoController::class, 'desfazerTransporte'])->name('prestacoes.desfazer-transporte')->middleware('perm:caixa');
+    Route::get('/prestacoes/pendentes/{embarcacao}', [PrestacaoController::class, 'pendentes'])->name('prestacoes.pendentes')->middleware('perm:caixa');
     Route::get('/prestacoes/{prestacao}', [PrestacaoController::class, 'detalhe'])->name('prestacoes.detalhe')->middleware('perm:caixa');
     Route::get('/meu-relatorio', [\App\Http\Controllers\CaixaController::class, 'relatorio'])->name('relatorio.meu')->middleware('perm:relatorio');
     Route::get('/meu-relatorio/exportar', [RelatorioController::class, 'exportar'])->name('relatorio.meu.exportar')->middleware('perm:relatorio');
