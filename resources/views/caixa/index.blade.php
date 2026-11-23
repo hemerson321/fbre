@@ -71,7 +71,7 @@
 @if($viagemId)<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Mostrando o caixa da viagem selecionada (o período acima é ignorado).</div>@endif
 
 <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2">
-  <div class="card p-3 text-white" style="background:var(--cor1)"><div class="text-[11px] uppercase opacity-70">Caixa (líquido)</div><div class="text-2xl font-extrabold">R$ {{ number_format($total,2,',','.') }}</div><div class="text-[10px] opacity-70">entradas {{ number_format($entradas,2,',','.') }} · saídas {{ number_format($saidas,2,',','.') }}</div></div>
+  <div class="card p-3 text-white" style="background:var(--cor1)"><div class="text-[11px] uppercase opacity-70">Caixa líquido (agência)</div><div class="text-2xl font-extrabold">R$ {{ number_format($liquidoAgencia ?? $total,2,',','.') }}</div><div class="text-[10px] opacity-70">comissão {{ number_format($comissaoAgencia ?? 0,2,',','.') }} · saídas {{ number_format($saidas,2,',','.') }}</div></div>
   <div class="card p-3" style="border:2px solid var(--cor1)"><div class="text-[11px] uppercase text-slate-500">💰 Vendas (bruto)</div><div class="text-2xl font-extrabold" style="color:var(--cor1)">R$ {{ number_format($vendasBruto ?? 0,2,',','.') }}</div><div class="text-[10px] text-slate-400">só balcão (operadores)</div></div>
   @foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)
     <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m]->valor ?? 0,2,',','.') }}</div><div class="text-xs text-slate-400">{{ $porMeio[$m]->qtd ?? 0 }} lançamentos</div></div>
@@ -98,6 +98,10 @@
     <div class="text-[11px] text-indigo-600">{{ $prestacaoTransporte->qtd }} passagem(ns) no filtro</div>
   </div>
   <div class="p-3">
+    <div class="grid grid-cols-2 gap-2 max-w-md mx-auto mb-3">
+      <div class="rounded-xl bg-slate-900 text-white p-3 text-center"><div class="text-[10px] uppercase tracking-wide opacity-70">Total de Vendas</div><div class="text-xl font-extrabold">R$ {{ number_format($prestacaoTransporte->bruto,2,',','.') }}</div></div>
+      <div class="rounded-xl bg-indigo-600 text-white p-3 text-center"><div class="text-[10px] uppercase tracking-wide opacity-80">Comissão da Agência{{ !is_null($prestacaoTransporte->pct) ? ' ('.$prestacaoTransporte->pct.'%)' : '' }}</div><div class="text-xl font-extrabold">R$ {{ number_format($prestacaoTransporte->comissao,2,',','.') }}</div></div>
+    </div>
     <div class="max-w-md mx-auto text-sm">
       <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacaoTransporte->bruto,2,',','.') }}</b></div>
       <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Comissão de Agência{{ !is_null($prestacaoTransporte->pct) ? ' ('.$prestacaoTransporte->pct.'%)' : '' }}</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->comissao,2,',','.') }}</b></div>

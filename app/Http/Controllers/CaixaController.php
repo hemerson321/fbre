@@ -257,6 +257,7 @@ class CaixaController extends Controller
 
         // Prestação GERAL do filtro: soma TODAS as passagens do filtro atual (comissão certa por transporte).
         $prestacaoTransporte = null;
+        $comissaoAgencia = 0.0; $ownerShareG = 0.0; $vendasPassG = 0.0;
         $pqG = \App\Models\Passagem::where('cancelada', false)->where('transferida', false)
             ->when(! $ehRelatorio, fn ($q) => $q->whereNull('revendedor_id')) // caixa: sem agente externo (só aparece no relatório)
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
@@ -268,6 +269,7 @@ class CaixaController extends Controller
             $pcts = \App\Models\Embarcacao::whereIn('id', $embIdsG)->pluck('comissao_empresa_pct', 'id');
             $brutoG = round((float) $passG->sum('total'), 2);
             $comissaoG = round((float) $passG->sum(fn ($p) => (float) $p->total * (int) ($pcts[$p->embarcacao_id] ?? 0) / 100), 2);
+            $comissaoAgencia = $comissaoG; $vendasPassG = $brutoG; $ownerShareG = round($brutoG - $comissaoG, 2);
             $idsG = $passG->pluck('id');
             $cartaoG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
             $credPropG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
@@ -287,6 +289,10 @@ class CaixaController extends Controller
                 'liquido' => round($brutoG - $despesasG, 2),
             ];
         }
+
+        // Líquido da AGÊNCIA = entradas - parte dos donos (passagens) - saídas próprias. Comissão é o que fica pra agência.
+        $entradasVal = (float) $porMeio->sum('valor');
+        $liquidoAgencia = round($entradasVal - $ownerShareG - (float) $saidas, 2);
 
         // Acertos recentes (balcão + agente) que podem ser DESFEITOS — só quando a empresa libera.
         $permiteDesfazer = (bool) Tenant::empresa()->config('desfazer_acerto');
@@ -360,7 +366,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'porCategoria'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'porCategoria'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 
