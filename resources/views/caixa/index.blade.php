@@ -550,11 +550,6 @@
 @if($donosBalcao->isEmpty())
 <div class="card p-6 text-center text-slate-500"><div class="text-3xl mb-1">✅</div><div class="font-semibold">Nenhuma prestação em aberto{{ $transporteId ? ' para este transporte' : '' }}.</div><div class="text-[12px] text-slate-400">As vendas novas de balcão aparecem aqui para você fechar com o proprietário.</div></div>
 @endif
-@if(($podeDesfazerTransporte ?? false))
-<div class="card overflow-hidden">
-  @include('caixa._desfazer_transporte')
-</div>
-@endif
 @endif
 
 @unless($focoPrest)
