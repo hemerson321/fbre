@@ -79,25 +79,28 @@
   $chipsD = $chipsD->sort()->values();
   $pendTot = (int) $pendD->sum('qtd');
 @endphp
-<div class="card px-4 py-3 no-print">
-  <div class="flex items-center justify-between gap-2 flex-wrap">
-    <div class="text-sm text-slate-600">Prestação de <b class="text-slate-900">🚤 {{ optional($tSel)->nome ?? 'Transporte' }}</b> · <b class="text-slate-900">{{ $dataViagem ? 'viagem de '.\Illuminate\Support\Carbon::parse($dataViagem)->format('d/m/Y') : 'todas as viagens' }}</b></div>
-    <a href="{{ route('caixa.index', ['foco' => 'prestacoes']) }}" class="btn btn-ghost btn-sm">🚤 Trocar transporte</a>
+<form method="get" action="{{ route('caixa.index') }}" class="card p-3 flex flex-wrap gap-3 items-end no-print">
+  <input type="hidden" name="foco" value="prestacoes">
+  <div class="min-w-[220px] flex-1 sm:flex-none">
+    <label class="label">Transporte</label>
+    <select name="transporte_id" class="input !min-h-[42px]" onchange="this.form.data_viagem.value=''; this.form.submit()">
+      @foreach($transportes->filter(fn ($t) => ! empty($t->dono_id)) as $t)
+        <option value="{{ $t->id }}" @selected((int) $transporteId === (int) $t->id)>🚤 {{ $t->nome }}</option>
+      @endforeach
+    </select>
   </div>
-  <div class="mt-2.5 flex items-center gap-2 flex-wrap">
-    <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Fechar:</span>
-    <a href="{{ route('caixa.index', ['foco' => 'prestacoes', 'transporte_id' => $transporteId]) }}"
-       class="rounded-full border px-3 py-1.5 text-[13px] font-bold whitespace-nowrap transition"
-       style="{{ ! $dataViagem ? 'background:'.$tema[0].';color:#fff;border-color:'.$tema[0] : 'background:#fff;color:#334155;border-color:#e2e8f0' }}">Todas as viagens <span class="opacity-80 font-semibold">· {{ $pendTot }} em aberto</span></a>
-    @foreach($chipsD as $cd)
-      @php $sel = (string) $dataViagem === $cd; $pq = $pendD[$cd] ?? null; @endphp
-      <a href="{{ route('caixa.index', ['foco' => 'prestacoes', 'transporte_id' => $transporteId, 'data_viagem' => $cd]) }}"
-         class="rounded-full border px-3 py-1.5 text-[13px] font-semibold whitespace-nowrap transition"
-         style="{{ $sel ? 'background:'.$tema[0].';color:#fff;border-color:'.$tema[0] : 'background:#fff;color:#334155;border-color:#e2e8f0' }}">🗓 {{ \Illuminate\Support\Carbon::parse($cd)->format('d/m') }} <span class="opacity-75">· {{ $pq ? $pq->qtd.' em aberto' : 'sem pendência' }}</span></a>
-    @endforeach
-    @if($chipsD->isEmpty())<span class="text-[12px] text-slate-400">nenhuma viagem com venda em aberto</span>@endif
+  <div class="min-w-[240px] flex-1 sm:flex-none">
+    <label class="label">Data da viagem</label>
+    <select name="data_viagem" class="input !min-h-[42px]" onchange="this.form.submit()">
+      <option value="">Todas as viagens · {{ $pendTot }} em aberto</option>
+      @foreach($datasViagem as $dv)
+        @php $dvs = \Illuminate\Support\Carbon::parse($dv)->toDateString(); $pq = $pendD[$dvs] ?? null; @endphp
+        <option value="{{ $dvs }}" @selected((string) ($dataViagem ?? '') === $dvs)>{{ \Illuminate\Support\Carbon::parse($dv)->format('d/m/Y') }}{{ $pq ? ' · '.$pq->qtd.' em aberto' : '' }}</option>
+      @endforeach
+    </select>
   </div>
-</div>
+  <a href="{{ route('caixa.index', ['foco' => 'prestacoes']) }}" class="btn btn-ghost btn-sm ml-auto">← Voltar aos transportes</a>
+</form>
 @endif
 @if($podeAvulso)
 <div x-data="{open:false, tipo:'entrada', emb:'{{ $focoPrest ? (int) $transporteId : '' }}'}" class="no-print">
@@ -136,8 +139,8 @@
 </div>
 @endif
 
+@unless($focoPrest)
 <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
-  @if($focoPrest)<input type="hidden" name="foco" value="prestacoes">@endif
   @if($verTodos)
   <div><label class="label">Operador</label>
     <select name="user_id" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todos</option>
@@ -169,6 +172,7 @@
       @foreach($datasViagem as $dv)@php $dvs=\Illuminate\Support\Carbon::parse($dv)->toDateString(); @endphp<option value="{{ $dvs }}" @selected((string)($dataViagem ?? '')===$dvs)>{{ \Illuminate\Support\Carbon::parse($dv)->format('d/m/Y') }}</option>@endforeach</select></div>
   @endif
 </x-periodo>
+@endunless
 @if($viagemId)<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Mostrando o caixa da viagem selecionada (o período acima é ignorado).</div>@endif
 
 @unless($focoPrest)
