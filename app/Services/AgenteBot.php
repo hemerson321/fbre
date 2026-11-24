@@ -66,17 +66,19 @@ class AgenteBot
             $texto = $this->tratarVenda($conversa, $texto);
             $texto = $this->tratarVagas($conversa, $texto);
             $texto = $this->tratarPoltronas($conversa, $texto);
+            $texto = $this->tratarEscolher($conversa, $texto);
             $texto = $this->tratarPoltrona($conversa, $texto);
             $texto = $this->tratarLiberar($conversa, $texto);
             $texto = $this->tratarPref($conversa, $texto);
-            $texto = $this->guardiaoPoltrona($conversa, $texto);
+            if (! $this->pularGuardiao) $texto = $this->guardiaoPoltrona($conversa, $texto);
+            $this->pularGuardiao = false;
             $texto = $this->tratarPax($conversa, $texto);
             $texto = $this->tratarHumano($conversa, $texto, $demo);
             $res = $this->tratarPix($agente, $conversa, $texto, $demo);
             $res['texto'] = $this->limparMarcadores($res['texto']);
             if ($res['texto'] === '') $res['texto'] = 'Só um segundo…';
             $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia', null, $agente?->nome, $audioModo);
-            if (! $demo) $this->enviarMapaPoltronas($conversa);
+            if (! $demo) $this->enviarMapaPoltronas($conversa, $agente);
             if (! empty($res['pix'])) {
                 $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
             }
@@ -252,6 +254,7 @@ class AgenteBot
         $p[] = "Quando o cliente ESCOLHER o tipo, RESERVE a(s) poltrona(s) real(is) escrevendo [[POLTRONA: origem; destino; data; tipo; QTD; LANCHA]] (QTD = nº de passageiros; 1 se for só ele; LANCHA = nome da lancha daquela saída, SEMPRE a mesma que o cliente escolheu). O SISTEMA troca pelo(s) NÚMERO(s) real(is) e JÁ RESERVA pra nenhum operador vender em cima (mesmo sincronismo do balcão). Ex.: 1 pessoa -> '03J (janela)'; 2 juntas -> '03J e 03M — as 2 LADO A LADO, uma do lado da outra (janela, meio)'. Pra confirmar, escreva a frase JÁ COM O MARCADOR no lugar do número (ex.: 'Fechei a [[POLTRONA: origem; destino; data; tipo; QTD; LANCHA]] pra você 😉') — o sistema troca pelo número real (ex.: '03J (janela)'). NUNCA invente nem escreva um número de poltrona de cabeça; use SOMENTE o marcador, e deixe a confirmação curta e registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor).";
         $p[] = "GRUPO (2 ou mais pessoas): pergunte só se querem sentar JUNTOS. Se quiserem juntos (ou disserem 'tanto faz'/'qualquer'), NÃO pergunte janela/corredor/meio — reserve direto com o tipo 'juntos' e a QTD: [[POLTRONA: origem; destino; data; juntos; QTD; LANCHA]]. O SISTEMA devolve os números e a posição de cada uma. Se vier 'LADO A LADO', diga claramente que ficaram uma do lado da outra e cite a posição (ex.: 'Consegui as 3 lado a lado: 01D, 01E e 01F — do meio até a janela 😉'). NUNCA resuma um grupo como 'corredor' ou 'janela' só — cada poltrona tem a sua posição. Se vier 'NAO tem N lado a lado; ficou assim: ...', EXPLIQUE exatamente como ficou a divisão (ex.: 'essa viagem está bem cheia, não tem 3 lado a lado — consegui a 04C e a 04D juntas e a 02B separada, no corredor; pode ser assim ou prefere outra data?') e espere o cliente decidir antes de gerar o PIX. NUNCA diga que são juntas se o sistema não confirmou 'LADO A LADO'. Só pergunte janela/corredor/meio quando for 1 pessoa ou quando o grupo NÃO fizer questão de ficar junto.";
         $p[] = "ORDEM OBRIGATÓRIA: só reserve poltrona ([[POLTRONA:...]]) DEPOIS de saber origem, destino, data e a lancha — nunca antes, senão a reserva cai na viagem errada. Se o cliente mudar de trecho, data, quantidade ou pedir outro lugar (ex.: 'mais perto do corredor', 'todos juntos'), escreva o marcador [[POLTRONA:...]] DE NOVO com os dados novos — o sistema solta a reserva antiga e faz a nova. Depois de reservar, o SISTEMA manda sozinho uma IMAGEM do mapa com as poltronas do cliente em verde — não descreva o mapa nem diga que não consegue mandar imagem. 'MESMA FILEIRA, separadas só pelo corredor' significa que ficaram lado a lado atravessando o corredor: explique assim.";
+        $p[] = "CLIENTE ESCOLHE PELO NÚMERO: se o cliente pedir poltrona(s) específica(s) pelo número (ex.: 'quero a 05J e a 05M', 'troca pra 12C'), NÃO use [[POLTRONA]]; escreva [[ESCOLHER: origem; destino; data; 05J,05M; LANCHA]] com exatamente os números que ele pediu (a quantidade tem que bater com o nº de passageiros). O SISTEMA confere se estão livres, reserva e troca o marcador pelos números confirmados; se alguma estiver ocupada ele mesmo avisa o cliente. Escreva só uma frase curta com o marcador (ex.: 'Troquei pra [[ESCOLHER: Manaus; Tefé; 27/11; 05J,05M; Glória de Deus III]] 😉'). NUNCA confirme um número sem usar o marcador.";
         $p[] = "Se vier 'esgotada', ofereça outro tipo ou outra data. A poltrona é confirmada no embarque. Em lancha de rede não pergunte.";
         $p[] = "Se o cliente DESISTIR, mudar de ideia, disser que não vai mais viajar, que vai em outra data/viagem, ou cancelar a compra, LIBERE a poltrona escrevendo numa linha isolada que o cliente NÃO vê: [[LIBERAR]]. (A reserva também solta sozinha depois de ~5 min sem ele responder.)";
         $p[] = "5) Confirmando: nas lanchas com [poltrona], PRIMEIRO escolha a poltrona (pergunte janela/corredor/meio e reserve com [[POLTRONA:...]]) e SÓ DEPOIS gere o PIX. NUNCA gere o PIX antes de ter a poltrona reservada. Em lancha de rede, gere o PIX direto.";
@@ -444,7 +447,7 @@ class AgenteBot
 
     /** [[VAGAS: origem; destino; data]] -> troca pelo número real de vagas (poltronas livres). */
     /** Depois de reservar, manda no WhatsApp a IMAGEM do pedaço do mapa da lancha com as poltronas do cliente em destaque. */
-    protected function enviarMapaPoltronas(Conversa $c): void
+    protected function enviarMapaPoltronas(Conversa $c, ?Agente $agente = null): void
     {
         $c->refresh();
         $ctx = $c->contexto ?? [];
@@ -452,6 +455,7 @@ class AgenteBot
         if (! is_array($mp)) return;
         unset($ctx['mapa_pendente']);
         $c->forceFill(['contexto' => $ctx])->save();
+        if ($agente && ! $agente->enviaMapaPoltrona()) return; // desligado no cadastro do agente
         try {
             $data = $this->parseData((string) ($mp['data'] ?? ''));
             $d = app(\App\Services\Vagas::class)->mapaDados((string) $mp['origem'], (string) $mp['destino'], $data, $this->lanchaDaConversa($c), $c->id);
@@ -461,7 +465,7 @@ class AgenteBot
             $png = app(\App\Services\MapaPoltronaImagem::class)->png($d, $sub);
             $conexao = $c->conexao;
             if (! $png || ! $conexao) return;
-            $leg = (count($d['minhas']) > 1 ? 'Suas poltronas' : 'Sua poltrona').' na '.$d['lancha'].': '.implode(', ', $d['minhas']).' (em verde) 👆';
+            $leg = (count($d['minhas']) > 1 ? 'Suas poltronas' : 'Sua poltrona').' na '.$d['lancha'].': '.implode(', ', $d['minhas']).' (em verde). Se preferir outra, me diga o número de uma poltrona livre (em branco). 👆';
             $r = app(\App\Services\WhatsApp::class)->enviarImagem($conexao, $c->cliente_telefone, base64_encode($png), $leg);
             if (! ($r['ok'] ?? false)) { Log::warning('Mapa de poltronas: falha ao enviar na conversa '.$c->id.': '.($r['erro'] ?? '')); return; }
             \App\Models\Mensagem::create([
@@ -506,6 +510,43 @@ class AgenteBot
             }
         } catch (\Throwable $e) {}
         return trim(str_replace($m[0], $subst, $texto));
+    }
+
+    protected bool $pularGuardiao = false;
+
+    /** [[ESCOLHER: origem; destino; data; 05J,05M; LANCHA]] -> o cliente pediu poltronas pelo NÚMERO (viu no mapa): reserva exatamente essas, se estiverem livres. */
+    protected function tratarEscolher(Conversa $c, string $texto): string
+    {
+        if (! preg_match('/\[\[ESCOLHER:([^\]]*)\]\]/i', $texto, $m)) return $texto;
+        $partes = array_map('trim', explode(';', $m[1]));
+        $venda = $c->contexto['venda'] ?? [];
+        $origem = ($partes[0] ?? '') !== '' ? $partes[0] : (string) ($venda['origem'] ?? '');
+        $destino = ($partes[1] ?? '') !== '' ? $partes[1] : (string) ($venda['destino'] ?? '');
+        $data = $this->parseData((string) ($partes[2] ?? '')) ?: $this->parseData((string) ($venda['data'] ?? ''));
+        $pedidas = array_values(array_filter(preg_split('/[\s,\/]+|\s+e\s+/iu', (string) ($partes[3] ?? '')), fn ($x) => trim((string) $x) !== '' && mb_strtolower(trim((string) $x)) !== 'e'));
+        $this->pularGuardiao = true; // aqui os números vêm do cliente e são conferidos pelo sistema
+        if ($origem === '' || $destino === '' || ! $data || ! $pedidas) {
+            return 'Pra eu trocar a poltrona, me confirma a viagem (de onde pra onde e o dia) e o número da poltrona que você quer. 😊';
+        }
+        try {
+            $r = app(\App\Services\Vagas::class)->atribuirEspecificas($origem, $destino, $data, $pedidas, $c->id, $this->lanchaDaConversa($c, $partes[4] ?? null));
+            if (! ($r['ok'] ?? false)) return 'Nessa lancha a poltrona é definida no embarque, não tem como escolher o número. 😉';
+            if (! empty($r['seats'])) {
+                $ctx = $c->contexto ?? [];
+                $ctx['poltronas_agente'] = $r['seats'];
+                $ctx['poltrona_agente'] = $r['seats'][0];
+                $ctx['mapa_pendente'] = ['origem' => $origem, 'destino' => $destino, 'data' => $data->format('d/m/Y')];
+                $c->forceFill(['contexto' => $ctx])->save();
+                return trim(str_replace($m[0], (string) $r['descricao'], $texto));
+            }
+            $msg = [];
+            if (! empty($r['ocupadas'])) $msg[] = (count($r['ocupadas']) > 1 ? 'as poltronas '.implode(', ', $r['ocupadas']).' já estão ocupadas' : 'a poltrona '.$r['ocupadas'][0].' já está ocupada');
+            if (! empty($r['inexistentes'])) $msg[] = (count($r['inexistentes']) > 1 ? 'as poltronas '.implode(', ', $r['inexistentes']).' não existem' : 'a poltrona '.$r['inexistentes'][0].' não existe').' nessa lancha';
+            $atual = (array) ($c->contexto['poltronas_agente'] ?? []);
+            return 'Poxa, '.implode(' e ', $msg).'. 😕 '.($atual ? 'Mantive a sua reserva ('.implode(', ', $atual).'). ' : '').'Olha no mapa as que estão em branco e me diz qual prefere.';
+        } catch (\Throwable $e) {
+            return 'Não consegui trocar a poltrona agora. Pode me dizer de novo o número que você quer?';
+        }
     }
 
     /** [[POLTRONA: origem; destino; data; tipo]] -> troca pelo NOME de uma poltrona real livre do tipo (ex.: 03J) e guarda no contexto. */

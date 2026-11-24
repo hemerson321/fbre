@@ -12,7 +12,7 @@ class MapaPoltronaImagem
      * @param array $d ['lancha'=>string,'linhas'=>[[esq[],dir[]],...],'minhas'=>string[],'ocupadas'=>string[]]
      * @return ?string PNG binário (null se não der pra desenhar)
      */
-    public function png(array $d, ?string $subtitulo = null): ?string
+    public function png(array $d, ?string $subtitulo = null, bool $completo = true): ?string
     {
         if (! function_exists('imagecreatetruecolor') || ! function_exists('imagettftext')) return null;
         $fonte = resource_path('fonts/DejaVuSans-Bold.ttf');
@@ -29,18 +29,21 @@ class MapaPoltronaImagem
             foreach (array_merge($ln[0], $ln[1]) as $s) if (in_array(mb_strtolower((string) $s), $minhas, true)) { $com[] = $i; break; }
         }
         if (! $com) return null;
-        $ini = max(0, min($com) - 1);
-        $fim = min(count($linhas) - 1, max($com) + 1);
-        if ($fim - $ini > 9) { $ini = min($com); $fim = min(count($linhas) - 1, $ini + 9); }
+        if ($completo) { $ini = 0; $fim = count($linhas) - 1; } // lancha inteira, igual o operador vê
+        else {
+            $ini = max(0, min($com) - 1);
+            $fim = min(count($linhas) - 1, max($com) + 1);
+            if ($fim - $ini > 9) { $ini = min($com); $fim = min(count($linhas) - 1, $ini + 9); }
+        }
         $vis = array_slice($linhas, $ini, $fim - $ini + 1);
 
         $maxE = 1; $maxD = 0;
         foreach ($linhas as $ln) { $maxE = max($maxE, count($ln[0])); $maxD = max($maxD, count($ln[1])); }
 
-        $cw = 124; $ch = 96; $gap = 14; $corr = $maxD > 0 ? 70 : 0; $pad = 44;
+        $cw = 124; $ch = count($vis) > 8 ? 78 : 96; $gap = count($vis) > 8 ? 10 : 14; $corr = $maxD > 0 ? 70 : 0; $pad = 44;
         $gridW = $maxE * $cw + ($maxE - 1) * $gap + $corr + ($maxD > 0 ? $maxD * $cw + ($maxD - 1) * $gap : 0);
         $W = max(760, $gridW + $pad * 2 + 40);
-        $topo = 190; $rod = 150;
+        $topo = 190; $rod = $completo ? 185 : 150;
         $gridH = count($vis) * ($ch + $gap);
         $H = $topo + $gridH + 40 + $rod;
 
@@ -91,19 +94,19 @@ class MapaPoltronaImagem
                     if (in_array($low, $minhas, true)) {
                         $caixa($x - 4, $y - 4, $cw + 8, $ch + 8, 20, $verdeEsc);
                         $caixa($x, $y, $cw, $ch, 18, $verde);
-                        $centro((string) $s, 24, $x + (int) ($cw / 2), $y + 48, $branco);
-                        $centro('SUA', 12, $x + (int) ($cw / 2), $y + 78, $branco);
+                        $centro((string) $s, 22, $x + (int) ($cw / 2), $y + (int) ($ch * 0.5), $branco);
+                        $centro('SUA', 11, $x + (int) ($cw / 2), $y + (int) ($ch * 0.82), $branco);
                     } elseif (in_array($low, $ocup, true)) {
                         $caixa($x, $y, $cw, $ch, 18, $verm);
-                        $centro((string) $s, 21, $x + (int) ($cw / 2), $y + 58, $vermTxt);
+                        $centro((string) $s, 21, $x + (int) ($cw / 2), $y + (int) ($ch * 0.62), $vermTxt);
                     } else {
                         $caixa($x - 2, $y - 2, $cw + 4, $ch + 4, 19, $bordaLivre);
                         $caixa($x, $y, $cw, $ch, 18, $branco);
-                        $centro((string) $s, 21, $x + (int) ($cw / 2), $y + 58, $txt);
+                        $centro((string) $s, 21, $x + (int) ($cw / 2), $y + (int) ($ch * 0.62), $txt);
                     }
                 }
             }
-            if ($corr > 0) $centro('corredor', 9, $x0 + $maxE * $cw + ($maxE - 1) * $gap + (int) ($corr / 2), $y + 54, $cinza);
+            if ($corr > 0) $centro('corredor', 9, $x0 + $maxE * $cw + ($maxE - 1) * $gap + (int) ($corr / 2), $y + (int) ($ch * 0.56), $cinza);
             $y += $ch + $gap;
         }
 
@@ -117,6 +120,7 @@ class MapaPoltronaImagem
         }
         $lista = implode(', ', array_map('strval', $d['minhas']));
         $centro((count($d['minhas']) > 1 ? 'Suas poltronas: ' : 'Sua poltrona: ').$lista, 19, (int) ($W / 2), $ly + 62, $verdeEsc);
+        if ($completo) $centro('Prefere outra? É só me dizer o número de uma poltrona livre.', 14, (int) ($W / 2), $ly + 100, $cinza);
 
         ob_start();
         imagepng($im, null, 6);

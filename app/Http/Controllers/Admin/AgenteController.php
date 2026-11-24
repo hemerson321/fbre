@@ -73,6 +73,7 @@ class AgenteController extends Controller
                 'sensiveis_humano' => (bool) ($request->input('regras.sensiveis_humano')),
                 'nunca_inventa' => (bool) ($request->input('regras.nunca_inventa')),
                 'checkin_auto' => (bool) ($request->input('regras.checkin_auto')),
+                'mapa_imagem' => (bool) ($request->input('regras.mapa_imagem')),
                 'audio_modo' => in_array($request->input('regras.audio_modo'), ['texto', 'audio', 'audio_texto'], true) ? $request->input('regras.audio_modo') : 'texto',
                 'responde_audio' => $request->input('regras.audio_modo', 'texto') !== 'texto',
                 'inclui_comida' => (bool) $request->input('regras.inclui_comida'),

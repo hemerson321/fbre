@@ -41,6 +41,9 @@ class Agente extends Model
     /** Quanto tempo a poltrona reservada pelo agente fica segura (cobre aviso + encerramento). */
     public function reservaMin(): int { return max(5, $this->ociosoAvisoMin() + $this->ociosoEncerrarMin() + 2); }
 
+    /** Manda no WhatsApp a imagem do mapa da lancha com as poltronas do cliente? Padrão: sim. */
+    public function enviaMapaPoltrona(): bool { return (bool) ($this->regras['mapa_imagem'] ?? true); }
+
     /** Antecedência máxima de venda (meses à frente). Padrão 2. */
     public function mesesVenda(): int { return max(1, min(12, (int) ($this->regras['meses_venda'] ?? 2))); }
 

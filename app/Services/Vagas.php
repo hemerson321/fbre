@@ -182,6 +182,49 @@ class Vagas
         return ['ok' => true, 'seats' => $escolhidos, 'juntas' => $juntas, 'descricao' => $desc];
     }
 
+    /**
+     * Reserva poltronas ESPECÍFICAS que o cliente pediu pelo número (ex.: viu no mapa e quer 05J e 05M).
+     * Se alguma não existe ou não está livre, NÃO mexe na reserva atual e devolve quais falharam.
+     * @return array{ok:bool, seats?:array, descricao?:string, ocupadas?:array, inexistentes?:array}
+     */
+    public function atribuirEspecificas(string $origem, string $destino, ?Carbon $data, array $pedidas, int $conversaId, ?string $lancha = null): array
+    {
+        $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
+        if (! $rota || ! $rota->embarcacao || ! $rota->embarcacao->usa_poltrona) return ['ok' => false];
+        $emb = $rota->embarcacao;
+        $blocos = $this->blocosOrdenados((string) ($emb->poltronas_lista ?? ''));
+        if (! $blocos) return ['ok' => false];
+        $norm = fn ($x) => mb_strtolower(preg_replace('/\s+/', '', (string) $x));
+        $canon = []; $tipoDe = [];
+        foreach ($blocos as $bl) foreach ($bl as $sx) { $canon[$norm($sx['sel'])] = $sx['sel']; $tipoDe[$sx['sel']] = $sx['tipo']; }
+        // aceita "5J" como "05J"
+        foreach (array_keys($canon) as $k) { $semZero = ltrim($k, '0'); if ($semZero !== '' && ! isset($canon[$semZero])) $canon[$semZero] = $canon[$k]; }
+
+        $ind = $this->indisponiveis($emb, $rota->id, $data, $origem, $destino, $conversaId);
+        $seats = []; $ocupadas = []; $inexistentes = [];
+        foreach ($pedidas as $p) {
+            $k = $norm($p);
+            if ($k === '') continue;
+            if (! isset($canon[$k])) { $inexistentes[] = mb_strtoupper(trim((string) $p)); continue; }
+            $sel = $canon[$k];
+            if (in_array(mb_strtolower($sel), $ind, true)) { $ocupadas[] = $sel; continue; }
+            if (! in_array($sel, $seats, true)) $seats[] = $sel;
+        }
+        if ($ocupadas || $inexistentes || ! $seats) return ['ok' => true, 'seats' => [], 'ocupadas' => $ocupadas, 'inexistentes' => $inexistentes];
+
+        $viagemId = optional($rota->viagemPara($data ?: now()))->id;
+        \App\Models\PoltronaHold::where('conversa_id', $conversaId)->delete();
+        foreach ($seats as $sel) {
+            \App\Models\PoltronaHold::create([
+                'empresa_id' => $emb->empresa_id, 'embarcacao_id' => $emb->id, 'viagem_id' => $viagemId,
+                'data_viagem' => $data?->toDateString(), 'poltrona' => $sel, 'origem' => $origem, 'destino' => $destino,
+                'user_id' => 0, 'conversa_id' => $conversaId, 'expires_at' => now()->addMinutes(5),
+            ]);
+        }
+        $desc = implode(', ', array_map(fn ($x) => $x.' ('.($tipoDe[$x] ?? '').')', $seats));
+        return ['ok' => true, 'seats' => $seats, 'descricao' => $desc];
+    }
+
     /** A reserva ativa da conversa é mesmo dessa lancha/data? (o cliente pode ter mudado trecho/data depois de reservar) */
     public function reservaConfere(string $origem, string $destino, ?Carbon $data, ?string $lancha, int $conversaId): bool
     {
