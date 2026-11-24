@@ -134,6 +134,7 @@ class Vagas
 
         $escolhidos = [];
         $juntas = false;
+        $naFileira = false;
 
         if ($n === 1) {
             foreach ($blocos as $bl) foreach ($bl as $sx) if ($sx['tipo'] === $tipo && $livre($sx['sel'])) { $escolhidos = [$sx['sel']]; break 2; }
@@ -141,14 +142,17 @@ class Vagas
             $juntas = true;
         } else {
             $run = $this->acharRun($blocos, $n, $livre, $tipo);
+            $fileiras = $this->fileirasOrdenadas($blocos);
+            $runF = $run ? null : $this->acharRun($fileiras, $n, $livre, $tipo); // mesma fileira, separados só pelo corredor
             if ($run) { $escolhidos = $run; $juntas = true; }
+            elseif ($runF) { $escolhidos = $runF; $juntas = false; $naFileira = true; }
             else {
                 // não cabem todos lado a lado: junta o MÁXIMO possível (maiores sequências livres primeiro) e completa com avulsas
                 $falta = $n;
                 while ($falta > 1) {
                     $livre2 = fn ($sel) => $livre($sel) && ! in_array($sel, $escolhidos, true);
                     $achou = null;
-                    for ($k = $falta; $k >= 2; $k--) { $achou = $this->acharRun($blocos, $k, $livre2, $tipo); if ($achou) break; }
+                    for ($k = $falta; $k >= 2; $k--) { $achou = $this->acharRun($fileiras, $k, $livre2, $tipo) ?: $this->acharRun($blocos, $k, $livre2, $tipo); if ($achou) break; }
                     if (! $achou) break;
                     foreach ($achou as $sel) $escolhidos[] = $sel;
                     $falta = $n - count($escolhidos);
@@ -174,8 +178,47 @@ class Vagas
         try { \Illuminate\Support\Facades\Log::info('agente.poltrona.reserva', ['lancha' => $emb->nome, 'embarcacao_id' => $emb->id, 'rota_id' => $rota->id, 'viagem_id' => $viagemId, 'data' => $data?->toDateString(), 'trecho' => $origem.' > '.$destino, 'poltronas' => $escolhidos, 'conversa' => $conversaId]); } catch (\Throwable $e) {}
         $tipoDe = [];
         foreach ($blocos as $bl) foreach ($bl as $sx) $tipoDe[$sx['sel']] = $sx['tipo'];
-        $desc = $this->descreverEscolha($escolhidos, $tipoDe, $juntas, $n, $blocos);
+        $desc = $this->descreverEscolha($escolhidos, $tipoDe, $juntas, $n, $blocos, $naFileira);
         return ['ok' => true, 'seats' => $escolhidos, 'juntas' => $juntas, 'descricao' => $desc];
+    }
+
+    /** A reserva ativa da conversa é mesmo dessa lancha/data? (o cliente pode ter mudado trecho/data depois de reservar) */
+    public function reservaConfere(string $origem, string $destino, ?Carbon $data, ?string $lancha, int $conversaId): bool
+    {
+        $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
+        if (! $rota || ! $rota->embarcacao) return true; // sem como conferir: não mexe
+        if (! $rota->embarcacao->usa_poltrona) return true;
+        $holds = \App\Models\PoltronaHold::where('conversa_id', $conversaId)->where('expires_at', '>', now())->get(['embarcacao_id', 'data_viagem']);
+        if ($holds->isEmpty()) return false;
+        foreach ($holds as $h) {
+            if ((int) $h->embarcacao_id !== (int) $rota->embarcacao->id) return false;
+            if ($data && (! $h->data_viagem || substr((string) $h->data_viagem, 0, 10) !== $data->toDateString())) return false;
+        }
+        return true;
+    }
+
+    /** Dados pra desenhar o mapa (imagem) que o agente manda no WhatsApp: fileiras, ocupadas e as poltronas da conversa. */
+    public function mapaDados(string $origem, string $destino, ?Carbon $data, ?string $lancha, int $conversaId): ?array
+    {
+        $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
+        if (! $rota || ! $rota->embarcacao || ! $rota->embarcacao->usa_poltrona) return null;
+        $emb = $rota->embarcacao;
+        $layout = str_replace("\r", '', trim((string) ($emb->poltronas_lista ?? '')));
+        if ($layout === '') return null;
+        $linhas = [];
+        foreach (preg_split('/\n/', $layout) as $linha) {
+            if (trim($linha) === '') continue;
+            $p = explode('|', $linha);
+            $linhas[] = [
+                array_values(array_filter(preg_split('/\s+/', trim($p[0] ?? '')), fn ($x) => $x !== '')),
+                array_values(array_filter(preg_split('/\s+/', trim($p[1] ?? '')), fn ($x) => $x !== '')),
+            ];
+        }
+        $minhas = \App\Models\PoltronaHold::where('conversa_id', $conversaId)->where('expires_at', '>', now())
+            ->where('embarcacao_id', $emb->id)->pluck('poltrona')->map(fn ($x) => (string) $x)->all();
+        if (! $minhas) return null;
+        return ['lancha' => (string) $emb->nome, 'linhas' => $linhas, 'minhas' => $minhas,
+            'ocupadas' => $this->indisponiveis($emb, $rota->id, $data, $origem, $destino, $conversaId)];
     }
 
     /** Solta as reservas (holds) feitas pelo agente nessa conversa. */
@@ -224,7 +267,7 @@ class Vagas
                         if ($cnt === 1) $t = 'janela';
                         elseif ($lado === 'esq') $t = $i === 0 ? 'janela' : ($i === $cnt - 1 ? 'corredor' : 'meio');
                         else $t = $i === $cnt - 1 ? 'janela' : ($i === 0 ? 'corredor' : 'meio');
-                        $linhaBloco[] = ['sel' => (string) $sel, 'tipo' => $t];
+                        $linhaBloco[] = ['sel' => (string) $sel, 'tipo' => $t, 'lado' => $lado];
                     }
                     $blocos[] = $linhaBloco;
                 }
@@ -265,12 +308,27 @@ class Vagas
         return $melhor;
     }
 
-    protected function descreverEscolha(array $seats, array $tipoDe, bool $juntas, int $n, array $blocos = []): string
+    /** Junta os dois lados de cada fileira num bloco só (esq + dir), na ordem do mapa — vizinhos atravessando o corredor. */
+    protected function fileirasOrdenadas(array $blocos): array
+    {
+        // blocosOrdenados() devolve, por fileira, [esq] e depois [dir] (pula o lado vazio). Remonta pela marca 'lado'.
+        $out = []; $atual = null;
+        foreach ($blocos as $bl) {
+            $lado = $bl[0]['lado'] ?? 'esq';
+            if ($lado === 'esq' || $atual === null) { if ($atual) $out[] = $atual; $atual = $bl; }
+            else { $atual = array_merge($atual, $bl); $out[] = $atual; $atual = null; }
+        }
+        if ($atual) $out[] = $atual;
+        return $out;
+    }
+
+    protected function descreverEscolha(array $seats, array $tipoDe, bool $juntas, int $n, array $blocos = [], bool $naFileira = false): string
     {
         $lista = function (array $xs) { $xs = array_values($xs); if (count($xs) <= 1) return (string) ($xs[0] ?? ''); $u = array_pop($xs); return implode(', ', $xs).' e '.$u; };
         $tipos = fn (array $xs) => implode(', ', array_map(fn ($x) => (string) ($tipoDe[$x] ?? ''), $xs));
         if ($n === 1) return $seats[0].' ('.($tipoDe[$seats[0]] ?? '').')';
         if ($juntas) return $lista($seats).' — as '.$n.' LADO A LADO, uma do lado da outra ('.$tipos($seats).')';
+        if ($naFileira) return $lista($seats).' — as '.$n.' na MESMA FILEIRA, separadas só pelo corredor ('.$tipos($seats).')';
 
         // não coube todo mundo junto: agrupa o que ficou lado a lado (mesmo bloco, assentos vizinhos)
         $grupos = []; $usados = [];

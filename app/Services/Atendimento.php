@@ -60,6 +60,12 @@ class Atendimento
         if ($reabrindo) {
             $ctx = $conversa->contexto ?? [];
             $ctx['reinicio_id'] = $msg->id;
+            // atendimento novo começa limpo (trecho/data/poltrona do atendimento anterior não valem mais).
+            // Exceção: PIX já pago e passagem ainda não emitida — aí mantém pra não perder a compra.
+            if (! (! empty($ctx['pago']) && empty($ctx['passagem_id']))) {
+                unset($ctx['venda'], $ctx['passageiros'], $ctx['poltronas_agente'], $ctx['poltrona_agente'], $ctx['pref_poltrona'], $ctx['lancha_agente'], $ctx['pago'], $ctx['passagem_id'], $ctx['ocioso_aviso_em'], $ctx['mapa_pendente']);
+                try { app(\App\Services\Vagas::class)->liberarConversa($conversa->id); } catch (\Throwable $e) {}
+            }
             $conversa->forceFill(['contexto' => $ctx])->save();
         }
 

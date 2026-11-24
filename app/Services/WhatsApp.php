@@ -243,6 +243,29 @@ class WhatsApp
         }
     }
 
+    /** Envia uma IMAGEM (PNG/JPG em base64) com legenda pelo Evolution. */
+    public function enviarImagem(WhatsappConexao $c, string $telefone, string $base64, string $caption = '', string $mime = 'image/png'): array
+    {
+        $fone = $this->normalizar($telefone);
+        if ($fone === '') return ['ok' => false, 'erro' => 'telefone'];
+        if ($c->tipo === 'oficial') return ['ok' => false, 'erro' => 'envio de imagem pela API oficial não implementado'];
+        $base = rtrim((string) $c->base_url, '/');
+        if (! $base || ! $c->instancia) return ['ok' => false, 'erro' => 'sem base/instancia'];
+        try {
+            $r = $this->evoHttp($c)->timeout(45)->post("{$base}/message/sendMedia/{$c->instancia}", [
+                'number' => $fone,
+                'mediatype' => 'image',
+                'mimetype' => $mime,
+                'media' => $base64,
+                'fileName' => 'poltronas.png',
+                'caption' => $caption,
+            ]);
+            return $r->successful() ? ['ok' => true, 'resposta' => $r->json()] : ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 150)];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
     /** Envia uma mensagem de voz (PTT) pelo Evolution. $base64 = áudio (mp3/ogg) em base64. */
     public function enviarAudio(WhatsappConexao $c, string $telefone, string $base64): array
     {
