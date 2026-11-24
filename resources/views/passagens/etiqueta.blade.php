@@ -20,7 +20,7 @@
   $orig   = strtoupper($p->origem); $dest = strtoupper($p->destino);
 @endphp
 <style>
-  @page { margin: 0; size: {{ $labW }}mm {{ $labH }}mm; }
+  @page { margin: 0; size: {{ max($labW, $labWbag ?? $labW) }}mm {{ max($labH, $labHbag ?? $labH) }}mm; }
   * { box-sizing: border-box; }
   body { margin:0; padding:0; width:{{ $labW }}mm; font-family: Arial, Helvetica, sans-serif; color:#000; background:#fff; -webkit-font-smoothing:none; }
   .lbl { width:{{ $labW }}mm; height:{{ $labH }}mm; overflow:hidden; page-break-after:always;
@@ -56,7 +56,7 @@
 <body>
 @if(!($soVia ?? false))
 @for($v = 1; $v <= $volumes; $v++)
-<div class="lbl">
+<div class="lbl" style="width:{{ $labWbag ?? $labW }}mm;height:{{ $labHbag ?? $labH }}mm">
   <div class="hdr">
     <span class="lch">{{ strtoupper($lancha) }}</span>
     <span class="bdg">BAGAGEM</span>

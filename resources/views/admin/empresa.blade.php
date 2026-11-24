@@ -44,6 +44,7 @@
   </div>
   <div><label class="label">🏷️ Etiqueta — largura (mm)</label><input name="etiqueta_mm_w" type="number" min="10" max="120" class="input !min-h-[40px]" value="{{ old('etiqueta_mm_w', $empresa->config('etiqueta_mm_w', 29)) }}" placeholder="29"><p class="text-[11px] text-slate-400 mt-0.5">Tamanho do papel da impressora de etiqueta (Brother QL: DK-1201 = 29 × 90). Mude aqui quando trocar o papel — o agente não precisa mexer.</p></div>
   <div><label class="label">🏷️ Etiqueta — altura (mm)</label><input name="etiqueta_mm_h" type="number" min="20" max="300" class="input !min-h-[40px]" value="{{ old('etiqueta_mm_h', $empresa->config('etiqueta_mm_h', 90)) }}" placeholder="90"></div>
+  <div><label class="label">🏷️ Bagagem — comprimento (mm)</label><input name="etiqueta_bag_mm_h" type="number" min="20" max="400" class="input !min-h-[40px]" value="{{ old('etiqueta_bag_mm_h', $empresa->config('etiqueta_bag_mm_h') ?: '') }}" placeholder="auto"><p class="text-[11px] text-slate-400 mt-0.5">Só a etiqueta de BAGAGEM. Vazio = automático (papel contínuo 62mm sai mais comprida que a via). Aumente pra deixar mais comprida ainda; a via do passageiro não muda.</p></div>
   <div class="sm:col-span-2"><label class="label">🏷️ Etiqueta — orientação do texto</label>
     <select name="etiqueta_girar" class="input !min-h-[40px]">
       <option value="1" @selected($empresa->config('etiqueta_girar', true))>Horizontal (texto deitado ao longo do comprimento) — recomendado p/ DK-1201</option>

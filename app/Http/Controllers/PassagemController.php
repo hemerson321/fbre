@@ -1354,6 +1354,13 @@ class PassagemController extends Controller
         // Horizontal: diagrama ao longo do comprimento (mm_h) e gira; label com tamanho EXATO do papel.
         $labW = $girar ? $mmH : $mmW;   // largura do conteúdo (mm)
         $labH = $girar ? $mmW : $mmH;   // altura do conteúdo (mm)
+        // Etiqueta de BAGAGEM pode ser mais comprida que a via. Vazio/0 = automático:
+        // em papel contínuo (largura >= 50mm, ex.: 62mm) sai mais comprida; em die-cut (DK-1201 29x90) fica igual à via.
+        $bagMmH = (int) $empresa->config('etiqueta_bag_mm_h', 0);
+        if ($bagMmH <= 0) { $bagMmH = $mmW >= 50 ? ($mmH + 40) : $mmH; }
+        $bagMmH = max($mmH, min(400, $bagMmH));
+        $labWbag = $girar ? $bagMmH : $mmW;
+        $labHbag = $girar ? $mmW : $bagMmH;
         // observação do check-in: se veio no link (impressão na hora) ela vale e é salva; senão usa a já guardada
         $obs = request()->has('obs') ? trim((string) request('obs')) : (string) ($pax->obs_etiqueta ?? '');
         if (request()->has('obs') && $obs !== (string) ($pax->obs_etiqueta ?? '')) {
@@ -1361,7 +1368,7 @@ class PassagemController extends Controller
         }
         return view('passagens.etiqueta', [
             'p' => $passagem, 'pax' => $pax, 'volumes' => $vol, 'soVia' => request()->boolean('so_via'),
-            'empresa' => $empresa, 'labW' => $labW, 'labH' => $labH, 'girar' => $girar, 'obs' => $obs,
+            'empresa' => $empresa, 'labW' => $labW, 'labH' => $labH, 'labWbag' => $labWbag, 'labHbag' => $labHbag, 'girar' => $girar, 'obs' => $obs,
         ]);
     }
 
