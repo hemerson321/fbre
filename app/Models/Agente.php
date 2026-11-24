@@ -32,6 +32,15 @@ class Agente extends Model
 
     public function regra(string $k): bool { return (bool) ($this->regras[$k] ?? false); }
 
+    /** Minutos sem resposta do cliente até o aviso de encerramento. 0 = não encerra sozinho. Padrão 2. */
+    public function ociosoAvisoMin(): int { return max(0, min(120, (int) ($this->regras['ocioso_aviso_min'] ?? 2))); }
+    /** Minutos a mais, depois do aviso, até encerrar a conversa. Padrão 1. */
+    public function ociosoEncerrarMin(): int { return max(1, min(60, (int) ($this->regras['ocioso_encerrar_min'] ?? 1))); }
+    /** Com PIX gerado e não pago: quantos minutos aguardar o pagamento antes de poder encerrar. Padrão 30. */
+    public function ociosoPixMin(): int { return max(1, min(240, (int) ($this->regras['ocioso_pix_min'] ?? 30))); }
+    /** Quanto tempo a poltrona reservada pelo agente fica segura (cobre aviso + encerramento). */
+    public function reservaMin(): int { return max(5, $this->ociosoAvisoMin() + $this->ociosoEncerrarMin() + 2); }
+
     /** Antecedência máxima de venda (meses à frente). Padrão 2. */
     public function mesesVenda(): int { return max(1, min(12, (int) ($this->regras['meses_venda'] ?? 2))); }
 

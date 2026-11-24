@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Conversa do agente parada (cliente não respondeu):
- *  - 2 min sem resposta  -> avisa que vai encerrar em 1 minuto;
- *  - +1 min sem resposta -> solta a poltrona reservada, agradece e fecha a conversa.
+ *  - X min sem resposta  -> avisa que vai encerrar (X, Y e a espera do PIX são configurados no agente);
+ *  - +Y min sem resposta -> solta a poltrona reservada, agradece e fecha a conversa.
  * Não mexe em conversa com atendente humano nem com PIX aguardando pagamento.
  */
 class EncerrarConversasOciosas extends Command
@@ -29,7 +29,7 @@ class EncerrarConversasOciosas extends Command
             ->where('status', 'ia')->where('ia_ativa', true)
             ->where(fn ($q) => $q->whereNull('precisa_humano')->orWhere('precisa_humano', false))
             ->where('ultima_msg_origem', '!=', 'cliente')
-            ->whereBetween('ultima_msg_em', [now()->subHours(2), now()->subSeconds(55)])
+            ->whereBetween('ultima_msg_em', [now()->subHours(6), now()->subSeconds(55)])
             ->chunkById(100, function ($lote) use ($atendimento, $vagas, &$avisos, &$fechadas) {
                 foreach ($lote as $c) {
                     try {
@@ -39,24 +39,30 @@ class EncerrarConversasOciosas extends Command
                         // aviso antigo (cliente respondeu depois dele) não vale mais
                         if ($avisoEm && $c->cliente_respondeu_em && $c->cliente_respondeu_em->gt($avisoEm)) $avisoEm = null;
 
-                        // PIX gerado e ainda não pago: o cliente está pagando — não encerra nem solta a poltrona
-                        $pixPendente = Cobranca::withoutGlobalScopes()->where('referencia_tipo', Conversa::class)->where('referencia_id', $c->id)
-                            ->where('status', 'pendente')->where('created_at', '>=', now()->subMinutes(30))->exists();
-                        if ($pixPendente) continue;
-
                         $agente = Agente::withoutGlobalScopes()->where('empresa_id', $c->empresa_id)->where('modulo', $c->modulo)->where('ativo', true)->first();
                         if (! $agente || $agente->regra('desligado')) continue;
+                        $avisoMin = $agente->ociosoAvisoMin();
+                        if ($avisoMin <= 0) continue; // configurado pra não encerrar sozinho
+
+                        // PIX gerado e ainda não pago: o cliente está pagando — espera o tempo configurado antes de avisar/encerrar
+                        $pixPendente = Cobranca::withoutGlobalScopes()->where('referencia_tipo', Conversa::class)->where('referencia_id', $c->id)
+                            ->where('status', 'pendente')->where('created_at', '>=', now()->subMinutes($agente->ociosoPixMin()))->exists();
+                        if ($pixPendente) {
+                            try { $vagas->renovarConversa($c->id, $agente->reservaMin()); } catch (\Throwable $e) {} // segura a poltrona enquanto paga
+                            continue;
+                        }
 
                         if (! $avisoEm) {
-                            if ($c->ultima_msg_em->gt(now()->subMinutes(2))) continue; // ainda não deu 2 min
+                            if ($c->ultima_msg_em->gt(now()->subMinutes($avisoMin))) continue; // ainda não deu o tempo de espera
                             $ctx['ocioso_aviso_em'] = now()->toDateTimeString();
                             $c->forceFill(['contexto' => $ctx])->save();
-                            $atendimento->registrarSaida($c, 'Ainda está por aí? 😊 Se não tiver mais nada, vou encerrar nosso atendimento em 1 minuto.', 'ia', null, $agente->nome);
+                            $em = $agente->ociosoEncerrarMin();
+                            $atendimento->registrarSaida($c, 'Ainda está por aí? 😊 Se não tiver mais nada, vou encerrar nosso atendimento em '.$em.' '.($em === 1 ? 'minuto' : 'minutos').'.', 'ia', null, $agente->nome);
                             $avisos++;
                             continue;
                         }
 
-                        if ($avisoEm->gt(now()->subSeconds(55))) continue; // ainda não deu 1 min do aviso
+                        if ($avisoEm->gt(now()->subSeconds($agente->ociosoEncerrarMin() * 60 - 5))) continue; // ainda não deu o tempo depois do aviso
 
                         $tinhaReserva = ! empty($ctx['poltronas_agente']);
                         try { $vagas->liberarConversa($c->id); } catch (\Throwable $e) {}

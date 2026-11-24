@@ -30,7 +30,7 @@ class AgenteBot
             if (! $agente) return;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
             if (! $demo && ($conversa->precisa_humano ?? false)) return; // já transferido pro humano: agente fica em silêncio
-            try { app(\App\Services\Vagas::class)->renovarConversa($conversa->id, 5); } catch (\Throwable $e) {} // mantém a reserva enquanto o cliente responde
+            try { app(\App\Services\Vagas::class)->renovarConversa($conversa->id, $agente->reservaMin()); } catch (\Throwable $e) {} // mantém a reserva enquanto o cliente responde
 
             $prov = $agente->llm;
             if (! $prov) { Log::info('Agente sem provedor de IA.'); return; }
@@ -79,6 +79,7 @@ class AgenteBot
             if (! empty($res['pix'])) {
                 $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
             }
+            try { app(\App\Services\Vagas::class)->renovarConversa($conversa->id, $agente->reservaMin()); } catch (\Throwable $e) {} // reserva dura até o encerramento por falta de resposta
             app(\App\Services\ConfirmaPagamento::class)->tentarCriarPassagem($conversa); // cria se já pagou e já tem dados
         } catch (\Throwable $e) {
             Log::warning('AgenteBot erro: '.$e->getMessage());

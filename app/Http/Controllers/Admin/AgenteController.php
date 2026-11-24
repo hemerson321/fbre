@@ -45,6 +45,9 @@ class AgenteController extends Controller
             'hr_dias' => 'nullable|array',
             'regras' => 'nullable|array',
             'meses_venda' => 'nullable|integer|min:1|max:12',
+            'ocioso_aviso_min' => 'nullable|integer|min:0|max:120',
+            'ocioso_encerrar_min' => 'nullable|integer|min:1|max:60',
+            'ocioso_pix_min' => 'nullable|integer|min:1|max:240',
         ]);
 
         // Token OpenAI do áudio: em branco no editar = mantém o atual (igual aos tokens secretos do app).
@@ -76,6 +79,9 @@ class AgenteController extends Controller
                 'audio_token' => $audioToken,
                 'audio_voz' => $request->input('regras.audio_voz') ?: 'alloy',
                 'meses_venda' => (int) ($request->input('meses_venda') ?: 2),
+                'ocioso_aviso_min' => $request->filled('ocioso_aviso_min') ? max(0, (int) $request->input('ocioso_aviso_min')) : 2,
+                'ocioso_encerrar_min' => max(1, (int) ($request->input('ocioso_encerrar_min') ?: 1)),
+                'ocioso_pix_min' => max(1, (int) ($request->input('ocioso_pix_min') ?: 30)),
             ],
             'horario' => [
                 'modo' => $data['hr_modo'],
