@@ -104,7 +104,6 @@
     <div class="lin g"><span>Total recebido</span><span>R$ {{ number_format($totRecebido,2,',','.') }}</span></div>
     @if(($prestacao ?? null) && $propTot > 0.009)
     <div class="lin" style="font-size:11px;color:#b91c1c"><span>Comissão{{ ! is_null($prestacao->pct) ? ' '.$prestacao->pct.'%' : '' }}</span><b>- R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
-    <div class="lin" style="font-size:11px;color:#0e7490"><span>Recebido direto pelo proprietário</span><b>- R$ {{ number_format($propTot,2,',','.') }}</b></div>
     <div class="lin" style="border-top:1px solid #999;margin-top:3px;padding-top:3px;font-weight:800"><span>TOTAL</span><b>R$ {{ number_format($prestacao->liquido,2,',','.') }}</b></div>
     @elseif($propTot > 0.009)
     <div class="lin" style="font-size:11px;color:#555"><span>Recebido pela empresa</span><b>R$ {{ number_format($totRecebido - $propTot,2,',','.') }}</b></div>
