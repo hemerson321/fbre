@@ -38,6 +38,7 @@
   .rota .seta { font-weight:400; }
   .meta { font-size:{{ $px(11) }}px; line-height:1.3; margin-top:{{ $px(2) }}px; }
   .meta b { font-weight:800; }
+  .obs { font-size:{{ $px(11) }}px; font-weight:700; line-height:1.1; margin-top:{{ $px(2) }}px; padding:{{ $px(2) }}px {{ $px(4) }}px; background:#000; color:#fff; border-radius:{{ $px(2) }}px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .troca { font-size:{{ $px(9) }}px; line-height:1.2; margin-top:{{ $px(2) }}px; padding:{{ $px(2) }}px {{ $px(3) }}px; border:{{ max(1, $px(1)) }}px solid #000; border-radius:{{ $px(2) }}px; }
   .troca b { font-weight:900; }
   /* coluna direita: poltrona + volume, os dois em destaque */
@@ -67,6 +68,7 @@
         <div class="rota">{{ $orig }} <span class="seta">&rsaquo;</span> {{ $dest }}</div>
       </div>
       <div class="meta"><b>Data:</b> {{ $data }} &nbsp; <b>Ticket:</b> {{ $ticket }}@if($pax->telefone)<br><b>Tel.:</b> {{ $pax->telefone }}@endif</div>
+      @if(!empty($obs ?? ''))<div class="obs">📝 {{ $obs }}</div>@endif
     </div>
     <div class="seat2">
       <div class="cell">
@@ -94,6 +96,7 @@
         <div class="rota">{{ $orig }} <span class="seta">&rsaquo;</span> {{ $dest }}</div>
       </div>
       <div class="meta"><b>Data:</b> {{ $data }} &nbsp; <b>Ticket:</b> {{ $ticket }}@if($pax->telefone)<br><b>Tel.:</b> {{ $pax->telefone }}@endif</div>
+      @if(!empty($obs ?? ''))<div class="obs">📝 {{ $obs }}</div>@endif
       @if($pax->transf_de_lancha)
       <div class="troca"><b>MUDANÇA DE TRANSPORTE</b><br>Antes: {{ strtoupper($pax->transf_de_lancha) }}{{ $pax->transf_de_poltrona ? ' · polt. '.$pax->transf_de_poltrona : '' }}{{ $pax->transf_de_bilhete ? ' · bilhete '.$pax->transf_de_bilhete : '' }}<br><b>Agora: {{ strtoupper($lancha) }}{{ $pax->poltrona ? ' · POLTRONA '.$pax->poltrona : '' }}</b></div>
       @endif
@@ -110,7 +113,7 @@
   var RASTER = new URLSearchParams(location.search).has('raster');
   var GIRAR = {{ ($girar ?? true) ? 'true' : 'false' }};
   function fitEl(el, min){ if(!el) return; var fs=parseFloat(getComputedStyle(el).fontSize)||12; var g=60; while(el.scrollWidth>el.clientWidth+1 && fs>min && g-->0){ fs-=1; el.style.fontSize=fs+'px'; } }
-  function fitLabels(){ var L=document.querySelectorAll('.lbl'); for(var i=0;i<L.length;i++){ fitEl(L[i].querySelector('.nome'),9); fitEl(L[i].querySelector('.rota'),8); var ms=L[i].querySelectorAll('.meta'); for(var j=0;j<ms.length;j++) fitEl(ms[j],7); } }
+  function fitLabels(){ var L=document.querySelectorAll('.lbl'); for(var i=0;i<L.length;i++){ fitEl(L[i].querySelector('.nome'),9); fitEl(L[i].querySelector('.rota'),8); var obs=L[i].querySelector('.obs'); if(obs) fitEl(obs,7); var ms=L[i].querySelectorAll('.meta'); for(var j=0;j<ms.length;j++) fitEl(ms[j],7); } }
   function raster(){
     var h2c = window.html2canvas;
     if(!h2c){ try{ parent.postMessage({fbreRaster:true, imagens:[], erro:'sem html2canvas'}, '*'); }catch(e){} return; }

@@ -830,6 +830,16 @@ class PassagemController extends Controller
     }
 
     /** Check-in individual de um passageiro (embarque por passageiro, não a compra inteira). */
+    /** Salva a observação da etiqueta (digitada no check-in) para um passageiro. */
+    public function paxObs(Request $request, Passagem $passagem, PassagemPassageiro $pax)
+    {
+        abort_unless($passagem->empresa_id === Tenant::id(), 404);
+        abort_unless((int) $pax->passagem_id === (int) $passagem->id, 404);
+        $obs = trim((string) $request->input('obs', ''));
+        $pax->forceFill(['obs_etiqueta' => $obs !== '' ? mb_substr($obs, 0, 200) : null])->save();
+        return response()->json(['ok' => true]);
+    }
+
     public function checkinPax(Request $request, Passagem $passagem, $pax)
     {
         abort_unless($passagem->empresa_id === Tenant::id(), 404);
@@ -1338,9 +1348,14 @@ class PassagemController extends Controller
         // Horizontal: diagrama ao longo do comprimento (mm_h) e gira; label com tamanho EXATO do papel.
         $labW = $girar ? $mmH : $mmW;   // largura do conteúdo (mm)
         $labH = $girar ? $mmW : $mmH;   // altura do conteúdo (mm)
+        // observação do check-in: se veio no link (impressão na hora) ela vale e é salva; senão usa a já guardada
+        $obs = request()->has('obs') ? trim((string) request('obs')) : (string) ($pax->obs_etiqueta ?? '');
+        if (request()->has('obs') && $obs !== (string) ($pax->obs_etiqueta ?? '')) {
+            $pax->forceFill(['obs_etiqueta' => $obs !== '' ? mb_substr($obs, 0, 200) : null])->save();
+        }
         return view('passagens.etiqueta', [
             'p' => $passagem, 'pax' => $pax, 'volumes' => $vol, 'soVia' => request()->boolean('so_via'),
-            'empresa' => $empresa, 'labW' => $labW, 'labH' => $labH, 'girar' => $girar,
+            'empresa' => $empresa, 'labW' => $labW, 'labH' => $labH, 'girar' => $girar, 'obs' => $obs,
         ]);
     }
 
