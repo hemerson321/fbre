@@ -128,6 +128,7 @@ class Vagas
         if (! $blocos) return ['ok' => false];
 
         $tipo = mb_strtolower(trim($tipo)) ?: 'janela';
+        if (! in_array($tipo, ['janela', 'meio', 'corredor'], true)) $tipo = 'janela'; // 'juntos'/'qualquer' = tanto faz; prefere pegar a janela
         $ind = $this->indisponiveis($emb, $rota->id, $data, $origem, $destino, $conversaId);
         $livre = fn ($sel) => ! in_array(mb_strtolower((string) $sel), $ind, true);
 
@@ -142,7 +143,17 @@ class Vagas
             $run = $this->acharRun($blocos, $n, $livre, $tipo);
             if ($run) { $escolhidos = $run; $juntas = true; }
             else {
-                foreach ($blocos as $bl) foreach ($bl as $sx) if ($sx['tipo'] === $tipo && $livre($sx['sel']) && ! in_array($sx['sel'], $escolhidos, true)) { $escolhidos[] = $sx['sel']; if (count($escolhidos) >= $n) break 2; }
+                // não cabem todos lado a lado: junta o MÁXIMO possível (maiores sequências livres primeiro) e completa com avulsas
+                $falta = $n;
+                while ($falta > 1) {
+                    $livre2 = fn ($sel) => $livre($sel) && ! in_array($sel, $escolhidos, true);
+                    $achou = null;
+                    for ($k = $falta; $k >= 2; $k--) { $achou = $this->acharRun($blocos, $k, $livre2, $tipo); if ($achou) break; }
+                    if (! $achou) break;
+                    foreach ($achou as $sel) $escolhidos[] = $sel;
+                    $falta = $n - count($escolhidos);
+                }
+                if (count($escolhidos) < $n) foreach ($blocos as $bl) foreach ($bl as $sx) if ($sx['tipo'] === $tipo && $livre($sx['sel']) && ! in_array($sx['sel'], $escolhidos, true)) { $escolhidos[] = $sx['sel']; if (count($escolhidos) >= $n) break 2; }
                 if (count($escolhidos) < $n) foreach ($blocos as $bl) foreach ($bl as $sx) if ($livre($sx['sel']) && ! in_array($sx['sel'], $escolhidos, true)) { $escolhidos[] = $sx['sel']; if (count($escolhidos) >= $n) break 2; }
                 $juntas = false;
             }
@@ -163,7 +174,7 @@ class Vagas
         try { \Illuminate\Support\Facades\Log::info('agente.poltrona.reserva', ['lancha' => $emb->nome, 'embarcacao_id' => $emb->id, 'rota_id' => $rota->id, 'viagem_id' => $viagemId, 'data' => $data?->toDateString(), 'trecho' => $origem.' > '.$destino, 'poltronas' => $escolhidos, 'conversa' => $conversaId]); } catch (\Throwable $e) {}
         $tipoDe = [];
         foreach ($blocos as $bl) foreach ($bl as $sx) $tipoDe[$sx['sel']] = $sx['tipo'];
-        $desc = $this->descreverEscolha($escolhidos, $tipoDe, $juntas, $n);
+        $desc = $this->descreverEscolha($escolhidos, $tipoDe, $juntas, $n, $blocos);
         return ['ok' => true, 'seats' => $escolhidos, 'juntas' => $juntas, 'descricao' => $desc];
     }
 
@@ -234,7 +245,13 @@ class Vagas
             }
             $melhor = $this->avaliarRun($run, $n, $tipo, $melhor);
         }
-        return $melhor ? array_map(fn ($x) => $x['sel'], array_slice($melhor['seats'], 0, $n)) : null;
+        if (! $melhor) return null;
+        // dentro da sequência livre, escolhe a janela de n assentos que pega o tipo pedido (ex.: 3 juntos pegando a janela)
+        $seq = $melhor['seats']; $ini = 0;
+        for ($i = 0; $i + $n <= count($seq); $i++) {
+            foreach (array_slice($seq, $i, $n) as $sx) if ($sx['tipo'] === $tipo) { $ini = $i; break 2; }
+        }
+        return array_map(fn ($x) => $x['sel'], array_slice($seq, $ini, $n));
     }
 
     protected function avaliarRun(array $run, int $n, string $tipo, ?array $melhor): ?array
@@ -248,12 +265,29 @@ class Vagas
         return $melhor;
     }
 
-    protected function descreverEscolha(array $seats, array $tipoDe, bool $juntas, int $n): string
+    protected function descreverEscolha(array $seats, array $tipoDe, bool $juntas, int $n, array $blocos = []): string
     {
+        $lista = function (array $xs) { $xs = array_values($xs); if (count($xs) <= 1) return (string) ($xs[0] ?? ''); $u = array_pop($xs); return implode(', ', $xs).' e '.$u; };
+        $tipos = fn (array $xs) => implode(', ', array_map(fn ($x) => (string) ($tipoDe[$x] ?? ''), $xs));
         if ($n === 1) return $seats[0].' ('.($tipoDe[$seats[0]] ?? '').')';
-        if ($juntas) return implode(' e ', $seats).' — juntas ('.($tipoDe[$seats[0]] ?? '').')';
-        $comTipo = array_map(fn ($s) => $s.' ('.($tipoDe[$s] ?? '').')', $seats);
-        return implode(' e ', $comTipo).' — NAO tem '.$n.' juntas; essas sao as mais proximas';
+        if ($juntas) return $lista($seats).' — as '.$n.' LADO A LADO, uma do lado da outra ('.$tipos($seats).')';
+
+        // não coube todo mundo junto: agrupa o que ficou lado a lado (mesmo bloco, assentos vizinhos)
+        $grupos = []; $usados = [];
+        foreach ($blocos as $bl) {
+            $g = [];
+            foreach ($bl as $sx) {
+                if (in_array($sx['sel'], $seats, true)) { $g[] = $sx['sel']; $usados[] = $sx['sel']; }
+                else { if ($g) $grupos[] = $g; $g = []; }
+            }
+            if ($g) $grupos[] = $g;
+        }
+        foreach ($seats as $x) if (! in_array($x, $usados, true)) $grupos[] = [$x];
+        usort($grupos, fn ($a, $b) => count($b) <=> count($a));
+        $partes = array_map(fn ($g) => count($g) > 1
+            ? $lista($g).' lado a lado ('.$tipos($g).')'
+            : $g[0].' separada ('.($tipoDe[$g[0]] ?? '').')', $grupos);
+        return 'NAO tem '.$n.' lado a lado nessa viagem; ficou assim: '.implode(' + ', $partes);
     }
 
     /** Acha a rota ATIVA cujas paradas contêm origem E destino. */
