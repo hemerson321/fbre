@@ -977,7 +977,10 @@ class PassagemController extends Controller
             }
             if ($prestacao) $prestacao->liquido = round((float) $prestacao->liquido - $devolucaoDesc, 2);
         }
-        if ($prestacao) $prestacao->devolucao = $devolucaoDesc;
+        if ($prestacao) {
+            $prestacao->devolucao = $devolucaoDesc;
+            $prestacao->devolucaoItens = (! $prestFechada && $modo === 'prestacao' && ! empty($f['embarcacao_id'])) ? \App\Support\DebitoDono::itens((int) $f['embarcacao_id']) : collect();
+        }
 
         // Quebra por categoria (Balcão/Proprietário/Agente) × forma, pra prestação.
         $novaCat = fn () => ['qtd' => 0, 'total' => 0.0, 'dinheiro' => 0.0, 'pix' => 0.0, 'debito' => 0.0, 'credito' => 0.0, 'credito_avista' => 0.0, 'credito_parcelado' => 0.0, 'areceber' => 0.0];
@@ -1588,7 +1591,7 @@ class PassagemController extends Controller
                         'empresa_id' => $empresa->id, 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
                         'embarcacao_id' => $emb->id, 'meio' => 'dinheiro', 'valor' => $repasse, 'user_id' => auth()->id(),
                         'momento' => 'baixa', 'tipo_mov' => 'entrada', 'categoria' => 'Débito do dono (devolução)',
-                        'descricao' => 'Dono deve à empresa — devolução da passagem '.$passagem->numeroFormatado().' (já acertada)',
+                        'descricao' => ($tipoCancel === 'cancelamento' ? 'Cancelamento' : 'Devolução').' da passagem '.$passagem->numeroFormatado().' (já acertada) · '.mb_substr((string) (optional($passagem->passageiros->first())->nome ?: $passagem->comprador_nome ?: ''), 0, 60),
                     ]);
                 }
             } elseif ($retido > 0.009) {

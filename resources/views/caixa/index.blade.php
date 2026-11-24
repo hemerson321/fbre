@@ -317,7 +317,10 @@
         @if(($d->credProp ?? 0) > 0)
         <div class="text-xs text-sky-700 mt-0.5">💳 Proprietário já recebeu direto <b>R$ {{ number_format($d->credProp,2,',','.') }}</b> <span class="text-[10px] text-slate-400">(não passou pela agência — sai do valor a pagar; a agência fica só com a comissão)</span></div>
         @endif
-        @if($d->debito > 0)<div class="text-[11px] text-rose-600 font-semibold mt-0.5">↩ proprietário deve R$ {{ number_format($d->debito,2,',','.') }} (devolução já acertada) — abate no acerto</div>@endif
+        @if($d->debito > 0)<div class="text-[11px] text-rose-600 font-semibold mt-0.5">↩ proprietário deve R$ {{ number_format($d->debito,2,',','.') }} (cancelamento / devolução de passagem já acertada) — abate no acerto</div>@endif
+        @foreach(\App\Support\DebitoDono::itens((int) $d->emb->id) as $di)
+        <div class="text-[11px] text-rose-600 mt-0.5 pl-3">• <b>{{ $di->tipo }}</b> · {{ $di->texto }}{{ $di->data ? ' · '.$di->data : '' }} · <b>R$ {{ number_format($di->valor,2,',','.') }}</b></div>
+        @endforeach
       </div>
       <div class="flex items-center gap-2">
         <div class="text-right">

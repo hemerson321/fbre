@@ -146,7 +146,10 @@
     <div class="lin"><span>Saídas avulsas (despesas)</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->saidas,2,',','.') }}</b></div>
     @endif
     @if(($prestacao->devolucao ?? 0) > 0.009)
-    <div class="lin"><span>Devolução de passagem já acertada <span style="font-weight:400;color:#777;font-size:10px">(desconta nesta prestação)</span></span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->devolucao,2,',','.') }}</b></div>
+    <div class="lin"><span>Cancelamento / devolução de passagem já acertada</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->devolucao,2,',','.') }}</b></div>
+    @foreach(($prestacao->devolucaoItens ?? collect()) as $di)
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#555;padding-left:8px"><span>↳ <b>{{ $di->tipo }}</b> · {{ $di->texto }}{{ $di->data ? ' · '.$di->data : '' }}</span><span>R$ {{ number_format($di->valor,2,',','.') }}</span></div>
+    @endforeach
     @endif
     @if($prestacao->liquido < -0.009)
     <div class="lin g" style="color:#b91c1c"><span>Proprietário deve à agência</span><span>- R$ {{ number_format(abs($prestacao->liquido),2,',','.') }}</span></div>
