@@ -128,7 +128,19 @@
           <option value="">— caixa da agência —</option>
           @foreach($transportes as $t)<option value="{{ $t->id }}">{{ $t->nome }}</option>@endforeach
         </select></div>
+      @if($avNaPrest)
+      <div><label class="label">Data da viagem</label>
+        <select name="data_viagem" class="input">
+          <option value="">— sem data (vale pra todas as viagens) —</option>
+          @foreach($datasViagem as $dvA)
+            @php $dvAs = \Illuminate\Support\Carbon::parse($dvA)->toDateString(); @endphp
+            <option value="{{ $dvAs }}" @selected((string) ($dataViagem ?? '') === $dvAs)>{{ \Illuminate\Support\Carbon::parse($dvA)->format('d/m/Y') }}</option>
+          @endforeach
+        </select>
+      </div>
+      @else
       <div x-show="emb" x-cloak><label class="label">Data da viagem</label><input type="date" name="data_viagem" class="input" value="{{ $focoPrest ? $dataViagem : '' }}"></div>
+      @endif
       <div><label class="label">{{ $avNaPrest ? 'Motivo / descrição' : 'Descrição (opcional)' }}</label><input name="descricao" class="input" maxlength="200"></div>
       <div class="flex gap-2 pt-1">
         <button type="button" class="btn btn-ghost flex-1" @click="open=false">Cancelar</button>
