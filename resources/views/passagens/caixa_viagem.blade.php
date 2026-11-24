@@ -112,11 +112,26 @@
   @if($prestacao ?? false)
   <div class="bloco">
     <h2>Prestação de contas</h2>
-    <div class="lin"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacao->bruto,2,',','.') }}</b></div>
-    <div class="lin"><span>Comissão de Agência{{ !is_null($prestacao->pct) ? ' ('.$prestacao->pct.'%)' : '' }}</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
-    @php $recPropTot = round((float) $prestacao->debProp + (float) $prestacao->pixProp + (float) $prestacao->credProp + (float) $prestacao->dinProp, 2); @endphp
+    @php
+      $recPropTot = round((float) $prestacao->debProp + (float) $prestacao->pixProp + (float) $prestacao->credProp + (float) $prestacao->dinProp, 2);
+      $pctTxt = ! is_null($prestacao->pct) ? ' ('.$prestacao->pct.'%)' : '';
+      // separa: o que a AGÊNCIA vendeu/recebeu x o que o PROPRIETÁRIO recebeu direto — cada um com a sua comissão
+      $comProp = $prestacao->bruto > 0 ? round((float) $prestacao->comissao * $recPropTot / (float) $prestacao->bruto, 2) : 0.0;
+      $vendAg = round((float) $prestacao->bruto - $recPropTot, 2);
+      $comAg = round((float) $prestacao->comissao - $comProp, 2);
+    @endphp
     @if($recPropTot > 0.009)
-    <div class="lin"><span>Já recebido direto pelo proprietário</span><b style="color:#b91c1c">- R$ {{ number_format($recPropTot,2,',','.') }}</b></div>
+    <div style="font-size:10px;font-weight:800;color:#334155;text-transform:uppercase;letter-spacing:.04em;margin-top:2px">Vendas recebidas pela agência</div>
+    <div class="lin"><span>Total</span><b>R$ {{ number_format($vendAg,2,',','.') }}</b></div>
+    <div class="lin"><span>Comissão da agência{{ $pctTxt }}</span><b style="color:#b91c1c">- R$ {{ number_format($comAg,2,',','.') }}</b></div>
+    <div class="lin" style="border-top:1px dashed #bbb"><span><b>Fica para o proprietário</b></span><b>R$ {{ number_format($vendAg - $comAg,2,',','.') }}</b></div>
+    <div style="font-size:10px;font-weight:800;color:#0e7490;text-transform:uppercase;letter-spacing:.04em;margin-top:6px">Vendas recebidas direto pelo proprietário</div>
+    <div class="lin"><span>Total <span style="font-weight:400;color:#777;font-size:10px">(já está com ele)</span></span><b>R$ {{ number_format($recPropTot,2,',','.') }}</b></div>
+    <div class="lin" style="border-top:1px dashed #bbb"><span><b>Comissão que ele deve à agência{{ $pctTxt }}</b></span><b style="color:#b91c1c">- R$ {{ number_format($comProp,2,',','.') }}</b></div>
+    <div style="height:5px"></div>
+    @else
+    <div class="lin"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacao->bruto,2,',','.') }}</b></div>
+    <div class="lin"><span>Comissão de Agência{{ $pctTxt }}</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
     @endif
     @if($prestacao->cartao > 0.009)
     <div class="lin"><span>Cartão de crédito</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
