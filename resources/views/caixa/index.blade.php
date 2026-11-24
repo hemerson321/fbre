@@ -54,7 +54,7 @@
           <div class="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style="background:color-mix(in srgb, {{ $tema[0] }} 12%, white)">🚤</div>
           <div class="min-w-0 flex-1">
             <div class="font-bold text-slate-800 truncate">{{ $t->nome }}</div>
-            <div class="text-[11px] text-slate-400 truncate">@php $dn = optional($t->dono)->name ?: ($t->dono_nome ?: null); @endphp{{ $dn ? 'proprietário '.$dn : 'proprietário sem login ainda' }}{{ $dn && empty($t->dono_id) ? ' · sem login' : '' }}</div>
+            <div class="text-[11px] text-slate-400 truncate">{{ ($t->dono?->name ?: $t->dono_nome) ? 'proprietário '.($t->dono?->name ?: $t->dono_nome).(empty($t->dono_id) ? ' · sem login' : '') : 'proprietário sem login ainda' }}</div>
           </div>
           @if($pp)
             <span class="rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap" style="background:color-mix(in srgb, {{ $tema[0] }} 14%, white); color:{{ $tema[1] }}">{{ $pp->qtd }} em aberto</span>
