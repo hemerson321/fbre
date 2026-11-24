@@ -962,7 +962,8 @@ class PassagemController extends Controller
         $devolucaoDesc = 0.0;
         if ($prestFechada) {
             $devolucaoDesc = round((float) Pagamento::where('prestacao_id', $prestFechada->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
-        } elseif ($modo === 'prestacao' && ! empty($f['embarcacao_id'])) {
+        } elseif ($modo === 'prestacao' && ! empty($f['embarcacao_id']) && (empty($f['data_viagem']) || $validas->count() > 0)) {
+            // com filtro de UMA viagem sem venda em aberto (já acertada), o débito não é dela: fica para a prestação em aberto
             $devolucaoDesc = max(0.0, round(
                 (float) Pagamento::where('embarcacao_id', $f['embarcacao_id'])->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
                 - (float) Pagamento::where('embarcacao_id', $f['embarcacao_id'])->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2));

@@ -266,6 +266,8 @@ class CaixaController extends Controller
                         (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
                         - (float) \App\Models\Pagamento::where('embarcacao_id', $e->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
                     $deb = max(0.0, $deb);
+                    // filtrando UMA viagem que não tem venda em aberto (já foi acertada): o débito de devolução/cancelamento não é dela — aparece na prestação em aberto
+                    if ($dataViagem && (int) $p->qtd === 0) $deb = 0.0;
                     $deb = round($deb + (float) $p->devido, 2); // em aberto é débito do proprietário
                     $comissao = round((float) $p->bruto - (float) $p->v, 2);
                     $passIdsDono = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
