@@ -229,7 +229,7 @@
     <div class="max-w-md mx-auto text-sm">
       <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacaoTransporte->bruto,2,',','.') }}</b></div>
       <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Comissão de Agência{{ !is_null($prestacaoTransporte->pct) ? ' ('.$prestacaoTransporte->pct.'%)' : '' }}</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->comissao,2,',','.') }}</b></div>
-      <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Cancelamento / devolução a descontar</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->debito,2,',','.') }}</b></div>
+      <div class="flex justify-between py-1.5 border-b border-slate-100"><span>{{ $transporteId ? \App\Support\DebitoDono::rotulo(\App\Support\DebitoDono::itens((int) $transporteId)) : 'Cancelamento / devolução' }} a descontar</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->debito,2,',','.') }}</b></div>
       <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Cartão de crédito</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->cartao,2,',','.') }}</b></div>
       <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Recebido direto pelo proprietário</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->credProp,2,',','.') }}</b></div>
       @if(($prestacaoTransporte->avEntrada ?? 0) > 0)<div class="flex justify-between py-1.5 border-b border-slate-100"><span>Entradas avulsas (transporte)</span><b class="text-emerald-600">+ R$ {{ number_format($prestacaoTransporte->avEntrada,2,',','.') }}</b></div>@endif
@@ -317,7 +317,7 @@
         @if(($d->credProp ?? 0) > 0)
         <div class="text-xs text-sky-700 mt-0.5">💳 Proprietário já recebeu direto <b>R$ {{ number_format($d->credProp,2,',','.') }}</b> <span class="text-[10px] text-slate-400">(não passou pela agência — sai do valor a pagar; a agência fica só com a comissão)</span></div>
         @endif
-        @if($d->debito > 0)<div class="text-[11px] text-rose-600 font-semibold mt-0.5">↩ proprietário deve R$ {{ number_format($d->debito,2,',','.') }} (cancelamento / devolução de passagem já acertada) — abate no acerto</div>@endif
+        @if($d->debito > 0)<div class="text-[11px] text-rose-600 font-semibold mt-0.5">↩ proprietário deve R$ {{ number_format($d->debito,2,',','.') }} ({{ mb_strtolower(\App\Support\DebitoDono::rotulo(\App\Support\DebitoDono::itens((int) $d->emb->id))) }} de passagem já acertada) — abate no acerto</div>@endif
         @foreach(\App\Support\DebitoDono::itens((int) $d->emb->id) as $di)
         <div class="text-[11px] text-rose-600 mt-0.5 pl-3">• <b>{{ $di->tipo }}</b> · {{ $di->texto }}{{ $di->data ? ' · '.$di->data : '' }} · <b>R$ {{ number_format($di->valor,2,',','.') }}</b></div>
         @endforeach

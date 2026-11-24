@@ -146,7 +146,7 @@
     <div class="lin"><span>Saídas avulsas (despesas)</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->saidas,2,',','.') }}</b></div>
     @endif
     @if(($prestacao->devolucao ?? 0) > 0.009)
-    <div class="lin"><span>Cancelamento / devolução de passagem já acertada</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->devolucao,2,',','.') }}</b></div>
+    <div class="lin"><span>{{ \App\Support\DebitoDono::rotulo($prestacao->devolucaoItens ?? collect()) }} de passagem já acertada</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->devolucao,2,',','.') }}</b></div>
     @foreach(($prestacao->devolucaoItens ?? collect()) as $di)
     <div style="display:flex;justify-content:space-between;font-size:10px;color:#555;padding-left:8px"><span>↳ <b>{{ $di->tipo }}</b> · {{ $di->texto }}{{ $di->data ? ' · '.$di->data : '' }}</span><span>R$ {{ number_format($di->valor,2,',','.') }}</span></div>
     @endforeach
