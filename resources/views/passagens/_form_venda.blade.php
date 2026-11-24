@@ -288,10 +288,7 @@
         @if(($agentes ?? collect())->count())
         <div x-show="tipoPag==='agente'" x-cloak class="rounded-xl border border-indigo-200 bg-indigo-50/60 p-1.5 space-y-1">
           <select x-model="agenteId" class="field w-full"><option value="">— escolha o agente —</option>@foreach($agentes as $ag)<option value="{{ $ag->id }}">{{ $ag->name }}</option>@endforeach</select>
-          <div class="flex gap-1">
-            <button type="button" class="forma flex-1 !py-1 !text-[11px]" :class="agenteAcerto && 'on'" @click="agenteAcerto=true">Com acerto</button>
-            <button type="button" class="forma flex-1 !py-1 !text-[11px]" :class="!agenteAcerto && 'on'" @click="agenteAcerto=false">Sem acerto</button>
-          </div>
+          <p class="text-[10px] text-indigo-500 px-0.5">Agente externo: sempre <b>sem acerto</b> — o proprietário acerta direto com o agente.</p>
         </div>
         @endif
 

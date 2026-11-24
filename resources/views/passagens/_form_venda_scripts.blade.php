@@ -6,7 +6,7 @@
   function novaPassagem(){
     return {
       salvando:false, tipoPag:'balcao', metodosAtivos:['dinheiro'], credParcel:false, dividir:false, pag:{dinheiro:null,pix:null,debito:null,credito:null}, proprietarioMaq:false, parcelas:1, imprimir:'direto',
-      agenteId:'', agenteAcerto:true,
+      agenteId:'', agenteAcerto:false,
       fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
@@ -608,7 +608,7 @@
         s.passageiros=[]; s.destinoSel='';
         s.tipoPag='balcao'; s.metodosAtivos=['dinheiro']; s.credParcel=false; s.dividir=false;
         s.pag={dinheiro:null,pix:null,debito:null,credito:null}; s.proprietarioMaq=false; s.parcelas=1; s.desconto=null;
-        s.agenteId=''; s.agenteAcerto=true; s.clienteFaturadoId=null; s.fatSel=null;
+        s.agenteId=''; s.agenteAcerto=false; s.clienteFaturadoId=null; s.fatSel=null;
         s.compradorNome=''; s.compradorTel=''; s.compradorDoc=''; s.observacao=''; s.documentosGerais=[];
         return s;
       },

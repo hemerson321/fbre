@@ -336,7 +336,7 @@ class PassagemService
         if (! $ag) return;
 
         $total = (float) $p->total;
-        $comAcerto = (bool) ($data['agente_acerto'] ?? true);
+        $comAcerto = (bool) ($data['agente_acerto'] ?? false); // agente externo e sempre sem acerto
         $p->forceFill([
             'revendedor_id' => $ag->id,
             'user_id' => $ag->id, // o DONO da venda é o agente (não o operador que digitou)
