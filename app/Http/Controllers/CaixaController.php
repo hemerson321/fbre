@@ -50,7 +50,8 @@ class CaixaController extends Controller
         $viagemId = $request->input('viagem_id');
         $modulo = $request->input('modulo');
         $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
-        $podeTransporte = auth()->user()->podeFiltrarTransporte();
+        // Na Prestação de Contas a escolha do transporte/viagem é obrigatória, então quem confere o caixa pode filtrar.
+        $podeTransporte = auth()->user()->podeFiltrarTransporte() || ($request->input('foco') === 'prestacoes' && auth()->user()->caixaTodos());
         $transporteId = $podeTransporte ? $request->input('transporte_id') : null;
         $transportes = \App\Models\Embarcacao::orderBy('nome')->get();
         $dataViagem = $podeTransporte ? ($request->input('data_viagem') ?: null) : null;
@@ -344,6 +345,19 @@ class CaixaController extends Controller
         $entradasVal = (float) $porMeio->sum('valor');
         $liquidoAgencia = round($entradasVal - $ownerShareG - (float) $saidas, 2);
 
+        // Tela de escolha da Prestação: pendências por transporte e por data de viagem (pra guiar o operador).
+        $pendPorTransporte = collect(); $pendPorData = collect();
+        if ($request->input('foco') === 'prestacoes' && auth()->user()->caixaTodos()) {
+            $pendBase = fn () => \App\Models\Passagem::where('cancelada', false)->where('transferida', false)->where('acerto_dono', false);
+            if (! $transporteId) {
+                $pendPorTransporte = $pendBase()->whereNotNull('embarcacao_id')
+                    ->selectRaw('embarcacao_id, COUNT(*) as qtd, COALESCE(SUM(total),0) as total')->groupBy('embarcacao_id')->get()->keyBy('embarcacao_id');
+            } elseif (! $dataViagem) {
+                $pendPorData = $pendBase()->where('embarcacao_id', $transporteId)->whereNotNull('data_viagem')
+                    ->selectRaw('DATE(data_viagem) as d, COUNT(*) as qtd, COALESCE(SUM(total),0) as total')->groupBy('d')->get()->keyBy('d');
+            }
+        }
+
         // Desfazer acerto direto no relatório (por transporte + viagem). Serve p/ acertos antigos.
         $acertoDesfazivel = 0; $podeDesfazerTransporte = false;
         if ($transporteId && auth()->user()->caixaTodos()) {
@@ -382,6 +396,9 @@ class CaixaController extends Controller
         if (auth()->user()->caixaTodos()) {
             $prestacoesFechadas = \App\Models\Prestacao::ativas()
                 ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+                // viagem escolhida: só as prestações dessa data (gravada no fechamento ou pelas passagens que ela contém)
+                ->when($dataViagem, fn ($q) => $q->where(fn ($w) => $w->whereDate('data_viagem', $dataViagem)
+                    ->orWhereIn('id', \App\Models\Passagem::whereDate('data_viagem', $dataViagem)->whereNotNull('prestacao_id')->select('prestacao_id'))))
                 ->with('embarcacao')->orderByDesc('fechada_em')->orderByDesc('id')->limit(100)->get();
             // Data(s) de viagem de cada prestação: a gravada no fechamento ou, se fechou "todas pendentes", as datas das passagens.
             $datasPorPrest = \App\Models\Passagem::whereIn('prestacao_id', $prestacoesFechadas->pluck('id'))->whereNotNull('data_viagem')
@@ -434,7 +451,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'porCategoria'))
+        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'pendPorTransporte', 'pendPorData', 'porCategoria'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 

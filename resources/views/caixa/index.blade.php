@@ -25,8 +25,97 @@
   </div>
   <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null),'modo'=>($focoPrest ? 'prestacao' : (($ehRelatorio ?? false) ? 'relatorio' : 'caixa'))])) }}" class="btn btn-ghost btn-sm">📄 {{ $focoPrest ? 'Pré-prestação' : ($ehRel ? 'Relatório' : 'Caixa') }} (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div></div>
 
+@php $escolher = $focoPrest && (! $transporteId || ! $dataViagem); @endphp
+@if($escolher)
+@php
+  $tSel = $transporteId ? $transportes->firstWhere('id', (int) $transporteId) : null;
+  $tLista = $transportes->filter(fn ($t) => ! empty($t->dono_id))->values();
+@endphp
+<div class="card overflow-hidden">
+  <div class="p-4 border-b flex items-center gap-3 flex-wrap">
+    <div class="flex items-center gap-2 text-sm font-bold">
+      <span class="inline-flex w-7 h-7 rounded-full items-center justify-center text-white text-[13px]" style="background:{{ $tSel ? '#16a34a' : $tema[0] }}">{{ $tSel ? '✓' : '1' }}</span>
+      <span class="{{ $tSel ? 'text-slate-400' : 'text-slate-800' }}">Transporte</span>
+    </div>
+    <span class="text-slate-300">›</span>
+    <div class="flex items-center gap-2 text-sm font-bold">
+      <span class="inline-flex w-7 h-7 rounded-full items-center justify-center text-[13px] {{ $tSel ? 'text-white' : 'bg-slate-100 text-slate-400' }}" @if($tSel) style="background:{{ $tema[0] }}" @endif>2</span>
+      <span class="{{ $tSel ? 'text-slate-800' : 'text-slate-400' }}">Data da viagem</span>
+    </div>
+    <span class="text-slate-300">›</span>
+    <div class="flex items-center gap-2 text-sm font-bold text-slate-400"><span class="inline-flex w-7 h-7 rounded-full items-center justify-center text-[13px] bg-slate-100">3</span>Prestação</div>
+  </div>
+
+  @if(! $tSel)
+  <div class="p-4">
+    <div class="text-lg font-extrabold text-slate-800">De qual transporte é a prestação?</div>
+    <div class="text-[13px] text-slate-500 mb-3">Escolha a lancha. Depois você escolhe a viagem.</div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+      @forelse($tLista as $t)
+        @php $pp = $pendPorTransporte[$t->id] ?? null; @endphp
+        <a href="{{ route('caixa.index', ['foco' => 'prestacoes', 'transporte_id' => $t->id]) }}"
+           class="group rounded-2xl border bg-white p-3.5 flex items-center gap-3 transition hover:shadow-md"
+           style="border-color:{{ $pp ? 'color-mix(in srgb, '.$tema[0].' 45%, white)' : '#e2e8f0' }}">
+          <div class="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style="background:color-mix(in srgb, {{ $tema[0] }} 12%, white)">🚤</div>
+          <div class="min-w-0 flex-1">
+            <div class="font-bold text-slate-800 truncate">{{ $t->nome }}</div>
+            <div class="text-[11px] text-slate-400 truncate">proprietário {{ optional($t->dono)->name ?? $t->dono_nome ?? '—' }}</div>
+          </div>
+          @if($pp)
+            <span class="rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap" style="background:color-mix(in srgb, {{ $tema[0] }} 14%, white); color:{{ $tema[1] }}">{{ $pp->qtd }} em aberto</span>
+          @else
+            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-400 whitespace-nowrap">em dia</span>
+          @endif
+        </a>
+      @empty
+        <div class="col-span-full p-6 text-center text-slate-400">Nenhum transporte com proprietário cadastrado. Cadastre o proprietário em Administração → Transportes.</div>
+      @endforelse
+    </div>
+  </div>
+  @else
+  <div class="p-4">
+    <div class="flex items-center justify-between gap-2 flex-wrap mb-3">
+      <div>
+        <div class="text-lg font-extrabold text-slate-800">Qual viagem do 🚤 {{ $tSel->nome }}?</div>
+        <div class="text-[13px] text-slate-500">Escolha a data da viagem para abrir a prestação.</div>
+      </div>
+      <a href="{{ route('caixa.index', ['foco' => 'prestacoes']) }}" class="btn btn-ghost btn-sm">← Trocar transporte</a>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
+      @forelse($datasViagem as $dv)
+        @php $dvs = \Illuminate\Support\Carbon::parse($dv)->toDateString(); $pd = $pendPorData[$dvs] ?? null; $cdv = \Illuminate\Support\Carbon::parse($dv); @endphp
+        <a href="{{ route('caixa.index', ['foco' => 'prestacoes', 'transporte_id' => $tSel->id, 'data_viagem' => $dvs]) }}"
+           class="rounded-2xl border bg-white p-3 text-center transition hover:shadow-md"
+           style="border-color:{{ $pd ? 'color-mix(in srgb, '.$tema[0].' 45%, white)' : '#e2e8f0' }}">
+          <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400">{{ ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][$cdv->dayOfWeek] }}</div>
+          <div class="text-lg font-extrabold text-slate-800 leading-tight">{{ $cdv->format('d/m') }}</div>
+          <div class="text-[11px] text-slate-400">{{ $cdv->format('Y') }}</div>
+          @if($pd)
+            <div class="mt-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold inline-block" style="background:color-mix(in srgb, {{ $tema[0] }} 14%, white); color:{{ $tema[1] }}">{{ $pd->qtd }} em aberto</div>
+          @else
+            <div class="mt-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-400 inline-block">fechada / sem pendência</div>
+          @endif
+        </a>
+      @empty
+        <div class="col-span-full p-6 text-center text-slate-400">Este transporte não tem viagens com venda nos últimos meses.</div>
+      @endforelse
+    </div>
+  </div>
+  @endif
+</div>
+@else
+@if($focoPrest)
+@php $tSel = $transportes->firstWhere('id', (int) $transporteId); @endphp
+<div class="card px-4 py-2.5 flex items-center justify-between gap-2 flex-wrap no-print">
+  <div class="text-sm text-slate-600">Prestação de <b class="text-slate-900">🚤 {{ optional($tSel)->nome ?? 'Transporte' }}</b> · viagem de <b class="text-slate-900">{{ \Illuminate\Support\Carbon::parse($dataViagem)->format('d/m/Y') }}</b></div>
+  <div class="flex items-center gap-2">
+    <a href="{{ route('caixa.index', ['foco' => 'prestacoes', 'transporte_id' => $transporteId]) }}" class="btn btn-ghost btn-sm">🗓 Trocar viagem</a>
+    <a href="{{ route('caixa.index', ['foco' => 'prestacoes']) }}" class="btn btn-ghost btn-sm">🚤 Trocar transporte</a>
+  </div>
+</div>
+@endif
 @if($podeAvulso)
-<div x-data="{open:false, tipo:'entrada', emb:''}" class="no-print">
+<div x-data="{open:false, tipo:'entrada', emb:'{{ $focoPrest ? (int) $transporteId : '' }}'}" class="no-print">
   <div class="flex gap-2">
     <button type="button" @click="tipo='entrada';open=true" class="btn btn-sm text-white" style="background:#059669">➕ Entrada avulsa</button>
     <button type="button" @click="tipo='saida';open=true" class="btn btn-sm text-white" style="background:#e11d48">➖ Saída avulsa</button>
@@ -51,7 +140,7 @@
           <option value="">— caixa da agência —</option>
           @foreach($transportes as $t)<option value="{{ $t->id }}">{{ $t->nome }}</option>@endforeach
         </select></div>
-      <div x-show="emb" x-cloak><label class="label">Data da viagem</label><input type="date" name="data_viagem" class="input"></div>
+      <div x-show="emb" x-cloak><label class="label">Data da viagem</label><input type="date" name="data_viagem" class="input" value="{{ $focoPrest ? $dataViagem : '' }}"></div>
       <div><label class="label">Descrição (opcional)</label><input name="descricao" class="input" maxlength="200"></div>
       <div class="flex gap-2 pt-1">
         <button type="button" class="btn btn-ghost flex-1" @click="open=false">Cancelar</button>
@@ -516,6 +605,7 @@
   <div class="p-3">{{ $movimentos->links() }}</div>
 </div>
 @endunless
+@endif
 </div>
 @include('partials.pulse', ['soft' => '#rt-root', 'intervalo' => 5000])
 @endsection
