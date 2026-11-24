@@ -310,7 +310,7 @@
         <div class="text-xs text-slate-500 mt-0.5">↕️ Avulsos desta prestação: @if($d->avE > 0)<b class="text-emerald-700">+ R$ {{ number_format($d->avE,2,',','.') }}</b> @endif @if($d->avS > 0)<b class="text-rose-600">− R$ {{ number_format($d->avS,2,',','.') }}</b> @endif <span class="text-[10px] text-slate-400">(entram no fechamento)</span></div>
         @endif
         @if(($d->qtdAg ?? 0) > 0)
-        <div class="text-xs text-slate-500 mt-0.5">🤝 {{ $d->qtdAg }} passagem(ns) de <b class="text-blue-700">agente externo</b> · vendido <b>R$ {{ number_format($d->brutoAg,2,',','.') }}</b> · repasse ao proprietário <b class="text-blue-700">R$ {{ number_format($d->repasseAg,2,',','.') }}</b> <span class="text-[10px] text-slate-400">(não passa pelo caixa da agência)</span></div>
+        <div class="text-xs text-slate-500 mt-0.5">🤝 {{ $d->qtdAg }} passagem(ns) de <b class="text-blue-700">agente externo</b> · vendido <b>R$ {{ number_format($d->brutoAg,2,',','.') }}</b> <span class="text-[10px] text-slate-400">(neutro — o proprietário acerta direto com o agente, não entra no total)</span></div>
         @endif
         <button type="button" class="mt-1 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 @click="$dispatch('ver-vendas', { id: {{ $d->emb->id }}, nome: @js($d->emb->nome) })">👁 Ver vendas ({{ $d->qtd + ($d->qtdAg ?? 0) }})</button>

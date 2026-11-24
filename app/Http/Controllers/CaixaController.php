@@ -285,7 +285,7 @@ class CaixaController extends Controller
         $comissaoAgencia = 0.0; $ownerShareG = 0.0;
         // TODAS as passagens do filtro: comissão da agência no CAIXA (não zera quando o dono é acertado).
         $pqAll = \App\Models\Passagem::where('cancelada', false)->where('transferida', false)
-            ->when(! $ehRelatorio && $request->input('foco') !== 'prestacoes', fn ($q) => $q->whereNull('revendedor_id')) // só o CAIXA exclui agente externo; Relatório e Prestação mostram
+            ->when(! $ehRelatorio, fn ($q) => $q->whereNull('revendedor_id')) // Caixa e Prestação excluem agente externo (o proprietário acerta direto com o agente); só o Relatório mostra
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             // venda de operador que ainda não prestou conta não conta na comissão do Caixa (entra após a prestação dele)

@@ -160,7 +160,7 @@
     @if(($prestacao->agQtd ?? 0) > 0)
     <div style="margin-top:6px;padding:4px 6px;border:1px dashed #0e7490;border-radius:3px;font-size:10px;color:#0e7490;line-height:1.3">
       <b>🤝 Agente externo — não entra no total acima.</b> O proprietário acerta direto com o agente.<br>
-      {{ $prestacao->agQtd }} passagem(ns) · vendido R$ {{ number_format($prestacao->agBruto,2,',','.') }} · repasse ao proprietário R$ {{ number_format($prestacao->agRepasse,2,',','.') }}
+      {{ $prestacao->agQtd }} passagem(ns) · vendido R$ {{ number_format($prestacao->agBruto,2,',','.') }}
     </div>
     @endif
     @if($prestFechada ?? null)
