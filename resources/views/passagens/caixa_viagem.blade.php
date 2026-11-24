@@ -118,6 +118,11 @@
     @if($prestacao->pixProp > 0.009)<div class="lin"><span>Pix Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->pixProp,2,',','.') }}</b></div>@endif
     @if($prestacao->credProp > 0.009)<div class="lin"><span>Crédito Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->credProp,2,',','.') }}</b></div>@endif
     @if($prestacao->dinProp > 0.009)<div class="lin"><span>Dinheiro Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->dinProp,2,',','.') }}</b></div>@endif
+    @php $recPropTot = round((float) $prestacao->debProp + (float) $prestacao->pixProp + (float) $prestacao->credProp + (float) $prestacao->dinProp, 2); @endphp
+    @if($recPropTot > 0.009 && ! is_null($prestacao->pct))
+    @php $comProp = round($recPropTot * (int) $prestacao->pct / 100, 2); @endphp
+    <div style="font-size:10px;color:#555;margin:1px 0 3px 8px;line-height:1.25">↳ O proprietário recebeu direto R$ {{ number_format($recPropTot,2,',','.') }}: R$ {{ number_format($recPropTot - $comProp,2,',','.') }} são dele e R$ {{ number_format($comProp,2,',','.') }} ({{ (int) $prestacao->pct }}%) são comissão da agência, já contada na linha "Comissão de Agência".</div>
+    @endif
     <div class="lin"><span>Cartão de crédito</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
     @if(($prestacao->entradas ?? 0) > 0.009)<div class="lin"><span>Entradas avulsas</span><b style="color:#067d3b">+ R$ {{ number_format($prestacao->entradas,2,',','.') }}</b></div>@endif
     <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px;color:#b45309"><span>Total Geral de Despesas <span style="font-weight:400;color:#777">(saídas)</span></span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->saidas,2,',','.') }}</b></div>
