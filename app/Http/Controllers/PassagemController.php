@@ -1844,8 +1844,8 @@ class PassagemController extends Controller
             'mapa.*.poltrona' => 'nullable|string|max:10',
             'valor_destino' => 'nullable|in:0,1',
         ]);
-        // As VENDAS (o valor) acompanham os passageiros pro transporte de destino? Padrão: sim.
-        $valorVaiJunto = (string) ($data['valor_destino'] ?? '1') !== '0';
+        // As VENDAS (o valor) acompanham os passageiros pro transporte de destino? Padrão: NÃO (ficam com a origem).
+        $valorVaiJunto = (string) ($data['valor_destino'] ?? '0') === '1';
         $origemEmb = Embarcacao::findOrFail($data['origem_id']);
         $ficouNaOrigem = 0.0;
 
