@@ -483,7 +483,7 @@ class AgenteBot
         $venda = $c->contexto['venda'] ?? [];
         $origem = ! empty($venda['origem']) ? $venda['origem'] : ($partes[0] ?? '');
         $destino = ! empty($venda['destino']) ? $venda['destino'] : ($partes[1] ?? '');
-        $data = $this->parseData(! empty($venda['data']) ? $venda['data'] : ($partes[2] ?? ''));
+        $data = $this->parseData((string) ($partes[2] ?? '')) ?: $this->parseData((string) ($venda['data'] ?? '')); // a data do marcador vale; cai na da venda se não der pra ler
         $tipo = mb_strtolower($partes[3] ?? 'janela');
         $nq = max(1, (int) ($partes[4] ?? 1));
         $subst = 'definida no embarque';
@@ -621,6 +621,21 @@ class AgenteBot
         $str = trim($str);
         if ($str === '') return null;
         // o modelo costuma mandar a data com o dia/hora junto ("Dom 29/11", "29/11/2026 05:00", "2026-11-29"): pega só a data
+        $low = mb_strtolower(\Illuminate\Support\Str::ascii($str));
+        $meses = ['janeiro' => 1, 'fevereiro' => 2, 'marco' => 3, 'abril' => 4, 'maio' => 5, 'junho' => 6, 'julho' => 7, 'agosto' => 8, 'setembro' => 9, 'outubro' => 10, 'novembro' => 11, 'dezembro' => 12];
+        if (! preg_match('/\d{1,2}\/\d{1,2}/', $str) && ! preg_match('/\d{4}-\d{1,2}-\d{1,2}/', $str)) {
+            if (preg_match('/(\d{1,2})\s*(?:de\s+)?('.implode('|', array_keys($meses)).')(?:\s*(?:de\s+)?(\d{4}))?/', $low, $mm)) {
+                $str = $mm[1].'/'.$meses[$mm[2]].(! empty($mm[3]) ? '/'.$mm[3] : '');           // "29 de novembro"
+            } elseif (str_contains($low, 'amanha')) {
+                return now()->addDay()->startOfDay();
+            } elseif (str_contains($low, 'hoje')) {
+                return now()->startOfDay();
+            } else {
+                foreach (['domingo' => 0, 'segunda' => 1, 'terca' => 2, 'quarta' => 3, 'quinta' => 4, 'sexta' => 5, 'sabado' => 6] as $nome => $dow) {
+                    if (str_contains($low, $nome)) { $d = now()->startOfDay(); while ($d->dayOfWeek !== $dow) $d->addDay(); return $d; } // "domingo" = o próximo
+                }
+            }
+        }
         if (preg_match('/(\d{4})-(\d{1,2})-(\d{1,2})/', $str, $mm)) $str = $mm[3].'/'.$mm[2].'/'.$mm[1];
         elseif (preg_match('/\d{1,2}\/\d{1,2}(\/\d{2,4})?/', $str, $mm)) $str = $mm[0];
         foreach (['d/m/Y', 'd/m/y', 'd/m'] as $fmt) {

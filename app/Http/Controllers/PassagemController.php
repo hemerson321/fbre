@@ -659,7 +659,9 @@ class PassagemController extends Controller
             ->when($viagemId && ! $viagemAberta, fn ($q) => $q->where(fn ($w) => $w->where('viagem_id', $viagemId)
                 ->when($dataViagem, fn ($x) => $x->orWhere(fn ($y) => $y->where('user_id', 0)->whereDate('data_viagem', $dataViagem)))))
             ->when($viagemId && $viagemAberta, fn ($q) => $q->where('viagem_id', $viagemId))
-            ->when(($viagemAberta || ! $viagemId) && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+            // reserva do agente (user_id 0) gravada sem data também aparece: melhor avisar o operador do que esconder
+            ->when(($viagemAberta || ! $viagemId) && $dataViagem, fn ($q) => $q->where(fn ($w) => $w->whereDate('data_viagem', $dataViagem)
+                ->orWhere(fn ($y) => $y->where('user_id', 0)->whereNull('data_viagem'))))
             ->when($exceptUserId, fn ($q) => $q->where('user_id', '!=', $exceptUserId));
 
         $ordem = [];
@@ -695,7 +697,9 @@ class PassagemController extends Controller
             ->when($viagemId && ! $viagemAberta, fn ($q) => $q->where(fn ($w) => $w->where('viagem_id', $viagemId)
                 ->when($dataViagem, fn ($x) => $x->orWhere(fn ($y) => $y->where('user_id', 0)->whereDate('data_viagem', $dataViagem)))))
             ->when($viagemId && $viagemAberta, fn ($q) => $q->where('viagem_id', $viagemId))
-            ->when(($viagemAberta || ! $viagemId) && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+            // reserva do agente (user_id 0) gravada sem data também aparece: melhor avisar o operador do que esconder
+            ->when(($viagemAberta || ! $viagemId) && $dataViagem, fn ($q) => $q->where(fn ($w) => $w->whereDate('data_viagem', $dataViagem)
+                ->orWhere(fn ($y) => $y->where('user_id', 0)->whereNull('data_viagem'))))
             ->when($exceptUserId, fn ($q) => $q->where('user_id', '!=', $exceptUserId));
 
         $ordem = [];

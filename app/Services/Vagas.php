@@ -160,6 +160,7 @@ class Vagas
             ]);
         }
 
+        try { \Illuminate\Support\Facades\Log::info('agente.poltrona.reserva', ['lancha' => $emb->nome, 'embarcacao_id' => $emb->id, 'rota_id' => $rota->id, 'viagem_id' => $viagemId, 'data' => $data?->toDateString(), 'trecho' => $origem.' > '.$destino, 'poltronas' => $escolhidos, 'conversa' => $conversaId]); } catch (\Throwable $e) {}
         $tipoDe = [];
         foreach ($blocos as $bl) foreach ($bl as $sx) $tipoDe[$sx['sel']] = $sx['tipo'];
         $desc = $this->descreverEscolha($escolhidos, $tipoDe, $juntas, $n);
