@@ -82,14 +82,8 @@
 @endphp
 <form method="get" action="{{ route('caixa.index') }}" class="card p-3 flex flex-wrap gap-3 items-end no-print">
   <input type="hidden" name="foco" value="prestacoes">
-  <div class="min-w-[220px] flex-1 sm:flex-none">
-    <label class="label">Transporte</label>
-    <select name="transporte_id" class="input !min-h-[42px]" onchange="this.form.data_viagem.value=''; this.form.submit()">
-      @foreach($transportes as $t)
-        <option value="{{ $t->id }}" @selected((int) $transporteId === (int) $t->id)>🚤 {{ $t->nome }}</option>
-      @endforeach
-    </select>
-  </div>
+  <input type="hidden" name="transporte_id" value="{{ (int) $transporteId }}">
+  <div class="flex items-center gap-2 font-extrabold text-slate-800 text-base pr-2">🚤 {{ optional($tSel)->nome }}</div>
   <div class="min-w-[240px] flex-1 sm:flex-none">
     <label class="label">Data da viagem</label>
     <select name="data_viagem" class="input !min-h-[42px]" onchange="this.form.submit()">
