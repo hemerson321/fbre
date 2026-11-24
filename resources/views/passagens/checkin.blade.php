@@ -12,6 +12,15 @@
 
   @php $podeBaixa = $u->permite('passagem','baixa') && ! $p->cancelada && ($p->devido <= 0.009 || $p->forma === 'faturado'); @endphp
   <div class="card p-4">
+    @php $trocados = $p->passageiros->filter(fn ($x) => ! empty($x->transf_de_lancha)); @endphp
+    @if($trocados->isNotEmpty())
+    <div class="mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+      <div class="font-extrabold">⚠ Mudança de transporte — avise o passageiro</div>
+      @foreach($trocados as $x)
+      <div class="mt-1">{{ $x->nome }}: antes <b>{{ $x->transf_de_lancha }}</b>{{ $x->transf_de_poltrona ? ' · poltrona '.$x->transf_de_poltrona : '' }}{{ $x->transf_de_bilhete ? ' · bilhete '.$x->transf_de_bilhete : '' }} → agora <b>{{ $p->embarcacao?->nome }}{{ $x->poltrona ? ' · poltrona '.$x->poltrona : '' }}</b></div>
+      @endforeach
+    </div>
+    @endif
     <div class="font-semibold mb-2">Passageiros (<span data-chkcount>{{ $p->passageiros->where('checkin',true)->count() }}/{{ $p->passageiros->count() }}</span>)</div>
     <div class="divide-y">
       @foreach($p->passageiros as $pax)

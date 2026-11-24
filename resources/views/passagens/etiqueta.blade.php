@@ -35,6 +35,8 @@
   .rota .seta { font-weight:400; }
   .meta { font-size:{{ $px(11) }}px; line-height:1.3; margin-top:{{ $px(2) }}px; }
   .meta b { font-weight:800; }
+  .troca { font-size:{{ $px(9) }}px; line-height:1.2; margin-top:{{ $px(2) }}px; padding:{{ $px(2) }}px {{ $px(3) }}px; border:{{ max(1, $px(1)) }}px solid #000; border-radius:{{ $px(2) }}px; }
+  .troca b { font-weight:900; }
   /* coluna direita: poltrona + volume, os dois em destaque */
   .seat2 { width:35%; border-left:{{ $bd }}px solid #000; display:flex; flex-direction:column; }
   .seat2 .cell { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:{{ $px(1) }}px; text-align:center; }
@@ -89,6 +91,9 @@
         <div class="rota">{{ $orig }} <span class="seta">&rsaquo;</span> {{ $dest }}</div>
       </div>
       <div class="meta"><b>Data:</b> {{ $data }} &nbsp; <b>Ticket:</b> {{ $ticket }}@if($pax->telefone)<br><b>Tel.:</b> {{ $pax->telefone }}@endif</div>
+      @if($pax->transf_de_lancha)
+      <div class="troca"><b>MUDANÇA DE TRANSPORTE</b><br>Antes: {{ strtoupper($pax->transf_de_lancha) }}{{ $pax->transf_de_poltrona ? ' · polt. '.$pax->transf_de_poltrona : '' }}{{ $pax->transf_de_bilhete ? ' · bilhete '.$pax->transf_de_bilhete : '' }}<br><b>Agora: {{ strtoupper($lancha) }}{{ $pax->poltrona ? ' · POLTRONA '.$pax->poltrona : '' }}</b></div>
+      @endif
     </div>
     <div class="seat1">
       <div class="cap">POLTRONA</div>

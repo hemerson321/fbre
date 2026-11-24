@@ -1880,7 +1880,9 @@ class PassagemController extends Controller
                 foreach ($p->passageiros as $x) {
                     if ($poltronaPorPax->has($x->id)) {
                         $nova = trim((string) ($poltronaPorPax[$x->id]['poltrona'] ?? ''));
-                        $x->forceFill(['poltrona' => $nova !== '' ? $nova : null])->save();
+                        // guarda de onde veio (sai na via do passageiro no check-in). Se já foi transferido antes, mantém a origem ORIGINAL.
+                        $hist = $x->transf_de_lancha ? [] : ['transf_de_lancha' => $origemEmb->nome, 'transf_de_poltrona' => $x->poltrona, 'transf_de_bilhete' => $p->numeroFormatado()];
+                        $x->forceFill(['poltrona' => $nova !== '' ? $nova : null, 'transf_em' => now()] + $hist)->save();
                     }
                 }
             }
@@ -1972,6 +1974,13 @@ class PassagemController extends Controller
                 $np = $pax->replicate(['checkin', 'embarcou']);
                 $np->passagem_id = $nova->id;
                 $np->checkin = false;
+                // de onde veio: lancha, poltrona e bilhete anteriores (sai na via do passageiro no check-in)
+                if (! $np->transf_de_lancha) {
+                    $np->transf_de_lancha = optional($passagem->embarcacao)->nome;
+                    $np->transf_de_poltrona = $pax->poltrona;
+                    $np->transf_de_bilhete = $passagem->numeroFormatado();
+                }
+                $np->transf_em = now();
                 if ($destino && $destino->usa_poltrona && array_key_exists($pax->id, $poltronasIn)) {
                     $np->poltrona = $poltronasIn[$pax->id] ?: null;
                 }
