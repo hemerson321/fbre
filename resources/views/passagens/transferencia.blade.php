@@ -194,6 +194,7 @@
       <input type="hidden" name="origem_id" :value="origem?origem.id:''">
       <input type="hidden" name="destino_id" :value="destino?destino.id:''">
       <input type="hidden" name="data_viagem" value="{{ $dados['data_viagem'] ?? '' }}">
+      <input type="hidden" name="valor_destino" :value="valorDestino">
       <template x-for="(p,i) in pax" :key="'h'+p.passageiro_id">
         <span>
           <input type="hidden" :name="'mapa['+i+'][passageiro_id]'" :value="p.passageiro_id">
@@ -201,6 +202,19 @@
         </span>
       </template>
     </form>
+    <div class="card p-3" x-show="destino" x-cloak>
+      <div class="label !mb-2">As vendas (valor das passagens) vão para o outro transporte?</div>
+      <div class="grid sm:grid-cols-2 gap-2">
+        <button type="button" @click="valorDestino='1'" :class="valorDestino==='1' ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-200 text-slate-600'" class="rounded-xl border-2 p-3 text-left">
+          <div class="font-bold text-sm">✅ Sim — vão junto</div>
+          <div class="text-[12px] opacity-80">O valor passa a ser do <b x-text="destino ? destino.nome : 'destino'"></b>: entra na prestação de contas dele.</div>
+        </button>
+        <button type="button" @click="valorDestino='0'" :class="valorDestino==='0' ? 'border-amber-600 bg-amber-50 text-amber-800' : 'border-slate-200 text-slate-600'" class="rounded-xl border-2 p-3 text-left">
+          <div class="font-bold text-sm">🚫 Não — ficam com a origem</div>
+          <div class="text-[12px] opacity-80">Só os passageiros mudam de lancha. O valor continua do <b x-text="origem ? origem.nome : 'transporte de origem'"></b>.</div>
+        </button>
+      </div>
+    </div>
     <div class="flex items-center gap-3 sticky bottom-0 bg-white/90 backdrop-blur border-t py-3 px-1 rounded-t-xl">
       <div class="text-sm text-slate-600"><b x-text="nSentados"></b>/<b x-text="nPax"></b> com poltrona</div>
       <button type="button" class="btn btn-accent ml-auto" :disabled="!destino || salvando || (destino && !cabe)" @click="confirmar()">
@@ -221,6 +235,7 @@ function transfTool(){
     selPax: null,
     dragPax: null,
     salvando: false,
+    valorDestino: '1',
 
     parseSeat(s){ s=String(s); const m=s.match(/(\d+)/); const row=m?parseInt(m[1],10):9999; const c=(s.match(/[A-Za-z]+$/)||[''])[0].toUpperCase(); return {row:row,col:c}; },
         seatsNamed(layout){ const txt=(layout||'').replace(/\r/g,''); const out=[];

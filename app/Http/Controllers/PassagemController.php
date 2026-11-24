@@ -1842,7 +1842,12 @@ class PassagemController extends Controller
             'mapa' => 'required|array|min:1',
             'mapa.*.passageiro_id' => 'required|integer',
             'mapa.*.poltrona' => 'nullable|string|max:10',
+            'valor_destino' => 'nullable|in:0,1',
         ]);
+        // As VENDAS (o valor) acompanham os passageiros pro transporte de destino? Padrão: sim.
+        $valorVaiJunto = (string) ($data['valor_destino'] ?? '1') !== '0';
+        $origemEmb = Embarcacao::findOrFail($data['origem_id']);
+        $ficouNaOrigem = 0.0;
 
         $destino = Embarcacao::findOrFail($data['destino_id']);
 
@@ -1860,7 +1865,7 @@ class PassagemController extends Controller
         $poltronaPorPax = collect($data['mapa'])->keyBy('passageiro_id');
         $paxIds = $poltronaPorPax->keys()->all();
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($data, $destino, $poltronaPorPax, $paxIds) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($data, $destino, $poltronaPorPax, $paxIds, $valorVaiJunto, $origemEmb, &$ficouNaOrigem) {
             $passagens = Passagem::where('embarcacao_id', $data['origem_id'])
                 ->whereDate('data_viagem', $data['data_viagem'])
                 ->where('cancelada', false)->where('transferida', false)
@@ -1879,11 +1884,33 @@ class PassagemController extends Controller
                     }
                 }
             }
+
+            // Vendas FICAM com o transporte de origem: o passageiro viaja na lancha nova, mas o dinheiro continua do dono antigo.
+            // Lança o ajuste na PRESTAÇÃO dos dois transportes (não mexe no caixa da agência): sai do destino, entra na origem.
+            if (! $valorVaiJunto) {
+                $base = (float) $passagens->filter(fn ($p) => empty($p->revendedor_id) && ! $p->acerto_dono)->sum(fn ($p) => (float) $p->total);
+                if ($base > 0.009) {
+                    $parteDest = round($base * (100 - (int) $destino->comissao_empresa_pct) / 100, 2);
+                    $parteOrig = round($base * (100 - (int) $origemEmb->comissao_empresa_pct) / 100, 2);
+                    $comum = [
+                        'empresa_id' => \App\Support\Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
+                        'meio' => 'dinheiro', 'user_id' => auth()->id(), 'momento' => 'cadastro', 'categoria' => 'Transferência de transporte',
+                        'data_viagem' => $data['data_viagem'], 'acerto_conta' => false, 'acerto_pct' => 0,
+                        'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(),
+                    ];
+                    if ($parteDest > 0) \App\Models\Pagamento::create($comum + ['tipo_mov' => 'saida', 'valor' => $parteDest, 'embarcacao_id' => $destino->id,
+                        'descricao' => 'Passageiros vieram de '.$origemEmb->nome.' — vendas ficaram com o transporte de origem']);
+                    if ($parteOrig > 0) \App\Models\Pagamento::create($comum + ['tipo_mov' => 'entrada', 'valor' => $parteOrig, 'embarcacao_id' => $origemEmb->id,
+                        'descricao' => 'Passageiros foram para '.$destino->nome.' — vendas continuam deste transporte']);
+                    $ficouNaOrigem = $base;
+                }
+            }
         });
 
         return redirect()->route('passagens.transferencia', [
             'origem_id' => $data['destino_id'], 'destino_id' => null, 'data_viagem' => $data['data_viagem'],
-        ])->with('ok', 'Transferência concluída: passageiros movidos para '.$destino->nome.'. Check-in, manifesto e etiquetas já usam a lancha e poltrona novas.');
+        ])->with('ok', 'Transferência concluída: passageiros movidos para '.$destino->nome.'. Check-in, manifesto e etiquetas já usam a lancha e poltrona novas. '
+            .($valorVaiJunto ? 'As vendas foram junto para '.$destino->nome.'.' : ($ficouNaOrigem > 0 ? 'As vendas (R$ '.number_format($ficouNaOrigem, 2, ',', '.').') continuam com '.$origemEmb->nome.' — o ajuste foi lançado na prestação dos dois transportes.' : 'As vendas continuam com '.$origemEmb->nome.' (não havia valor de balcão em aberto pra ajustar).')));
     }
 
     /** Transfere a passagem pra outro transporte: cria nova (paga) no destino e lanca a despesa no transporte de origem. */
