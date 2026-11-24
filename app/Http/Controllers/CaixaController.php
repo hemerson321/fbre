@@ -271,7 +271,8 @@ class CaixaController extends Controller
             ->when(! $ehRelatorio && $request->input('foco') !== 'prestacoes', fn ($q) => $q->whereNull('revendedor_id')) // só o CAIXA exclui agente externo; Relatório e Prestação mostram
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
-            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]));
+            // Prestação sem data = todas as viagens em aberto do transporte (não corta por período)
+            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $request->input('foco') === 'prestacoes' ? $q : $q->whereBetween('created_at', [$inicio, $fim]));
         $passAll = (clone $pqAll)->get(['id', 'embarcacao_id', 'total']);
         if ($passAll->count() > 0) {
             $embIdsA = $passAll->pluck('embarcacao_id')->filter()->unique()->values();
@@ -293,7 +294,7 @@ class CaixaController extends Controller
         $avBase = Pagamento::where('modulo', 'avulso')->where('estornado', false)->whereNotNull('embarcacao_id')
             ->where('momento', 'cadastro')->whereNull('prestacao_id')
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
-            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]));
+            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $request->input('foco') === 'prestacoes' ? $q : $q->whereBetween('created_at', [$inicio, $fim]));
         if ($idsComDono !== null) $avBase->whereIn('embarcacao_id', $idsComDono);
         $avEntrada = round((float) (clone $avBase)->where('tipo_mov', 'entrada')->sum('valor'), 2);
         $avSaida = round((float) (clone $avBase)->where('tipo_mov', 'saida')->sum('valor'), 2);
@@ -352,7 +353,7 @@ class CaixaController extends Controller
             if (! $transporteId) {
                 $pendPorTransporte = $pendBase()->whereNotNull('embarcacao_id')
                     ->selectRaw('embarcacao_id, COUNT(*) as qtd, COALESCE(SUM(total),0) as total')->groupBy('embarcacao_id')->get()->keyBy('embarcacao_id');
-            } elseif (! $dataViagem) {
+            } else {
                 $pendPorData = $pendBase()->where('embarcacao_id', $transporteId)->whereNotNull('data_viagem')
                     ->selectRaw('DATE(data_viagem) as d, COUNT(*) as qtd, COALESCE(SUM(total),0) as total')->groupBy('d')->get()->keyBy('d');
             }

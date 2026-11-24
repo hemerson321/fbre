@@ -852,7 +852,10 @@ class PassagemController extends Controller
     {
         $f = $this->filtros($request);
         $f['cancelada'] = 'todas'; // inclui as devolvidas/canceladas no relatorio
+        // Pré-prestação: tudo que está em aberto do transporte/viagem, sem cortar por período de venda
+        if ($request->input('modo') === 'prestacao') { $f['inicio'] = null; $f['fim'] = null; $f['hora_inicio'] = null; $f['hora_fim'] = null; }
         $passagens = Passagem::filtrar($f)
+            ->when($request->input('modo') === 'prestacao', fn ($q) => $q->where('acerto_dono', false)) // pré-prestação: só em aberto (não carrega o histórico todo)
             ->with(['passageiros', 'operador', 'pagamentos', 'embarcacao', 'camarote', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])
             ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
 
