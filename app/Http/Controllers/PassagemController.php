@@ -958,12 +958,15 @@ class PassagemController extends Controller
         // Prestação de contas (soma TODAS as passagens da impressão; comissão certa por transporte).
         $prestacao = null;
         $validas = $passagens->where('cancelada', false)->where('transferida', false);
+        // Agente externo (revendedor) NÃO entra nos totais da prestação: o proprietário acerta direto com ele (só informa).
+        $vBalcao = $validas->filter(fn ($p) => ! $p->revendedor_id);
+        $vAgente = $validas->filter(fn ($p) => (bool) $p->revendedor_id);
         $embIdsP = $validas->pluck('embarcacao_id')->filter()->unique()->values();
         if ($validas->count() > 0 && $embIdsP->count() > 0) {
             $pctsP = Embarcacao::whereIn('id', $embIdsP)->pluck('comissao_empresa_pct', 'id');
-            $pgs = $validas->flatMap(fn ($p) => $p->pagamentos)->filter(fn ($pg) => ! $pg->estornado && $pg->meio !== 'desconto');
-            $brutoF = round((float) $validas->sum('total'), 2);
-            $comissaoF = round((float) $validas->sum(fn ($p) => (float) $p->total * (int) ($pctsP[$p->embarcacao_id] ?? 0) / 100), 2);
+            $pgs = $vBalcao->flatMap(fn ($p) => $p->pagamentos)->filter(fn ($pg) => ! $pg->estornado && $pg->meio !== 'desconto');
+            $brutoF = round((float) $vBalcao->sum('total'), 2);
+            $comissaoF = round((float) $vBalcao->sum(fn ($p) => (float) $p->total * (int) ($pctsP[$p->embarcacao_id] ?? 0) / 100), 2);
             // Maquineta do PROPRIETÁRIO por forma (o dono já recebeu → abate)
             $somaProp = fn ($meio) => round((float) $pgs->filter(fn ($pg) => (bool) ($pg->pago_proprietario ?? false) && $pg->meio === $meio)->sum('valor'), 2);
             $debProp = $somaProp('debito'); $pixProp = $somaProp('pix'); $credProp = $somaProp('credito'); $dinProp = $somaProp('dinheiro');
@@ -979,6 +982,9 @@ class PassagemController extends Controller
                 'nome' => $nomeP, 'pct' => $pctP, 'bruto' => $brutoF, 'comissao' => $comissaoF,
                 'debProp' => $debProp, 'pixProp' => $pixProp, 'credProp' => $credProp, 'dinProp' => $dinProp,
                 'cartao' => $cartaoEmpresa, 'saidas' => $saidasF, 'entradas' => $entradasF, 'liquido' => $liquidoF,
+                'agQtd' => $vAgente->count(),
+                'agBruto' => round((float) $vAgente->sum('total'), 2),
+                'agRepasse' => round((float) $vAgente->sum(fn ($p) => (float) $p->total - (float) ($p->acerto_empresa_valor ?? 0)), 2),
             ];
         }
 

@@ -157,6 +157,12 @@
     @else
     <div class="lin g" style="color:#067d3b"><span>Total a pagar ao proprietário</span><span>R$ {{ number_format($prestacao->liquido,2,',','.') }}</span></div>
     @endif
+    @if(($prestacao->agQtd ?? 0) > 0)
+    <div style="margin-top:6px;padding:4px 6px;border:1px dashed #0e7490;border-radius:3px;font-size:10px;color:#0e7490;line-height:1.3">
+      <b>🤝 Agente externo — não entra no total acima.</b> O proprietário acerta direto com o agente.<br>
+      {{ $prestacao->agQtd }} passagem(ns) · vendido R$ {{ number_format($prestacao->agBruto,2,',','.') }} · repasse ao proprietário R$ {{ number_format($prestacao->agRepasse,2,',','.') }}
+    </div>
+    @endif
     @if($prestFechada ?? null)
     <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px"><span>Devido ao proprietário (balcão)</span><b>R$ {{ number_format($prestFechada->total_devido,2,',','.') }}</b></div>
     <div class="lin"><span>Pago{{ $prestFechada->forma ? ' ('.ucfirst($prestFechada->forma).')' : '' }}</span><b style="color:#067d3b">R$ {{ number_format($prestFechada->valor_pago,2,',','.') }}</b></div>
