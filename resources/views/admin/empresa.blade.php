@@ -32,6 +32,16 @@
     <input type="checkbox" name="desfazer_acerto" value="1" @checked($empresa->config('desfazer_acerto', false)) class="w-5 h-5 rounded mt-0.5 shrink-0">
     <span><span class="font-semibold">↩️ Permitir desfazer acerto no caixa</span><br><span class="text-xs text-slate-500">Desligado (padrão): depois de dar baixa/acerto não dá pra voltar. Ligado: aparece o botão "Desfazer acerto" no caixa, que volta as passagens pra "em aberto" e estorna o pagamento (proprietário do balcão e agente).</span></span>
   </label>
+  <div class="sm:col-span-2 border rounded-lg px-3 py-2 bg-orange-50 border-orange-200" x-data="{ po: {{ $empresa->config('prestacao_operador', false) ? 'true' : 'false' }} }">
+    <label class="flex items-start gap-2 py-1 cursor-pointer">
+      <input type="checkbox" name="prestacao_operador" value="1" x-model="po" class="w-5 h-5 rounded mt-0.5 shrink-0">
+      <span><span class="font-semibold">🧾 Prestação de contas com operadores</span><br><span class="text-xs text-slate-500">Desligado (padrão): não existe prestação com operador. Ligado: na página Prestação de Contas aparece o bloco "Operadores", para fechar o que cada operador recebeu (como já é feito com os transportes).</span></span>
+    </label>
+    <label class="flex items-start gap-2 py-1 cursor-pointer mt-1" x-show="po" x-cloak>
+      <input type="checkbox" name="caixa_apos_prestacao" value="1" @checked($empresa->config('caixa_apos_prestacao', false)) class="w-5 h-5 rounded mt-0.5 shrink-0">
+      <span><span class="font-semibold">A venda só entra no Caixa depois da prestação do operador</span><br><span class="text-xs text-slate-500">Desligado (padrão): toda venda entra direto no Caixa na hora do cadastro. Ligado: o que o operador recebeu fica "em aberto com o operador" e só entra no Caixa geral quando a prestação dele é fechada.</span></span>
+    </label>
+  </div>
   <div><label class="label">🏷️ Etiqueta — largura (mm)</label><input name="etiqueta_mm_w" type="number" min="10" max="120" class="input !min-h-[40px]" value="{{ old('etiqueta_mm_w', $empresa->config('etiqueta_mm_w', 29)) }}" placeholder="29"><p class="text-[11px] text-slate-400 mt-0.5">Tamanho do papel da impressora de etiqueta (Brother QL: DK-1201 = 29 × 90). Mude aqui quando trocar o papel — o agente não precisa mexer.</p></div>
   <div><label class="label">🏷️ Etiqueta — altura (mm)</label><input name="etiqueta_mm_h" type="number" min="20" max="300" class="input !min-h-[40px]" value="{{ old('etiqueta_mm_h', $empresa->config('etiqueta_mm_h', 90)) }}" placeholder="90"></div>
   <div class="sm:col-span-2"><label class="label">🏷️ Etiqueta — orientação do texto</label>

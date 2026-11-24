@@ -436,4 +436,38 @@ class PrestacaoController extends Controller
         }
         return view('prestacoes.detalhe', compact('prestacao', 'passagens', 'pagamentos', 'agentes', 'avulsosPrest'));
     }
+
+    /** Base do que um operador de balcão recebeu e ainda não prestou conta. */
+    public static function operadorPendente(int $userId)
+    {
+        return Pagamento::where('user_id', $userId)->where('estornado', false)
+            ->where('tipo_mov', '!=', 'saida')->where('meio', '!=', 'desconto')->where('conferido', false);
+    }
+
+    /** Fecha a prestação de um OPERADOR: tudo que ele recebeu e está em aberto passa a "prestado". */
+    public function operadorFechar(Request $request, \App\Models\User $operador)
+    {
+        abort_unless(auth()->user()->caixaTodos(), 403);
+        abort_unless($operador->empresa_id === Tenant::id() && ! $operador->is_revendedor, 404);
+        abort_unless((bool) Tenant::empresa()->config('prestacao_operador'), 403, 'Prestação com operadores está desativada nesta empresa.');
+        $q = self::operadorPendente($operador->id);
+        $total = (float) (clone $q)->sum('valor');
+        $n = $q->update(['conferido' => true, 'conferido_em' => now()->startOfSecond(), 'conferido_por' => auth()->id()]);
+        if ($n === 0) return back()->with('erro', 'Nada em aberto para '.$operador->name.'.');
+        return back()->with('ok', 'Prestação de '.$operador->name.' fechada: '.$n.' lançamento(s), R$ '.number_format($total, 2, ',', '.').'.');
+    }
+
+    /** Desfaz a ÚLTIMA prestação fechada de um operador (volta os lançamentos para "em aberto"). */
+    public function operadorDesfazer(Request $request, \App\Models\User $operador)
+    {
+        abort_unless(auth()->user()->caixaTodos(), 403);
+        abort_unless($operador->empresa_id === Tenant::id() && ! $operador->is_revendedor, 404);
+        abort_unless((bool) Tenant::empresa()->config('desfazer_acerto') || auth()->user()->isAdmin() || auth()->user()->isSuper(), 403, 'Desfazer acerto está desativado nesta empresa.');
+        $base = Pagamento::where('user_id', $operador->id)->where('estornado', false)->where('tipo_mov', '!=', 'saida')
+            ->where('conferido', true)->whereNotNull('conferido_em')->whereNull('prestacao_id')->whereNull('acerto_lote');
+        $ult = (clone $base)->max('conferido_em');
+        if (! $ult) return back()->with('erro', 'Nenhuma prestação de '.$operador->name.' para desfazer.');
+        $n = (clone $base)->where('conferido_em', $ult)->update(['conferido' => false, 'conferido_em' => null, 'conferido_por' => null]);
+        return back()->with('ok', 'Última prestação de '.$operador->name.' desfeita ('.$n.' lançamento(s) voltaram para em aberto).');
+    }
 }

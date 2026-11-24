@@ -92,8 +92,22 @@ class CaixaController extends Controller
             $q->where(fn ($w) => $w->whereNull('categoria')->orWhereNotIn('categoria', ['Débito do dono (devolução)', 'Débito do dono — abatido']));
         };
 
+        // Prestação com OPERADOR (opcional na empresa). Com "só entra no Caixa depois da prestação" ligado,
+        // o Caixa GERAL deixa de fora o que o operador de balcão recebeu e ainda não prestou conta.
+        $empCfg = Tenant::empresa();
+        $prestOperador = (bool) $empCfg->config('prestacao_operador');
+        $opIdsBalcao = $prestOperador ? \App\Models\User::where('empresa_id', Tenant::id())->where('is_revendedor', false)->pluck('id') : collect();
+        $seguraCaixa = $prestOperador && (bool) $empCfg->config('caixa_apos_prestacao') && $verTodos && ! $ehRelatorio && $request->input('foco') !== 'prestacoes';
+        $soPrestado = function ($q) use ($opIdsBalcao) {
+            $q->where(fn ($w) => $w->where('conferido', true)->orWhereNull('user_id')->orWhereNotIn('user_id', $opIdsBalcao));
+        };
+        $emAbertoOperadores = $seguraCaixa
+            ? round((float) Pagamento::where('estornado', false)->where('tipo_mov', '!=', 'saida')->where('meio', '!=', 'desconto')->where('conferido', false)->whereIn('user_id', $opIdsBalcao)->sum('valor'), 2)
+            : 0.0;
+
         $base = Pagamento::where('estornado', false)
             ->where('meio', '!=', 'desconto')
+            ->when($seguraCaixa, fn ($q) => $q->where($soPrestado))
             ->when($encIds === null && ! $dataViagem, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('encomenda_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
@@ -272,6 +286,9 @@ class CaixaController extends Controller
             ->when(! $ehRelatorio && $request->input('foco') !== 'prestacoes', fn ($q) => $q->whereNull('revendedor_id')) // só o CAIXA exclui agente externo; Relatório e Prestação mostram
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            // venda de operador que ainda não prestou conta não conta na comissão do Caixa (entra após a prestação dele)
+            ->when($seguraCaixa, fn ($q) => $q->where(fn ($w) => $w->whereNull('user_id')->orWhereNotIn('user_id', $opIdsBalcao)
+                ->orWhereIn('id', Pagamento::where('modulo', 'passagem')->where('estornado', false)->where('conferido', true)->select('origem_id'))))
             // Prestação sem data = todas as viagens em aberto do transporte (não corta por período)
             ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $request->input('foco') === 'prestacoes' ? $q : $q->whereBetween('created_at', [$inicio, $fim]));
         $passAll = (clone $pqAll)->get(['id', 'embarcacao_id', 'total']);
@@ -358,6 +375,25 @@ class CaixaController extends Controller
                 $pendPorData = $pendBase()->where('embarcacao_id', $transporteId)->whereNotNull('data_viagem')
                     ->selectRaw('DATE(data_viagem) as d, COUNT(*) as qtd, COALESCE(SUM(total),0) as total')->groupBy('d')->get()->keyBy('d');
             }
+        }
+
+        // PRESTAÇÃO COM OPERADORES: o que cada operador de balcão recebeu e ainda não prestou conta.
+        $operadoresPrest = collect();
+        if ($prestOperador && $request->input('foco') === 'prestacoes' && auth()->user()->caixaTodos()) {
+            $pendOp = Pagamento::where('estornado', false)->where('tipo_mov', '!=', 'saida')->where('meio', '!=', 'desconto')->where('conferido', false)
+                ->whereIn('user_id', $opIdsBalcao)
+                ->selectRaw("user_id, COUNT(*) as qtd, COALESCE(SUM(valor),0) as total, COALESCE(SUM(CASE WHEN meio='dinheiro' THEN valor ELSE 0 END),0) as dinheiro, COALESCE(SUM(CASE WHEN meio='pix' THEN valor ELSE 0 END),0) as pix")
+                ->groupBy('user_id')->get()->keyBy('user_id');
+            $ultOp = Pagamento::where('estornado', false)->where('tipo_mov', '!=', 'saida')->where('conferido', true)->whereNotNull('conferido_em')
+                ->whereNull('prestacao_id')->whereNull('acerto_lote')->whereIn('user_id', $opIdsBalcao)
+                ->selectRaw('user_id, MAX(conferido_em) as em')->groupBy('user_id')->pluck('em', 'user_id');
+            $operadoresPrest = \App\Models\User::whereIn('id', $opIdsBalcao)->orderBy('name')->get(['id', 'name'])
+                ->map(function ($o) use ($pendOp, $ultOp) {
+                    $r = $pendOp[$o->id] ?? null;
+                    $tot = (float) ($r->total ?? 0); $din = (float) ($r->dinheiro ?? 0); $pix = (float) ($r->pix ?? 0);
+                    return (object) ['op' => $o, 'qtd' => (int) ($r->qtd ?? 0), 'total' => $tot, 'dinheiro' => $din, 'pix' => $pix,
+                        'outros' => round($tot - $din - $pix, 2), 'ultima' => $ultOp[$o->id] ?? null];
+                })->filter(fn ($x) => $x->qtd > 0 || $x->ultima)->values();
         }
 
         // Desfazer acerto direto no relatório (por transporte + viagem). Serve p/ acertos antigos.
@@ -461,7 +497,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'pendPorTransporte', 'pendPorData', 'porCategoria'))
+        return view('caixa.index', compact('operadoresPrest', 'prestOperador', 'seguraCaixa', 'emAbertoOperadores', 'porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'pendPorTransporte', 'pendPorData', 'porCategoria'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 

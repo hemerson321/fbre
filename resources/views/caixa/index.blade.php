@@ -69,6 +69,7 @@
   </div>
   @endif
 </div>
+@include('caixa._prest_operadores')
 @else
 @if($focoPrest)
 @php
@@ -140,6 +141,11 @@
 @endif
 
 @unless($focoPrest)
+@if(($seguraCaixa ?? false) && ($emAbertoOperadores ?? 0) > 0)
+<a href="{{ route('caixa.index', ['foco' => 'prestacoes']) }}" class="no-print block rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 hover:bg-amber-100">
+  ⏳ <b>R$ {{ number_format($emAbertoOperadores,2,',','.') }}</b> em aberto com operadores — só entra no Caixa depois da prestação. <span class="underline">Ver prestação com operadores</span>
+</a>
+@endif
 <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
   @if($verTodos)
   <div><label class="label">Operador</label>
