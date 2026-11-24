@@ -14,3 +14,6 @@ Schedule::command('pagamentos:verificar')->everyMinute()->withoutOverlapping();
 
 // avisa o cliente da encomenda ~1h antes do barco chegar no destino (rastreio por embarcação)
 Schedule::command('encomendas:avisar-chegada')->everyFiveMinutes()->withoutOverlapping();
+
+// conversa do agente sem resposta: avisa em 2 min e encerra 1 min depois (solta a poltrona reservada)
+Schedule::command('atendimento:ociosas')->everyMinute()->withoutOverlapping();
