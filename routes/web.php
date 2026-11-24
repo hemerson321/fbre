@@ -231,6 +231,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/prestacoes/fechar/{embarcacao}', [PrestacaoController::class, 'fechar'])->name('prestacoes.fechar')->middleware('perm:caixa');
     Route::post('/prestacoes/{prestacao}/pagar', [PrestacaoController::class, 'pagar'])->name('prestacoes.pagar')->middleware('perm:caixa');
     Route::post('/prestacoes/{prestacao}/desfazer', [PrestacaoController::class, 'desfazer'])->name('prestacoes.desfazer')->middleware('perm:caixa');
+    Route::post('/prestacoes/avulso/{pagamento}/editar', [PrestacaoController::class, 'avulsoEditar'])->name('prestacoes.avulso.editar')->middleware('perm:caixa');
+    Route::post('/prestacoes/avulso/{pagamento}/excluir', [PrestacaoController::class, 'avulsoExcluir'])->name('prestacoes.avulso.excluir')->middleware('perm:caixa');
     Route::post('/prestacoes/{prestacao}/avulso', [PrestacaoController::class, 'avulso'])->name('prestacoes.avulso')->middleware('perm:caixa');
     Route::post('/prestacoes/{prestacao}/excluir', [PrestacaoController::class, 'excluir'])->name('prestacoes.excluir')->middleware('perm:caixa');
     Route::post('/prestacoes/desfazer-transporte/{embarcacao}', [PrestacaoController::class, 'desfazerTransporte'])->name('prestacoes.desfazer-transporte')->middleware('perm:caixa');

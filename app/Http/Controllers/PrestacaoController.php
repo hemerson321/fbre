@@ -246,6 +246,65 @@ class PrestacaoController extends Controller
     }
 
     /**
+     * Recalcula o devido de uma prestação a partir da fonte: parte do dono nas passagens − débito abatido
+     * + entradas avulsas − saídas avulsas. Depois ajusta saldo e status.
+     */
+    protected function recalcularDevido(Prestacao $prestacao): void
+    {
+        $pct = (float) $prestacao->comissao_pct;
+        $parteDono = (float) Passagem::where('prestacao_id', $prestacao->id)->selectRaw('COALESCE(SUM(total * (100 - '.$pct.') / 100),0) as v')->value('v');
+        $abate = (float) Pagamento::where('prestacao_id', $prestacao->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor');
+        $av = Pagamento::where('prestacao_id', $prestacao->id)->where('modulo', 'avulso')->where('momento', 'cadastro')->where('estornado', false);
+        $avE = (float) (clone $av)->where('tipo_mov', 'entrada')->sum('valor');
+        $avS = (float) (clone $av)->where('tipo_mov', 'saida')->sum('valor');
+        $prestacao->total_devido = max(0.0, round($parteDono - $abate + $avE - $avS, 2));
+        $prestacao->recalcularSaldo();
+        $prestacao->save();
+    }
+
+    /** Avulso válido para editar/excluir: lançado pelo operador e preso a uma prestação desta empresa. */
+    protected function prestacaoDoAvulso(Pagamento $pagamento): Prestacao
+    {
+        abort_unless($pagamento->empresa_id === Tenant::id(), 404);
+        abort_unless($pagamento->modulo === 'avulso' && $pagamento->momento === 'cadastro' && $pagamento->prestacao_id && ! $pagamento->estornado, 404);
+        $prestacao = Prestacao::findOrFail($pagamento->prestacao_id);
+        $this->gatePrest($prestacao);
+        abort_unless(request()->user()->podeModulo('avulso') || request()->user()->caixaTodos(), 403, 'Sem permissão para alterar avulso.');
+        abort_if($prestacao->desfeita, 422, 'Prestação desfeita.');
+        return $prestacao;
+    }
+
+    /** Corrige um avulso de uma prestação já fechada (tipo, valor, forma, motivo). */
+    public function avulsoEditar(Request $request, Pagamento $pagamento)
+    {
+        $prestacao = $this->prestacaoDoAvulso($pagamento);
+        $data = $request->validate([
+            'tipo_mov' => 'required|in:entrada,saida',
+            'valor' => 'required|string|max:20',
+            'meio' => 'required|in:dinheiro,pix,deposito,debito,credito',
+            'descricao' => 'required|string|max:200',
+        ], [], ['descricao' => 'motivo']);
+        $valor = $this->parseValor($data['valor']);
+        if ($valor <= 0) return back()->with('erro', 'Informe um valor válido.');
+        DB::transaction(function () use ($pagamento, $prestacao, $data, $valor) {
+            $pagamento->update(['tipo_mov' => $data['tipo_mov'], 'valor' => $valor, 'meio' => $data['meio'], 'descricao' => $data['descricao']]);
+            $this->recalcularDevido($prestacao);
+        });
+        return back()->with('ok', 'Avulso corrigido na prestação #'.$prestacao->numero.'.');
+    }
+
+    /** Remove um avulso de uma prestação já fechada (fica estornado, pra manter o rastro) e recalcula. */
+    public function avulsoExcluir(Request $request, Pagamento $pagamento)
+    {
+        $prestacao = $this->prestacaoDoAvulso($pagamento);
+        DB::transaction(function () use ($pagamento, $prestacao) {
+            $pagamento->update(['estornado' => true]);
+            $this->recalcularDevido($prestacao);
+        });
+        return back()->with('ok', 'Avulso removido da prestação #'.$prestacao->numero.'.');
+    }
+
+    /**
      * Lança entrada/saída avulsa DENTRO de uma prestação já fechada (o operador esqueceu de lançar antes).
      * Entrada aumenta o que é devido ao proprietário; saída diminui. O saldo/status é recalculado.
      */
@@ -273,10 +332,7 @@ class PrestacaoController extends Controller
                 'categoria' => null, 'descricao' => $data['descricao'],
                 'acerto_conta' => true, 'acerto_pct' => 0, 'prestacao_id' => $prestacao->id,
             ]);
-            $novo = (float) $prestacao->total_devido + ($data['tipo_mov'] === 'entrada' ? $valor : -$valor);
-            $prestacao->total_devido = max(0.0, round($novo, 2));
-            $prestacao->recalcularSaldo();
-            $prestacao->save();
+            $this->recalcularDevido($prestacao);
         });
 
         return back()->with('ok', ($data['tipo_mov'] === 'entrada' ? 'Entrada' : 'Saída').' avulsa de R$ '.number_format($valor, 2, ',', '.').' lançada na prestação #'.$prestacao->numero.'.');

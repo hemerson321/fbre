@@ -404,7 +404,15 @@ class CaixaController extends Controller
             // Data(s) de viagem de cada prestação: a gravada no fechamento ou, se fechou "todas pendentes", as datas das passagens.
             $datasPorPrest = \App\Models\Passagem::whereIn('prestacao_id', $prestacoesFechadas->pluck('id'))->whereNotNull('data_viagem')
                 ->select('prestacao_id', 'data_viagem')->distinct()->orderBy('data_viagem')->get()->groupBy('prestacao_id');
+            $avPorPrest = Pagamento::whereIn('prestacao_id', $prestacoesFechadas->pluck('id'))->where('modulo', 'avulso')->where('momento', 'cadastro')->where('estornado', false)
+                ->orderBy('id')->get(['id', 'prestacao_id', 'tipo_mov', 'valor', 'meio', 'descricao', 'categoria', 'created_at'])->groupBy('prestacao_id');
             foreach ($prestacoesFechadas as $pr) {
+                $pr->avulsos_js = ($avPorPrest[$pr->id] ?? collect())->map(fn ($a) => [
+                    'id' => $a->id, 'tipo' => $a->tipo_mov, 'valor' => (float) $a->valor, 'meio' => (string) $a->meio,
+                    'motivo' => trim(($a->categoria ? $a->categoria.' · ' : '').($a->descricao ?? ''), ' ·'),
+                    'descricao' => (string) ($a->descricao ?? $a->categoria ?? ''),
+                    'data' => optional($a->created_at)->format('d/m H:i'),
+                ])->values()->all();
                 $ds = $pr->data_viagem
                     ? collect([$pr->data_viagem])
                     : ($datasPorPrest[$pr->id] ?? collect())->pluck('data_viagem');

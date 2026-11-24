@@ -362,28 +362,61 @@
 </div>
 @endif
 
-<div x-data="{ open:false, id:0, numero:0, nome:'', tipo:'saida' }" @avulso-prest.window="id=$event.detail.id; numero=$event.detail.numero; nome=$event.detail.nome; tipo='saida'; open=true" @keydown.escape.window="open=false">
+<div x-data="{ open:false, id:0, numero:0, nome:'', tipo:'saida', lista:[], editId:0, delId:0, valor:'', meio:'dinheiro', desc:'',
+      base: @js(url('/prestacoes')),
+      abrir(d){ this.id=d.id; this.numero=d.numero; this.nome=d.nome; this.lista=d.avulsos||[]; this.novo(); this.open=true; },
+      novo(){ this.editId=0; this.tipo='saida'; this.valor=''; this.meio='dinheiro'; this.desc=''; },
+      editar(a){ this.editId=a.id; this.tipo=a.tipo; this.valor=Number(a.valor).toFixed(2).replace('.',','); this.meio=['dinheiro','pix','deposito'].includes(a.meio)?a.meio:'dinheiro'; this.desc=a.descricao||''; this.$nextTick(()=>this.$refs.valor && this.$refs.valor.focus()); },
+      excluir(a){ if(!confirm('Excluir este avulso da prestação #'+this.numero+'? O saldo será recalculado.')) return; this.delId=a.id; this.$nextTick(()=>this.$refs.del.submit()); },
+      m(n){ return 'R$ '+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); } }"
+     @avulso-prest.window="abrir($event.detail)" @keydown.escape.window="open=false">
   <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3" @click="open=false">
-    <form method="post" :action="@js(url('/prestacoes')) + '/' + id + '/avulso'" class="bg-white rounded-2xl p-4 w-full max-w-sm space-y-3" @click.stop>
-      @csrf
-      <input type="hidden" name="tipo_mov" :value="tipo">
-      <div>
-        <div class="font-bold text-lg">↕️ Entrada/Saída na prestação #<span x-text="numero"></span></div>
-        <div class="text-[12px] text-slate-500">🚤 <span x-text="nome"></span> · entra nesta prestação já fechada e recalcula o saldo</div>
+    <div class="bg-white rounded-2xl w-full max-w-md max-h-[92vh] overflow-auto" @click.stop>
+      <div class="p-4 pb-2">
+        <div class="font-bold text-lg">↕️ Entradas e saídas da prestação #<span x-text="numero"></span></div>
+        <div class="text-[12px] text-slate-500">🚤 <span x-text="nome"></span> · qualquer alteração recalcula o saldo da prestação</div>
       </div>
-      <div class="grid grid-cols-2 gap-2">
-        <button type="button" @click="tipo='entrada'" :class="tipo==='entrada' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">➕ Entrada</button>
-        <button type="button" @click="tipo='saida'" :class="tipo==='saida' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">➖ Saída</button>
+
+      <div class="px-4" x-show="lista.length">
+        <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">Já lançados nesta prestação</div>
+        <div class="rounded-xl border border-slate-200 divide-y">
+          <template x-for="a in lista" :key="a.id">
+            <div class="flex items-center gap-2 px-2.5 py-2" :class="editId===a.id ? 'bg-amber-50' : ''">
+              <span class="rounded px-1.5 py-0.5 text-[10px] font-bold" :class="a.tipo==='saida' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'" x-text="a.tipo==='saida' ? 'Saída' : 'Entrada'"></span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-medium truncate" x-text="a.motivo || '—'"></div>
+                <div class="text-[11px] text-slate-400"><span x-text="a.data"></span> · <span class="capitalize" x-text="a.meio"></span></div>
+              </div>
+              <div class="text-sm font-bold whitespace-nowrap" :class="a.tipo==='saida' ? 'text-rose-600' : 'text-emerald-700'" x-text="(a.tipo==='saida' ? '− ' : '+ ') + m(a.valor)"></div>
+              <button type="button" class="rounded-lg border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50" title="Editar" @click="editar(a)">✏️</button>
+              <button type="button" class="rounded-lg border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50" title="Excluir" @click="excluir(a)">🗑</button>
+            </div>
+          </template>
+        </div>
       </div>
-      <div><label class="label">Valor</label><input name="valor" class="input" inputmode="decimal" placeholder="0,00" required></div>
-      <div><label class="label">Forma</label>
-        <select name="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="deposito">Depósito</option></select></div>
-      <div><label class="label">Motivo</label><input name="descricao" class="input" maxlength="200" required placeholder="Ex.: combustível, vale, ajuste…"></div>
-      <div class="flex gap-2 pt-1">
-        <button type="button" class="btn btn-ghost flex-1" @click="open=false">Cancelar</button>
-        <button class="btn flex-1 text-white" :style="tipo==='entrada'?'background:#059669':'background:#e11d48'">Lançar</button>
-      </div>
-    </form>
+      <form x-ref="del" method="post" :action="base + '/avulso/' + delId + '/excluir'" class="hidden">@csrf</form>
+
+      <form method="post" :action="editId ? (base + '/avulso/' + editId + '/editar') : (base + '/' + id + '/avulso')" class="p-4 space-y-3">
+        @csrf
+        <input type="hidden" name="tipo_mov" :value="tipo">
+        <div class="flex items-center justify-between">
+          <div class="text-[10px] font-bold uppercase tracking-wide" :class="editId ? 'text-amber-700' : 'text-slate-400'" x-text="editId ? 'Editando o avulso selecionado' : 'Novo lançamento'"></div>
+          <button type="button" x-show="editId" class="text-xs font-semibold text-indigo-600" @click="novo()">+ lançar outro</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" @click="tipo='entrada'" :class="tipo==='entrada' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">➕ Entrada</button>
+          <button type="button" @click="tipo='saida'" :class="tipo==='saida' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">➖ Saída</button>
+        </div>
+        <div><label class="label">Valor</label><input name="valor" x-ref="valor" x-model="valor" class="input" inputmode="decimal" placeholder="0,00" required></div>
+        <div><label class="label">Forma</label>
+          <select name="meio" x-model="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="deposito">Depósito</option></select></div>
+        <div><label class="label">Motivo</label><input name="descricao" x-model="desc" class="input" maxlength="200" required placeholder="Ex.: combustível, vale, ajuste…"></div>
+        <div class="flex gap-2 pt-1">
+          <button type="button" class="btn btn-ghost flex-1" @click="open=false">Fechar</button>
+          <button class="btn flex-1 text-white" :style="tipo==='entrada'?'background:#059669':'background:#e11d48'" x-text="editId ? 'Salvar correção' : 'Lançar'"></button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 @if(isset($prestacoesFechadas) && $prestacoesFechadas->isNotEmpty())
@@ -427,7 +460,7 @@
             <div class="flex items-center gap-1 justify-end flex-wrap">
               <a href="{{ route('passagens.caixa-viagem', ['prestacao_id' => $pr->id]) }}" target="_blank" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" title="Abrir/imprimir a prestação de novo">🖨 Prestação</a>
               <button type="button" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" title="Lançar entrada/saída avulsa nesta prestação"
-                      @click="$dispatch('avulso-prest', { id: {{ $pr->id }}, numero: {{ (int) $pr->numero }}, nome: @js(optional($pr->embarcacao)->nome ?? 'Transporte') })">↕️ Entrada/Saída</button>
+                      @click="$dispatch('avulso-prest', { id: {{ $pr->id }}, numero: {{ (int) $pr->numero }}, nome: @js(optional($pr->embarcacao)->nome ?? 'Transporte'), avulsos: @js($pr->avulsos_js ?? []) })">↕️ Entrada/Saída{{ count($pr->avulsos_js ?? []) ? ' ('.count($pr->avulsos_js).')' : '' }}</button>
               @if($pr->saldo > 0)
               <form method="post" action="{{ route('prestacoes.pagar', $pr) }}" class="flex items-center gap-1" onsubmit="return confirm('Baixar saldo da prestação #{{ $pr->numero }}?')">
                 @csrf
