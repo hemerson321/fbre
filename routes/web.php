@@ -45,6 +45,10 @@ Route::get('/c', [CapturaController::class, 'mobile'])->name('captura.mobile');
 Route::post('/c/enviar', [CapturaController::class, 'enviar'])->name('captura.enviar');
 
 // ---------------- Autenticação ----------------
+// Digital Signage — player público da TV (sem login; o token do link identifica a tela)
+Route::get('/tv/{token}', [\App\Http\Controllers\SignagePlayerController::class, 'show'])->name('signage.player');
+Route::get('/tv/{token}/dados', [\App\Http\Controllers\SignagePlayerController::class, 'dados'])->name('signage.dados');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'form'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
@@ -304,6 +308,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/llm/{provedor?}', [LlmController::class, 'salvar'])->name('llm.salvar');
         Route::delete('/llm/{provedor}', [LlmController::class, 'excluir'])->name('llm.excluir');
         Route::post('/llm/{provedor}/testar', [LlmController::class, 'testar'])->name('llm.testar');
+        // Digital Signage (mídia indoor): telas e propagandas/avisos
+        Route::get('/signage', [\App\Http\Controllers\Admin\SignageController::class, 'index'])->name('signage');
+        Route::post('/signage/tela/{tela?}', [\App\Http\Controllers\Admin\SignageController::class, 'telaSalvar'])->name('signage.tela.salvar');
+        Route::delete('/signage/tela/{tela}', [\App\Http\Controllers\Admin\SignageController::class, 'telaExcluir'])->name('signage.tela.excluir');
+        Route::post('/signage/tela/{tela}/midia/{midia?}', [\App\Http\Controllers\Admin\SignageController::class, 'midiaSalvar'])->name('signage.midia.salvar');
+        Route::delete('/signage/midia/{midia}', [\App\Http\Controllers\Admin\SignageController::class, 'midiaExcluir'])->name('signage.midia.excluir');
+        Route::post('/signage/midia/{midia}/ativar', [\App\Http\Controllers\Admin\SignageController::class, 'midiaAtivar'])->name('signage.midia.ativar');
         // Agentes IA — multi
         Route::get('/agentes', [AgenteController::class, 'index'])->name('agentes');
         Route::post('/agentes/{agente?}', [AgenteController::class, 'salvar'])->name('agentes.salvar');
