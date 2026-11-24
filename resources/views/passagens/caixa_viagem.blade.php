@@ -114,14 +114,21 @@
     <h2>Prestação de contas</h2>
     <div class="lin"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacao->bruto,2,',','.') }}</b></div>
     <div class="lin"><span>Comissão de Agência{{ !is_null($prestacao->pct) ? ' ('.$prestacao->pct.'%)' : '' }}</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
-    @if($prestacao->debProp > 0.009)<div class="lin"><span>Débito Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->debProp,2,',','.') }}</b></div>@endif
-    @if($prestacao->pixProp > 0.009)<div class="lin"><span>Pix Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->pixProp,2,',','.') }}</b></div>@endif
-    @if($prestacao->credProp > 0.009)<div class="lin"><span>Crédito Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->credProp,2,',','.') }}</b></div>@endif
-    @if($prestacao->dinProp > 0.009)<div class="lin"><span>Dinheiro Prop.</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->dinProp,2,',','.') }}</b></div>@endif
-    @php $recPropTot = round((float) $prestacao->debProp + (float) $prestacao->pixProp + (float) $prestacao->credProp + (float) $prestacao->dinProp, 2); @endphp
-    @if($recPropTot > 0.009 && ! is_null($prestacao->pct))
-    @php $comProp = round($recPropTot * (int) $prestacao->pct / 100, 2); @endphp
-    <div style="font-size:10px;color:#555;margin:1px 0 3px 8px;line-height:1.25">↳ O proprietário recebeu direto R$ {{ number_format($recPropTot,2,',','.') }}: R$ {{ number_format($recPropTot - $comProp,2,',','.') }} são dele e R$ {{ number_format($comProp,2,',','.') }} ({{ (int) $prestacao->pct }}%) são comissão da agência, já contada na linha "Comissão de Agência".</div>
+    @php
+      $pctPr = is_null($prestacao->pct) ? null : (int) $prestacao->pct;
+      $recPropTot = round((float) $prestacao->debProp + (float) $prestacao->pixProp + (float) $prestacao->credProp + (float) $prestacao->dinProp, 2);
+      // parte do proprietário em cada forma que ELE recebeu direto (tira a comissão da agência, que fica numa linha própria)
+      $liqProp = fn ($v) => $pctPr === null ? (float) $v : round((float) $v * (100 - $pctPr) / 100, 2);
+      $comProp = $pctPr === null ? 0.0 : round($recPropTot - ($liqProp($prestacao->debProp) + $liqProp($prestacao->pixProp) + $liqProp($prestacao->credProp) + $liqProp($prestacao->dinProp)), 2);
+      $rotProp = fn ($v) => $pctPr === null ? '' : ' (recebeu R$ '.number_format((float) $v, 2, ',', '.').' − '.$pctPr.'%)';
+    @endphp
+    @foreach(['debProp' => 'Débito Prop.', 'pixProp' => 'Pix Prop.', 'credProp' => 'Crédito Prop.', 'dinProp' => 'Dinheiro Prop.'] as $kProp => $nProp)
+      @if($prestacao->{$kProp} > 0.009)
+      <div class="lin"><span>{{ $nProp }}<span style="font-weight:400;color:#777;font-size:10px">{{ $rotProp($prestacao->{$kProp}) }}</span></span><b style="color:#b91c1c">- R$ {{ number_format($liqProp($prestacao->{$kProp}),2,',','.') }}</b></div>
+      @endif
+    @endforeach
+    @if($comProp > 0.009)
+    <div class="lin"><span>Valor da agência que está com o proprietário<span style="font-weight:400;color:#777;font-size:10px"> ({{ $pctPr }}% dos R$ {{ number_format($recPropTot,2,',','.') }} que ele recebeu direto)</span></span><b style="color:#b91c1c">- R$ {{ number_format($comProp,2,',','.') }}</b></div>
     @endif
     <div class="lin"><span>Cartão de crédito</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
     @if(($prestacao->entradas ?? 0) > 0.009)<div class="lin"><span>Entradas avulsas</span><b style="color:#067d3b">+ R$ {{ number_format($prestacao->entradas,2,',','.') }}</b></div>@endif
