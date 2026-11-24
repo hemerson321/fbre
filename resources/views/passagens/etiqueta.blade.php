@@ -29,7 +29,7 @@
   .hdr { display:flex; align-items:center; justify-content:space-between; background:#000; color:#fff;
          padding:{{ $px(3) }}px {{ $px(6) }}px; }
   .hdr .lch { font-weight:800; font-size:{{ $px(12) }}px; letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .hdr .bdg { font-weight:800; font-size:{{ $px(10) }}px; border:{{ max(1,(int)round($k)) }}px solid #fff; border-radius:3px; padding:{{ $px(1) }}px {{ $px(5) }}px; white-space:nowrap; margin-left:{{ $px(5) }}px; }
+  .hdr .bdg { font-weight:800; font-size:{{ $px(10) }}px; border:{{ max(1,(int)round($kh)) }}px solid #fff; border-radius:3px; padding:{{ $px(1) }}px {{ $px(5) }}px; white-space:nowrap; margin-left:{{ $px(5) }}px; }
   .bdy { flex:1; display:flex; min-height:0; }
   .info { flex:1; padding:{{ $px(3) }}px {{ $px(6) }}px; display:flex; flex-direction:column; justify-content:space-between; min-width:0; }
   .nome { font-weight:800; font-size:{{ $px(17) }}px; line-height:1.0; text-transform:uppercase;
