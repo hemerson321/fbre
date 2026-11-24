@@ -922,6 +922,9 @@ class PassagemController extends Controller
         if ($modo === 'caixa') $passagens = $passagens->filter(fn ($p) => ! $p->revendedor_id)->values();
         // Pré-prestação: só o que ainda está EM ABERTO (o que já foi fechado sai pelo botão da prestação no histórico).
         if ($modo === 'prestacao' && ! $prestFechada) $passagens = $passagens->filter(fn ($p) => ! $p->acerto_dono)->values();
+        // Agente externo (revendedor) e NEUTRO na prestacao: fica SO na tabela 'Vendas por categoria x forma'. Fora do manifesto, da contagem e das formas.
+        $passagensTodas = $passagens;
+        if ($modo === 'prestacao') $passagens = $passagens->filter(fn ($p) => ! $p->revendedor_id)->values();
 
         // Entradas/saídas AVULSAS: caixa = as da agência; prestação = as do transporte/viagem; relatório não tem.
         $avulsos = collect();
@@ -952,8 +955,8 @@ class PassagemController extends Controller
         $nPax = $m['nPax']; $nIdosos = $m['nIdosos']; $nColos = $m['nColos']; $nDevolvidas = $m['nDevolvidas']; $nCancelados = $m['nCancelados'] ?? 0; $nPcd = $m['nPcd'] ?? 0; $nOutros = $m['nOutros'] ?? 0;
 
         $totRecebido = array_sum($totForma);
-        $embs = $passagens->map(fn ($p) => $p->embarcacao?->nome)->filter()->unique()->values();
-        $datas = $passagens->pluck('data_viagem')->filter()->unique()->values();
+        $embs = $passagensTodas->map(fn ($p) => $p->embarcacao?->nome)->filter()->unique()->values();
+        $datas = $passagensTodas->pluck('data_viagem')->filter()->unique()->values();
 
         // Prestação de contas (soma TODAS as passagens da impressão; comissão certa por transporte).
         $prestacao = null;
@@ -1017,7 +1020,7 @@ class PassagemController extends Controller
         // Quebra por categoria (Balcão/Proprietário/Agente) × forma, pra prestação.
         $novaCat = fn () => ['qtd' => 0, 'total' => 0.0, 'dinheiro' => 0.0, 'pix' => 0.0, 'debito' => 0.0, 'credito' => 0.0, 'credito_avista' => 0.0, 'credito_parcelado' => 0.0, 'areceber' => 0.0];
         $porCategoria = ['balcao' => $novaCat(), 'proprietario' => $novaCat(), 'agente' => $novaCat()];
-        foreach ($passagens->where('cancelada', false)->where('transferida', false) as $pp) {
+        foreach ($passagensTodas->where('cancelada', false)->where('transferida', false) as $pp) {
             $cat = $pp->revendedor_id
                 ? 'agente'
                 : ($pp->pagamentos->contains(fn ($pg) => (bool) ($pg->pago_proprietario ?? false)) ? 'proprietario' : 'balcao');
@@ -1357,7 +1360,7 @@ class PassagemController extends Controller
         // Etiqueta de BAGAGEM pode ser mais comprida que a via. Vazio/0 = automático:
         // em papel contínuo (largura >= 50mm, ex.: 62mm) sai mais comprida; em die-cut (DK-1201 29x90) fica igual à via.
         $bagMmH = (int) $empresa->config('etiqueta_bag_mm_h', 0);
-        if ($bagMmH <= 0) { $bagMmH = $mmW >= 50 ? ($mmH + 40) : $mmH; }
+        if ($bagMmH <= 0) { $bagMmH = $mmW >= 50 ? ($mmH * 2) : $mmH; } // papel continuo: bagagem ~2x a via
         $bagMmH = max($mmH, min(400, $bagMmH));
         $labWbag = $girar ? $bagMmH : $mmW;
         $labHbag = $girar ? $mmW : $bagMmH;

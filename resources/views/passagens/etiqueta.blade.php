@@ -10,6 +10,8 @@
   $kh = max(0.6, $labH / 29);   // escala da ALTURA (coluna da poltrona, bordas) -> usa o espaco extra
   $px  = fn ($n) => (int) round($n * $kw);
   $pxh = fn ($n) => (int) round($n * $kh);
+  $kwBag = max($kw, ($labWbag ?? $labW) / 90);  // BAGAGEM: fonte maior (acompanha o comprimento proprio)
+  $pxB  = fn ($n) => (int) round($n * $kwBag);
   $bd = max(1, (int) round(1.4 * $kh));
   $nomeLines = $labH >= 45 ? 3 : 2;
   $lancha = $p->embarcacao?->nome ?: ($empresa->nomeExibicao() ?? '');
@@ -50,13 +52,23 @@
   .vnum { font-size:{{ $pxh(21) }}px; }
   .seat1 { width:35%; border-left:{{ $bd }}px solid #000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:{{ $px(2) }}px; text-align:center; }
   .seat1 .num { font-size:{{ $pxh(31) }}px; }
+  /* ETIQUETA DE BAGAGEM: maior e com fonte maior que a via */
+  .lbl.bag .hdr .lch { font-size:{{ $pxB(12) }}px; }
+  .lbl.bag .hdr .bdg { font-size:{{ $pxB(10) }}px; }
+  .lbl.bag .nome { font-size:{{ $pxB(17) }}px; }
+  .lbl.bag .rota { font-size:{{ $pxB(14) }}px; }
+  .lbl.bag .meta { font-size:{{ $pxB(11) }}px; }
+  .lbl.bag .obs  { font-size:{{ $pxB(11) }}px; }
+  .lbl.bag .seat2 .cap  { font-size:{{ $pxB(9) }}px; }
+  .lbl.bag .seat2 .num  { font-size:{{ $pxB(26) }}px; }
+  .lbl.bag .seat2 .vnum { font-size:{{ $pxB(22) }}px; }
   @media screen { body { margin:12px auto; max-width:460px; } .lbl { margin-bottom:12px; box-shadow:0 0 10px #0004; } }
 </style>
 </head>
 <body>
 @if(!($soVia ?? false))
 @for($v = 1; $v <= $volumes; $v++)
-<div class="lbl" style="width:{{ $labWbag ?? $labW }}mm;height:{{ $labHbag ?? $labH }}mm">
+<div class="lbl bag" style="width:{{ $labWbag ?? $labW }}mm;height:{{ $labHbag ?? $labH }}mm">
   <div class="hdr">
     <span class="lch">{{ strtoupper($lancha) }}</span>
     <span class="bdg">BAGAGEM</span>
