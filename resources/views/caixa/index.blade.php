@@ -26,50 +26,6 @@
   <div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null),'modo'=>($focoPrest ? 'prestacao' : (($ehRelatorio ?? false) ? 'relatorio' : 'caixa'))])) }}" class="btn btn-ghost btn-sm">📄 {{ $focoPrest ? 'Pré-prestação' : ($ehRel ? 'Relatório' : 'Caixa') }} (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div></div>
 
 @php $escolher = $focoPrest && ! $transporteId; @endphp
-@if($escolher)
-@php
-  $tSel = $transporteId ? $transportes->firstWhere('id', (int) $transporteId) : null;
-  $tLista = $transportes->filter(fn ($t) => ! empty($t->dono_id))->values();
-@endphp
-<div class="card overflow-hidden">
-  <div class="p-4 border-b flex items-center gap-3 flex-wrap">
-    <div class="flex items-center gap-2 text-sm font-bold">
-      <span class="inline-flex w-7 h-7 rounded-full items-center justify-center text-white text-[13px]" style="background:{{ $tSel ? '#16a34a' : $tema[0] }}">{{ $tSel ? '✓' : '1' }}</span>
-      <span class="{{ $tSel ? 'text-slate-400' : 'text-slate-800' }}">Transporte</span>
-    </div>
-    <span class="text-slate-300">›</span>
-    <div class="flex items-center gap-2 text-sm font-bold text-slate-400"><span class="inline-flex w-7 h-7 rounded-full items-center justify-center text-[13px] bg-slate-100">2</span>Prestação (todas as viagens ou uma só)</div>
-  </div>
-
-  @if(! $tSel)
-  <div class="p-4">
-    <div class="text-lg font-extrabold text-slate-800">De qual transporte é a prestação?</div>
-    <div class="text-[13px] text-slate-500 mb-3">Escolha a lancha. A prestação abre com todas as viagens em aberto; se quiser, depois você filtra uma viagem só.</div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
-      @forelse($tLista as $t)
-        @php $pp = $pendPorTransporte[$t->id] ?? null; @endphp
-        <a href="{{ route('caixa.index', ['foco' => 'prestacoes', 'transporte_id' => $t->id]) }}"
-           class="group rounded-2xl border bg-white p-3.5 flex items-center gap-3 transition hover:shadow-md"
-           style="border-color:{{ $pp ? 'color-mix(in srgb, '.$tema[0].' 45%, white)' : '#e2e8f0' }}">
-          <div class="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style="background:color-mix(in srgb, {{ $tema[0] }} 12%, white)">🚤</div>
-          <div class="min-w-0 flex-1">
-            <div class="font-bold text-slate-800 truncate">{{ $t->nome }}</div>
-            <div class="text-[11px] text-slate-400 truncate">proprietário {{ optional($t->dono)->name ?? $t->dono_nome ?? '—' }}</div>
-          </div>
-          @if($pp)
-            <span class="rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap" style="background:color-mix(in srgb, {{ $tema[0] }} 14%, white); color:{{ $tema[1] }}">{{ $pp->qtd }} em aberto</span>
-          @else
-            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-400 whitespace-nowrap">em dia</span>
-          @endif
-        </a>
-      @empty
-        <div class="col-span-full p-6 text-center text-slate-400">Nenhum transporte com proprietário cadastrado. Cadastre o proprietário em Administração → Transportes.</div>
-      @endforelse
-    </div>
-  </div>
-  @endif
-</div>
-@else
 @if($focoPrest)
 @php
   $tSel = $transportes->firstWhere('id', (int) $transporteId);
@@ -84,6 +40,7 @@
   <div class="min-w-[220px] flex-1 sm:flex-none">
     <label class="label">Transporte</label>
     <select name="transporte_id" class="input !min-h-[42px]" onchange="this.form.data_viagem.value=''; this.form.submit()">
+      @if(! $transporteId)<option value="">— escolha o transporte —</option>@endif
       @foreach($transportes->filter(fn ($t) => ! empty($t->dono_id)) as $t)
         <option value="{{ $t->id }}" @selected((int) $transporteId === (int) $t->id)>🚤 {{ $t->nome }}</option>
       @endforeach
@@ -91,7 +48,7 @@
   </div>
   <div class="min-w-[240px] flex-1 sm:flex-none">
     <label class="label">Data da viagem</label>
-    <select name="data_viagem" class="input !min-h-[42px]" onchange="this.form.submit()">
+    <select name="data_viagem" class="input !min-h-[42px]" onchange="this.form.submit()" @disabled(! $transporteId)>
       <option value="">Todas as viagens · {{ $pendTot }} em aberto</option>
       @foreach($datasViagem as $dv)
         @php $dvs = \Illuminate\Support\Carbon::parse($dv)->toDateString(); $pq = $pendD[$dvs] ?? null; @endphp
@@ -99,9 +56,11 @@
       @endforeach
     </select>
   </div>
-  <a href="{{ route('caixa.index', ['foco' => 'prestacoes']) }}" class="btn btn-ghost btn-sm ml-auto">← Voltar aos transportes</a>
 </form>
 @endif
+@if($escolher)
+<div class="card p-8 text-center text-slate-500"><div class="text-3xl mb-1">🚤</div><div class="font-semibold text-slate-700">Escolha o transporte acima para abrir a prestação.</div><div class="text-[12px] text-slate-400">A data da viagem é opcional: sem data, vêm todas as viagens em aberto.</div></div>
+@else
 @if($podeAvulso)
 <div x-data="{open:false, tipo:'entrada', emb:'{{ $focoPrest ? (int) $transporteId : '' }}'}" class="no-print">
   <div class="flex gap-2">
