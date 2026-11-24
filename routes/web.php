@@ -325,6 +325,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/llm/{provedor?}', [LlmController::class, 'salvar'])->name('llm.salvar');
         Route::delete('/llm/{provedor}', [LlmController::class, 'excluir'])->name('llm.excluir');
         Route::post('/llm/{provedor}/testar', [LlmController::class, 'testar'])->name('llm.testar');
+        // Relatório de entradas e saídas (cancelamentos, devoluções, transferências, avulsos)
+        Route::get('/movimentos', [\App\Http\Controllers\Admin\MovimentoController::class, 'index'])->name('movimentos');
         // Digital Signage (mídia indoor): telas e propagandas/avisos
         Route::get('/signage', [\App\Http\Controllers\Admin\SignageController::class, 'index'])->name('signage');
         Route::post('/signage/tela/{tela?}', [\App\Http\Controllers\Admin\SignageController::class, 'telaSalvar'])->name('signage.tela.salvar');

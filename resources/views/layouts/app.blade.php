@@ -162,6 +162,7 @@ document.addEventListener('alpine:init', () => {
       $adm[] = ['r'=>route('admin.llm'), 'l'=>'Provedores de IA', 'i'=>'🧠'];
       $adm[] = ['r'=>route('admin.agentes'), 'l'=>'Agentes IA', 'i'=>'🤖'];
       $adm[] = ['r'=>route('admin.signage'), 'l'=>'Digital Signage', 'i'=>'📺'];
+      $adm[] = ['r'=>route('admin.movimentos'), 'l'=>'Entradas e saídas', 'i'=>'↕️'];
       $adm[] = ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'];
       $grupos['Administração'] = $adm;
   }

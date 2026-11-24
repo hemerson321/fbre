@@ -88,28 +88,38 @@ class Vagas
         foreach (preg_split('/\n[ \t]*\n/', $layout) as $bloco) {
             foreach (preg_split('/\n/', $bloco) as $linha) {
                 if (trim($linha) === '') continue;
-                $p = explode('|', $linha);
-                $esq = array_values(array_filter(preg_split('/\s+/', trim($p[0] ?? '')), fn ($x) => $x !== ''));
-                $dir = array_values(array_filter(preg_split('/\s+/', trim($p[1] ?? '')), fn ($x) => $x !== ''));
-                $this->classBloco($esq, 'esq', $map);
-                $this->classBloco($dir, 'dir', $map);
+                $this->classFileira($this->colunasLinha($linha), $map);
             }
         }
         return $map;
     }
 
-    protected function classBloco(array $seats, string $lado, array &$map): void
+    /** Divide a linha nos "|" (um ou mais corredores) nas colunas de assentos. */
+    protected function colunasLinha(string $linha): array
     {
-        $n = count($seats);
-        foreach ($seats as $i => $sel) {
-            if ($n === 1) {
-                $t = 'janela';
-            } elseif ($lado === 'esq') {
-                $t = $i === 0 ? 'janela' : ($i === $n - 1 ? 'corredor' : 'meio');
-            } else {
-                $t = $i === $n - 1 ? 'janela' : ($i === 0 ? 'corredor' : 'meio');
+        $cols = [];
+        foreach (explode('|', $linha) as $seg) {
+            $seats = array_values(array_filter(preg_split('/\s+/', trim($seg)), fn ($x) => $x !== ''));
+            if ($seats) $cols[] = $seats;
+        }
+        return $cols;
+    }
+
+    /** Classifica cada assento de uma fileira (N colunas) em janela/meio/corredor pela posição. */
+    protected function classFileira(array $cols, array &$map): void
+    {
+        $nc = count($cols);
+        foreach ($cols as $ci => $seats) {
+            $n = count($seats);
+            foreach ($seats as $i => $sel) {
+                $pEsq = $i === 0; $pDir = $i === $n - 1;
+                if ($n === 1 && ($ci === 0 || $ci === $nc - 1)) $t = 'janela';
+                elseif ($ci === 0 && $pEsq) $t = 'janela';
+                elseif ($ci === $nc - 1 && $pDir) $t = 'janela';
+                elseif (($pDir && $ci < $nc - 1) || ($pEsq && $ci > 0)) $t = 'corredor';
+                else $t = 'meio';
+                $map[$sel] = $t;
             }
-            $map[$sel] = $t;
         }
     }
 
@@ -299,18 +309,14 @@ class Vagas
         foreach (preg_split('/\n[ \t]*\n/', $layout) as $b) {
             foreach (preg_split('/\n/', $b) as $linha) {
                 if (trim($linha) === '') continue;
-                $p = explode('|', $linha);
-                foreach (['esq', 'dir'] as $lado) {
-                    $side = $lado === 'esq' ? ($p[0] ?? '') : ($p[1] ?? '');
-                    $seats = array_values(array_filter(preg_split('/\s+/', trim($side)), fn ($x) => $x !== ''));
-                    if (! $seats) continue;
-                    $cnt = count($seats);
+                $cols = $this->colunasLinha($linha);
+                if (! $cols) continue;
+                $tipoMap = [];
+                $this->classFileira($cols, $tipoMap);
+                foreach ($cols as $ci => $seats) {
                     $linhaBloco = [];
-                    foreach ($seats as $i => $sel) {
-                        if ($cnt === 1) $t = 'janela';
-                        elseif ($lado === 'esq') $t = $i === 0 ? 'janela' : ($i === $cnt - 1 ? 'corredor' : 'meio');
-                        else $t = $i === $cnt - 1 ? 'janela' : ($i === 0 ? 'corredor' : 'meio');
-                        $linhaBloco[] = ['sel' => (string) $sel, 'tipo' => $t, 'lado' => $lado];
+                    foreach ($seats as $sel) {
+                        $linhaBloco[] = ['sel' => (string) $sel, 'tipo' => $tipoMap[$sel] ?? 'meio', 'lado' => $ci === 0 ? 'esq' : 'dir', 'inicio' => $ci === 0];
                     }
                     $blocos[] = $linhaBloco;
                 }
@@ -357,9 +363,9 @@ class Vagas
         // blocosOrdenados() devolve, por fileira, [esq] e depois [dir] (pula o lado vazio). Remonta pela marca 'lado'.
         $out = []; $atual = null;
         foreach ($blocos as $bl) {
-            $lado = $bl[0]['lado'] ?? 'esq';
-            if ($lado === 'esq' || $atual === null) { if ($atual) $out[] = $atual; $atual = $bl; }
-            else { $atual = array_merge($atual, $bl); $out[] = $atual; $atual = null; }
+            $inicio = $bl[0]['inicio'] ?? (($bl[0]['lado'] ?? 'esq') === 'esq');
+            if ($inicio) { if ($atual) $out[] = $atual; $atual = $bl; }
+            else { $atual = $atual === null ? $bl : array_merge($atual, $bl); }
         }
         if ($atual) $out[] = $atual;
         return $out;

@@ -405,8 +405,8 @@
         const txt=(this.poltronasLayout||'').replace(/\r/g,'');
         return txt.split(/\n[ \t]*\n/).map(b=>
           b.split('\n').filter(l=>l.trim()).map(linha=>{
-            const p=linha.split('|');
-            return { esq:(p[0]||'').trim().split(/\s+/).filter(Boolean), dir:(p[1]||'').trim().split(/\s+/).filter(Boolean) };
+            const cols=linha.split('|').map(x=>x.trim().split(/\s+/).filter(Boolean)).filter(c=>c.length);
+            return { cols, esq:cols[0]||[], dir:cols.slice(1).flat() };
           })
         ).filter(b=>b.length);
       },
@@ -417,9 +417,9 @@
         const res=new Set((this.reservadas||[]).map(String));
         const trv=new Set((this.travadas||[]).map(t=>String(t.poltrona)));
         const c={total:0,livre:0,janela:0,meio:0,corredor:0};
-        const classe=(seats,lado)=>{ const n=seats.length; return seats.map((s,i)=>{ let t; if(n===1)t='janela'; else if(lado==='esq')t=(i===0?'janela':(i===n-1?'corredor':'meio')); else t=(i===n-1?'janela':(i===0?'corredor':'meio')); return {s:String(s),t}; }); };
+        const classeLinha=(cols)=>{ const out=[]; const nc=cols.length; cols.forEach((seats,ci)=>{ const n=seats.length; seats.forEach((s,i)=>{ let t='meio'; const pontaEsq=(i===0), pontaDir=(i===n-1); if(ci===0 && pontaEsq) t='janela'; else if(ci===nc-1 && pontaDir) t='janela'; else if((pontaDir && ci<nc-1)||(pontaEsq && ci>0)) t='corredor'; if(n===1 && (ci===0||ci===nc-1)) t='janela'; out.push({s:String(s),t}); }); }); return out; };
         (this.blocosPoltrona||[]).forEach(bloco=>bloco.forEach(row=>{
-          [...classe(row.esq||[],'esq'), ...classe(row.dir||[],'dir')].forEach(({s,t})=>{
+          classeLinha(row.cols||[row.esq||[],row.dir||[]]).forEach(({s,t})=>{
             c.total++;
             if(!occ.has(s)&&!res.has(s)&&!trv.has(s)){ c.livre++; if(c[t]!==undefined)c[t]++; }
           });

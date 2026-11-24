@@ -450,13 +450,14 @@
             <div :class="bi>0 ? 'mt-2.5 pt-2.5 border-t border-dashed border-slate-300 space-y-1.5' : 'space-y-1.5'">
               <template x-for="(f,ri) in bloco" :key="ri">
                 <div class="flex items-center justify-center gap-1">
-                  <div class="flex gap-1"><template x-for="n in f.esq" :key="n">
-                    <button type="button" class="min-w-[36px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="assentoClasse(n)" :disabled="(estaOcupada(n)||estaReservada(n)) && !poltronaMinha(n)" @click="escolherPoltrona(n)" :title="tituloAssento(n)" x-text="n"></button>
-                  </template></div>
-                  <div class="w-4 text-center text-[9px] text-slate-300 select-none" x-show="f.dir.length">║</div>
-                  <div class="flex gap-1"><template x-for="n in f.dir" :key="n">
-                    <button type="button" class="min-w-[36px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="assentoClasse(n)" :disabled="(estaOcupada(n)||estaReservada(n)) && !poltronaMinha(n)" @click="escolherPoltrona(n)" :title="tituloAssento(n)" x-text="n"></button>
-                  </template></div>
+                  <template x-for="(col,ci) in (f.cols||[f.esq,f.dir])" :key="ci">
+                    <div class="flex items-center gap-1">
+                      <div class="w-3 text-center text-[9px] text-slate-300 select-none" x-show="ci>0 && col.length">║</div>
+                      <div class="flex gap-1"><template x-for="n in col" :key="n">
+                        <button type="button" class="min-w-[36px] h-9 px-0.5 rounded-t-lg rounded-b-md border-2 text-[11px] font-bold leading-none" :class="assentoClasse(n)" :disabled="(estaOcupada(n)||estaReservada(n)) && !poltronaMinha(n)" @click="escolherPoltrona(n)" :title="tituloAssento(n)" x-text="n"></button>
+                      </template></div>
+                    </div>
+                  </template>
                 </div>
               </template>
             </div>
