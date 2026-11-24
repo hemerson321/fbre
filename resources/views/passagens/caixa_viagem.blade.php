@@ -145,7 +145,15 @@
     @if(($prestacao->saidas ?? 0) > 0.009)
     <div class="lin"><span>Saídas avulsas (despesas)</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->saidas,2,',','.') }}</b></div>
     @endif
+    @if(($prestacao->devolucao ?? 0) > 0.009)
+    <div class="lin"><span>Devolução de passagem já acertada <span style="font-weight:400;color:#777;font-size:10px">(desconta nesta prestação)</span></span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->devolucao,2,',','.') }}</b></div>
+    @endif
+    @if($prestacao->liquido < -0.009)
+    <div class="lin g" style="color:#b91c1c"><span>Proprietário deve à agência</span><span>- R$ {{ number_format(abs($prestacao->liquido),2,',','.') }}</span></div>
+    <div style="font-size:10px;color:#777">Fica negativo até entrar venda nova; desconta sozinho na próxima prestação.</div>
+    @else
     <div class="lin g" style="color:#067d3b"><span>Total a pagar ao proprietário</span><span>R$ {{ number_format($prestacao->liquido,2,',','.') }}</span></div>
+    @endif
     @if($prestFechada ?? null)
     <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px"><span>Devido ao proprietário (balcão)</span><b>R$ {{ number_format($prestFechada->total_devido,2,',','.') }}</b></div>
     <div class="lin"><span>Pago{{ $prestFechada->forma ? ' ('.ucfirst($prestFechada->forma).')' : '' }}</span><b style="color:#067d3b">R$ {{ number_format($prestFechada->valor_pago,2,',','.') }}</b></div>

@@ -957,6 +957,28 @@ class PassagemController extends Controller
             ];
         }
 
+        // DEVOLUÇÃO de passagem já acertada com o proprietário: ele fica devendo a parte dele e isso desconta na PRÓXIMA prestação
+        // — mesmo que o transporte ainda não tenha nenhuma venda nova (aí a prestação fica negativa até entrar venda).
+        $devolucaoDesc = 0.0;
+        if ($prestFechada) {
+            $devolucaoDesc = round((float) Pagamento::where('prestacao_id', $prestFechada->id)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
+        } elseif ($modo === 'prestacao' && ! empty($f['embarcacao_id'])) {
+            $devolucaoDesc = max(0.0, round(
+                (float) Pagamento::where('embarcacao_id', $f['embarcacao_id'])->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')
+                - (float) Pagamento::where('embarcacao_id', $f['embarcacao_id'])->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2));
+        }
+        if ($devolucaoDesc > 0.009) {
+            if (! $prestacao && ! empty($f['embarcacao_id']) && ($embDev = Embarcacao::find($f['embarcacao_id']))) {
+                $prestacao = (object) [
+                    'nome' => $embDev->nome, 'pct' => (int) $embDev->comissao_empresa_pct, 'bruto' => 0.0, 'comissao' => 0.0,
+                    'debProp' => 0.0, 'pixProp' => 0.0, 'credProp' => 0.0, 'dinProp' => 0.0,
+                    'cartao' => 0.0, 'saidas' => $avSaidas, 'entradas' => $avEntradas, 'liquido' => round($avEntradas - $avSaidas, 2),
+                ];
+            }
+            if ($prestacao) $prestacao->liquido = round((float) $prestacao->liquido - $devolucaoDesc, 2);
+        }
+        if ($prestacao) $prestacao->devolucao = $devolucaoDesc;
+
         // Quebra por categoria (Balcão/Proprietário/Agente) × forma, pra prestação.
         $novaCat = fn () => ['qtd' => 0, 'total' => 0.0, 'dinheiro' => 0.0, 'pix' => 0.0, 'debito' => 0.0, 'credito' => 0.0, 'credito_avista' => 0.0, 'credito_parcelado' => 0.0, 'areceber' => 0.0];
         $porCategoria = ['balcao' => $novaCat(), 'proprietario' => $novaCat(), 'agente' => $novaCat()];

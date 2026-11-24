@@ -321,7 +321,12 @@
       </div>
       <div class="flex items-center gap-2">
         <div class="text-right">
+          @if($d->liquido < -0.009)
+          <div class="text-lg font-bold text-rose-600">− R$ {{ number_format(abs($d->liquido),2,',','.') }}</div>
+          <div class="text-[10px] text-rose-500 font-semibold">proprietário deve · desconta na próxima prestação</div>
+          @else
           <div class="text-lg font-bold text-amber-700">R$ {{ number_format($d->liquido > 0 ? $d->liquido : 0,2,',','.') }}</div>
+          @endif
           @if($d->debito > 0)<div class="text-[10px] text-slate-400">bruto {{ number_format($d->valor,2,',','.') }} − dívida {{ number_format($d->debito,2,',','.') }}</div>@endif
         </div>
         @if($d->valor > 0 || ($d->avE ?? 0) > 0 || ($d->avS ?? 0) > 0)
