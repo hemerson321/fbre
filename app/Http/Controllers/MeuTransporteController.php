@@ -103,12 +103,24 @@ class MeuTransporteController extends Controller
             ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
             ->with(['operador', 'revendedor'])->orderByDesc('id')->limit(300)->get();
 
+        // Prestações de contas já fechadas desta lancha (inclui as feitas antes de existir o login do proprietário).
+        $prestacoesDono = \App\Models\Prestacao::ativas()->where('embarcacao_id', $emb->id)
+            ->when($dataViagem, fn ($q) => $q->where(fn ($w) => $w->whereDate('data_viagem', $dataViagem)
+                ->orWhereIn('id', Passagem::whereDate('data_viagem', $dataViagem)->whereNotNull('prestacao_id')->select('prestacao_id'))))
+            ->orderByDesc('fechada_em')->orderByDesc('id')->limit(100)->get();
+        $dpp = Passagem::whereIn('prestacao_id', $prestacoesDono->pluck('id'))->whereNotNull('data_viagem')
+            ->select('prestacao_id', 'data_viagem')->distinct()->orderBy('data_viagem')->get()->groupBy('prestacao_id');
+        foreach ($prestacoesDono as $pr) {
+            $ds = $pr->data_viagem ? collect([$pr->data_viagem]) : ($dpp[$pr->id] ?? collect())->pluck('data_viagem');
+            $pr->viagens_txt = $ds->map(fn ($d) => \Illuminate\Support\Carbon::parse($d)->format('d/m/Y'))->unique()->implode(', ') ?: '—';
+        }
+
         return view('meu-transporte.index', compact(
             'meus', 'emb', 'transporteId', 'pct', 'dataViagem', 'viagemId',
             'temViagens', 'viagens', 'datasViagem',
             'balcaoQtd', 'balcaoBruto', 'balcaoDono', 'agentesList', 'agentesDono', 'agentesQtd',
             'aba', 'vendas', 'aReceber', 'recebido', 'recebidoQtd', 'saldoDevedor',
-            'vendasBruto', 'vendasQtd', 'vendasDono', 'vendasComissao'
+            'vendasBruto', 'vendasQtd', 'vendasDono', 'vendasComissao', 'prestacoesDono'
         ));
     }
 

@@ -175,6 +175,37 @@
   </div>
   @endif
 
+  <div class="card overflow-hidden">
+    <div class="p-3 border-b bg-slate-50 flex items-center justify-between flex-wrap gap-2">
+      <div class="font-bold text-sm text-slate-700">🧾 Prestações de contas da agência</div>
+      <div class="text-[11px] text-slate-400">o que a agência já fechou e pagou desta lancha — mais recentes primeiro</div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-50"><tr>
+          <th class="text-left p-2">Nº</th><th class="text-left p-2">Viagem</th><th class="text-left p-2">Feita em</th><th class="text-right p-2">Passagens</th><th class="text-right p-2">Total</th><th class="text-right p-2">Pago</th><th class="text-right p-2">Saldo</th><th class="text-left p-2">Forma</th><th class="text-center p-2">Status</th>
+        </tr></thead>
+        <tbody class="divide-y">
+          @forelse(($prestacoesDono ?? collect()) as $pr)
+          <tr>
+            <td class="p-2 font-semibold whitespace-nowrap">#{{ $pr->numero }}</td>
+            <td class="p-2 whitespace-nowrap">🗓 {{ $pr->viagens_txt ?? '—' }}</td>
+            <td class="p-2 text-slate-500 whitespace-nowrap">{{ optional($pr->fechada_em)->format('d/m/Y H:i') }}</td>
+            <td class="p-2 text-right">{{ $pr->qtd }}</td>
+            <td class="p-2 text-right whitespace-nowrap">R$ {{ number_format($pr->total_devido,2,',','.') }}</td>
+            <td class="p-2 text-right whitespace-nowrap text-emerald-700">R$ {{ number_format($pr->valor_pago,2,',','.') }}</td>
+            <td class="p-2 text-right whitespace-nowrap {{ $pr->saldo > 0 ? 'text-rose-600 font-semibold' : 'text-slate-400' }}">R$ {{ number_format($pr->saldo,2,',','.') }}</td>
+            <td class="p-2 capitalize text-slate-500">{{ $pr->forma }}</td>
+            <td class="p-2 text-center"><span class="chip {{ $pr->status==='acertada' ? 'bg-emerald-100 text-emerald-700' : ($pr->status==='parcial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600') }}">{{ $pr->statusLabel() }}</span></td>
+          </tr>
+          @empty
+          <tr><td colspan="9" class="p-5 text-center text-slate-400">Nenhuma prestação fechada ainda.</td></tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 @include('partials.pulse')
 @endsection

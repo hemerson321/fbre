@@ -233,7 +233,8 @@ class CaixaController extends Controller
         $donosBalcao = collect();
         if (auth()->user()->caixaTodos()) {
             $meusIds = $meusBarcos ?: [];
-            $donosBalcao = \App\Models\Embarcacao::whereNotNull('dono_id')->whereNotIn('id', $meusIds)
+            // Todos os transportes entram, com ou sem login de proprietário (o login pode ser criado depois).
+            $donosBalcao = \App\Models\Embarcacao::whereNotIn('id', $meusIds)
                 ->when($transporteId, fn ($q) => $q->where('id', $transporteId))
                 ->orderBy('nome')->get()
                 ->map(function ($e) use ($dataViagem) {
@@ -284,7 +285,7 @@ class CaixaController extends Controller
         $pqG = (clone $pqAll)->where('acerto_dono', false);
         $idsComDono = null;
         if ($request->input('foco') === 'prestacoes') {
-            $idsComDono = \App\Models\Embarcacao::whereNotNull('dono_id')->whereNotIn('id', $meusBarcos ?: [])->pluck('id');
+            $idsComDono = \App\Models\Embarcacao::whereNotIn('id', $meusBarcos ?: [])->pluck('id');
             $pqG->whereIn('embarcacao_id', $idsComDono);
         }
         $passG = (clone $pqG)->get(['id', 'embarcacao_id', 'total']);

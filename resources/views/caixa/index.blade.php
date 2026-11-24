@@ -29,7 +29,7 @@
 @if($escolher)
 @php
   $tSel = $transporteId ? $transportes->firstWhere('id', (int) $transporteId) : null;
-  $tLista = $transportes->filter(fn ($t) => ! empty($t->dono_id))->values();
+  $tLista = $transportes->values(); // todos, com ou sem login de proprietário
 @endphp
 <div class="card overflow-hidden">
   <div class="p-4 border-b flex items-center gap-3 flex-wrap">
@@ -54,7 +54,7 @@
           <div class="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style="background:color-mix(in srgb, {{ $tema[0] }} 12%, white)">🚤</div>
           <div class="min-w-0 flex-1">
             <div class="font-bold text-slate-800 truncate">{{ $t->nome }}</div>
-            <div class="text-[11px] text-slate-400 truncate">proprietário {{ optional($t->dono)->name ?? $t->dono_nome ?? '—' }}</div>
+            <div class="text-[11px] text-slate-400 truncate">@php $dn = optional($t->dono)->name ?: ($t->dono_nome ?: null); @endphp{{ $dn ? 'proprietário '.$dn : 'proprietário sem login ainda' }}{{ $dn && empty($t->dono_id) ? ' · sem login' : '' }}</div>
           </div>
           @if($pp)
             <span class="rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap" style="background:color-mix(in srgb, {{ $tema[0] }} 14%, white); color:{{ $tema[1] }}">{{ $pp->qtd }} em aberto</span>
@@ -63,7 +63,7 @@
           @endif
         </a>
       @empty
-        <div class="col-span-full p-6 text-center text-slate-400">Nenhum transporte com proprietário cadastrado. Cadastre o proprietário em Administração → Transportes.</div>
+        <div class="col-span-full p-6 text-center text-slate-400">Nenhum transporte cadastrado.</div>
       @endforelse
     </div>
   </div>
@@ -84,7 +84,7 @@
   <div class="min-w-[220px] flex-1 sm:flex-none">
     <label class="label">Transporte</label>
     <select name="transporte_id" class="input !min-h-[42px]" onchange="this.form.data_viagem.value=''; this.form.submit()">
-      @foreach($transportes->filter(fn ($t) => ! empty($t->dono_id)) as $t)
+      @foreach($transportes as $t)
         <option value="{{ $t->id }}" @selected((int) $transporteId === (int) $t->id)>🚤 {{ $t->nome }}</option>
       @endforeach
     </select>
