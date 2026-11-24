@@ -17,9 +17,9 @@ class Vagas
     /**
      * @return array{ok:bool, usa_poltrona?:bool, vagas?:?int, capacidade?:int, lancha?:string}
      */
-    public function disponiveis(string $origem, string $destino, ?Carbon $data = null): array
+    public function disponiveis(string $origem, string $destino, ?Carbon $data = null, ?string $lancha = null): array
     {
-        $rota = $this->rotaDoTrecho($origem, $destino);
+        $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
         if (! $rota || ! $rota->embarcacao) return ['ok' => false];
         $emb = $rota->embarcacao;
 
@@ -39,9 +39,9 @@ class Vagas
      * Lugares LIVRES por tipo (janela/meio/corredor) no trecho/data, lendo o mapa real da lancha.
      * @return array{ok:bool, usa_poltrona?:bool, tipos?:?array, lancha?:string}
      */
-    public function tiposDisponiveis(string $origem, string $destino, ?Carbon $data = null): array
+    public function tiposDisponiveis(string $origem, string $destino, ?Carbon $data = null, ?string $lancha = null): array
     {
-        $rota = $this->rotaDoTrecho($origem, $destino);
+        $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
         if (! $rota || ! $rota->embarcacao) return ['ok' => false];
         $emb = $rota->embarcacao;
         if (! $emb->usa_poltrona) return ['ok' => true, 'usa_poltrona' => false, 'tipos' => []];
@@ -61,9 +61,9 @@ class Vagas
     }
 
     /** Primeira poltrona LIVRE de um tipo (janela/meio/corredor) no trecho/data. Retorna o nome (ex.: 03J) ou null. */
-    public function primeiraLivre(string $origem, string $destino, ?Carbon $data, string $tipo): ?string
+    public function primeiraLivre(string $origem, string $destino, ?Carbon $data, string $tipo, ?string $lancha = null): ?string
     {
-        $rota = $this->rotaDoTrecho($origem, $destino);
+        $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
         if (! $rota || ! $rota->embarcacao || ! $rota->embarcacao->usa_poltrona) return null;
         $emb = $rota->embarcacao;
         $mapaTipo = $this->classificar((string) ($emb->poltronas_lista ?? ''));
@@ -118,10 +118,10 @@ class Vagas
      * Para n>1 tenta assentos JUNTOS; se não der, pega os mais próximos e avisa.
      * @return array{ok:bool, seats?:array, juntas?:bool, descricao?:string, esgotado?:bool}
      */
-    public function atribuir(string $origem, string $destino, ?Carbon $data, string $tipo, int $n, ?int $conversaId): array
+    public function atribuir(string $origem, string $destino, ?Carbon $data, string $tipo, int $n, ?int $conversaId, ?string $lancha = null): array
     {
         $n = max(1, min(8, $n));
-        $rota = $this->rotaDoTrecho($origem, $destino);
+        $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
         if (! $rota || ! $rota->embarcacao || ! $rota->embarcacao->usa_poltrona) return ['ok' => false];
         $emb = $rota->embarcacao;
         $blocos = $this->blocosOrdenados((string) ($emb->poltronas_lista ?? ''));
@@ -256,15 +256,35 @@ class Vagas
     }
 
     /** Acha a rota ATIVA cujas paradas contêm origem E destino. */
-    protected function rotaDoTrecho(string $origem, string $destino): ?Rota
+    /**
+     * Rota (e portanto a LANCHA) que atende o trecho. Várias lanchas podem fazer o mesmo trecho, então
+     * desempata por: nome da lancha informado > dia da semana da saída na cidade de origem > sentido da viagem.
+     * (Antes pegava sempre a primeira rota do trecho, e o agente só acertava a poltrona de uma lancha.)
+     */
+    protected function rotaDoTrecho(string $origem, string $destino, ?Carbon $data = null, ?string $lancha = null): ?Rota
     {
+        $norm = fn ($x) => preg_replace('/[^a-z0-9]+/', '', mb_strtolower(\Illuminate\Support\Str::ascii(trim((string) $x))));
         $o = mb_strtolower(trim($origem));
         $d = mb_strtolower(trim($destino));
+        $ln = $lancha !== null ? $norm($lancha) : '';
+        $melhor = null; $melhorPts = -1;
         foreach (Rota::with('paradas', 'embarcacao')->where('ativo', true)->get() as $r) {
             $locs = array_map(fn ($x) => mb_strtolower((string) $x), $r->localidades());
-            if (in_array($o, $locs, true) && in_array($d, $locs, true)) return $r;
+            $io = array_search($o, $locs, true); $id = array_search($d, $locs, true);
+            if ($io === false || $id === false) continue;
+            $pts = 0;
+            if ($ln !== '' && $r->embarcacao) {
+                $en = $norm($r->embarcacao->nome);
+                if ($en !== '' && ($en === $ln || str_contains($en, $ln) || str_contains($ln, $en))) $pts += 100;
+            }
+            if ($data) {
+                $par = $r->paradas->values()[$io] ?? null;
+                if ($par && $par->dia_semana !== null && (int) $par->dia_semana === (int) $data->dayOfWeek) $pts += 10;
+            }
+            if ($io < $id) $pts += 3;
+            if ($pts > $melhorPts) { $melhor = $r; $melhorPts = $pts; }
         }
-        return null;
+        return $melhor;
     }
 
     /** Poltronas ocupadas (vendidas + travadas) no trecho/data — mesma regra de segmento da venda. */

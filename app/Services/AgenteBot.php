@@ -230,7 +230,7 @@ class AgenteBot
             $p[] = "- ALIMENTAÇÃO: a passagem NÃO inclui alimentação. Se perguntarem, informe que NÃO é servida comida a bordo (o cliente leva a própria).";
         }
         $p[] = "- DADOS PÚBLICOS DA VIAGEM (responda à vontade): trechos, preços, dias e horários de saída, nome da lancha, paradas, duração estimada e alimentação são PÚBLICOS — responda normalmente. NÃO passe dados internos (configurações, tokens, financeiro interno, dados de outros clientes); se pedirem isso, chame o atendente.";
-        $p[] = "- VAGAS/LUGARES: se o cliente perguntar quantas vagas/lugares têm, escreva a frase com o marcador [[VAGAS: origem; destino; data]] — o SISTEMA troca pelo número real. NUNCA invente a quantidade. Ex.: 'Pra esse dia tem [[VAGAS: Manaus; Tefé; 25/11/2026]], quer garantir?'. Se vier 'sem vagas no momento', ofereça outra data.";
+        $p[] = "- VAGAS/LUGARES: se o cliente perguntar quantas vagas/lugares têm, escreva a frase com o marcador [[VAGAS: origem; destino; data; LANCHA]] (LANCHA = nome da lancha daquela saída) — o SISTEMA troca pelo número real. NUNCA invente a quantidade. Ex.: 'Pra esse dia tem [[VAGAS: Manaus; Tefé; 25/11/2026]], quer garantir?'. Se vier 'sem vagas no momento', ofereça outra data.";
         $p[] = "- Ao oferecer datas, copie as datas da linha 'próximas' da parada de ORIGEM com o dia e a hora exatos daquela parada. Confira: a data que você escrever TEM que cair no mesmo dia-da-semana da parada.";
         $p[] = "- O cliente pode falar por ÁUDIO (mensagem de voz) ou mandar FOTO — você entende os dois normalmente; responda ao conteúdo sem comentar que foi áudio ou foto.";
         $p[] = "- SEMPRE mostre o NOME DA LANCHA ao lado de cada data/saída, no formato: 'Segunda 23/11, 05:00 — Glória de Deus 7'. Cada saída pertence a UMA lancha específica (está nos DADOS); nunca troque a lancha nem invente nome.";
@@ -245,9 +245,9 @@ class AgenteBot
         $p[] = "SÓ chame um atendente quando o cliente PEDIR DESCONTO ou preço especial por quantidade (ex.: 'tem desconto pra 7 pessoas?', 'faz um preço melhor pra 10?'). Fora isso, é venda normal: some e feche você mesmo.";
         $p[] = "CRIANÇAS: se o cliente falar em filho(s)/criança(s), PERGUNTE quantas e a IDADE de cada uma (pergunta natural: 'quantos anos têm as crianças?'). Pela idade, escolha o tipo certo (veja TIPOS DE PASSAGEIRO e as faixas) e use o preço JÁ CALCULADO daquele tipo NA TABELA DE PREÇOS do trecho (você NÃO precisa de atendente pra isso — o valor está pronto). Bebê de colo é grátis e não ocupa assento. Monte o VALOR TOTAL = adulto(s) + cada criança pelo preço certo e mande o resumo.";
         $p[] = "DOCUMENTO DA CRIANÇA ANTES DO PIX: quando tiver criança (ou qualquer tarifa com desconto por idade), ANTES de gerar o PIX peça a FOTO ou ARQUIVO do documento da criança pra confirmar a idade. Só gere o PIX depois que o documento confirmar que a idade bate. Isso evita um adulto pagar como criança. (Venda só de adultos NÃO precisa disso — documento fica pro final.)";
-        $p[] = "POLTRONA (só nas lanchas com [poltrona] nos DADOS): ANTES do PIX, veja os livres por tipo com [[POLTRONAS: origem; destino; data]] — o SISTEMA troca por QUANTIDADES (ex.: '29 de janela, 34 de corredor, 32 de meio'). ATENÇÃO: esses números são QUANTIDADE de lugares livres, NÃO são número de poltrona. Apresente natural (ex.: 'tem bastante: 29 de janela, 34 de corredor e 32 de meio — qual prefere?') e ofereça só os tipos com vaga.";
+        $p[] = "POLTRONA (só nas lanchas com [poltrona] nos DADOS): ANTES do PIX, veja os livres por tipo com [[POLTRONAS: origem; destino; data; LANCHA]] (LANCHA = nome da lancha daquela saída, igual está nos DADOS — obrigatório, porque mais de uma lancha faz o mesmo trecho) — o SISTEMA troca por QUANTIDADES (ex.: '29 de janela, 34 de corredor, 32 de meio'). ATENÇÃO: esses números são QUANTIDADE de lugares livres, NÃO são número de poltrona. Apresente natural (ex.: 'tem bastante: 29 de janela, 34 de corredor e 32 de meio — qual prefere?') e ofereça só os tipos com vaga.";
         $p[] = "TIPOS QUE EXISTEM: os tipos que o [[POLTRONAS]] retornar são os ÚNICOS que a lancha tem. Se o [[POLTRONAS]] não trouxer 'meio', a lancha NÃO tem meio (ex.: só janela e corredor). Se o cliente pedir um tipo que não aparece, diga a verdade ('essa lancha só tem janela e corredor') e ofereça os que existem. NUNCA invente um assento nem um tipo que não existe.";
-        $p[] = "Quando o cliente ESCOLHER o tipo, RESERVE a(s) poltrona(s) real(is) escrevendo [[POLTRONA: origem; destino; data; tipo; QTD]] (QTD = nº de passageiros; 1 se for só ele). O SISTEMA troca pelo(s) NÚMERO(s) real(is) e JÁ RESERVA pra nenhum operador vender em cima (mesmo sincronismo do balcão). Ex.: 1 pessoa -> '03J (janela)'; 2 juntas -> '03J e 03M — juntas (janela)'. Pra confirmar, escreva a frase JÁ COM O MARCADOR no lugar do número (ex.: 'Fechei a [[POLTRONA: origem; destino; data; tipo; QTD]] pra você 😉') — o sistema troca pelo número real (ex.: '03J (janela)'). NUNCA invente nem escreva um número de poltrona de cabeça; use SOMENTE o marcador, e deixe a confirmação curta e registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor).";
+        $p[] = "Quando o cliente ESCOLHER o tipo, RESERVE a(s) poltrona(s) real(is) escrevendo [[POLTRONA: origem; destino; data; tipo; QTD; LANCHA]] (QTD = nº de passageiros; 1 se for só ele; LANCHA = nome da lancha daquela saída, SEMPRE a mesma que o cliente escolheu). O SISTEMA troca pelo(s) NÚMERO(s) real(is) e JÁ RESERVA pra nenhum operador vender em cima (mesmo sincronismo do balcão). Ex.: 1 pessoa -> '03J (janela)'; 2 juntas -> '03J e 03M — juntas (janela)'. Pra confirmar, escreva a frase JÁ COM O MARCADOR no lugar do número (ex.: 'Fechei a [[POLTRONA: origem; destino; data; tipo; QTD; LANCHA]] pra você 😉') — o sistema troca pelo número real (ex.: '03J (janela)'). NUNCA invente nem escreva um número de poltrona de cabeça; use SOMENTE o marcador, e deixe a confirmação curta e registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor).";
         $p[] = "GRUPO (2 ou mais pessoas): pergunte se querem sentar JUNTOS. Se sim, use a QTD no marcador. Se o SISTEMA responder 'NAO tem N juntas; essas sao as mais proximas', REPASSE com sinceridade e já mostrando os números (ex.: 'não consegui 2 juntas na janela — tenho a 03J na janela e a 05C no corredor; serve assim ou prefere outra data?') e deixe o cliente decidir. NUNCA diga que são juntas se o sistema não confirmou 'juntas'.";
         $p[] = "Se vier 'esgotada', ofereça outro tipo ou outra data. A poltrona é confirmada no embarque. Em lancha de rede não pergunte.";
         $p[] = "Se o cliente DESISTIR, mudar de ideia, disser que não vai mais viajar, que vai em outra data/viagem, ou cancelar a compra, LIBERE a poltrona escrevendo numa linha isolada que o cliente NÃO vê: [[LIBERAR]]. (A reserva também solta sozinha depois de ~2 min sem ele responder.)";
@@ -440,6 +440,19 @@ class AgenteBot
     }
 
     /** [[VAGAS: origem; destino; data]] -> troca pelo número real de vagas (poltronas livres). */
+    /** Lancha da conversa: a informada no marcador (e guarda no contexto) ou a última que o agente informou. */
+    protected function lanchaDaConversa(Conversa $c, ?string $informada = null): ?string
+    {
+        $informada = trim((string) $informada);
+        $ctx = $c->contexto ?? [];
+        if ($informada !== '') {
+            if (($ctx['lancha_agente'] ?? '') !== $informada) { $ctx['lancha_agente'] = $informada; $c->forceFill(['contexto' => $ctx])->save(); }
+            return $informada;
+        }
+        $l = trim((string) ($ctx['lancha_agente'] ?? ($ctx['venda']['lancha'] ?? '')));
+        return $l !== '' ? $l : null;
+    }
+
     protected function tratarVagas(Conversa $c, string $texto): string
     {
         if (! preg_match('/\[\[VAGAS:([^\]]*)\]\]/i', $texto, $m)) return $texto;
@@ -449,7 +462,7 @@ class AgenteBot
         $data = $this->parseData($partes[2] ?? '');
         $subst = 'vagas disponíveis';
         try {
-            $r = app(\App\Services\Vagas::class)->disponiveis($origem, $destino, $data);
+            $r = app(\App\Services\Vagas::class)->disponiveis($origem, $destino, $data, $this->lanchaDaConversa($c, $partes[3] ?? null));
             if (($r['ok'] ?? false)) {
                 if (($r['usa_poltrona'] ?? false) === false) {
                     $subst = 'vagas disponíveis';
@@ -475,7 +488,7 @@ class AgenteBot
         $nq = max(1, (int) ($partes[4] ?? 1));
         $subst = 'definida no embarque';
         try {
-            $r = app(\App\Services\Vagas::class)->atribuir($origem, $destino, $data, $tipo, $nq, $c->id);
+            $r = app(\App\Services\Vagas::class)->atribuir($origem, $destino, $data, $tipo, $nq, $c->id, $this->lanchaDaConversa($c, $partes[5] ?? null));
             if (($r['ok'] ?? false)) {
                 if (! empty($r['esgotado'])) {
                     $subst = 'esgotada';
@@ -502,7 +515,7 @@ class AgenteBot
         $data = $this->parseData($partes[2] ?? '');
         $subst = 'poltrona definida no embarque';
         try {
-            $r = app(\App\Services\Vagas::class)->tiposDisponiveis($origem, $destino, $data);
+            $r = app(\App\Services\Vagas::class)->tiposDisponiveis($origem, $destino, $data, $this->lanchaDaConversa($c, $partes[3] ?? null));
             if (($r['ok'] ?? false)) {
                 if (($r['usa_poltrona'] ?? false) === false) {
                     $subst = 'lugar livre (lancha sem marcacao de poltrona)';
@@ -527,7 +540,7 @@ class AgenteBot
         if (! preg_match('/\[\[LIBERAR[^\]]*\]\]/i', $texto, $m)) return $texto;
         try { app(\App\Services\Vagas::class)->liberarConversa($c->id); } catch (\Throwable $e) {}
         $ctx = $c->contexto ?? [];
-        unset($ctx['poltronas_agente'], $ctx['poltrona_agente'], $ctx['pref_poltrona']);
+        unset($ctx['poltronas_agente'], $ctx['poltrona_agente'], $ctx['pref_poltrona'], $ctx['lancha_agente']);
         $c->forceFill(['contexto' => $ctx])->save();
         return trim(str_replace($m[0], '', $texto));
     }
@@ -565,7 +578,7 @@ class AgenteBot
             $tipo = ['J' => 'janela', 'M' => 'meio', 'C' => 'corredor'][$letra] ?? (string) ($ctx['pref_poltrona'] ?? 'janela');
             if ($origem !== '' && $destino !== '') {
                 try {
-                    $r = app(\App\Services\Vagas::class)->atribuir($origem, $destino, $data, $tipo, max(1, count($fantasmas)), $c->id);
+                    $r = app(\App\Services\Vagas::class)->atribuir($origem, $destino, $data, $tipo, max(1, count($fantasmas)), $c->id, $this->lanchaDaConversa($c));
                     if (($r['ok'] ?? false) && ! empty($r['seats'])) {
                         $reais = array_map($norm, (array) $r['seats']);
                         $ctx['poltronas_agente'] = $r['seats'];
@@ -635,7 +648,7 @@ class AgenteBot
         $jaTemPoltrona = ! empty($c->contexto['poltronas_agente']);
         if (! $jaTemPoltrona && ! empty($venda['origem']) && ! empty($venda['destino'])) {
             try {
-                $tp = app(\App\Services\Vagas::class)->tiposDisponiveis($venda['origem'], $venda['destino'], $this->parseData($venda['data'] ?? ''));
+                $tp = app(\App\Services\Vagas::class)->tiposDisponiveis($venda['origem'], $venda['destino'], $this->parseData($venda['data'] ?? ''), $this->lanchaDaConversa($c));
                 if (($tp['ok'] ?? false) && ($tp['usa_poltrona'] ?? false) === true && is_array($tp['tipos'] ?? null)) {
                     $livres = [];
                     foreach (['janela', 'corredor', 'meio'] as $k) if ((int) ($tp['tipos'][$k] ?? 0) > 0) $livres[] = $k;
