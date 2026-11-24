@@ -114,8 +114,13 @@
       @csrf
       <input type="hidden" name="tipo_mov" :value="tipo">
       <div class="font-bold text-lg" x-text="tipo==='entrada' ? '➕ Entrada avulsa' : '➖ Saída avulsa'"></div>
-      <div><label class="label">Categoria</label>
-        <select name="categoria" class="input" :required="!emb">
+      @php $avNaPrest = $focoPrest && $transporteId; @endphp
+      @if($avNaPrest)
+      <div class="text-[12px] text-slate-500 -mt-1">🚤 {{ optional($transportes->firstWhere('id', (int) $transporteId))->nome }} · entra na prestação deste transporte</div>
+      <input type="hidden" name="embarcacao_id" value="{{ (int) $transporteId }}">
+      @endif
+      <div @if($avNaPrest) style="display:none" @endif><label class="label">Categoria</label>
+        <select name="categoria" class="input" :required="!emb" @disabled($avNaPrest)>
           <option value="">— escolher —</option>
           @foreach($categorias as $c)<option value="{{ $c->nome }}" x-show="'{{ $c->tipo }}'==='ambos' || '{{ $c->tipo }}'===tipo">{{ $c->nome }}</option>@endforeach
         </select>
@@ -124,13 +129,13 @@
       <div><label class="label">Valor</label><input name="valor" class="input" x-money></div>
       <div><label class="label">Forma</label>
         <select name="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select></div>
-      <div><label class="label">Transporte (p/ prestação) — vazio = caixa da agência</label>
-        <select name="embarcacao_id" class="input" x-model="emb">
+      <div @if($avNaPrest) style="display:none" @endif><label class="label">Transporte (p/ prestação) — vazio = caixa da agência</label>
+        <select name="embarcacao_id" class="input" x-model="emb" @disabled($avNaPrest)>
           <option value="">— caixa da agência —</option>
           @foreach($transportes as $t)<option value="{{ $t->id }}">{{ $t->nome }}</option>@endforeach
         </select></div>
       <div x-show="emb" x-cloak><label class="label">Data da viagem</label><input type="date" name="data_viagem" class="input" value="{{ $focoPrest ? $dataViagem : '' }}"></div>
-      <div><label class="label">Descrição (opcional)</label><input name="descricao" class="input" maxlength="200"></div>
+      <div><label class="label">{{ $avNaPrest ? 'Motivo / descrição' : 'Descrição (opcional)' }}</label><input name="descricao" class="input" maxlength="200"></div>
       <div class="flex gap-2 pt-1">
         <button type="button" class="btn btn-ghost flex-1" @click="open=false">Cancelar</button>
         <button class="btn flex-1 text-white" :style="tipo==='entrada'?'background:#059669':'background:#e11d48'">Registrar</button>
