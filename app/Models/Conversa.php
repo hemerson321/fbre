@@ -19,6 +19,7 @@ class Conversa extends Model
         'precisa_humano' => 'boolean',
         'transferida_em' => 'datetime',
         'contexto' => 'array',
+        'etiquetas' => 'array',
         'ultima_msg_em' => 'datetime',
         'cliente_respondeu_em' => 'datetime',
     ];

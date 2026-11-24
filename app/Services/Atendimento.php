@@ -137,6 +137,30 @@ class Atendimento
         return ['ok' => $envio['ok'] ?? false, 'mensagem' => $msg, 'erro' => $envio['erro'] ?? null];
     }
 
+    /** Envia uma MÍDIA (foto, vídeo, áudio, arquivo) na conversa e grava no histórico. $caminho = 'storage/...' (disco público). */
+    public function registrarSaidaMidia(Conversa $conversa, string $caminho, string $mime, string $nome, string $legenda = '', string $origem = 'humano', ?int $userId = null): array
+    {
+        $conexao = $conversa->conexao;
+        $abs = public_path($caminho);
+        if (! is_file($abs)) $abs = storage_path('app/public/'.preg_replace('#^storage/#', '', $caminho));
+        if (! $conexao) $envio = ['ok' => false, 'erro' => 'Conversa sem conexão de WhatsApp.'];
+        elseif (! is_file($abs)) $envio = ['ok' => false, 'erro' => 'Arquivo não encontrado.'];
+        else $envio = $this->wa->enviarMidia($conexao, $conversa->cliente_telefone, base64_encode((string) file_get_contents($abs)), $mime, $nome, $legenda);
+
+        $rotulo = str_starts_with($mime, 'image/') ? '📷 Foto' : (str_starts_with($mime, 'video/') ? '🎬 Vídeo' : (str_starts_with($mime, 'audio/') ? '🎤 Áudio' : '📎 '.$nome));
+        $msg = Mensagem::create([
+            'empresa_id' => $conversa->empresa_id, 'conversa_id' => $conversa->id, 'direcao' => 'saida', 'origem' => $origem,
+            'texto' => $legenda !== '' ? $legenda : $rotulo, 'user_id' => $userId,
+            'wa_message_id' => $envio['resposta']['key']['id'] ?? null, 'lida' => true,
+            'meta' => ['arquivo' => $caminho, 'mime' => $mime, 'nome' => $nome] + (($envio['ok'] ?? false) ? [] : ['erro' => $envio['erro'] ?? 'falha']),
+        ]);
+        $conversa->ultima_msg_texto = mb_substr($legenda !== '' ? $legenda : $rotulo, 0, 255);
+        $conversa->ultima_msg_origem = $origem;
+        $conversa->ultima_msg_em = now();
+        $conversa->save();
+        return ['ok' => $envio['ok'] ?? false, 'mensagem' => $msg, 'erro' => $envio['erro'] ?? null];
+    }
+
     /** Humano assume a conversa. */
     public function assumirHumano(Conversa $conversa, int $userId): void
     {

@@ -17,3 +17,6 @@ Schedule::command('encomendas:avisar-chegada')->everyFiveMinutes()->withoutOverl
 
 // conversa do agente sem resposta: avisa em 2 min e encerra 1 min depois (solta a poltrona reservada)
 Schedule::command('atendimento:ociosas')->everyMinute()->withoutOverlapping();
+
+// mensagens agendadas, funil de mensagens, envio em massa e status do WhatsApp
+Schedule::command('atendimento:agendadas')->everyMinute()->withoutOverlapping();

@@ -266,6 +266,49 @@ class WhatsApp
         }
     }
 
+    /** Envia qualquer mídia (foto, vídeo, áudio ou arquivo) pelo Evolution, escolhendo o tipo pelo mime. */
+    public function enviarMidia(WhatsappConexao $c, string $telefone, string $base64, string $mime, string $fileName, string $caption = ''): array
+    {
+        $fone = $this->normalizar($telefone);
+        if ($fone === '') return ['ok' => false, 'erro' => 'telefone'];
+        if ($c->tipo === 'oficial') return ['ok' => false, 'erro' => 'envio de mídia pela API oficial não implementado'];
+        $base = rtrim((string) $c->base_url, '/');
+        if (! $base || ! $c->instancia) return ['ok' => false, 'erro' => 'sem base/instancia'];
+        $tipo = str_starts_with($mime, 'image/') ? 'image' : (str_starts_with($mime, 'video/') ? 'video' : (str_starts_with($mime, 'audio/') ? 'audio' : 'document'));
+        try {
+            if ($tipo === 'audio') {
+                $r = $this->evoHttp($c)->timeout(60)->post("{$base}/message/sendWhatsAppAudio/{$c->instancia}", ['number' => $fone, 'audio' => $base64]);
+            } else {
+                $r = $this->evoHttp($c)->timeout(120)->post("{$base}/message/sendMedia/{$c->instancia}", [
+                    'number' => $fone, 'mediatype' => $tipo, 'mimetype' => $mime, 'media' => $base64, 'fileName' => $fileName, 'caption' => $caption,
+                ]);
+            }
+            return $r->successful() ? ['ok' => true, 'resposta' => $r->json()] : ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 150)];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
+    /** Publica um STATUS (story) do WhatsApp pelo Evolution: texto, ou imagem/vídeo com legenda. */
+    public function enviarStatus(WhatsappConexao $c, string $texto, ?string $base64 = null, ?string $mime = null): array
+    {
+        if ($c->tipo === 'oficial') return ['ok' => false, 'erro' => 'status pela API oficial não existe'];
+        $base = rtrim((string) $c->base_url, '/');
+        if (! $base || ! $c->instancia) return ['ok' => false, 'erro' => 'sem base/instancia'];
+        try {
+            if ($base64 && $mime) {
+                $tipo = str_starts_with($mime, 'video/') ? 'video' : 'image';
+                $body = ['type' => $tipo, 'content' => $base64, 'caption' => $texto, 'allContacts' => true, 'statusJidList' => []];
+            } else {
+                $body = ['type' => 'text', 'content' => $texto, 'backgroundColor' => '#0f172a', 'font' => 1, 'allContacts' => true, 'statusJidList' => []];
+            }
+            $r = $this->evoHttp($c)->timeout(120)->post("{$base}/message/sendStatus/{$c->instancia}", $body);
+            return $r->successful() ? ['ok' => true, 'resposta' => $r->json()] : ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 150)];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'erro' => $e->getMessage()];
+        }
+    }
+
     /** Envia uma mensagem de voz (PTT) pelo Evolution. $base64 = áudio (mp3/ogg) em base64. */
     public function enviarAudio(WhatsappConexao $c, string $telefone, string $base64): array
     {

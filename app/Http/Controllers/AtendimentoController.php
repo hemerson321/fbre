@@ -51,17 +51,29 @@ class AtendimentoController extends Controller
             'precisaHumano' => $this->precisaHumanoCount(),
             'conversa' => $conversa,
             'vendaResumo' => $this->resumoVenda($conversa),
+            'respostas' => \App\Models\AtendResposta::where('ativo', true)->orderBy('ordem')->orderBy('titulo')->get(),
+            'etiquetasTodas' => \App\Models\AtendEtiqueta::orderBy('nome')->get(),
+            'agendadasConv' => \App\Models\AtendAgendada::where('conversa_id', $conversa->id)->where('status', 'pendente')->orderBy('enviar_em')->get(),
         ]);
     }
 
     public function responder(Request $request, Conversa $conversa, Atendimento $at)
     {
         abort_unless($conversa->empresa_id === Tenant::id(), 404);
-        $data = $request->validate(['texto' => 'required|string|max:4000']);
+        $data = $request->validate(['texto' => 'nullable|string|max:4000', 'arquivo' => 'nullable|file|max:51200']);
+        $texto = trim((string) ($data['texto'] ?? ''));
+        if ($texto === '' && ! $request->hasFile('arquivo')) return back()->with('erro', 'Escreva uma mensagem ou anexe um arquivo.');
         if ($conversa->status !== 'humano') {
             $at->assumirHumano($conversa, auth()->id());
         }
-        $r = $at->registrarSaida($conversa, $data['texto'], 'humano', auth()->id());
+        if ($request->hasFile('arquivo')) {
+            // foto, vídeo, áudio ou documento — vai com o texto como legenda
+            $f = $request->file('arquivo');
+            $caminho = 'storage/'.$f->store('atendimento/'.Tenant::id(), 'public');
+            $r = $at->registrarSaidaMidia($conversa, $caminho, (string) ($f->getMimeType() ?: 'application/octet-stream'), mb_substr($f->getClientOriginalName(), 0, 150), $texto, 'humano', auth()->id());
+            return back()->with($r['ok'] ? 'ok' : 'erro', $r['ok'] ? null : ('Não enviou: '.($r['erro'] ?? 'erro')));
+        }
+        $r = $at->registrarSaida($conversa, $texto, 'humano', auth()->id());
         return back()->with($r['ok'] ? 'ok' : 'erro', $r['ok'] ? null : ('Não enviou: '.($r['erro'] ?? 'erro')));
     }
 
@@ -180,6 +192,9 @@ class AtendimentoController extends Controller
                 'texto' => $m->texto,
                 'hora' => $m->created_at?->format('H:i'),
                 'autor' => $m->autor?->name,
+                'arquivo' => ! empty($m->meta['arquivo']) ? asset($m->meta['arquivo']) : null,
+                'mime' => $m->meta['mime'] ?? null,
+                'nome' => $m->meta['nome'] ?? null,
             ]);
         if ($msgs->isNotEmpty()) {
             $conversa->update(['nao_lidas' => 0]);

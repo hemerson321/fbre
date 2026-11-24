@@ -1,3 +1,4 @@
+@php $__etq = \App\Models\AtendEtiqueta::get()->keyBy('id'); @endphp
 @forelse($conversas as $c)
 
         <a href="{{ route('atendimento.show',$c) }}" class="flex items-center gap-3 p-3 hover:bg-slate-50 {{ $sel && $sel->id===$c->id ? 'bg-slate-100' : '' }}">
@@ -15,6 +16,11 @@
             @if($c->funilLabel())<span class="chip text-[10px] bg-indigo-100 text-indigo-700 mt-0.5 ml-1">{{ $c->funilLabel() }}</span>@endif
             @if($c->precisa_humano)<span class="chip text-[10px] bg-rose-100 text-rose-700 mt-0.5 ml-1 font-bold">🔔 precisa atendente{{ $c->transferida_motivo ? ' · '.$c->transferida_motivo : '' }}</span>@endif
             @if($c->atendente)<span class="chip text-[10px] bg-emerald-100 text-emerald-700 mt-0.5 ml-1">👤 {{ $c->atendente->name }}</span>@endif
+            @foreach((array) $c->etiquetas as $eid)
+              @if(isset($__etq[$eid]))
+                <span class="inline-block rounded-full px-2 py-0.5 text-[10px] font-bold mt-0.5 ml-1" style="background:color-mix(in srgb, {{ $__etq[$eid]->cor }} 15%, white);color:{{ $__etq[$eid]->cor }}">{{ $__etq[$eid]->nome }}</span>
+              @endif
+            @endforeach
             @if(!empty($c->contexto['pref_poltrona']))<span class="chip text-[10px] bg-sky-100 text-sky-700 mt-0.5 ml-1">🪑 {{ ucfirst($c->contexto['pref_poltrona']) }}{{ !empty($c->contexto['poltronas_agente']) ? ' · '.implode(', ', (array) $c->contexto['poltronas_agente']) : '' }}</span>@endif
           </div>
         </a>

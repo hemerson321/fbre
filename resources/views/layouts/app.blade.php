@@ -128,6 +128,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if ($u->ehRevendedor()) $g[] = ['r'=>route('meus-acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
   if ($u->permite('passagem','atendimento')) $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'bk'=>'atendimento', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
+  if ($u->permite('passagem','atendimento')) $g[] = ['r'=>route('atendimento.kanban'), 'l'=>'CRM · Funil de clientes', 'i'=>'📋'];
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;
   // Camarote / Suítes (módulo próprio, permissão separada)
   $g = [];

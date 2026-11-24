@@ -145,6 +145,23 @@ Route::middleware('auth')->group(function () {
     Route::post('/passagens/atendimento/{conversa}/assumir', [AtendimentoController::class, 'assumir'])->name('atendimento.assumir')->middleware('perm:passagem.atendimento');
     Route::post('/passagens/atendimento/{conversa}/fechar', [AtendimentoController::class, 'fechar'])->name('atendimento.fechar')->middleware('perm:passagem.atendimento');
     Route::post('/passagens/atendimento/{conversa}/reiniciar', [AtendimentoController::class, 'reiniciar'])->name('atendimento.reiniciar')->middleware('perm:passagem.atendimento');
+    // Atendimento — modo operador: CRM Kanban, etiquetas, respostas rápidas/funil, agendamento, envio em massa e status
+    Route::middleware('perm:passagem.atendimento')->group(function () {
+        Route::get('/passagens/atendimento-kanban', [\App\Http\Controllers\AtendimentoCrmController::class, 'kanban'])->name('atendimento.kanban');
+        Route::get('/passagens/atendimento-ferramentas', [\App\Http\Controllers\AtendimentoCrmController::class, 'ferramentas'])->name('atendimento.ferramentas');
+        Route::post('/passagens/atendimento/{conversa}/funil', [\App\Http\Controllers\AtendimentoCrmController::class, 'moverFunil'])->name('atendimento.funil');
+        Route::post('/passagens/atendimento/{conversa}/etiqueta', [\App\Http\Controllers\AtendimentoCrmController::class, 'etiquetaToggle'])->name('atendimento.etiqueta.toggle');
+        Route::post('/passagens/atendimento/{conversa}/agendar', [\App\Http\Controllers\AtendimentoCrmController::class, 'agendar'])->name('atendimento.agendar');
+        Route::post('/passagens/atendimento/{conversa}/usar/{resposta}', [\App\Http\Controllers\AtendimentoCrmController::class, 'respostaUsar'])->name('atendimento.resposta.usar');
+        Route::post('/passagens/atendimento-ferramentas/resposta/{resposta?}', [\App\Http\Controllers\AtendimentoCrmController::class, 'respostaSalvar'])->name('atendimento.resposta.salvar');
+        Route::delete('/passagens/atendimento-ferramentas/resposta/{resposta}', [\App\Http\Controllers\AtendimentoCrmController::class, 'respostaExcluir'])->name('atendimento.resposta.excluir');
+        Route::post('/passagens/atendimento-ferramentas/etiqueta/{etiqueta?}', [\App\Http\Controllers\AtendimentoCrmController::class, 'etiquetaSalvar'])->name('atendimento.etiqueta.salvar');
+        Route::delete('/passagens/atendimento-ferramentas/etiqueta/{etiqueta}', [\App\Http\Controllers\AtendimentoCrmController::class, 'etiquetaExcluir'])->name('atendimento.etiqueta.excluir');
+        Route::post('/passagens/atendimento-ferramentas/agendada/{agendada}/cancelar', [\App\Http\Controllers\AtendimentoCrmController::class, 'agendadaCancelar'])->name('atendimento.agendada.cancelar');
+        Route::post('/passagens/atendimento-ferramentas/lote/cancelar', [\App\Http\Controllers\AtendimentoCrmController::class, 'loteCancelar'])->name('atendimento.lote.cancelar');
+        Route::post('/passagens/atendimento-ferramentas/massa', [\App\Http\Controllers\AtendimentoCrmController::class, 'massa'])->name('atendimento.massa');
+        Route::post('/passagens/atendimento-ferramentas/status', [\App\Http\Controllers\AtendimentoCrmController::class, 'status'])->name('atendimento.status');
+    });
     Route::post('/passagens/captura/novo', [CapturaController::class, 'novo'])->name('captura.novo')->middleware('perm:passagem');
     Route::get('/passagens/captura/pendentes', [CapturaController::class, 'pendentes'])->name('captura.pendentes')->middleware('perm:passagem');
     Route::post('/passagens/captura/ocr', [CapturaController::class, 'ocrDireto'])->name('captura.ocr')->middleware('perm:passagem');
