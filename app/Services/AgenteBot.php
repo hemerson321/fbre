@@ -30,7 +30,7 @@ class AgenteBot
             if (! $agente) return;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
             if (! $demo && ($conversa->precisa_humano ?? false)) return; // já transferido pro humano: agente fica em silêncio
-            try { app(\App\Services\Vagas::class)->renovarConversa($conversa->id, 2); } catch (\Throwable $e) {} // mantém a reserva enquanto o cliente responde
+            try { app(\App\Services\Vagas::class)->renovarConversa($conversa->id, 5); } catch (\Throwable $e) {} // mantém a reserva enquanto o cliente responde
 
             $prov = $agente->llm;
             if (! $prov) { Log::info('Agente sem provedor de IA.'); return; }
@@ -250,7 +250,7 @@ class AgenteBot
         $p[] = "Quando o cliente ESCOLHER o tipo, RESERVE a(s) poltrona(s) real(is) escrevendo [[POLTRONA: origem; destino; data; tipo; QTD; LANCHA]] (QTD = nº de passageiros; 1 se for só ele; LANCHA = nome da lancha daquela saída, SEMPRE a mesma que o cliente escolheu). O SISTEMA troca pelo(s) NÚMERO(s) real(is) e JÁ RESERVA pra nenhum operador vender em cima (mesmo sincronismo do balcão). Ex.: 1 pessoa -> '03J (janela)'; 2 juntas -> '03J e 03M — juntas (janela)'. Pra confirmar, escreva a frase JÁ COM O MARCADOR no lugar do número (ex.: 'Fechei a [[POLTRONA: origem; destino; data; tipo; QTD; LANCHA]] pra você 😉') — o sistema troca pelo número real (ex.: '03J (janela)'). NUNCA invente nem escreva um número de poltrona de cabeça; use SOMENTE o marcador, e deixe a confirmação curta e registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor).";
         $p[] = "GRUPO (2 ou mais pessoas): pergunte se querem sentar JUNTOS. Se sim, use a QTD no marcador. Se o SISTEMA responder 'NAO tem N juntas; essas sao as mais proximas', REPASSE com sinceridade e já mostrando os números (ex.: 'não consegui 2 juntas na janela — tenho a 03J na janela e a 05C no corredor; serve assim ou prefere outra data?') e deixe o cliente decidir. NUNCA diga que são juntas se o sistema não confirmou 'juntas'.";
         $p[] = "Se vier 'esgotada', ofereça outro tipo ou outra data. A poltrona é confirmada no embarque. Em lancha de rede não pergunte.";
-        $p[] = "Se o cliente DESISTIR, mudar de ideia, disser que não vai mais viajar, que vai em outra data/viagem, ou cancelar a compra, LIBERE a poltrona escrevendo numa linha isolada que o cliente NÃO vê: [[LIBERAR]]. (A reserva também solta sozinha depois de ~2 min sem ele responder.)";
+        $p[] = "Se o cliente DESISTIR, mudar de ideia, disser que não vai mais viajar, que vai em outra data/viagem, ou cancelar a compra, LIBERE a poltrona escrevendo numa linha isolada que o cliente NÃO vê: [[LIBERAR]]. (A reserva também solta sozinha depois de ~5 min sem ele responder.)";
         $p[] = "5) Confirmando: nas lanchas com [poltrona], PRIMEIRO escolha a poltrona (pergunte janela/corredor/meio e reserve com [[POLTRONA:...]]) e SÓ DEPOIS gere o PIX. NUNCA gere o PIX antes de ter a poltrona reservada. Em lancha de rede, gere o PIX direto.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
@@ -620,6 +620,9 @@ class AgenteBot
     {
         $str = trim($str);
         if ($str === '') return null;
+        // o modelo costuma mandar a data com o dia/hora junto ("Dom 29/11", "29/11/2026 05:00", "2026-11-29"): pega só a data
+        if (preg_match('/(\d{4})-(\d{1,2})-(\d{1,2})/', $str, $mm)) $str = $mm[3].'/'.$mm[2].'/'.$mm[1];
+        elseif (preg_match('/\d{1,2}\/\d{1,2}(\/\d{2,4})?/', $str, $mm)) $str = $mm[0];
         foreach (['d/m/Y', 'd/m/y', 'd/m'] as $fmt) {
             try {
                 $d = \Carbon\Carbon::createFromFormat($fmt, $str);

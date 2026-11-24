@@ -655,7 +655,10 @@ class PassagemController extends Controller
         $viagemAberta = false;
         if ($viagemId) { $vg = \App\Models\Viagem::find($viagemId); $viagemAberta = ! $vg || $vg->data_partida === null; }
         $q = \App\Models\PoltronaHold::ativo()->where('embarcacao_id', $embarcacaoId)
-            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            // casa pela viagem OU pela data (a reserva do agente do WhatsApp pode ter sido gravada só com a data)
+            ->when($viagemId && ! $viagemAberta, fn ($q) => $q->where(fn ($w) => $w->where('viagem_id', $viagemId)
+                ->when($dataViagem, fn ($x) => $x->orWhere(fn ($y) => $y->where('user_id', 0)->whereDate('data_viagem', $dataViagem)))))
+            ->when($viagemId && $viagemAberta, fn ($q) => $q->where('viagem_id', $viagemId))
             ->when(($viagemAberta || ! $viagemId) && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
             ->when($exceptUserId, fn ($q) => $q->where('user_id', '!=', $exceptUserId));
 
@@ -688,7 +691,10 @@ class PassagemController extends Controller
         $viagemAberta = false;
         if ($viagemId) { $vg = \App\Models\Viagem::find($viagemId); $viagemAberta = ! $vg || $vg->data_partida === null; }
         $q = \App\Models\PoltronaHold::ativo()->where('embarcacao_id', $embarcacaoId)
-            ->when($viagemId, fn ($q) => $q->where('viagem_id', $viagemId))
+            // casa pela viagem OU pela data (a reserva do agente do WhatsApp pode ter sido gravada só com a data)
+            ->when($viagemId && ! $viagemAberta, fn ($q) => $q->where(fn ($w) => $w->where('viagem_id', $viagemId)
+                ->when($dataViagem, fn ($x) => $x->orWhere(fn ($y) => $y->where('user_id', 0)->whereDate('data_viagem', $dataViagem)))))
+            ->when($viagemId && $viagemAberta, fn ($q) => $q->where('viagem_id', $viagemId))
             ->when(($viagemAberta || ! $viagemId) && $dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
             ->when($exceptUserId, fn ($q) => $q->where('user_id', '!=', $exceptUserId));
 

@@ -156,7 +156,7 @@ class Vagas
             \App\Models\PoltronaHold::create([
                 'empresa_id' => $emb->empresa_id, 'embarcacao_id' => $emb->id, 'viagem_id' => $viagemId,
                 'data_viagem' => $data?->toDateString(), 'poltrona' => $sel, 'origem' => $origem, 'destino' => $destino,
-                'user_id' => 0, 'conversa_id' => $conversaId, 'expires_at' => now()->addMinutes(2),
+                'user_id' => 0, 'conversa_id' => $conversaId, 'expires_at' => now()->addMinutes(5),
             ]);
         }
 
