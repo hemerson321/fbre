@@ -302,6 +302,9 @@
         @endif
         <button type="button" class="mt-1 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 @click="$dispatch('ver-vendas', { id: {{ $d->emb->id }}, nome: @js($d->emb->nome) })">👁 Ver vendas ({{ $d->qtd + ($d->qtdAg ?? 0) }})</button>
+        @if(($d->credProp ?? 0) > 0)
+        <div class="text-xs text-sky-700 mt-0.5">💳 Proprietário já recebeu direto <b>R$ {{ number_format($d->credProp,2,',','.') }}</b> <span class="text-[10px] text-slate-400">(não passou pela agência — sai do valor a pagar; a agência fica só com a comissão)</span></div>
+        @endif
         @if($d->debito > 0)<div class="text-[11px] text-rose-600 font-semibold mt-0.5">↩ proprietário deve R$ {{ number_format($d->debito,2,',','.') }} (devolução já acertada) — abate no acerto</div>@endif
       </div>
       <div class="flex items-center gap-2">

@@ -81,6 +81,15 @@ class PrestacaoController extends Controller
         return max(0.0, round($deb, 2));
     }
 
+    /** Soma do que o proprietário recebeu DIRETO (pagamentos marcados "maquineta/PIX do proprietário") nessas passagens. */
+    protected function recebidoProprietario($passagemIds): float
+    {
+        $ids = collect($passagemIds)->all();
+        if (! $ids) return 0.0;
+        return round((float) Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $ids)->where('estornado', false)
+            ->where('pago_proprietario', true)->where('meio', '!=', 'desconto')->sum('valor'), 2);
+    }
+
     protected function registrarPagamento(Prestacao $p, Embarcacao $e, float $valor, string $forma, string $lote, ?int $viagemId = null, ?string $dataViagem = null): void
     {
         if ($valor <= 0) return;
@@ -124,15 +133,22 @@ class PrestacaoController extends Controller
         $devidoBruto = round((float) $agg->devido, 2);
         $comissao = round($bruto - $devidoBruto, 2);
 
+        // O que o PROPRIETÁRIO já recebeu direto (maquineta/PIX dele): esse dinheiro não passou pela agência,
+        // então sai do que a agência tem a pagar. Sobre ele a agência fica só com a COMISSÃO.
+        $recProp = $this->recebidoProprietario($ids);
+        $base = round($devidoBruto - $recProp, 2);
+        $excessoProp = 0.0; // o dono recebeu mais do que a parte dele -> fica devendo a diferença (comissão) à agência
+        if ($base < 0) { $excessoProp = round(-$base, 2); $base = 0.0; }
+
         $deb = $this->debitoDono($embarcacao);
-        $abate = round(min($devidoBruto, $deb), 2);
-        $totalDevido = max(0.0, round($devidoBruto - $abate + $avE - $avS, 2)); // entrada avulsa soma, saída avulsa abate
+        $abate = round(min($base, $deb), 2);
+        $totalDevido = max(0.0, round($base - $abate + $avE - $avS, 2)); // entrada avulsa soma, saída avulsa abate
 
         $forma = (string) ($request->input('forma') ?: 'dinheiro');
         $splits = $this->lerSplits($request, $totalDevido, $forma);
         $pagarAgora = round(array_sum(array_column($splits, 'valor')), 2);
 
-        DB::transaction(function () use ($embarcacao, $ids, $qtd, $bruto, $pct, $comissao, $totalDevido, $abate, $forma, $splits, $pagarAgora, $viagemId, $dataViagem, $avIds) {
+        DB::transaction(function () use ($embarcacao, $ids, $qtd, $bruto, $pct, $comissao, $totalDevido, $abate, $forma, $splits, $pagarAgora, $viagemId, $dataViagem, $avIds, $excessoProp) {
             $lote = (string) Str::uuid();
             $prest = Prestacao::create([
                 'empresa_id' => Tenant::id(), 'embarcacao_id' => $embarcacao->id, 'viagem_id' => $viagemId, 'data_viagem' => $dataViagem,
@@ -147,6 +163,16 @@ class PrestacaoController extends Controller
                 'acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id(),
                 'acerto_lote' => $lote, 'prestacao_id' => $prest->id,
             ]);
+            if ($excessoProp > 0.009) {
+                // O proprietário recebeu direto mais do que a parte dele: a diferença é a comissão que ele deve à agência (abate na próxima prestação).
+                Pagamento::create([
+                    'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
+                    'embarcacao_id' => $embarcacao->id, 'meio' => 'dinheiro', 'valor' => $excessoProp, 'user_id' => auth()->id(),
+                    'momento' => 'baixa', 'tipo_mov' => 'entrada', 'categoria' => 'Débito do dono (devolução)',
+                    'descricao' => 'Prestação #'.$prest->numero.' — proprietário recebeu direto além da parte dele (comissão da agência) - '.$embarcacao->nome,
+                    'acerto_lote' => $lote, 'prestacao_id' => $prest->id,
+                ]);
+            }
             if ($abate > 0) {
                 Pagamento::create([
                     'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'embarcacao_id' => $embarcacao->id,
@@ -257,7 +283,8 @@ class PrestacaoController extends Controller
         $av = Pagamento::where('prestacao_id', $prestacao->id)->where('modulo', 'avulso')->where('momento', 'cadastro')->where('estornado', false);
         $avE = (float) (clone $av)->where('tipo_mov', 'entrada')->sum('valor');
         $avS = (float) (clone $av)->where('tipo_mov', 'saida')->sum('valor');
-        $prestacao->total_devido = max(0.0, round($parteDono - $abate + $avE - $avS, 2));
+        $recProp = $this->recebidoProprietario(Passagem::where('prestacao_id', $prestacao->id)->pluck('id'));
+        $prestacao->total_devido = max(0.0, round(max(0.0, $parteDono - $recProp) - $abate + $avE - $avS, 2));
         $prestacao->recalcularSaldo();
         $prestacao->save();
     }

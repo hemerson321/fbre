@@ -270,10 +270,10 @@ class CaixaController extends Controller
                     $comissao = round((float) $p->bruto - (float) $p->v, 2);
                     $passIdsDono = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
                         ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))->pluck('id');
-                    $cartao = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsDono)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
+                    $cartao = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsDono)->where('estornado', false)->where('meio', 'credito')->where(fn ($w) => $w->whereNull('pago_proprietario')->orWhere('pago_proprietario', false))->sum('valor'), 2); // só cartão na maquineta da EMPRESA (o do proprietário entra em credProp)
                     $credProp = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsDono)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
                     $despesas = round($comissao + $deb + $cartao + $credProp, 2);
-                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'bruto' => (float) $p->bruto, 'comissao' => $comissao, 'valor' => (float) $p->v, 'debito' => $deb, 'cartao' => $cartao, 'credProp' => $credProp, 'despesas' => $despesas, 'liquidoPrest' => round((float) $p->bruto - $despesas, 2), 'liquido' => round((float) $p->v - $deb + (float) $avP->e - (float) $avP->s, 2), 'avE' => (float) $avP->e, 'avS' => (float) $avP->s, 'dono' => optional($e->dono)->name ?? $e->dono_nome,
+                    return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'bruto' => (float) $p->bruto, 'comissao' => $comissao, 'valor' => (float) $p->v, 'debito' => $deb, 'cartao' => $cartao, 'credProp' => $credProp, 'despesas' => $despesas, 'liquidoPrest' => round((float) $p->bruto - $despesas, 2), 'liquido' => round(max(0.0, (float) $p->v - $credProp) - $deb + (float) $avP->e - (float) $avP->s, 2), // o que o dono já recebeu direto sai do que a agência paga 'avE' => (float) $avP->e, 'avS' => (float) $avP->s, 'dono' => optional($e->dono)->name ?? $e->dono_nome,
                         'qtdAg' => (int) $ag->qtd, 'brutoAg' => (float) $ag->bruto, 'repasseAg' => (float) $ag->repasse];
                 })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0 || $x->qtdAg > 0 || $x->avE > 0 || $x->avS > 0)->values();
         }
@@ -335,7 +335,7 @@ class CaixaController extends Controller
                 $brutoG = round((float) $passG->sum('total'), 2);
                 $comissaoG = round((float) $passG->sum(fn ($p) => (float) $p->total * (int) ($pcts[$p->embarcacao_id] ?? 0) / 100), 2);
                 $idsG = $passG->pluck('id');
-                $cartaoG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2);
+                $cartaoG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('meio', 'credito')->where(fn ($w) => $w->whereNull('pago_proprietario')->orWhere('pago_proprietario', false))->sum('valor'), 2);
                 $credPropG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
                 $debitoG = round(
                     (float) \App\Models\Pagamento::whereIn('embarcacao_id', $embIdsG)->where('estornado', false)->where('categoria', 'Débito do dono (devolução)')->sum('valor')

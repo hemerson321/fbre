@@ -260,7 +260,7 @@ class MeuTransporteController extends Controller
         // --- Prestação de contas (modelo do proprietário) ---
         $passIds = $passagens->pluck('id')->all();
         $pgBase = Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIds)->where('estornado', false);
-        $cartaoCredito = round((float) (clone $pgBase)->where('meio', 'credito')->sum('valor'), 2);
+        $cartaoCredito = round((float) (clone $pgBase)->where('meio', 'credito')->where(fn ($w) => $w->whereNull('pago_proprietario')->orWhere('pago_proprietario', false))->sum('valor'), 2); // só maquineta da empresa
         $creditoProp   = round((float) (clone $pgBase)->where('pago_proprietario', true)->sum('valor'), 2);
         // Débito do proprietário (devoluções já acertadas, ainda não abatidas)
         $debitoProp = round(
