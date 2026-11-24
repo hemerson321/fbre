@@ -91,11 +91,21 @@
   </div>
   <div class="bloco">
     <h2>Formas de Pagamentos</h2>
+    @php $tfp = $totFormaProp ?? []; $propTot = array_sum($tfp); @endphp
     @foreach($totForma as $meio => $val)
-    <div class="lin"><span>{{ \App\Models\Pagamento::MEIOS[$meio] ?? ucfirst($meio) }}</span><b>R$ {{ number_format($val,2,',','.') }}</b></div>
+    @php $vp = (float) ($tfp[$meio] ?? 0); $nm = \App\Models\Pagamento::MEIOS[$meio] ?? ucfirst($meio); @endphp
+    <div class="lin"><span>{{ $nm }}</span><b>R$ {{ number_format($val,2,',','.') }}</b></div>
+    @if($vp > 0.009)
+    <div class="lin" style="font-size:11px;color:#555;padding-left:12px"><span>↳ Empresa</span><span>R$ {{ number_format($val - $vp,2,',','.') }}</span></div>
+    <div class="lin" style="font-size:11px;color:#0e7490;padding-left:12px"><span>↳ Proprietário ({{ $nm }} Prop.)</span><span>R$ {{ number_format($vp,2,',','.') }}</span></div>
+    @endif
     @endforeach
     @if($totDesconto > 0.009)<div class="lin" style="color:#b45309"><span>Desconto concedido</span><b>- R$ {{ number_format($totDesconto,2,',','.') }}</b></div>@endif
     <div class="lin g"><span>Total recebido</span><span>R$ {{ number_format($totRecebido,2,',','.') }}</span></div>
+    @if($propTot > 0.009)
+    <div class="lin" style="font-size:11px;color:#555"><span>Recebido pela empresa</span><b>R$ {{ number_format($totRecebido - $propTot,2,',','.') }}</b></div>
+    <div class="lin" style="font-size:11px;color:#0e7490"><span>Recebido direto pelo proprietário</span><b>R$ {{ number_format($propTot,2,',','.') }}</b></div>
+    @endif
     @if(($totCancelado ?? 0) > 0.009)<div class="lin" style="color:#b91c1c"><span>Cancelado (fora do caixa)</span><b>- R$ {{ number_format($totCancelado,2,',','.') }}</b></div>@endif
     @if($totDevolvido > 0.009)<div class="lin" style="color:#b91c1c"><span>Devolvido (fora do caixa)</span><b>- R$ {{ number_format($totDevolvido,2,',','.') }}</b></div>@endif
   </div>

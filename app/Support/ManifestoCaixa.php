@@ -15,6 +15,7 @@ class ManifestoCaixa
     {
         $linhas = collect();
         $totForma = [];
+        $totFormaProp = []; // parte de cada forma recebida direto pelo PROPRIETÁRIO (maquineta/conta dele)
         $totDesconto = 0.0;
         $totGeral = 0.0;
         $totDevolvido = 0.0; $totCancelado = 0.0;
@@ -78,6 +79,7 @@ class ManifestoCaixa
                     if ($pg->meio === 'desconto') { $totDesconto += (float) $pg->valor; continue; }
                     if ((float) $pg->valor <= 0) continue;
                     $totForma[$pg->meio] = ($totForma[$pg->meio] ?? 0) + (float) $pg->valor;
+                    if ((bool) ($pg->pago_proprietario ?? false)) $totFormaProp[$pg->meio] = ($totFormaProp[$pg->meio] ?? 0) + (float) $pg->valor;
                 }
                 $totDesconto += (float) $p->desconto;
                 $totGeral += (float) $p->total;
@@ -87,6 +89,7 @@ class ManifestoCaixa
         return [
             'linhas' => $linhas,
             'totForma' => $totForma,
+            'totFormaProp' => $totFormaProp,
             'totDesconto' => $totDesconto,
             'totGeral' => $totGeral,
             'totRecebido' => array_sum($totForma),

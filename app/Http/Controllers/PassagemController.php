@@ -990,6 +990,7 @@ class PassagemController extends Controller
             'nPax' => $nPax, 'nIdosos' => $nIdosos, 'nPcd' => $nPcd, 'nOutros' => $nOutros, 'nColos' => $nColos, 'nDevolvidas' => $nDevolvidas, 'nCancelados' => $nCancelados,
             'embs' => $embs, 'datas' => $datas, 'f' => $f, 'prestacao' => $prestacao, 'porCategoria' => $porCategoria,
             'auto' => $request->boolean('print'),
+            'totFormaProp' => $m['totFormaProp'] ?? [],
             'modo' => $modo, 'prestFechada' => $prestFechada, 'avulsos' => $avulsos, 'avEntradas' => $avEntradas, 'avSaidas' => $avSaidas,
         ]);
     }
