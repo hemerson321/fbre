@@ -8,7 +8,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .ticket:last-child{page-break-after:auto}
 .resumo-venda{position:absolute;left:-10000px;top:0;width:360px;background:#fff;color:#000;padding:4mm 4.5mm 5mm;font-family:inherit;font-size:14px;line-height:1.32;overflow:hidden}
 .rz-wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:60;overflow:hidden}
-.rz-wm b{writing-mode:vertical-rl;text-orientation:mixed;font-size:118px;font-weight:900;letter-spacing:-14px;line-height:.9;color:rgba(185,28,28,.30);white-space:nowrap;text-transform:uppercase}
+.rz-wm b{display:inline-block;flex:none;transform:rotate(-90deg);font-size:84px;font-weight:900;letter-spacing:3px;line-height:1;color:rgba(185,28,28,.30);white-space:nowrap;text-transform:uppercase}
 .rz-h{text-align:center;border-bottom:2px solid #000;padding-bottom:5px;margin-bottom:6px}
 .rz-h .t{font-weight:900;font-size:16px;letter-spacing:.06em}
 .rz-h .s{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-top:1px}
@@ -32,7 +32,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 .rz-ln{border-bottom:1px solid #000;height:14px;margin-top:2px}
 .rz-foot{text-align:center;font-size:9px;color:#374151;margin-top:8px;border-top:1px dashed #9ca3af;padding-top:4px}
 .cwm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:60;overflow:hidden}
-.cwm b{writing-mode:vertical-rl;text-orientation:mixed;font-size:82px;font-weight:900;letter-spacing:-12px;line-height:.9;color:rgba(185,28,28,.38);white-space:nowrap;text-transform:uppercase}
+.cwm b{display:inline-block;flex:none;transform:rotate(-90deg);font-size:70px;font-weight:900;letter-spacing:3px;line-height:1;color:rgba(185,28,28,.38);white-space:nowrap;text-transform:uppercase}
 .c{text-align:center}.muted{color:#6b7280}.b{font-weight:700}
 .hdr{text-align:center;margin-bottom:4px}
 .hdr img{height:80px;max-width:72mm;object-fit:contain;margin-bottom:4px}
@@ -117,7 +117,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 @foreach($biList as $i => $pax)
 <div class="ticket" style="--cor:{{ $cor }}">
 @php $ehGrat = (($pax->papel ?? '') !== 'colo') && ((float) ($pax->valor_passagem ?? 0) <= 0.009) && ((float) ($pax->valor_integral ?? 0) > 0.009); @endphp
-@php $__tarja = $p->cancelada ? ((($p->cancel_tipo ?? '')==='cancelamento')?'CANCELAMENTO':'DEVOLUÇÃO') : (($pax->cancelado ?? false) ? ((($pax->cancelado_tipo ?? '')==='cancelamento')?'CANCELAMENTO':'DEVOLUÇÃO') : null); @endphp
+@php $__tarja = $p->cancelada ? ((($p->cancel_tipo ?? '')==='cancelamento')?'CANCELADO':'DEVOLUÇÃO') : (($pax->cancelado ?? false) ? ((($pax->cancelado_tipo ?? '')==='cancelamento')?'CANCELADO':'DEVOLUÇÃO') : null); @endphp
 @if($__tarja)<div class="cwm"><b>{{ $__tarja }}</b></div>@endif
 @if($ehGrat && !$p->cancelada)<div style="position:absolute;top:0;bottom:0;right:0.5mm;display:flex;align-items:center;pointer-events:none;z-index:1"><span style="writing-mode:vertical-rl;font-size:15px;font-weight:900;letter-spacing:3px;color:rgba(0,0,0,.22)">GRATUIDADE</span></div>@endif
   <div class="hdr">
@@ -238,7 +238,7 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 @endphp
 @if($so !== 'bilhete')
 <div class="resumo-venda">
-  @php $__rzTarja = $p->cancelada ? ((($p->cancel_tipo ?? '')==='cancelamento')?'CANCELAMENTO':'DEVOLUÇÃO') : null; @endphp
+  @php $__rzTarja = $p->cancelada ? ((($p->cancel_tipo ?? '')==='cancelamento')?'CANCELADO':'DEVOLUÇÃO') : null; @endphp
   @if($__rzTarja)<div class="rz-wm"><b>{{ $__rzTarja }}</b></div>@endif
   <div class="rz-h">
     <div class="t">RESUMO DA VENDA</div>
@@ -284,6 +284,18 @@ body{margin:0;padding:0;width:80mm;font-family:'Segoe UI',Roboto,Helvetica,Arial
 var MODO=@json($modo ?? null);
 var _pdfBlob=null,_pdfFile=null,_pdfName='passagem-{{ $p->numeroFormatado() }}.pdf';
 var RASTER = new URLSearchParams(location.search).has('raster');
+// Tarja CANCELADO / DEVOLUÇÃO: palavra inteira, de pé, no maior tamanho que cabe na altura do bilhete (sem letra em cima de letra).
+function ajustarTarjas(){
+  var ws=document.querySelectorAll('.rz-wm,.cwm');
+  for(var i=0;i<ws.length;i++){
+    var w=ws[i], b=w.querySelector('b'); if(!b) continue;
+    var H=w.clientHeight, W=w.clientWidth; if(!H||!W) continue;
+    b.style.fontSize='100px';
+    var larg=b.offsetWidth||1;
+    b.style.fontSize=Math.max(24, Math.floor(Math.min(100*(H*0.9)/larg, W*0.45)))+'px';
+  }
+}
+ajustarTarjas(); window.addEventListener('load', ajustarTarjas);
 function rasterTickets(){
   var h2c = window.html2canvas;
   if(!h2c){ try{ parent.postMessage({fbreRaster:true, imagens:[], erro:'sem html2canvas'}, '*'); }catch(e){} return; }
