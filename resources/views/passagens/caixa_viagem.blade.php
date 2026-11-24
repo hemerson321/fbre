@@ -114,35 +114,20 @@
     <h2>Prestação de contas</h2>
     <div class="lin"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacao->bruto,2,',','.') }}</b></div>
     <div class="lin"><span>Comissão de Agência{{ !is_null($prestacao->pct) ? ' ('.$prestacao->pct.'%)' : '' }}</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
-    @php
-      $pctPr = is_null($prestacao->pct) ? null : (int) $prestacao->pct;
-      $recPropTot = round((float) $prestacao->debProp + (float) $prestacao->pixProp + (float) $prestacao->credProp + (float) $prestacao->dinProp, 2);
-      // parte do proprietário em cada forma que ELE recebeu direto (tira a comissão da agência, que fica numa linha própria)
-      $liqProp = fn ($v) => $pctPr === null ? (float) $v : round((float) $v * (100 - $pctPr) / 100, 2);
-      $comProp = $pctPr === null ? 0.0 : round($recPropTot - ($liqProp($prestacao->debProp) + $liqProp($prestacao->pixProp) + $liqProp($prestacao->credProp) + $liqProp($prestacao->dinProp)), 2);
-      $rotProp = fn ($v) => $pctPr === null ? '' : ' (recebeu R$ '.number_format((float) $v, 2, ',', '.').' − '.$pctPr.'%)';
-    @endphp
-    @if($pctPr !== null && $recPropTot > 0.009)
-    {{-- a prestação é do PROPRIETÁRIO: o que ele recebeu direto é dele (positivo); só a comissão da agência sobre esse valor é negativa --}}
-    <div class="lin" style="border-top:1px dashed #bbb;margin-top:3px;padding-top:3px"><span><b>Parte do proprietário</b> <span style="font-weight:400;color:#777;font-size:10px">(vendas − comissão)</span></span><b>R$ {{ number_format($prestacao->bruto - $prestacao->comissao,2,',','.') }}</b></div>
-    <div style="font-size:10px;color:#0e7490;font-weight:700;margin-top:3px">Já recebido direto pelo proprietário (está com ele):</div>
-    @foreach(['debProp' => 'Débito Prop.', 'pixProp' => 'Pix Prop.', 'credProp' => 'Crédito Prop.', 'dinProp' => 'Dinheiro Prop.'] as $kProp => $nProp)
-      @if($prestacao->{$kProp} > 0.009)
-      <div class="lin"><span style="padding-left:8px">{{ $nProp }}<span style="font-weight:400;color:#777;font-size:10px">{{ $rotProp($prestacao->{$kProp}) }}</span></span><b style="color:#0e7490">R$ {{ number_format($liqProp($prestacao->{$kProp}),2,',','.') }}</b></div>
-      @endif
-    @endforeach
-    <div class="lin"><span style="padding-left:8px">Comissão da agência sobre o que ele recebeu<span style="font-weight:400;color:#777;font-size:10px"> ({{ $pctPr }}% de R$ {{ number_format($recPropTot,2,',','.') }})</span></span><b style="color:#b91c1c">- R$ {{ number_format($comProp,2,',','.') }}</b></div>
-    @else
-    @foreach(['debProp' => 'Débito Prop.', 'pixProp' => 'Pix Prop.', 'credProp' => 'Crédito Prop.', 'dinProp' => 'Dinheiro Prop.'] as $kProp => $nProp)
-      @if($prestacao->{$kProp} > 0.009)
-      <div class="lin"><span>{{ $nProp }}</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->{$kProp},2,',','.') }}</b></div>
-      @endif
-    @endforeach
+    @php $recPropTot = round((float) $prestacao->debProp + (float) $prestacao->pixProp + (float) $prestacao->credProp + (float) $prestacao->dinProp, 2); @endphp
+    @if($recPropTot > 0.009)
+    <div class="lin"><span>Já recebido direto pelo proprietário</span><b style="color:#b91c1c">- R$ {{ number_format($recPropTot,2,',','.') }}</b></div>
     @endif
+    @if($prestacao->cartao > 0.009)
     <div class="lin"><span>Cartão de crédito</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
-    @if(($prestacao->entradas ?? 0) > 0.009)<div class="lin"><span>Entradas avulsas</span><b style="color:#067d3b">+ R$ {{ number_format($prestacao->entradas,2,',','.') }}</b></div>@endif
-    <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px;color:#b45309"><span>Total Geral de Despesas <span style="font-weight:400;color:#777">(saídas)</span></span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->saidas,2,',','.') }}</b></div>
-    <div class="lin g" style="color:#067d3b"><span>Total Geral Líquido @if(($pctPr ?? null) !== null && ($recPropTot ?? 0) > 0.009)<span style="font-weight:400;font-size:10px;color:#555">(falta o proprietário receber da agência)</span>@endif</span><span>R$ {{ number_format($prestacao->liquido,2,',','.') }}</span></div>
+    @endif
+    @if(($prestacao->entradas ?? 0) > 0.009)
+    <div class="lin"><span>Entradas avulsas</span><b style="color:#067d3b">+ R$ {{ number_format($prestacao->entradas,2,',','.') }}</b></div>
+    @endif
+    @if(($prestacao->saidas ?? 0) > 0.009)
+    <div class="lin"><span>Saídas avulsas (despesas)</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->saidas,2,',','.') }}</b></div>
+    @endif
+    <div class="lin g" style="color:#067d3b"><span>A pagar ao proprietário</span><span>R$ {{ number_format($prestacao->liquido,2,',','.') }}</span></div>
     @if($prestFechada ?? null)
     <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px"><span>Devido ao proprietário (balcão)</span><b>R$ {{ number_format($prestFechada->total_devido,2,',','.') }}</b></div>
     <div class="lin"><span>Pago{{ $prestFechada->forma ? ' ('.ucfirst($prestFechada->forma).')' : '' }}</span><b style="color:#067d3b">R$ {{ number_format($prestFechada->valor_pago,2,',','.') }}</b></div>
