@@ -893,6 +893,21 @@ class PassagemController extends Controller
                 })
                 ->with(['passageiros', 'operador', 'pagamentos', 'embarcacao', 'camarote', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])
                 ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
+            // Prestação FECHADA é uma foto do dia do fechamento: passagem cancelada/devolvida DEPOIS aparece como estava
+            // (paga, contando no total). O cancelamento posterior entra só na PRÓXIMA prestação, como desconto.
+            $fechadaEm = $prestFechada->fechada_em ? \Illuminate\Support\Carbon::parse($prestFechada->fechada_em) : null;
+            foreach ($passagens as $pp) {
+                if ((int) $pp->prestacao_id !== (int) $pid) continue;
+                $mexeu = (bool) $pp->cancelada || $pp->passageiros->contains(fn ($x) => (bool) ($x->cancelado ?? false));
+                if (! $mexeu) continue;
+                $pp->cancelada = false;
+                $pp->transferida = false;
+                $pp->devido = 0;
+                foreach ($pp->passageiros as $x) $x->cancelado = false;
+                $pp->setRelation('pagamentos', $pp->pagamentos
+                    ->filter(fn ($pg) => $pg->tipo_mov !== 'saida' && (! $fechadaEm || ! $pg->created_at || $pg->created_at->lte($fechadaEm)))
+                    ->each(fn ($pg) => $pg->estornado = false)->values());
+            }
         }
         if ($modo === 'caixa') $passagens = $passagens->filter(fn ($p) => ! $p->revendedor_id)->values();
         // Pré-prestação: só o que ainda está EM ABERTO (o que já foi fechado sai pelo botão da prestação no histórico).
