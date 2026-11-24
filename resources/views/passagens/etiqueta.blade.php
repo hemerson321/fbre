@@ -6,9 +6,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 @php
   $labW = $labW ?? 90; $labH = $labH ?? 29;
-  $k = max(0.6, $labH / 29);                 // escala relativa ao papel base (29mm). Aumenta o papel -> tudo cresce junto.
-  $px = fn ($n) => (int) round($n * $k);
-  $bd = max(1, (int) round(1.4 * $k));
+  $kw = max(0.6, $labW / 90);   // escala do TEXTO que corre na largura (nome, rota, dados) -> cabe sempre
+  $kh = max(0.6, $labH / 29);   // escala da ALTURA (coluna da poltrona, bordas) -> usa o espaco extra
+  $px  = fn ($n) => (int) round($n * $kw);
+  $pxh = fn ($n) => (int) round($n * $kh);
+  $bd = max(1, (int) round(1.4 * $kh));
+  $nomeLines = $labH >= 45 ? 3 : 2;
   $lancha = $p->embarcacao?->nome ?: ($empresa->nomeExibicao() ?? '');
   $data   = $p->data_viagem ? $p->data_viagem->format('d/m/Y') : $p->created_at->format('d/m/Y');
   $ticket = $p->numeroFormatado();
@@ -30,7 +33,7 @@
   .bdy { flex:1; display:flex; min-height:0; }
   .info { flex:1; padding:{{ $px(3) }}px {{ $px(6) }}px; display:flex; flex-direction:column; justify-content:space-between; min-width:0; }
   .nome { font-weight:800; font-size:{{ $px(17) }}px; line-height:1.0; text-transform:uppercase;
-          display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+          display:-webkit-box; -webkit-line-clamp:{{ $nomeLines }}; -webkit-box-orient:vertical; overflow:hidden; }
   .rota { font-weight:800; font-size:{{ $px(14) }}px; margin-top:{{ $px(2) }}px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .rota .seta { font-weight:400; }
   .meta { font-size:{{ $px(11) }}px; line-height:1.3; margin-top:{{ $px(2) }}px; }
@@ -41,11 +44,11 @@
   .seat2 { width:35%; border-left:{{ $bd }}px solid #000; display:flex; flex-direction:column; }
   .seat2 .cell { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:{{ $px(1) }}px; text-align:center; }
   .seat2 .cell.sep { border-top:{{ $bd }}px solid #000; }
-  .cap { font-size:{{ $px(8) }}px; font-weight:800; letter-spacing:.4px; }
-  .num { font-size:{{ $px(24) }}px; font-weight:800; line-height:.9; }
-  .vnum { font-size:{{ $px(21) }}px; }
+  .cap { font-size:{{ $pxh(8) }}px; font-weight:800; letter-spacing:.4px; }
+  .num { font-size:{{ $pxh(24) }}px; font-weight:800; line-height:.9; }
+  .vnum { font-size:{{ $pxh(21) }}px; }
   .seat1 { width:35%; border-left:{{ $bd }}px solid #000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:{{ $px(2) }}px; text-align:center; }
-  .seat1 .num { font-size:{{ $px(31) }}px; }
+  .seat1 .num { font-size:{{ $pxh(31) }}px; }
   @media screen { body { margin:12px auto; max-width:460px; } .lbl { margin-bottom:12px; box-shadow:0 0 10px #0004; } }
 </style>
 </head>
@@ -106,6 +109,8 @@
 (function(){
   var RASTER = new URLSearchParams(location.search).has('raster');
   var GIRAR = {{ ($girar ?? true) ? 'true' : 'false' }};
+  function fitEl(el, min){ if(!el) return; var fs=parseFloat(getComputedStyle(el).fontSize)||12; var g=60; while(el.scrollWidth>el.clientWidth+1 && fs>min && g-->0){ fs-=1; el.style.fontSize=fs+'px'; } }
+  function fitLabels(){ var L=document.querySelectorAll('.lbl'); for(var i=0;i<L.length;i++){ fitEl(L[i].querySelector('.nome'),9); fitEl(L[i].querySelector('.rota'),8); var ms=L[i].querySelectorAll('.meta'); for(var j=0;j<ms.length;j++) fitEl(ms[j],7); } }
   function raster(){
     var h2c = window.html2canvas;
     if(!h2c){ try{ parent.postMessage({fbreRaster:true, imagens:[], erro:'sem html2canvas'}, '*'); }catch(e){} return; }
@@ -126,6 +131,7 @@
     })(0);
   }
   window.addEventListener('load', function(){
+    try{ fitLabels(); }catch(e){}
     if(RASTER){ setTimeout(raster, 350); return; }
     setTimeout(function(){ window.print(); }, 300);
   });
