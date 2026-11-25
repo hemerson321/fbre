@@ -166,11 +166,7 @@
     @else
     <div class="lin g" style="color:#067d3b"><span>Total a pagar ao proprietário</span><span>R$ {{ number_format($prestacao->liquido,2,',','.') }}</span></div>
     @endif
-    @if($prestFechada ?? null)
-    <div class="lin" style="border-top:1px solid #999;margin-top:4px;padding-top:4px"><span>Devido ao proprietário (balcão)</span><b>R$ {{ number_format($prestFechada->total_devido,2,',','.') }}</b></div>
-    <div class="lin"><span>Pago{{ $prestFechada->forma ? ' ('.ucfirst($prestFechada->forma).')' : '' }}</span><b style="color:#067d3b">R$ {{ number_format($prestFechada->valor_pago,2,',','.') }}</b></div>
-    <div class="lin"><span>Saldo pendente</span><b style="color:{{ $prestFechada->saldo > 0 ? '#b91c1c' : '#555' }}">R$ {{ number_format($prestFechada->saldo,2,',','.') }}</b></div>
-    @endif
+
   </div>
   @endif
 </div>

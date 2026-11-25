@@ -117,7 +117,9 @@ class PrestacaoController extends Controller
             ->where('acerto_dono', false)->whereNull('revendedor_id')
             ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
             ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
-        $ids = (clone $q)->pluck('id');
+        // Só fecham as passagens TOTALMENTE recebidas. Faturado/a-receber fica pendente e fecha quando for pago.
+        $fechaveis = (clone $q)->with('pagamentos')->get()->filter(fn ($p) => (float) $p->devido <= 0.009)->values();
+        $ids = $fechaveis->pluck('id');
         // Avulsos pendentes do transporte/viagem: fecham JUNTO com esta prestação (os lançados depois ficam pra próxima).
         $avQ = Pagamento::where('modulo', 'avulso')->where('momento', 'cadastro')->where('estornado', false)
             ->where('embarcacao_id', $embarcacao->id)->whereNull('prestacao_id')
@@ -127,10 +129,9 @@ class PrestacaoController extends Controller
         $avS = round((float) (clone $avQ)->where('tipo_mov', 'saida')->sum('valor'), 2);
         if ($ids->isEmpty() && $avIds->isEmpty()) return back()->with('erro', 'Não há vendas nem avulsos pendentes desse transporte para fechar.');
 
-        $agg = (clone $q)->selectRaw('COUNT(*) qtd, COALESCE(SUM(total),0) bruto, COALESCE(SUM(total*(100-'.$pct.')/100),0) devido')->first();
-        $qtd = (int) $agg->qtd;
-        $bruto = round((float) $agg->bruto, 2);
-        $devidoBruto = round((float) $agg->devido, 2);
+        $qtd = $fechaveis->count();
+        $bruto = round((float) $fechaveis->sum('total'), 2);
+        $devidoBruto = round((float) $fechaveis->sum(fn ($p) => (float) $p->total * (100 - (int) $pct) / 100), 2);
         $comissao = round($bruto - $devidoBruto, 2);
 
         // O que o PROPRIETÁRIO já recebeu direto (maquineta/PIX dele): esse dinheiro não passou pela agência,
