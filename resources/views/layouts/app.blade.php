@@ -454,6 +454,18 @@ document.addEventListener('alpine:init', () => {
 <script>
   window.FBRE = {
     csrf: document.querySelector('meta[name=csrf-token]').content,
+    // Abre um documento (recibo/orçamento) num pop-up grande (iframe). O próprio doc tem os botões de PDF/WhatsApp.
+    abrirDoc: (url) => {
+      const ov=document.createElement('div');
+      ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.62);display:flex;flex-direction:column;padding:12px';
+      ov.innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button type="button" aria-label="Fechar" style="background:#fff;border:0;border-radius:10px;width:42px;height:42px;font-size:22px;line-height:1;cursor:pointer">&times;</button></div><div style="flex:1;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.4)"><iframe src="'+url+'" style="width:100%;height:100%;border:0"></iframe></div>';
+      const close=()=>{ ov.remove(); document.removeEventListener('keydown',onk); };
+      const onk=(e)=>{ if(e.key==='Escape') close(); };
+      ov.querySelector('button').onclick=close;
+      ov.addEventListener('click',(e)=>{ if(e.target===ov) close(); });
+      document.addEventListener('keydown',onk);
+      document.body.appendChild(ov);
+    },
     moeda: v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),
     fmtMoney: v => (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
     parseMoney: s => { const d=String(s||'').replace(/\D/g,''); return d ? parseInt(d,10)/100 : 0; },

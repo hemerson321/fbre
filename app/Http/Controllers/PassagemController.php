@@ -1363,6 +1363,16 @@ class PassagemController extends Controller
         }
     }
 
+    /** Recibo (A4) de uma passagem — abre no pop-up da lista; imprime, gera PDF ou compartilha no WhatsApp. */
+    public function recibo(Passagem $passagem)
+    {
+        abort_unless($passagem->empresa_id === Tenant::id(), 404);
+        $passagem->load(['passageiros', 'embarcacao', 'operador', 'pagamentos']);
+        $empresa = Tenant::empresa();
+        $logo = ($empresa->logo && is_file(public_path($empresa->logo))) ? asset($empresa->logo) : asset('img/ajato-logo.png');
+        return view('docs.recibo', ['p' => $passagem, 'empresa' => $empresa, 'logo' => $logo]);
+    }
+
     /** Etiqueta de bagagem do passageiro: N volumes + via do passageiro. */
     public function etiqueta(Passagem $passagem, PassagemPassageiro $pax)
     {
