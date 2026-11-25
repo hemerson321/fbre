@@ -77,12 +77,15 @@
           // Cascata transporte->origem->destino->viagem: origem/destino sao getters, entao o destino so
           // 'cola' depois que a origem esta estavel e as options renderizaram; e resolverLinha troca a data
           // de viagem pela 'proxima', entao restauramos a data real da passagem no fim.
-          var _n=function(x){ return String(x||'').trim().toLowerCase(); };
+          var _na=function(x){ return String(x||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); };
           var _tent=0;
           var reaplicarEd=()=>{
             var dest=ED.destinoSel||'', via=ED.viagemData||'', rota=ED.rotaId||'';
-            if(dest && _tent<20 && !(this.destinos||[]).some(c=>_n(c)===_n(dest))){ _tent++; return setTimeout(reaplicarEd, 40); }
-            this.destinoSel=dest;
+            var sel=this.$refs.fDestino;
+            var opt=sel ? Array.prototype.find.call(sel.options, function(o){ return dest && _na(o.value)===_na(dest); }) : null;
+            // espera a origem estar setada E a <option> do destino existir no DOM antes de aplicar
+            if(dest && _tent<30 && (!this.origemSel || !opt)){ _tent++; return setTimeout(reaplicarEd, 50); }
+            if(dest) this.destinoSel = opt ? opt.value : dest;
             this.$nextTick(()=>{
               try{ this.resolverLinha(); }catch(e){}
               if(!this.rotaId && rota) this.rotaId=String(rota);
