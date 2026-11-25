@@ -970,8 +970,10 @@ class PassagemController extends Controller
         if ($validas->count() > 0 && $embIdsP->count() > 0) {
             $pctsP = Embarcacao::whereIn('id', $embIdsP)->pluck('comissao_empresa_pct', 'id');
             $pgs = $vBalcao->flatMap(fn ($p) => $p->pagamentos)->filter(fn ($pg) => ! $pg->estornado && $pg->meio !== 'desconto');
-            $brutoF = round((float) $vBalcao->sum('total'), 2);
-            $comissaoF = round((float) $vBalcao->sum(fn ($p) => (float) $p->total * (int) ($pctsP[$p->embarcacao_id] ?? 0) / 100), 2);
+            // Comissao/prestacao andam so pelo que ENTROU no caixa: faturado (a receber) so conta quando for pago.
+            $recebidoDe = fn ($p) => max(0.0, round((float) $p->total - (float) $p->devido, 2));
+            $brutoF = round((float) $vBalcao->sum($recebidoDe), 2);
+            $comissaoF = round((float) $vBalcao->sum(fn ($p) => $recebidoDe($p) * (int) ($pctsP[$p->embarcacao_id] ?? 0) / 100), 2);
             // Maquineta do PROPRIETÁRIO por forma (o dono já recebeu → abate)
             $somaProp = fn ($meio) => round((float) $pgs->filter(fn ($pg) => (bool) ($pg->pago_proprietario ?? false) && $pg->meio === $meio)->sum('valor'), 2);
             $debProp = $somaProp('debito'); $pixProp = $somaProp('pix'); $credProp = $somaProp('credito'); $dinProp = $somaProp('dinheiro');
