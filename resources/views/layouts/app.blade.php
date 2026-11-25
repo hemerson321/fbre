@@ -129,6 +129,11 @@ document.addEventListener('alpine:init', () => {
   if ($u->ehRevendedor()) $g[] = ['r'=>route('meus-acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
   if ($u->permite('passagem','atendimento')) $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'bk'=>'atendimento', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
   if ($u->permite('passagem','atendimento')) $g[] = ['r'=>route('atendimento.kanban'), 'l'=>'CRM · Funil de clientes', 'i'=>'📋'];
+  // Financeiro do módulo de passagem: Caixa, Prestação e Relatório ficam DENTRO do menu Passagem, cada um com sua cor.
+  $fin1 = true;
+  if ($u->podeVerCaixa()) { $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰', 'c'=>'#059669', 'sep'=>$fin1]; $fin1=false; }
+  if ($u->podeVerCaixa() && $u->caixaTodos()) { $g[] = ['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestação de contas', 'i'=>'🧾', 'c'=>'#d97706', 'sep'=>$fin1]; $fin1=false; }
+  if ($u->podeRelatorio()) { $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋', 'c'=>'#4f46e5', 'sep'=>$fin1]; $fin1=false; }
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;
   // Camarote / Suítes (módulo próprio, permissão separada)
   $g = [];
@@ -141,11 +146,8 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('frete','cadastra')) $g[] = ['r'=>route('fretes.create'), 'l'=>'Novo frete', 'i'=>'🚢'];
   if ($u->permite('frete','ver'))      $g[] = ['r'=>route('fretes.index'), 'l'=>'Fretes / entrega', 'i'=>'📦'];
   if ($g && $modOn('frete')) $grupos['Fretes'] = $g;
-  // Três botões diretos no topo, cada um com sua cor e sua página: Caixa · Prestação de Contas · Relatório.
-  if ($u->podeVerCaixa())  $grupos['Caixa'] = [['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰']];
-  if ($u->podeVerCaixa() && $u->caixaTodos()) $grupos['Prestação de Contas'] = [['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestação de contas', 'i'=>'🧾']];
-  if ($u->podeRelatorio()) $grupos['Relatório'] = [['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋']];
-  $gruposDiretos = ['Caixa', 'Prestação de Contas', 'Relatório'];
+  // Caixa, Prestação de Contas e Relatório agora ficam DENTRO do menu Passagens (ver bloco Passagem acima). Sem botões soltos no topo.
+  $gruposDiretos = [];
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isAdmin() || $u->isSuper()) {
       $adm = [
@@ -267,10 +269,15 @@ document.addEventListener('alpine:init', () => {
                class="absolute left-0 top-full mt-1 z-50 w-60 rounded-xl bg-white shadow-xl border border-slate-100 p-1.5">
             <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider" style="color:{{ $gc }}">{{ $titulo }}</div>
             @foreach($itens as $it)
-              <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif
-                 class="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-medium transition
-                        {{ $ativo($it['r']) ? 'text-white' : 'text-slate-700 hover:bg-slate-50' }}"
-                 @if($ativo($it['r'])) style="background:{{ $gc }}" @endif>
+              @php
+                $ic = $it['c'] ?? null; $at = $ativo($it['r']);
+                if ($at) { $cls = 'text-white font-bold'; $sty = 'background:'.($ic ?: $gc); }
+                elseif ($ic) { $cls = 'font-bold'; $sty = 'color:'.$ic.';background:color-mix(in srgb,'.$ic.' 10%,white);box-shadow:inset 3px 0 0 '.$ic; }
+                else { $cls = 'text-slate-700 hover:bg-slate-50 font-medium'; $sty = ''; }
+              @endphp
+              @if(!empty($it['sep']))<div class="my-1 border-t border-slate-100"></div>@endif
+              <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif @if($sty) style="{{ $sty }}" @endif
+                 class="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm transition {{ $cls }}">
                 <span class="text-lg w-6 text-center">{{ $it['i'] }}</span>{{ $it['l'] }}
                 @if(!empty($it['bk']))<span data-badge-item="{{ $it['bk'] }}" class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5" @if(empty($it['b'])) style="display:none" @endif>{{ $it['b'] ?: '' }}</span>@elseif(!empty($it['b']))<span class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $it['b'] }}</span>@endif
               </a>
@@ -299,7 +306,15 @@ document.addEventListener('alpine:init', () => {
       <div>
         <div class="px-3 pb-1 text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{{ $titulo }}</div>
         @foreach($itens as $it)
-          <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif @if($ativo($it['r'])) style="border-left:4px solid var(--cor1)" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo($it['r']) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
+          @php
+            $ic = $it['c'] ?? null; $at = $ativo($it['r']);
+            if ($at && $ic) { $cls = 'font-bold text-white'; $sty = 'background:'.$ic; }
+            elseif ($at) { $cls = 'bg-slate-100 text-[var(--cor1)] font-semibold'; $sty = 'border-left:4px solid var(--cor1)'; }
+            elseif ($ic) { $cls = 'font-bold'; $sty = 'color:'.$ic.';background:color-mix(in srgb,'.$ic.' 10%,white);border-left:4px solid '.$ic; }
+            else { $cls = 'text-slate-700 font-medium'; $sty = ''; }
+          @endphp
+          @if(!empty($it['sep']))<div class="my-2 border-t border-slate-100"></div>@endif
+          <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif @if($sty) style="{{ $sty }}" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 {{ $cls }}">
             <span class="text-lg w-6 text-center">{{ $it['i'] }}</span>{{ $it['l'] }}
             @if(!empty($it['bk']))<span data-badge-item="{{ $it['bk'] }}" class="ml-auto min-w-[20px] text-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5" @if(empty($it['b'])) style="display:none" @endif>{{ $it['b'] ?: '' }}</span>@elseif(!empty($it['b']))<span class="ml-auto min-w-[20px] text-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5">{{ $it['b'] }}</span>@endif</a>
         @endforeach
