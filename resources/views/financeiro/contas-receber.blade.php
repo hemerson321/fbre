@@ -56,15 +56,20 @@
             </div>
             @php
               $venc = $p->created_at ? $p->created_at->copy()->addDays((int) ($p->cobrar_dias ?: 30)) : null;
-              $dias = $venc ? (int) floor(($venc->copy()->startOfDay()->timestamp - now()->startOfDay()->timestamp) / 86400) : null;
-              if ($dias === null) { $cor = '#64748b'; $txt = ''; }
-              elseif ($dias < 0) { $cor = '#e11d48'; $txt = 'vencido há '.abs($dias).'d — cobrar!'; }
-              elseif ($dias === 0) { $cor = '#e11d48'; $txt = 'vence hoje — cobrar!'; }
-              elseif ($dias <= 3) { $cor = '#d97706'; $txt = 'faltam '.$dias.'d'; }
-              else { $cor = '#059669'; $txt = 'faltam '.$dias.'d'; }
+              $dl = $venc ? $venc->copy()->endOfDay() : null;
+              $rem = $dl ? ($dl->timestamp - now()->timestamp) : null;
+              if ($rem === null) { $cor = '#64748b'; }
+              elseif ($rem < 0) { $cor = '#e11d48'; }
+              elseif ($rem <= 3*86400) { $cor = '#d97706'; }
+              else { $cor = '#059669'; }
             @endphp
-            @if($venc)
-            <div class="text-[11px] font-bold mt-0.5" style="color:{{ $cor }}">⏰ {{ $txt }} <span class="font-normal text-slate-400">· cobrar até {{ $venc->format('d/m/Y') }}</span></div>
+            @if($dl)
+            <div class="mt-1 flex items-center gap-2 flex-wrap">
+              <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] font-extrabold tabular-nums leading-none" style="color:{{ $cor }};background:color-mix(in srgb,{{ $cor }} 13%,white)" data-cobrar="{{ $dl->timestamp }}">
+                <span class="text-base leading-none">⏰</span><span class="cobrar-txt">calculando…</span>
+              </span>
+              <span class="text-[10px] text-slate-400">cobrar até {{ $venc->format('d/m/Y') }}</span>
+            </div>
             @endif
           </div>
           <span class="text-sm font-bold text-slate-700 shrink-0">R$ {{ number_format($p->devido,2,',','.') }}</span>
@@ -146,5 +151,29 @@ function contasReceber(){
     confirmarBaixa(ev){ if(!this.sel.length){ ev.preventDefault(); return false; } if(!confirm('Dar baixa em '+this.sel.length+' faturado(s) · '+this.moeda(this.total)+'?\nEmpresa ('+this.pct+'%): '+this.moeda(this.empresaVal)+'\nDono do transporte: '+this.moeda(this.donoVal)+' (entra como positivo na próxima prestação dele).')){ ev.preventDefault(); return false; } return true; },
   };
 }
+</script>
+
+<script>
+(function(){
+  var p2 = function(n){ return (n<10?'0':'')+n; };
+  function tick(){
+    var now = Date.now()/1000;
+    document.querySelectorAll('[data-cobrar]').forEach(function(el){
+      var dl = parseInt(el.getAttribute('data-cobrar'),10)||0;
+      var span = el.querySelector('.cobrar-txt'); if(!span) return;
+      var rem = dl - now, atrasado = rem < 0, a = Math.abs(rem);
+      var d = Math.floor(a/86400); a -= d*86400;
+      var h = Math.floor(a/3600); a -= h*3600;
+      var m = Math.floor(a/60); var s = Math.floor(a - m*60);
+      var clock = d+'d '+p2(h)+':'+p2(m)+':'+p2(s);
+      var cor;
+      if(atrasado){ span.textContent = '🚨 atrasado '+clock+' — cobrar!'; cor='#e11d48'; }
+      else { span.textContent = 'faltam '+clock; cor = (rem <= 3*86400) ? '#d97706' : '#059669'; }
+      el.style.color = cor;
+      try { el.style.background = 'color-mix(in srgb, '+cor+' 13%, white)'; } catch(e){}
+    });
+  }
+  tick(); setInterval(tick, 1000);
+})();
 </script>
 @endsection
