@@ -8,7 +8,7 @@
     return {
       salvando:false, edMode:false, edUrl:'', edNumero:'', edFila:0, tipoPag:'balcao', metodosAtivos:['dinheiro'], credParcel:false, dividir:false, pag:{dinheiro:null,pix:null,debito:null,credito:null}, proprietarioMaq:false, parcelas:1, imprimir:'direto',
       agenteId:'', agenteAcerto:false,
-      fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null,
+      fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null, cobrarDias:30,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
       pixDinamico: {{ (auth()->user()->podePixDinamico() && \App\Support\Tenant::empresa()->usaPix('passagem')) ? 'true':'false' }},
       pixModal:false, pixQr:'', pixCopia:'', pixCobId:null, pixValor:0, pixPoll:null, pixPagando:false, pixChecando:false,
@@ -75,6 +75,7 @@
           this.edFila=((new URLSearchParams(location.search).get('fila')||'').split(',').filter(Boolean)).length;
           // _load SINCRONO: roda antes dos $nextTick de init (re-sync da origem) p/ nao ser sobrescrito pelo default.
           var ED=window.FBRE_EDICAO; this._load(ED);
+          this.cobrarDias=(ED.cobrarDias!=null?Number(ED.cobrarDias):30);
           // Cascata transporte->origem->destino->viagem: origem/destino sao getters, entao o destino so
           // 'cola' depois que a origem esta estavel e as options renderizaram; e resolverLinha troca a data
           // de viagem pela 'proxima', entao restauramos a data real da passagem no fim.
@@ -599,6 +600,7 @@
           forma:this.forma, parcelas:((this.metodosAtivos.includes('credito') && this.credParcel)?(Number(this.parcelas)||1):1), desconto:Number(this.desconto)||0, observacao:this.observacao||null,
           agente_id:(this.tipoPag==='agente' && this.agenteId)?Number(this.agenteId):null, agente_acerto:(this.tipoPag==='agente' && this.agenteAcerto)?1:0,
           cliente_faturado_id:(this.tipoPag==='faturado' && this.clienteFaturadoId)?Number(this.clienteFaturadoId):null,
+          cobrar_dias:(this.tipoPag==='faturado')?(Number(this.cobrarDias)||30):null,
           passageiros:this.passageiros.map(p=>({nome:p.nome, tipo:p.tipo, percentual:p.percentual, modo:p.modo||'porcentagem', documento:p.documento||null, doc_tipo:p.doc_tipo||null, poltrona:p.poltrona||null, sexo:p.sexo||null, telefone:p.telefone||null, nacionalidade:p.nacionalidade||null, nascimento:p.nascimento||null, foto_rg:p.foto_rg||null, foto:p.foto||null, documentos:this._docsPlanos(p.documentos), papel:p.papel||null, bebe_colo:((p.temColo && (p.bebeColo.nome||'').trim()) ? {nome:p.bebeColo.nome.trim(), documento:(p.bebeColo.documento||'').trim()||null, nascimento:p.bebeColo.nascimento||null} : null), checkin:p.checkin?1:0, valor_passagem:Number(p.valor_passagem)||0, valor_taxa:Number(p.valor_taxa)||0, valor_alimentacao:Number(p.valor_alimentacao)||0, valor_integral:Number(p.valor_integral)||0})),
           documentos_gerais:this._docsPlanos(this.documentosGerais),
           pagamentos:this.tipoPag==='faturado'?[]:(this.dividir ? this.metodosAtivos.filter(k=>Number(this.pag[k])>0).map(k=>({meio:k, valor:Number(this.pag[k]), proprietario:(this.pagoProprietario?1:0)})) : [{meio:(this.metodosAtivos[0]||'dinheiro'), valor:this.total, proprietario:(this.pagoProprietario?1:0)}]),

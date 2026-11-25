@@ -54,6 +54,18 @@
               @if($p->data_viagem)· 🗓️ {{ $p->data_viagem->format('d/m/Y') }}@endif
               @if($p->embarcacao)· ⛴️ {{ $p->embarcacao->nome }}@endif
             </div>
+            @php
+              $venc = $p->created_at ? $p->created_at->copy()->addDays((int) ($p->cobrar_dias ?: 30)) : null;
+              $dias = $venc ? (int) floor(($venc->copy()->startOfDay()->timestamp - now()->startOfDay()->timestamp) / 86400) : null;
+              if ($dias === null) { $cor = '#64748b'; $txt = ''; }
+              elseif ($dias < 0) { $cor = '#e11d48'; $txt = 'vencido há '.abs($dias).'d — cobrar!'; }
+              elseif ($dias === 0) { $cor = '#e11d48'; $txt = 'vence hoje — cobrar!'; }
+              elseif ($dias <= 3) { $cor = '#d97706'; $txt = 'faltam '.$dias.'d'; }
+              else { $cor = '#059669'; $txt = 'faltam '.$dias.'d'; }
+            @endphp
+            @if($venc)
+            <div class="text-[11px] font-bold mt-0.5" style="color:{{ $cor }}">⏰ {{ $txt }} <span class="font-normal text-slate-400">· cobrar até {{ $venc->format('d/m/Y') }}</span></div>
+            @endif
           </div>
           <span class="text-sm font-bold text-slate-700 shrink-0">R$ {{ number_format($p->devido,2,',','.') }}</span>
         </label>

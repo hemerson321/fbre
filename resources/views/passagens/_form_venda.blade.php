@@ -383,6 +383,13 @@
               <button type="button" class="w-full rounded-lg bg-amber-600 text-white py-2 text-sm font-bold disabled:opacity-40" :disabled="!fatNome.trim()" @click="fatCriar()">+ Cadastrar e usar</button>
             </div>
           </div>
+          <div class="flex items-center justify-between gap-2 rounded-lg bg-white border border-amber-200 px-2 py-1.5">
+            <label class="text-[12px] font-semibold text-amber-800">⏰ Lembrar de cobrar em</label>
+            <div class="flex items-center gap-1.5">
+              <input type="number" x-model.number="cobrarDias" min="1" max="365" class="field !w-16 text-center" title="Dias até lembrar a cobrança (padrão 30)">
+              <span class="text-[12px] text-amber-700">dias</span>
+            </div>
+          </div>
           <p class="text-[11px] text-amber-700/80">Faturado: nada é recebido agora. Fica a receber no nome do cliente acima.</p>
         </div>
 
