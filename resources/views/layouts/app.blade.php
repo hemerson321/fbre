@@ -123,18 +123,16 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','ver'))  $g[] = ['r'=>route('passagens.index'), 'l'=>'Passagens / embarque', 'i'=>'🧾'];
   if ($u->permite('passagem','baixa')) $g[] = ['r'=>route('passagens.scanner'), 'l'=>'Check-in / embarque', 'i'=>'📷'];
   if ($u->permite('passagem','cadastra') && Route::has('clientes-faturado')) $g[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
-  if (($u->isAdmin() || $u->isSuper()) && Route::has('passagens.transferencia')) $g[] = ['r'=>route('passagens.transferencia'), 'l'=>'Transferir transporte', 'i'=>'🔄'];
-  if ($u->permite('passagem','cadastra') && Route::has('passagens.bloqueios')) $g[] = ['r'=>route('passagens.bloqueios'), 'l'=>'Travar poltronas', 'i'=>'🔒'];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if ($u->ehRevendedor()) $g[] = ['r'=>route('meus-acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
-  if ($u->permite('passagem','atendimento')) $g[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'bk'=>'atendimento', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
-  if ($u->permite('passagem','atendimento')) $g[] = ['r'=>route('atendimento.kanban'), 'l'=>'CRM · Funil de clientes', 'i'=>'📋'];
-  // Financeiro do módulo de passagem: Caixa, Prestação e Relatório ficam DENTRO do menu Passagem, cada um com sua cor.
-  $fin1 = true;
-  if ($u->podeVerCaixa()) { $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰', 'c'=>'#059669', 'sep'=>$fin1]; $fin1=false; }
-  if ($u->podeVerCaixa() && $u->caixaTodos()) { $g[] = ['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestação de contas', 'i'=>'🧾', 'c'=>'#d97706', 'sep'=>$fin1]; $fin1=false; }
-  if ($u->podeRelatorio()) { $g[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋', 'c'=>'#4f46e5', 'sep'=>$fin1]; $fin1=false; }
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;
+  // Ferramentas: atendimento, CRM, travar poltronas e transferir transporte (saíram do Passagens pra organizar)
+  $ft = [];
+  if ($u->permite('passagem','atendimento')) $ft[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'bk'=>'atendimento', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
+  if ($u->permite('passagem','atendimento')) $ft[] = ['r'=>route('atendimento.kanban'), 'l'=>'CRM · Funil de clientes', 'i'=>'📋'];
+  if ($u->permite('passagem','cadastra') && Route::has('passagens.bloqueios')) $ft[] = ['r'=>route('passagens.bloqueios'), 'l'=>'Travar poltronas', 'i'=>'🔒'];
+  if (($u->isAdmin() || $u->isSuper()) && Route::has('passagens.transferencia')) $ft[] = ['r'=>route('passagens.transferencia'), 'l'=>'Transferir transporte', 'i'=>'🔄'];
+  if ($ft && $modOn('passagem')) $grupos['Ferramentas'] = $ft;
   // Camarote / Suítes (módulo próprio, permissão separada)
   $g = [];
   if ($u->permite('camarote','cadastra')) $g[] = ['r'=>route('passagens.camarote.create'), 'l'=>'Vender suíte/camarote', 'i'=>'🛏️'];
@@ -148,11 +146,16 @@ document.addEventListener('alpine:init', () => {
   if ($g && $modOn('frete')) $grupos['Fretes'] = $g;
   // Caixa, Prestação de Contas e Relatório agora ficam DENTRO do menu Passagens (ver bloco Passagem acima). Sem botões soltos no topo.
   $gruposDiretos = [];
-  // Financeiro: Contas a receber (faturados) + Clientes faturado — admin/super ou perm_financeiro
-  if ($u->isAdmin() || $u->isSuper() || $u->perm_financeiro) {
+  // Financeiro: Caixa + Prestação + Relatório (operação) e, pra admin/perm_financeiro, Contas a receber + Clientes faturado.
+  $podeFinModulo = $u->isAdmin() || $u->isSuper() || $u->perm_financeiro;
+  if ($podeFinModulo || $u->podeVerCaixa() || $u->podeRelatorio()) {
     $gf = [];
-    if (Route::has('financeiro.contas-receber')) $gf[] = ['r'=>route('financeiro.contas-receber'), 'l'=>'Contas a receber', 'i'=>'💰'];
-    if (Route::has('clientes-faturado') && ($u->permite('passagem','ver') || $u->isAdmin() || $u->isSuper())) $gf[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
+    if ($u->podeVerCaixa()) $gf[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰', 'c'=>'#059669'];
+    if ($u->podeVerCaixa() && $u->caixaTodos()) $gf[] = ['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestação de contas', 'i'=>'🧾', 'c'=>'#d97706'];
+    if ($u->podeRelatorio()) $gf[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋', 'c'=>'#4f46e5'];
+    $sepFin = $podeFinModulo && ! empty($gf);
+    if ($podeFinModulo && Route::has('financeiro.contas-receber')) { $gf[] = ['r'=>route('financeiro.contas-receber'), 'l'=>'Contas a receber', 'i'=>'💵', 'c'=>'#0d9488', 'sep'=>$sepFin]; $sepFin=false; }
+    if ($podeFinModulo && Route::has('clientes-faturado')) $gf[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾', 'c'=>'#0d9488', 'sep'=>$sepFin];
     if ($gf) $grupos['Financeiro'] = $gf;
   }
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
@@ -208,6 +211,7 @@ document.addEventListener('alpine:init', () => {
   $metaGrupo['Prestação de Contas'] = ['🧾', '#d97706'];
   $metaGrupo['Relatório'] = ['📋', '#4f46e5'];
   $metaGrupo['Financeiro'] = ['💵', '#0d9488'];
+  $metaGrupo['Ferramentas'] = ['🛠️', '#7c3aed'];
   $ativo = function ($r) {
       if (request()->url() !== strtok($r, '?')) return false;
       parse_str(parse_url($r, PHP_URL_QUERY) ?: '', $qq);
@@ -262,7 +266,7 @@ document.addEventListener('alpine:init', () => {
         </a>
         @continue
         @endif
-        <div class="relative flex items-center">
+        <div class="relative flex items-center" @mouseenter="aberto='{{ $titulo }}'" @mouseleave="aberto=null">
           <button type="button" @click="aberto = (aberto==='{{ $titulo }}' ? null : '{{ $titulo }}')"
             class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-slate-50"
             :class="aberto==='{{ $titulo }}' ? 'bg-slate-50' : ''"
