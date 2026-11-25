@@ -1,10 +1,8 @@
 @extends('layouts.app')
 @section('titulo','Orçamentos')
 @section('conteudo')
-@php
-  $navy = '#13295e';
-@endphp
-<div class="max-w-3xl mx-auto space-y-4" x-data="orc()">
+@php $navy = '#13295e'; @endphp
+<div class="max-w-3xl mx-auto space-y-4" x-data="orc()" x-init="init()">
 
   <div class="flex items-center gap-2">
     <span class="text-2xl">📝</span>
@@ -25,19 +23,35 @@
   <div class="card p-4 space-y-3">
     <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Viagem</div>
     <div class="grid sm:grid-cols-2 gap-3">
-      <select x-model="origem" @change="reprecificar()" class="input">
+      {{-- 1) origem / destino --}}
+      <select x-model="origem" class="input">
         <option value="">Origem…</option>
         @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
       </select>
-      <select x-model="destino" @change="reprecificar()" class="input">
+      <select x-model="destino" class="input">
         <option value="">Destino…</option>
         @foreach($localidades as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
       </select>
-      <input type="date" x-model="data" class="input">
-      <select x-model="embId" class="input">
-        <option value="">Embarcação (opcional)…</option>
-        @foreach($embarcacoes as $e)<option value="{{ $e->id }}">{{ $e->nome }}</option>@endforeach
-      </select>
+
+      {{-- 2) transporte (automático se só 1; escolhe se tiver vários) --}}
+      <div>
+        <select x-model="embId" class="input w-full" :disabled="!origem || !destino">
+          <option value="" x-text="(!origem||!destino) ? 'Selecione origem e destino…' : 'Transporte…'"></option>
+          <template x-for="t in opcoesTransporte()" :key="t.id"><option :value="String(t.id)" x-text="t.nome"></option></template>
+        </select>
+        <p class="text-[10px] text-slate-400 mt-1" x-show="origem && destino && autoUm()">✓ transporte único desse trecho — já selecionado</p>
+        <p class="text-[10px] text-amber-500 mt-1" x-show="origem && destino && !transportes().length">Nenhuma linha cadastrada p/ esse trecho — escolha o transporte na lista.</p>
+      </div>
+
+      {{-- 3) data da viagem (lista do sistema p/ o transporte; ou digitar) --}}
+      <div>
+        <select x-show="embId && datas().length" x-model="dataSel" class="input w-full">
+          <option value="">Data da viagem…</option>
+          <template x-for="d in datas()" :key="d"><option :value="d" x-text="fmtData(d)"></option></template>
+          <option value="__outra">Outra data (digitar)…</option>
+        </select>
+        <input x-show="!embId || !datas().length || dataSel==='__outra'" type="date" x-model="dataManual" class="input w-full" title="Data da viagem">
+      </div>
     </div>
   </div>
 
@@ -49,17 +63,15 @@
     </div>
     <div class="space-y-2">
       <template x-for="(l,idx) in linhas" :key="idx">
-        <div class="flex items-center gap-2">
-          <select x-model="l.tipo" @change="preencherUnit(l)" class="input flex-1 !min-h-[40px]">
+        <div class="flex items-center gap-2 flex-wrap">
+          <select x-model="l.tipo" @change="preencherUnit(l)" class="input !min-h-[40px]" style="flex:1 1 0;min-width:130px">
             @foreach($tipos as $t)<option value="{{ $t->id }}">{{ $t->nome }}</option>@endforeach
           </select>
-          <input type="number" min="1" x-model.number="l.qtd" class="input w-16 text-center !min-h-[40px]" title="Quantidade">
-          <div class="flex items-center gap-1">
-            <span class="text-xs text-slate-400">R$</span>
-            <input type="number" min="0" step="0.01" x-model.number="l.unit" class="input w-24 text-right !min-h-[40px]" title="Valor unitário">
-          </div>
-          <div class="w-24 text-right font-bold text-sm tabular-nums" style="color:{{ $navy }}" x-text="brl(l.qtd*l.unit)"></div>
-          <button type="button" @click="delLinha(idx)" class="text-rose-400 hover:text-rose-600 px-1" title="Remover">✕</button>
+          <input type="number" min="1" x-model.number="l.qtd" class="input !min-h-[40px] text-center" style="width:62px;flex:none" title="Quantidade">
+          <div class="flex items-center gap-1" style="flex:none"><span class="text-xs text-slate-400">R$</span>
+            <input type="number" min="0" step="0.01" x-model.number="l.unit" class="input !min-h-[40px] text-right" style="width:92px;flex:none" title="Valor unitário"></div>
+          <div class="text-right font-bold text-sm tabular-nums" style="color:{{ $navy }};width:86px;flex:none" x-text="brl(l.qtd*l.unit)"></div>
+          <button type="button" @click="delLinha(idx)" class="text-rose-400 hover:text-rose-600 px-1" style="flex:none" title="Remover">✕</button>
         </div>
       </template>
       <p x-show="!linhas.length" class="text-sm text-slate-400 py-2">Nenhuma linha. Clique em “+ Adicionar”.</p>
@@ -71,24 +83,45 @@
     </div>
   </div>
 
-  <div class="flex gap-2">
-    <button type="button" @click="gerar()" class="btn flex-1 text-white font-bold" style="background:{{ $navy }}">📄 Gerar orçamento</button>
-  </div>
+  <button type="button" @click="gerar()" class="btn w-full text-white font-bold" style="background:{{ $navy }}">📄 Gerar orçamento</button>
   <p class="text-[11px] text-slate-400 text-center">No orçamento aberto você poderá imprimir, baixar o PDF ou enviar no WhatsApp.</p>
 </div>
 
 <script>
 function orc(){
-  const PRECOS = @json($precos);
-  const TIPOS  = @json($tipos->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'normal'=>(bool)$t->eh_normal])->values());
+  const LINHAS = @json($linhas);
+  const DATAS  = @json($datasPorEmb);
   const EMBS   = @json($embarcacoes->map(fn($e)=>['id'=>$e->id,'nome'=>$e->nome])->values());
+  const TIPOS  = @json($tipos->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'normal'=>(bool)$t->eh_normal])->values());
+  const PRECOS = @json($precos);
   const normalId = (TIPOS.find(t=>t.normal)||TIPOS[0]||{id:null}).id;
   const mapa = {}; PRECOS.forEach(p=>{ mapa[p.o+'||'+p.d+'||'+p.t] = p.v; });
   return {
-    cliente:'', doc:'', origem:'', destino:'', data:'', embId:'',
-    linhas:[ {tipo: String(normalId||''), qtd:1, unit:0} ],
+    cliente:'', doc:'', origem:'', destino:'', embId:'', dataSel:'', dataManual:'',
+    linhas:[ {tipo:String(normalId||''), qtd:1, unit:0} ],
+    init(){
+      this.$watch('origem', ()=>this.autoTransporte());
+      this.$watch('destino', ()=>this.autoTransporte());
+      this.$watch('embId', ()=>{ this.dataSel=''; this.reprecificar(); });
+    },
     brl(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); },
+    fmtData(d){ if(!d) return ''; const p=String(d).split('-'); return p.length===3 ? (p[2]+'/'+p[1]+'/'+p[0]) : d; },
     tipoNome(id){ const t=TIPOS.find(x=>String(x.id)===String(id)); return t?t.nome:'Passagem'; },
+    transportes(){
+      if(!this.origem||!this.destino) return [];
+      const set={};
+      LINHAS.forEach(l=>{ const io=l.paradas.indexOf(this.origem), id=l.paradas.indexOf(this.destino); if(io>-1 && id>io) set[l.emb]=l.nome || ('Transporte #'+l.emb); });
+      return Object.keys(set).map(id=>({id:Number(id), nome:set[id]}));
+    },
+    opcoesTransporte(){ if(!this.origem||!this.destino) return EMBS; const t=this.transportes(); return t.length ? t : EMBS; },
+    autoUm(){ return this.transportes().length===1; },
+    autoTransporte(){
+      const t=this.transportes();
+      if(t.length===1){ this.embId=String(t[0].id); }
+      else if(!this.opcoesTransporte().find(x=>String(x.id)===String(this.embId))){ this.embId=''; }
+      this.reprecificar();
+    },
+    datas(){ return DATAS[String(this.embId)] || DATAS[this.embId] || []; },
     precoDe(tipoId){
       if(!this.origem||!this.destino) return null;
       const k=this.origem+'||'+this.destino+'||'+tipoId;
@@ -102,14 +135,15 @@ function orc(){
     delLinha(i){ this.linhas.splice(i,1); },
     total(){ return this.linhas.reduce((s,l)=> s + (Number(l.qtd)||0)*(Number(l.unit)||0), 0); },
     totalPax(){ return this.linhas.reduce((s,l)=> s + (Number(l.qtd)||0), 0); },
+    embNome(){ const e=[...this.opcoesTransporte(), ...EMBS].find(x=>String(x.id)===String(this.embId)); return e?e.nome:''; },
     gerar(){
       const itens = this.linhas.filter(l=>(Number(l.qtd)||0)>0).map(l=>({ d:'Passagem '+this.tipoNome(l.tipo).toLowerCase(), q:Number(l.qtd)||0, u:Number(l.unit)||0 }));
       if(!itens.length){ alert('Adicione ao menos um passageiro.'); return; }
-      const emb = (EMBS.find(e=>String(e.id)===String(this.embId))||{}).nome || '';
+      const data = (this.dataSel && this.dataSel!=='__outra') ? this.dataSel : this.dataManual;
       const qs = new URLSearchParams();
       qs.set('cli', this.cliente||''); qs.set('doc', this.doc||'');
       qs.set('org', this.origem||''); qs.set('dst', this.destino||'');
-      qs.set('data', this.data||''); qs.set('emb', emb);
+      qs.set('data', data||''); qs.set('emb', this.embNome()||'');
       qs.set('itens', JSON.stringify(itens));
       window.FBRE.abrirDoc('{{ route('orcamentos.gerar') }}?'+qs.toString());
     }

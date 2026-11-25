@@ -2,8 +2,8 @@
 @section('titulo','Passagens')
 @php $__e=\App\Support\Tenant::empresa(); $cor = (($__e?->config('cores_por_modulo', true) ?? true) ? \App\Support\Modulos::hex('passagem') : ($__e?->cor_primaria ?? '#0b1a33')); @endphp
 @section('conteudo')
-<div class="space-y-3 max-w-5xl mx-auto">
-  <div class="rounded-2xl px-4 py-2.5 text-white flex items-center gap-3" style="background:{{ $cor }}">
+<div class="space-y-2 max-w-5xl mx-auto">
+  <div class="rounded-2xl px-4 py-2 text-white flex items-center gap-3" style="background:{{ $cor }}">
     <span class="text-2xl">🧾</span><div class="font-bold">Passagens / embarque</div>
     @can('cadastra', null)@endcan
     <div class="relative ml-auto" x-data="{o:false}">
@@ -20,7 +20,7 @@
   </div>
 
   {{-- filtro --}}
-  <form method="get" class="card p-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+  <form method="get" class="card p-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-sm [&_.input]:!min-h-[36px] [&_.input]:!px-2.5 [&_.input]:!text-[13px] [&_.input]:!rounded-lg">
     <input name="busca" value="{{ $f['busca'] ?? '' }}" placeholder="Nome, telefone ou nº" class="input col-span-2">
     <input type="date" name="inicio" value="{{ $f['inicio'] ?? '' }}" class="input">
     <input type="date" name="fim" value="{{ $f['fim'] ?? '' }}" class="input">
@@ -69,7 +69,7 @@
     </select>
     @endif
     @endif
-    <button class="btn text-white col-span-2 sm:col-span-1" style="background:{{ $cor }}">Filtrar</button>
+    <button class="btn text-white col-span-2 sm:col-span-1 !min-h-[36px] !py-1" style="background:{{ $cor }}">Filtrar</button>
   </form>
 
   {{-- totais --}}
