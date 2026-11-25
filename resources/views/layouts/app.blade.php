@@ -291,9 +291,9 @@ document.addEventListener('alpine:init', () => {
             @foreach($itens as $it)
               @php
                 $ic = $it['c'] ?? null; $at = $ativo($it['r']);
-                if ($at) { $cls = 'text-white font-bold'; $sty = 'background:'.($ic ?: $gc); }
-                elseif ($ic) { $cls = 'font-bold'; $sty = 'color:'.$ic.';background:color-mix(in srgb,'.$ic.' 10%,white);box-shadow:inset 3px 0 0 '.$ic; }
-                else { $cls = 'text-slate-700 hover:bg-slate-50 font-medium'; $sty = ''; }
+                if ($at) { $cls = 'font-bold'; $sty = 'color:'.($ic ?: $gc).';box-shadow:inset 3px 0 0 '.($ic ?: $gc); }
+                elseif ($ic) { $cls = 'font-medium hover:bg-slate-50'; $sty = 'color:'.$ic; }
+                else { $cls = 'text-slate-600 hover:bg-slate-50 font-medium'; $sty = ''; }
               @endphp
               @if(!empty($it['sep']))<div class="my-1 border-t border-slate-100"></div>@endif
               <a href="{{ $it['r'] }}" @if(!empty($it['blank'])) target="_blank" @endif @if($sty) style="{{ $sty }}" @endif
@@ -306,7 +306,7 @@ document.addEventListener('alpine:init', () => {
               @foreach($subPassagens as $subT => $subItens)
                 @php [$si,$sc] = $metaGrupo[$subT] ?? ['•','#475569']; $sb = (int) collect($subItens)->sum(fn($it)=>(int)($it['b'] ?? 0)); $sbk = collect($subItens)->pluck('bk')->filter()->implode(' '); @endphp
                 <div class="relative" @mouseenter="sub='{{ $subT }}'" @mouseleave="sub=null">
-                  <div class="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-bold cursor-default" style="color:{{ $sc }};background:color-mix(in srgb,{{ $sc }} 9%,white)">
+                  <div class="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-bold cursor-default transition hover:bg-slate-50" :class="sub==='{{ $subT }}' ? 'bg-slate-50' : ''" style="color:{{ $sc }}">
                     <span class="text-lg w-6 text-center">{{ $si }}</span>{{ $subT }}
                     @if($sbk)<span data-badge-keys="{{ $sbk }}" class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5" @if(!$sb) style="display:none" @endif>{{ $sb ?: '' }}</span>@elseif($sb)<span class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $sb }}</span>@endif
                     <svg class="w-4 h-4 opacity-50 ml-auto" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
@@ -316,9 +316,9 @@ document.addEventListener('alpine:init', () => {
                     @foreach($subItens as $it)
                       @php
                         $ic = $it['c'] ?? null; $at = $ativo($it['r']);
-                        if ($at) { $cls = 'text-white font-bold'; $sty = 'background:'.($ic ?: $sc); }
-                        elseif ($ic) { $cls = 'font-bold'; $sty = 'color:'.$ic.';background:color-mix(in srgb,'.$ic.' 10%,white);box-shadow:inset 3px 0 0 '.$ic; }
-                        else { $cls = 'text-slate-700 hover:bg-slate-50 font-medium'; $sty = ''; }
+                        if ($at) { $cls = 'font-bold'; $sty = 'color:'.($ic ?: $sc).';box-shadow:inset 3px 0 0 '.($ic ?: $sc); }
+                        elseif ($ic) { $cls = 'font-medium hover:bg-slate-50'; $sty = 'color:'.$ic; }
+                        else { $cls = 'text-slate-600 hover:bg-slate-50 font-medium'; $sty = ''; }
                       @endphp
                       @if(!empty($it['sep']))<div class="my-1 border-t border-slate-100"></div>@endif
                       <a href="{{ $it['r'] }}" @if($sty) style="{{ $sty }}" @endif class="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm transition {{ $cls }}">
