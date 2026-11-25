@@ -50,7 +50,7 @@ class OrcamentoController extends Controller
         $datasPorEmb = Viagem::where('empresa_id', Tenant::id())
             ->whereIn('status', ['planejada', 'em_andamento'])
             ->whereNotNull('data_partida')
-            ->whereDate('data_partida', '>=', now()->toDateString())
+            ->whereDate('data_partida', '>=', now()->subDays(7)->toDateString())
             ->with('rota:id,nome')
             ->orderBy('data_partida')
             ->get(['id', 'embarcacao_id', 'data_partida', 'nome', 'rota_id'])

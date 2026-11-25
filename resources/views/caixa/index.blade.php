@@ -144,7 +144,7 @@
   <a href="{{ route('caixa.index', ['foco' => 'prestacoes']) }}" class="btn btn-ghost btn-sm ml-auto">← Voltar aos transportes</a>
 </form>
 @endif
-@if($podeAvulso)
+@if($podeAvulso && ! ($ehRelatorio ?? false))
 <div x-data="{open:false, tipo:'entrada', emb:'{{ $focoPrest ? (int) $transporteId : '' }}'}" class="no-print">
   <div class="flex gap-2">
     <button type="button" @click="tipo='entrada';open=true" class="btn btn-sm text-white" style="background:#059669">➕ Entrada avulsa</button>
