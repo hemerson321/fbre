@@ -114,10 +114,10 @@ class PrestacaoController extends Controller
         $dataViagem = $request->input('data_viagem') ?: null;
 
         $q = Passagem::where('embarcacao_id', $embarcacao->id)->where('cancelada', false)->where('transferida', false)
-            ->where('acerto_dono', false)->whereNull('revendedor_id')
+            ->where('acerto_dono', false)->whereNull('revendedor_id')->where('forma', '!=', 'faturado')
             ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
             ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
-        // Só fecham as passagens TOTALMENTE recebidas. Faturado/a-receber fica pendente e fecha quando for pago.
+        // Só fecham as passagens TOTALMENTE recebidas. Faturado é acertado no Financeiro (entra via avulso "Recebimento faturado"); a-receber parcial fica pendente e fecha quando for pago.
         $fechaveis = (clone $q)->with('pagamentos')->get()->filter(fn ($p) => (float) $p->devido <= 0.009)->values();
         $ids = $fechaveis->pluck('id');
         // Avulsos pendentes do transporte/viagem: fecham JUNTO com esta prestação (os lançados depois ficam pra próxima).

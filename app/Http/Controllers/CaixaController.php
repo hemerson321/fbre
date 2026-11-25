@@ -280,9 +280,14 @@ class CaixaController extends Controller
                 ->orderBy('nome')->get()
                 ->map(function ($e) use ($dataViagem) {
                     $pct = (int) $e->comissao_empresa_pct;
-                    $p = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+                    // Balcão SEM faturado: faturado é acertado no Financeiro (entra na prestação como "Recebimento faturado").
+                    $p = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)->where('forma', '!=', 'faturado')
                         ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
                         ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(GREATEST(total - COALESCE(devido,0),0)),0) as bruto, COALESCE(SUM(COALESCE(devido,0)),0) as devido, COALESCE(SUM(CASE WHEN COALESCE(devido,0) > 0.009 THEN 1 ELSE 0 END),0) as qtd_aberto, COALESCE(SUM(GREATEST(total - COALESCE(devido,0),0) * (100 - '.$pct.') / 100),0) as v')->first();
+                    // Faturado a receber desse barco (só listado — entra na prestação quando pago no Financeiro).
+                    $fat = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)->where('forma', 'faturado')
+                        ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
+                        ->selectRaw('COALESCE(SUM(COALESCE(devido,0)),0) as aberto, COALESCE(SUM(CASE WHEN COALESCE(devido,0) > 0.009 THEN 1 ELSE 0 END),0) as qtd')->first();
                     $ag = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNotNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
                         ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))
                         ->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total),0) as bruto, COALESCE(SUM(acerto_empresa_valor),0) as repasse')->first();
@@ -298,13 +303,13 @@ class CaixaController extends Controller
                     // Faturado em aberto NÃO entra como débito: bruto/v já são sobre o recebido (total - devido). O a-receber é só listado e entra na próxima prestação quando for pago no Financeiro.
                     $deb = round($deb, 2);
                     $comissao = round((float) $p->bruto - (float) $p->v, 2);
-                    $passIdsDono = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)
+                    $passIdsDono = \App\Models\Passagem::where('embarcacao_id', $e->id)->whereNull('revendedor_id')->where('cancelada', false)->where('transferida', false)->where('acerto_dono', false)->where('forma', '!=', 'faturado')
                         ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem))->pluck('id');
                     $cartao = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsDono)->where('estornado', false)->where('meio', 'credito')->where(fn ($w) => $w->whereNull('pago_proprietario')->orWhere('pago_proprietario', false))->sum('valor'), 2); // só cartão na maquineta da EMPRESA (o do proprietário entra em credProp)
                     $credProp = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passIdsDono)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
                     $despesas = round($comissao + $deb + $cartao + $credProp, 2);
                     return (object) ['emb' => $e, 'qtd' => (int) $p->qtd, 'bruto' => (float) $p->bruto, 'comissao' => $comissao, 'valor' => (float) $p->v, 'debito' => $deb, 'cartao' => $cartao, 'credProp' => $credProp, 'despesas' => $despesas, 'liquidoPrest' => round((float) $p->bruto - $despesas, 2), 'liquido' => round(max(0.0, (float) $p->v - $credProp) - $deb + (float) $avP->e - (float) $avP->s, 2), 'avE' => (float) $avP->e, 'avS' => (float) $avP->s, 'dono' => optional($e->dono)->name ?? $e->dono_nome,
-                        'aberto' => (float) $p->devido, 'qtdAberto' => (int) $p->qtd_aberto,
+                        'aberto' => (float) $fat->aberto, 'qtdAberto' => (int) $fat->qtd,
                         'qtdAg' => (int) $ag->qtd, 'brutoAg' => (float) $ag->bruto, 'repasseAg' => (float) $ag->repasse];
                 })->filter(fn ($x) => $x->valor > 0 || $x->debito > 0 || $x->qtdAg > 0 || $x->avE > 0 || $x->avS > 0 || $x->aberto > 0)->values();
         }
@@ -336,7 +341,7 @@ class CaixaController extends Controller
             $idsComDono = \App\Models\Embarcacao::whereNotIn('id', $meusBarcos ?: [])->pluck('id');
             $pqG->whereIn('embarcacao_id', $idsComDono);
         }
-        $passG = (clone $pqG)->get(['id', 'embarcacao_id', 'total', 'devido']);
+        $passG = (clone $pqG)->get(['id', 'embarcacao_id', 'total', 'devido', 'forma']);
         // Entradas/saídas AVULSAS amarradas ao transporte: entram na PRESTAÇÃO (não no caixa da agência).
         // Só avulso LANÇADO pelo operador (momento=cadastro). Pagamento ao dono, repasse de agente e ledger de débito
         // também são modulo=avulso com embarcacao_id, mas são movimentos do sistema (momento=baixa) e não entram aqui.
@@ -364,9 +369,10 @@ class CaixaController extends Controller
                 $embIdsG = $passG->pluck('embarcacao_id')->filter()->unique()->values();
                 $pcts = \App\Models\Embarcacao::whereIn('id', $embIdsG)->pluck('comissao_empresa_pct', 'id');
                 $recebidoDe = fn ($p) => max(0.0, round((float) $p->total - (float) $p->devido, 2));
-                $brutoG = round((float) $passG->sum($recebidoDe), 2);
-                $comissaoG = round((float) $passG->sum(fn ($p) => $recebidoDe($p) * (int) ($pcts[$p->embarcacao_id] ?? 0) / 100), 2);
-                $idsG = $passG->pluck('id');
+                $naoFat = $passG->filter(fn ($p) => $p->forma !== 'faturado'); // faturado é acertado no Financeiro
+                $brutoG = round((float) $naoFat->sum($recebidoDe), 2);
+                $comissaoG = round((float) $naoFat->sum(fn ($p) => $recebidoDe($p) * (int) ($pcts[$p->embarcacao_id] ?? 0) / 100), 2);
+                $idsG = $naoFat->pluck('id');
                 $cartaoG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('meio', 'credito')->where(fn ($w) => $w->whereNull('pago_proprietario')->orWhere('pago_proprietario', false))->sum('valor'), 2);
                 $credPropG = round((float) \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $idsG)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2);
                 $debitoG = round(
@@ -374,7 +380,7 @@ class CaixaController extends Controller
                     - (float) \App\Models\Pagamento::whereIn('embarcacao_id', $embIdsG)->where('estornado', false)->where('categoria', 'Débito do dono — abatido')->sum('valor'), 2);
                 $debitoG = max(0.0, $debitoG);
                 // Faturado em aberto NÃO vira débito: bruto/comissão já são sobre o recebido. Fica só listado e entra na próxima prestação quando pago no Financeiro.
-                $abertoG = round((float) (clone $pqG)->sum('devido'), 2);
+                $abertoG = round((float) $passG->where('forma', 'faturado')->sum('devido'), 2);
                 $nomeG = $embIdsG->count() === 1 ? (optional(\App\Models\Embarcacao::find($embIdsG->first()))->nome ?? 'Transporte') : 'Todos os transportes';
                 $pctG = $embIdsG->count() === 1 ? (int) ($pcts[$embIdsG->first()] ?? 0) : null;
             } elseif ($transporteId) {

@@ -66,17 +66,26 @@
 
     {{-- Barra fixa de baixa --}}
     <div x-show="sel.length" x-cloak class="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-[0_-4px_12px_-6px_rgba(0,0,0,.2)]">
-      <div class="max-w-4xl mx-auto p-3 flex flex-wrap items-center gap-2">
-        <div class="text-sm"><b x-text="sel.length"></b> selecionada(s) · <b class="text-emerald-700" x-text="moeda(total)"></b></div>
-        <div class="flex items-center gap-1.5 ml-auto">
-          <span class="text-xs text-slate-500">Recebido em:</span>
-          <select name="meio" x-model="meio" class="input !min-h-0 !py-1 !w-auto text-sm">
-            <option value="pix">PIX</option>
-            <option value="dinheiro">Dinheiro</option>
-            <option value="debito">Débito</option>
-            <option value="credito">Crédito</option>
-          </select>
-          <button type="submit" class="btn text-white font-bold" style="background:#059669" @click="return confirmarBaixa($event)">✅ Dar baixa</button>
+      <div class="max-w-4xl mx-auto p-3 space-y-2">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <div class="text-sm"><b x-text="sel.length"></b> selecionada(s) · <b class="text-emerald-700" x-text="moeda(total)"></b></div>
+          <div class="flex items-center gap-1.5 ml-auto flex-wrap">
+            <span class="text-xs text-slate-500">% empresa</span>
+            <input type="number" min="0" max="100" step="0.5" x-model.number="pct" name="pct" class="input !min-h-0 !py-1 !w-16 text-sm text-right" title="Porcentagem que fica para a empresa (padrão 10%)">
+            <span class="text-xs text-slate-500">Recebido em</span>
+            <select name="meio" x-model="meio" class="input !min-h-0 !py-1 !w-auto text-sm">
+              <option value="pix">PIX</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="debito">Débito</option>
+              <option value="credito">Crédito</option>
+            </select>
+            <button type="submit" class="btn text-white font-bold" style="background:#059669" @click="return confirmarBaixa($event)">✅ Dar baixa</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] border-t border-slate-100 pt-1.5">
+          <span class="text-slate-500">🏢 Empresa (<b x-text="pct"></b>%): <b class="text-indigo-700" x-text="moeda(empresaVal)"></b></span>
+          <span class="text-slate-500">🚤 Dono do transporte (<b x-text="100-(Number(pct)||0)"></b>%): <b class="text-emerald-700" x-text="moeda(donoVal)"></b></span>
+          <span class="text-[11px] text-slate-400">via <b x-text="meioLabel"></b> · o valor do dono entra como positivo na próxima prestação dele</span>
         </div>
       </div>
     </div>
@@ -93,7 +102,7 @@
           <div class="text-sm font-semibold truncate">{{ $p->numeroFormatado() }} · {{ optional($p->clienteFaturado)->nome ?: 'Cliente' }}</div>
           <div class="text-[11px] text-slate-500 truncate">{{ $p->origem }} → {{ $p->destino }} @if($p->data_viagem)· 🗓️ {{ $p->data_viagem->format('d/m/Y') }}@endif · R$ {{ number_format($p->total,2,',','.') }}</div>
         </div>
-        @if($p->acerto_dono || $p->prestacao_id)
+        @if($p->acerto_dono || $p->prestacao_id || in_array($p->id, $lockedIds ?? []))
         <span class="text-[10.5px] text-amber-600 shrink-0 text-right leading-tight">já entrou numa prestação fechada<br>desfaça a prestação antes</span>
         @else
         <form method="post" action="{{ route('financeiro.desfazer-baixa', $p) }}" onsubmit="return confirm('Desfazer a baixa dessa passagem? Ela volta pra contas a receber.')">@csrf
@@ -113,12 +122,16 @@ function contasReceber(){
   return {
     sel: [],
     meio: 'pix',
+    pct: 10,
     valores: @js($grupos->flatMap(fn($g)=>$g->passagens)->mapWithKeys(fn($p)=>[(string)$p->id => round((float)$p->devido,2)])->all()),
     get total(){ return this.sel.reduce((s,id)=>s+(Number(this.valores[id])||0),0); },
+    get empresaVal(){ return this.total*(Number(this.pct)||0)/100; },
+    get donoVal(){ return this.total*(100-(Number(this.pct)||0))/100; },
+    get meioLabel(){ return ({pix:'PIX',dinheiro:'Dinheiro',debito:'Débito',credito:'Crédito'})[this.meio]||this.meio; },
     toggleCliente(ids, on){ ids=(ids||[]).map(String); if(on){ ids.forEach(id=>{ if(!this.sel.includes(id)) this.sel.push(id); }); } else { this.sel = this.sel.filter(id=>!ids.includes(id)); } },
     clienteOn(ids){ ids=(ids||[]).map(String); return ids.length>0 && ids.every(id=>this.sel.includes(id)); },
     moeda(v){ const n=(Number(v)||0).toFixed(2).replace('.',','); return 'R$ '+n.replace(/\B(?=(\d{3})+(?!\d))/g,'.'); },
-    confirmarBaixa(ev){ if(!this.sel.length){ ev.preventDefault(); return false; } if(!confirm('Dar baixa em '+this.sel.length+' passagem(ns) · '+this.moeda(this.total)+'?\nEntra como positivo na próxima prestação do transporte.')){ ev.preventDefault(); return false; } return true; },
+    confirmarBaixa(ev){ if(!this.sel.length){ ev.preventDefault(); return false; } if(!confirm('Dar baixa em '+this.sel.length+' faturado(s) · '+this.moeda(this.total)+'?\nEmpresa ('+this.pct+'%): '+this.moeda(this.empresaVal)+'\nDono do transporte: '+this.moeda(this.donoVal)+' (entra como positivo na próxima prestação dele).')){ ev.preventDefault(); return false; } return true; },
   };
 }
 </script>
