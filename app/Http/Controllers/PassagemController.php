@@ -925,6 +925,15 @@ class PassagemController extends Controller
         // Agente externo (revendedor) e NEUTRO na prestacao: fica SO na tabela 'Vendas por categoria x forma'. Fora do manifesto, da contagem e das formas.
         $passagensTodas = $passagens;
         if ($modo === 'prestacao') $passagens = $passagens->filter(fn ($p) => ! $p->revendedor_id)->values();
+        // Pré-prestação: faturados EM ABERTO (falta pagar) aparecem na LISTA mesmo se já foram acertados — só pra informar (igual agente externo), fora dos totais/contagem/formas.
+        if ($modo === 'prestacao' && ! $prestFechada) {
+            $idsNaLista = $passagensTodas->pluck('id')->all();
+            $fatAbertos = Passagem::filtrar($f)->where('forma', 'faturado')->where('cancelada', false)->where('transferida', false)
+                ->where('devido', '>', 0.009)->when(! empty($idsNaLista), fn ($q) => $q->whereNotIn('id', $idsNaLista))
+                ->with(['passageiros', 'operador', 'pagamentos', 'embarcacao', 'camarote', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])
+                ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
+            if ($fatAbertos->isNotEmpty()) $passagensTodas = $passagensTodas->concat($fatAbertos)->values();
+        }
 
         // Entradas/saídas AVULSAS: caixa = as da agência; prestação = as do transporte/viagem; relatório não tem.
         $avulsos = collect();
