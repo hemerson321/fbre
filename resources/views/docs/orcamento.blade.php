@@ -72,7 +72,7 @@
    </table>
   </div>
   <div class="stub"><div class="t">Total do orçamento</div><div class="v">{{ $moeda($total) }}</div></div>
-  <div class="valid">Orçamento válido até <b>{{ $venc->format('d/m/Y') }}</b> · não garante reserva até confirmação do pagamento@if($contato) · {{ $contato }}@endif</div>
+  <div class="valid">Orçamento válido até <b>{{ $venc->format('d/m/Y') }}</b> · não garante reserva até confirmação do pagamento{{ $contato ? ' · '.$contato : '' }}</div>
  </div>
 </div>
 @include('docs.acoes', ['arquivo' => 'orcamento-'.$num.'.pdf', 'titulo' => 'Orçamento '.$num])

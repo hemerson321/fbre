@@ -99,7 +99,7 @@
    <div class="signbox"><div class="line"></div><div class="nm">{{ $emp }}</div><div class="r">Assinatura / carimbo</div></div>
    <div class="place">{{ $cidade ?: 'Manaus / AM' }}<br>{{ $dataExt }}</div>
   </div>
-  <div class="valid">Recibo referente ao pagamento das passagens acima@if($contato) · {{ $contato }}@endif</div>
+  <div class="valid">Recibo referente ao pagamento das passagens acima{{ $contato ? ' · '.$contato : '' }}</div>
  </div>
 </div>
 @include('docs.acoes', ['arquivo' => 'recibo-'.$num.'.pdf', 'titulo' => 'Recibo '.$num])
