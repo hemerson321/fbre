@@ -85,6 +85,7 @@
 
   <button type="button" onclick="imprimirDiretoPassagem(this)" class="btn btn-ghost w-full">⚡ Imprimir direto (1 por passageiro)</button>
   <div x-data="{ painel:'' }">
+  @php $polsIni = $p->passageiros->where('papel','!=','colo')->mapWithKeys(fn($px)=>[(string)$px->id => (string)($px->poltrona ?? '')])->all(); @endphp
   <div class="grid grid-cols-2 gap-2">
     <button onclick="FBRE.imprimirComprovante('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost justify-center text-center">🖨 Comprovante</button>
     <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost justify-center text-center">📲 Enviar PDF (WhatsApp)</button>
@@ -145,7 +146,7 @@
   <div x-show="painel==='transf'" x-cloak>
   <form method="post" action="{{ route('passagens.transferir',$p) }}" class="card p-4">@csrf
     <div class="font-bold text-sm mb-2">↪ Transferir pra outro transporte</div>
-    <div x-data="transfCal(@js($linhasShow ?? []), @js($p->origem), @js($p->destino), @js(route('passagens.assentos')))">
+    <div x-data="transfCal(@js($linhasShow ?? []), @js($p->origem), @js($p->destino), @js(route('passagens.assentos')), @js($polsIni))">
       <label class="label">Transporte destino</label>
       <select name="embarcacao_id" x-model="embSel" @change="onEmb()" class="input mb-2" required>
         <option value="">— escolher —</option>
@@ -168,14 +169,18 @@
       <div x-show="usaPoltrona" x-cloak class="mb-2 rounded-lg border border-slate-200 p-2">
         <label class="label !text-xs">🪑 Poltronas no destino</label>
         <div class="text-[11px] mb-1" :class="ocupadas.length?'text-rose-500':'text-emerald-600'"><span x-show="ocupadas.length">Ocupadas nesse trecho: <b x-text="ocupadasTxt"></b></span><span x-show="!ocupadas.length">Todas livres nesse trecho</span></div>
-        @foreach($p->passageiros as $pax)
+        @foreach($p->passageiros->where('papel','!=','colo') as $pax)
         <div class="flex items-center gap-2 mb-1">
           <span class="text-xs flex-1 truncate text-slate-600">{{ $pax->nome }}</span>
-          <input name="poltronas[{{ $pax->id }}]" value="{{ $pax->poltrona }}" @input="$event.target.value=$event.target.value.toUpperCase()" class="input !min-h-[34px] !w-24 text-center font-bold" :class="poltronaOcupada($event?.target?.value)?'!border-rose-500':''" placeholder="poltrona">
+          <input type="hidden" name="poltronas[{{ $pax->id }}]" :value="(pols['{{ $pax->id }}']||'')">
+          <button type="button" @click="abrirMapa('{{ $pax->id }}')" class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap transition" :class="(pols['{{ $pax->id }}']&&estaOcupada(pols['{{ $pax->id }}']))?'border-rose-500 text-rose-600 bg-rose-50':'border-indigo-300 text-indigo-600 hover:bg-indigo-50'">
+            🪑 <span x-text="pols['{{ $pax->id }}'] || 'escolher'"></span>
+          </button>
         </div>
         @endforeach
-        <p class="text-[11px] text-slate-400">Escolha poltronas livres pra não conflitar com quem já está no trecho.</p>
+        <p class="text-[11px] text-slate-400">Toque na poltrona pra abrir o mapa da lancha e ver as livres/ocupadas no destino.</p>
       </div>
+      @include('passagens._mapa_transf')
     </div>
     <label class="label">Motivo (opcional)</label>
     <input name="motivo" class="input mb-2" maxlength="300" placeholder="ex.: cliente perdeu a lancha 1">
@@ -186,7 +191,7 @@
   @endif
   @if(!$p->cancelada && !$p->transferida && ($u->isAdmin()||$u->isSuper()))
   <div x-show="painel==='troca'" x-cloak>
-  <form method="post" action="{{ route('passagens.trocar-viagem',$p) }}" class="card p-4" x-data="trocaCal(@js($linhasShow ?? []), @js($p->origem), @js((string)$p->embarcacao_id), @js($p->destino), @js(route('passagens.assentos')))">@csrf
+  <form method="post" action="{{ route('passagens.trocar-viagem',$p) }}" class="card p-4" x-data="trocaCal(@js($linhasShow ?? []), @js($p->origem), @js((string)$p->embarcacao_id), @js($p->destino), @js(route('passagens.assentos')), @js($polsIni))">@csrf
     <div class="font-bold text-sm">📅 Trocar a data da viagem (remarcar)</div>
     <p class="text-[12px] text-slate-500 mb-2">Mantém <b>a mesma passagem</b> e <b>o mesmo transporte</b> — só muda o <b>dia da viagem</b>. Use quando o passageiro remarca pra outra data. <b>Não mexe no dinheiro</b> (diferente do cancelamento e da transferência).</p>
     <label class="label">Nova data da viagem</label>
@@ -204,14 +209,18 @@
       <div x-show="usaPoltrona" x-cloak class="mb-2 rounded-lg border border-slate-200 p-2">
         <label class="label !text-xs">🪑 Poltronas nessa data</label>
         <div class="text-[11px] mb-1" :class="ocupadas.length?'text-rose-500':'text-emerald-600'"><span x-show="ocupadas.length">Ocupadas nesse trecho: <b x-text="ocupadasTxt"></b></span><span x-show="!ocupadas.length">Todas livres nesse trecho</span></div>
-        @foreach($p->passageiros as $pax)
+        @foreach($p->passageiros->where('papel','!=','colo') as $pax)
         <div class="flex items-center gap-2 mb-1">
           <span class="text-xs flex-1 truncate text-slate-600">{{ $pax->nome }}</span>
-          <input name="poltronas[{{ $pax->id }}]" value="{{ $pax->poltrona }}" @input="$event.target.value=$event.target.value.toUpperCase()" class="input !min-h-[34px] !w-24 text-center font-bold" :class="poltronaOcupada($event?.target?.value)?'!border-rose-500':''" placeholder="poltrona">
+          <input type="hidden" name="poltronas[{{ $pax->id }}]" :value="(pols['{{ $pax->id }}']||'')">
+          <button type="button" @click="abrirMapa('{{ $pax->id }}')" class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap transition" :class="(pols['{{ $pax->id }}']&&estaOcupada(pols['{{ $pax->id }}']))?'border-rose-500 text-rose-600 bg-rose-50':'border-indigo-300 text-indigo-600 hover:bg-indigo-50'">
+            🪑 <span x-text="pols['{{ $pax->id }}'] || 'escolher'"></span>
+          </button>
         </div>
         @endforeach
-        <p class="text-[11px] text-slate-400">Se a poltrona estiver ocupada na nova data, escolha outra livre.</p>
+        <p class="text-[11px] text-slate-400">Toque na poltrona pra abrir o mapa e ver as livres/ocupadas na nova data.</p>
       </div>
+    @include('passagens._mapa_transf')
     <label class="label">Motivo (opcional)</label>
     <input name="motivo" class="input mb-2" maxlength="300" placeholder="ex.: passageiro remarcou">
     <button class="btn w-full text-white" style="background:#0891b2">Confirmar troca de data</button>
@@ -288,14 +297,15 @@ function imprimirDiretoPassagem(btn){
 });</script>
 @endif
 <script>
-function transfCal(linhas, origem, destino, assentosUrl){
+function transfCal(linhas, origem, destino, assentosUrl, pols){
   return {
     linhas: linhas||[], origem: origem||'', destino: destino||'', assentosUrl: assentosUrl||'', ocupadas:[], usaPoltrona:false, embSel:'', viagemData:'', viagemDia:null, viagemHora:'', calAberto:false, calMes:null, linhaNome:'',
+    layout:'', temLayout:false, qtd:0, colunas:4, mapaAberto:false, paxMapa:null, pols: pols||{},
     diasCurto:['Dom','Seg','Ter','Qua','Qui','Sex','Sab'],
     isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
     get hojeISO(){ return this.isoLocal(new Date()); },
     fmtBr(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); },
-    onEmb(){ this.resolver(); this.carregarAssentos(); },
+    onEmb(){ this.resolver(); this.carregarAssentos(); Object.keys(this.pols||{}).forEach(k=>this.pols[k]=''); },
     resolver(){
       this.viagemDia=null; this.viagemData=''; this.viagemHora=''; this.linhaNome='';
       const emb=this.embSel?String(this.embSel):''; if(!emb) return;
@@ -327,14 +337,23 @@ function transfCal(linhas, origem, destino, assentosUrl){
       this.ocupadas=[]; this.usaPoltrona=false;
       const emb=this.embSel?String(this.embSel):''; if(!emb||!this.assentosUrl) return;
       const qs=new URLSearchParams({embarcacao_id:emb, data_viagem:this.viagemData||'', origem:this.origem||'', destino:this.destino||''});
-      fetch(this.assentosUrl+'?'+qs.toString(),{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(j=>{ this.usaPoltrona=!!j.usa_poltrona; this.ocupadas=(j.ocupadas||[]).map(x=>String(x).toUpperCase()); }).catch(()=>{});
+      fetch(this.assentosUrl+'?'+qs.toString(),{headers:{'Accept':'application/json'}}).then(r=>r.json()).then(j=>{ this.usaPoltrona=!!j.usa_poltrona; this.ocupadas=(j.ocupadas||[]).map(x=>String(x).toUpperCase()); this.layout=j.layout||''; this.temLayout=((this.layout||'').trim().length>0); this.qtd=j.qtd||0; this.colunas=j.colunas||4; }).catch(()=>{});
     },
     get ocupadasTxt(){ return this.ocupadas.join(', '); },
-    poltronaOcupada(v){ return this.ocupadas.includes(String(v||'').trim().toUpperCase()); }
+    poltronaOcupada(v){ return this.ocupadas.includes(String(v||'').trim().toUpperCase()); },
+    estaOcupada(n){ return (this.ocupadas||[]).includes(String(n).trim().toUpperCase()); },
+    minhaPol(n){ const N=String(n).trim().toUpperCase(); return Object.values(this.pols||{}).some(v=>String(v).trim().toUpperCase()===N); },
+    selPol(n){ return String((this.pols||{})[this.paxMapa]||'').trim().toUpperCase()===String(n).trim().toUpperCase(); },
+    classeAssento(n){ if(this.selPol(n)) return 'text-white'; if(this.estaOcupada(n)||this.minhaPol(n)) return 'bg-red-100 text-red-700 border-red-200 opacity-70'; return 'bg-slate-50 hover:bg-slate-100 border-slate-200'; },
+    abrirMapa(id){ this.paxMapa=String(id); this.mapaAberto=true; },
+    escolherPol(n){ n=String(n).trim().toUpperCase(); if((this.estaOcupada(n)||this.minhaPol(n))&&!this.selPol(n)) return; if(this.paxMapa!=null) this.pols[this.paxMapa]=n; this.mapaAberto=false; },
+    blocos(){ const txt=(this.layout||'').replace(/\r/g,''); return txt.split(/\n[ \t]*\n/).map(b=>b.split('\n').filter(l=>l.trim()).map(linha=>{ const cols=linha.split('|').map(x=>x.trim().split(/\s+/).filter(Boolean)).filter(c=>c.length); return { cols, esq:cols[0]||[], dir:cols.slice(1).flat() }; })).filter(b=>b.length); },
+    fileiras(){ const col=this.colunas||4, qtd=this.qtd||0, meio=Math.ceil(col/2); const rows=[]; let n=1; while(n<=qtd){ const r=[]; for(let c=0;c<col && n<=qtd;c++){ r.push(n++); } rows.push({esq:r.slice(0,meio), dir:r.slice(meio)}); } return rows; },
+    contLivres(){ let tot=0, oc=0; const conta=n=>{ tot++; if(this.estaOcupada(n)||this.minhaPol(n)) oc++; }; if(this.temLayout){ this.blocos().forEach(b=>b.forEach(f=>(f.cols||[]).forEach(col=>col.forEach(conta)))); } else { this.fileiras().forEach(f=>[...f.esq,...f.dir].forEach(conta)); } return (tot-oc); }
   };
 }
-function trocaCal(linhas, origem, embId, destino, assentosUrl){
-  const c = transfCal(linhas, origem, destino, assentosUrl);
+function trocaCal(linhas, origem, embId, destino, assentosUrl, pols){
+  const c = transfCal(linhas, origem, destino, assentosUrl, pols);
   c.embSel = embId || '';
   c.init = function(){ this.resolver(); this.carregarAssentos(); };
   return c;
