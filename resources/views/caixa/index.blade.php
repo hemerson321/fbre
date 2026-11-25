@@ -537,7 +537,7 @@
           <td class="p-2 text-center"><span class="chip {{ $pr->status==='acertada' ? 'bg-emerald-100 text-emerald-700' : ($pr->status==='parcial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600') }}">{{ $pr->statusLabel() }}</span></td>
           <td class="p-2">
             <div class="flex items-center gap-1 justify-end flex-wrap">
-              <a href="{{ route('passagens.caixa-viagem', ['prestacao_id' => $pr->id]) }}" target="_blank" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" title="Abrir/imprimir a prestação de novo">🖨 Prestação</a>
+              <a href="{{ route('passagens.caixa-viagem', ['prestacao_id' => $pr->id]) }}" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" title="Abrir/imprimir a prestação de novo (o botão ← Voltar retorna pra cá)">🖨 Prestação</a>
               <button type="button" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50" title="Lançar entrada/saída avulsa nesta prestação"
                       @click="$dispatch('avulso-prest', { id: {{ $pr->id }}, numero: {{ (int) $pr->numero }}, nome: @js(optional($pr->embarcacao)->nome ?? 'Transporte'), avulsos: @js($pr->avulsos_js ?? []) })">↕️ Entrada/Saída{{ count($pr->avulsos_js ?? []) ? ' ('.count($pr->avulsos_js).')' : '' }}</button>
               @if($pr->saldo > 0)

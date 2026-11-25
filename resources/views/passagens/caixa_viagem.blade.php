@@ -58,7 +58,7 @@
 <body>
 <div class="bar noprint">
   <a href="javascript:window.print()" class="btn p">🖨 Imprimir</a>
-  <a href="{{ route('passagens.index') }}" onclick="if(document.referrer){history.back();return false;}" class="btn">← Voltar</a>
+  <a href="{{ route('passagens.index') }}" onclick="if(window.history.length>1){history.back();return false;}try{window.close();}catch(e){}return true;" class="btn">← Voltar</a>
 </div>
 @php $e = \App\Support\Tenant::empresa(); $rel = $ehRelatorio ?? false; @endphp
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
