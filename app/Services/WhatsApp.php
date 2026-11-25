@@ -290,15 +290,16 @@ class WhatsApp
     }
 
     /** Publica um STATUS (story) do WhatsApp pelo Evolution: texto, ou imagem/vídeo com legenda. */
-    public function enviarStatus(WhatsappConexao $c, string $texto, ?string $base64 = null, ?string $mime = null): array
+    public function enviarStatus(WhatsappConexao $c, string $texto, ?string $midiaUrl = null, ?string $mime = null): array
     {
         if ($c->tipo === 'oficial') return ['ok' => false, 'erro' => 'status pela API oficial não existe'];
         $base = rtrim((string) $c->base_url, '/');
         if (! $base || ! $c->instancia) return ['ok' => false, 'erro' => 'sem base/instancia'];
         try {
-            if ($base64 && $mime) {
+            if ($midiaUrl && $mime) {
                 $tipo = str_starts_with($mime, 'video/') ? 'video' : 'image';
-                $body = ['type' => $tipo, 'content' => $base64, 'caption' => $texto, 'allContacts' => true]; // p/ todos: OMITE statusJidList (Evolution rejeita lista vazia)
+                // content = URL publica (Evolution baixa). base64 cru quebra com ENAMETOOLONG no sendStatus.
+                $body = ['type' => $tipo, 'content' => $midiaUrl, 'caption' => $texto, 'allContacts' => true]; // p/ todos: OMITE statusJidList
             } else {
                 $body = ['type' => 'text', 'content' => $texto, 'backgroundColor' => '#0f172a', 'font' => 1, 'allContacts' => true]; // p/ todos: OMITE statusJidList
             }

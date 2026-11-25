@@ -53,7 +53,14 @@ class EnviarAgendadas extends Command
         if ($a->tipo === 'status') {
             $cx = WhatsappConexao::withoutGlobalScopes()->where('empresa_id', $a->empresa_id)->when($a->whatsapp_conexao_id, fn ($q) => $q->where('id', $a->whatsapp_conexao_id))->where('ativo', true)->first();
             if (! $cx) return ['ok' => false, 'erro' => 'Sem conexão de WhatsApp ativa.'];
-            return $wa->enviarStatus($cx, (string) $a->texto, $temArq ? base64_encode((string) file_get_contents($abs)) : null, $temArq ? (string) $a->mime : null);
+            // Status com imagem/video: manda a URL publica do arquivo (Evolution baixa). base64 cru da ENAMETOOLONG.
+            $midiaUrl = null;
+            if ($temArq) {
+                $rel = ltrim(preg_replace('#^storage/#', '', $caminho), '/');
+                $baseApp = rtrim((string) (\App\Support\Tenant::empresa()?->config('evo_webhook_base') ?: config('app.url')), '/');
+                $midiaUrl = $baseApp.'/storage/'.$rel;
+            }
+            return $wa->enviarStatus($cx, (string) $a->texto, $midiaUrl, $temArq ? (string) $a->mime : null);
         }
 
         $conversa = $a->conversa_id ? Conversa::withoutGlobalScopes()->find($a->conversa_id) : null;
