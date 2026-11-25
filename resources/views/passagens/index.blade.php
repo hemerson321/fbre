@@ -65,6 +65,12 @@
       <option value="todos" @selected(($escopo ?? 'todos')==='todos')>Ver: todos</option>
       <option value="meu" @selected(($escopo ?? '')==='meu')>Ver: só os meus</option>
     </select>
+    @if(($vendedores ?? collect())->count())
+    <select name="vendedor_id" class="input" onchange="this.form.submit()">
+      <option value="">Vendedor: todos</option>
+      @foreach($vendedores as $vd)<option value="{{ $vd->id }}" @selected((string)($f['vendedor_id'] ?? '')===(string)$vd->id)>{{ $vd->is_revendedor ? '🤝' : '👤' }} {{ $vd->name }}</option>@endforeach
+    </select>
+    @endif
     @endif
     <button class="btn text-white col-span-2 sm:col-span-1" style="background:{{ $cor }}">Filtrar</button>
   </form>

@@ -144,6 +144,7 @@ class Passagem extends Model
             ->when(isset($f['embarcou']) && $f['embarcou'] !== '', fn ($q) => $q->where('embarcou', (bool) $f['embarcou']))
             ->when($f['forma'] ?? null, fn ($q, $v) => $q->where('forma', $v))
             ->when($f['user_id'] ?? null, fn ($q, $v) => $q->where('user_id', $v))
+            ->when($f['vendedor_id'] ?? null, fn ($q, $v) => $q->where(fn ($w) => $w->where('user_id', $v)->orWhere('revendedor_id', $v)))
             ->when($f['cliente_faturado_id'] ?? null, fn ($q, $v) => $q->where('cliente_faturado_id', $v))
             ->when($f['busca'] ?? null, function ($q, $v) {
                 $v = trim($v);

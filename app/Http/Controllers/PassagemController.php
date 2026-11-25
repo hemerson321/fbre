@@ -25,7 +25,10 @@ class PassagemController extends Controller
         $f = $this->filtros($request);
         $verTodos = auth()->user()->relatorioTodos() || auth()->user()->caixaTodos() || auth()->user()->isAdmin();
         $escopo = $request->input('escopo', $verTodos ? 'todos' : 'meu');
-        if (! $verTodos || $escopo === 'meu') { $f['user_id'] = auth()->id(); $escopo = 'meu'; }
+        if (! $verTodos) { unset($f['vendedor_id']); }
+        $vendedorSel = $verTodos ? ($f['vendedor_id'] ?? null) : null;
+        if ($vendedorSel) { $escopo = 'todos'; }
+        if (! $verTodos || ($escopo === 'meu' && ! $vendedorSel)) { $f['user_id'] = auth()->id(); $escopo = 'meu'; }
         $base = Passagem::filtrar($f);
 
         $totais = [
@@ -72,12 +75,13 @@ class PassagemController extends Controller
             'escopo' => $escopo,
             'tiposPax' => \App\Models\TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('nome')->get(['id', 'nome']),
             'clientesFaturado' => \App\Models\ClienteFaturado::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'empresa']),
+            'vendedores' => $verTodos ? \App\Models\User::where('empresa_id', Tenant::id())->orderBy('is_revendedor')->orderBy('name')->get(['id', 'name', 'is_revendedor']) : collect(),
         ]);
     }
 
     protected function filtros(Request $request): array
     {
-        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'viagem_id', 'data_viagem', 'status_pagamento', 'embarcou', 'forma', 'busca', 'user_id', 'cancelada', 'cliente_faturado_id']);
+        $f = $request->only(['inicio', 'fim', 'hora_inicio', 'hora_fim', 'origem', 'destino', 'embarcacao_id', 'viagem_id', 'data_viagem', 'status_pagamento', 'embarcou', 'forma', 'busca', 'user_id', 'vendedor_id', 'cancelada', 'cliente_faturado_id']);
         if (! $request->has('inicio') && ! $request->filled('busca')) {
             $f['inicio'] = now()->subDays(7)->toDateString();
             $f['fim'] = now()->toDateString();
