@@ -25,17 +25,15 @@ class OrcamentoController extends Controller
             ->merge(Rota::todasLocalidades())
             ->filter()->unique()->sort()->values();
         $embarcacoes = Embarcacao::where('ativo', true)->orderBy('nome')->get(['id', 'nome']);
-        $tipos = TipoPassageiro::where('ativo', true)
-            ->orderBy('eh_normal', 'desc')->orderBy('nome')->get(['id', 'nome', 'eh_normal']);
-        // Preços por trecho (tarifa + alimentação) para o prefill do valor unitário.
-        $precos = TrechoPreco::where('ativo', true)
-            ->get(['origem', 'destino', 'tipo_passageiro_id', 'tarifa', 'alimentacao'])
-            ->map(fn ($t) => [
-                'o' => (string) $t->origem,
-                'd' => (string) $t->destino,
-                't' => (int) $t->tipo_passageiro_id,
-                'v' => round((float) $t->tarifa + (float) $t->alimentacao, 2),
-            ])->values();
+        // Tipos com todos os campos de preço (igual ao cadastro de passagem).
+        $colBase = ['id', 'nome', 'percentual', 'pct_sobre', 'paga_taxa', 'modo', 'eh_normal', 'tarifa_padrao', 'alimentacao_padrao'];
+        $existentes = \Illuminate\Support\Facades\Schema::getColumnListing('tipos_passageiro');
+        $cols = array_values(array_intersect($colBase, $existentes)) ?: ['id', 'nome', 'percentual', 'paga_taxa', 'modo', 'eh_normal'];
+        $tipos = TipoPassageiro::where('ativo', true)->orderBy('eh_normal', 'desc')->orderBy('nome')->get($cols);
+        $trechoPrecos = TrechoPreco::where('ativo', true)->get(['origem', 'destino', 'tipo_passageiro_id', 'tarifa', 'alimentacao', 'integral']);
+        $taxas = \App\Models\TaxaEmbarque::where('ativo', true)->get(['origem', 'destino', 'taxa']);
+        $usaAlim = (bool) $empresa->config('usa_alimentacao', true);
+        $usaEmbarque = (bool) $empresa->config('usa_taxa_embarque', false);
 
         $embNomes = Embarcacao::pluck('nome', 'id');
 
@@ -61,7 +59,7 @@ class OrcamentoController extends Controller
             ])->unique('d')->values()->all())
             ->toArray();
 
-        return view('orcamentos.index', compact('empresa', 'localidades', 'embarcacoes', 'tipos', 'precos', 'linhas', 'datasPorEmb'));
+        return view('orcamentos.index', compact('empresa', 'localidades', 'embarcacoes', 'tipos', 'trechoPrecos', 'taxas', 'usaAlim', 'usaEmbarque', 'linhas', 'datasPorEmb'));
     }
 
     public function gerar(Request $request)

@@ -92,59 +92,74 @@ function orc(){
   const LINHAS = @json($linhas);
   const DATAS  = @json($datasPorEmb);
   const EMBS   = @json($embarcacoes->map(fn($e)=>['id'=>$e->id,'nome'=>$e->nome])->values());
-  const TIPOS  = @json($tipos->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'normal'=>(bool)$t->eh_normal])->values());
-  const PRECOS = @json($precos);
+  const TIPOS  = @json($tipos->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'percentual'=>$t->percentual,'pct_sobre'=>$t->pct_sobre ?? null,'paga_taxa'=>(bool)$t->paga_taxa,'modo'=>$t->modo ?? 'valor','normal'=>(bool)$t->eh_normal,'tarifa_padrao'=>$t->tarifa_padrao ?? 0,'alimentacao_padrao'=>$t->alimentacao_padrao ?? 0])->values());
+  const TRECHOS= @json($trechoPrecos);
+  const TAXAS  = @json($taxas);
+  const USAALIM = @json($usaAlim);
+  const USAEMB  = @json($usaEmbarque);
   const normalId = (TIPOS.find(t=>t.normal)||TIPOS[0]||{id:null}).id;
-  const mapa = {}; PRECOS.forEach(p=>{ mapa[p.o+'||'+p.d+'||'+p.t] = p.v; });
+  const low = s => String(s==null?'':s).trim().toLowerCase();
+  const trechoMap={}, taxaMap={};
+  TRECHOS.forEach(r=>{ trechoMap[low(r.origem)+'|'+low(r.destino)+'|'+r.tipo_passageiro_id]={tarifa:Number(r.tarifa)||0,alim:Number(r.alimentacao)||0,integral:Number(r.integral)||0}; });
+  TAXAS.forEach(r=>{ taxaMap[low(r.origem)+'|'+low(r.destino)]=Number(r.taxa)||0; });
+  const tipoById = id => TIPOS.find(t=>String(t.id)===String(id));
   return {
     cliente:'', doc:'', origem:'', destino:'', embId:'', dataSel:'', dataManual:'',
     linhas:[ {tipo:String(normalId||''), qtd:1, unit:0} ],
-    init(){
-      this.$watch('origem', ()=>this.autoTransporte());
-      this.$watch('destino', ()=>this.autoTransporte());
-      this.$watch('embId', ()=>{ this.dataSel=''; this.reprecificar(); });
-    },
+    init(){ this.$watch('origem',()=>this.autoTransporte()); this.$watch('destino',()=>this.autoTransporte()); this.$watch('embId',()=>{ this.dataSel=''; this.reprecificar(); }); this.reprecificar(); },
     brl(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); },
-    fmtData(d){ if(!d) return ''; const p=String(d).split('-'); return p.length===3 ? (p[2]+'/'+p[1]+'/'+p[0]) : d; },
-    tipoNome(id){ const t=TIPOS.find(x=>String(x.id)===String(id)); return t?t.nome:'Passagem'; },
-    transportes(){
-      if(!this.origem||!this.destino) return [];
-      const set={};
-      LINHAS.forEach(l=>{ const io=l.paradas.indexOf(this.origem), id=l.paradas.indexOf(this.destino); if(io>-1 && id>io) set[l.emb]=l.nome || ('Transporte #'+l.emb); });
-      return Object.keys(set).map(id=>({id:Number(id), nome:set[id]}));
-    },
-    opcoesTransporte(){ if(!this.origem||!this.destino) return EMBS; const t=this.transportes(); return t.length ? t : EMBS; },
+    fmtData(d){ if(!d) return ''; const p=String(d).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):d; },
+    tipoNome(id){ const t=tipoById(id); return t?t.nome:'Passagem'; },
+    transportes(){ if(!this.origem||!this.destino) return []; const set={}; LINHAS.forEach(l=>{ const io=l.paradas.indexOf(this.origem), id=l.paradas.indexOf(this.destino); if(io>-1&&id>io) set[l.emb]=l.nome||('Transporte #'+l.emb); }); return Object.keys(set).map(id=>({id:Number(id),nome:set[id]})); },
+    opcoesTransporte(){ if(!this.origem||!this.destino) return EMBS; const t=this.transportes(); return t.length?t:EMBS; },
     autoUm(){ return this.transportes().length===1; },
-    autoTransporte(){
-      const t=this.transportes();
-      if(t.length===1){ this.embId=String(t[0].id); }
-      else if(!this.opcoesTransporte().find(x=>String(x.id)===String(this.embId))){ this.embId=''; }
-      this.reprecificar();
+    autoTransporte(){ const t=this.transportes(); if(t.length===1){ this.embId=String(t[0].id); } else if(!this.opcoesTransporte().find(x=>String(x.id)===String(this.embId))){ this.embId=''; } this.reprecificar(); },
+    datas(){ return DATAS[String(this.embId)]||DATAS[this.embId]||[]; },
+    trechoGet(o,d,tipoId){ return trechoMap[low(o)+'|'+low(d)+'|'+tipoId]||null; },
+    taxaDoTrecho(o,d){ const a=taxaMap[low(o)+'|'+low(d)], b=taxaMap[low(d)+'|'+low(o)]; return Number(a!=null?a:(b!=null?b:0))||0; },
+    precoDoTipo(o,d,t){
+      if(!t) return {tarifa:0,alim:0,integral:0};
+      const c=this.trechoGet(o,d,t.id);
+      if(c){ const tt=Number(c.tarifa)||0, aa=USAALIM?(Number(c.alim)||0):0; return {tarifa:tt,alim:aa,integral:Math.max(Number(c.integral)||0,tt+aa)}; }
+      if(t.modo==='porcentagem'){
+        const nc=this.trechoGet(o,d,normalId), n=tipoById(normalId);
+        const baseT=nc?(Number(nc.tarifa)||0):(n?(Number(n.tarifa_padrao)||0):0);
+        const baseA=nc?(Number(nc.alim)||0):(n?(Number(n.alimentacao_padrao)||0):0);
+        const pct=(Number(t.percentual)||0)/100;
+        const tarifa=Math.round(baseT*pct*100)/100;
+        const alim=USAALIM?((t.pct_sobre==='tudo')?Math.round(baseA*pct*100)/100:Math.round(baseA*100)/100):0;
+        return {tarifa,alim,integral:tarifa+alim};
+      }
+      const tt=Number(t.tarifa_padrao)||0, aa=USAALIM?(Number(t.alimentacao_padrao)||0):0;
+      return {tarifa:tt,alim:aa,integral:tt+aa};
     },
-    datas(){ return DATAS[String(this.embId)] || DATAS[this.embId] || []; },
-    precoDe(tipoId){
+    precoUnit(tipoId){
       if(!this.origem||!this.destino) return null;
-      const k=this.origem+'||'+this.destino+'||'+tipoId;
-      if(mapa[k]!=null) return mapa[k];
-      const kn=this.origem+'||'+this.destino+'||'+normalId;
-      return mapa[kn]!=null ? mapa[kn] : null;
+      const t=tipoById(tipoId); if(!t) return null;
+      const pr=this.precoDoTipo(this.origem,this.destino,t);
+      let passagem,alim;
+      if(t.modo==='manual'){ passagem=0; alim=0; }
+      else if(pr.tarifa>0){ passagem=pr.tarifa; alim=pr.alim; }
+      else { passagem=pr.integral; alim=0; }
+      const taxa=(USAEMB && t.paga_taxa)?this.taxaDoTrecho(this.origem,this.destino):0;
+      return Math.round((passagem+alim+taxa)*100)/100;
     },
-    preencherUnit(l){ const v=this.precoDe(l.tipo); if(v!=null) l.unit=v; },
-    reprecificar(){ this.linhas.forEach(l=>{ const v=this.precoDe(l.tipo); if(v!=null) l.unit=v; }); },
-    addLinha(){ const l={tipo:String(normalId||''), qtd:1, unit:0}; const v=this.precoDe(l.tipo); if(v!=null) l.unit=v; this.linhas.push(l); },
+    preencherUnit(l){ const v=this.precoUnit(l.tipo); if(v!==null) l.unit=v; },
+    reprecificar(){ this.linhas.forEach(l=>{ const v=this.precoUnit(l.tipo); if(v!==null) l.unit=v; }); },
+    addLinha(){ const l={tipo:String(normalId||''),qtd:1,unit:0}; const v=this.precoUnit(l.tipo); if(v!==null) l.unit=v; this.linhas.push(l); },
     delLinha(i){ this.linhas.splice(i,1); },
-    total(){ return this.linhas.reduce((s,l)=> s + (Number(l.qtd)||0)*(Number(l.unit)||0), 0); },
-    totalPax(){ return this.linhas.reduce((s,l)=> s + (Number(l.qtd)||0), 0); },
-    embNome(){ const e=[...this.opcoesTransporte(), ...EMBS].find(x=>String(x.id)===String(this.embId)); return e?e.nome:''; },
+    total(){ return this.linhas.reduce((s,l)=>s+(Number(l.qtd)||0)*(Number(l.unit)||0),0); },
+    totalPax(){ return this.linhas.reduce((s,l)=>s+(Number(l.qtd)||0),0); },
+    embNome(){ const e=[...this.opcoesTransporte(),...EMBS].find(x=>String(x.id)===String(this.embId)); return e?e.nome:''; },
     gerar(){
-      const itens = this.linhas.filter(l=>(Number(l.qtd)||0)>0).map(l=>({ d:'Passagem '+this.tipoNome(l.tipo).toLowerCase(), q:Number(l.qtd)||0, u:Number(l.unit)||0 }));
+      const itens=this.linhas.filter(l=>(Number(l.qtd)||0)>0).map(l=>({d:'Passagem '+this.tipoNome(l.tipo).toLowerCase(), q:Number(l.qtd)||0, u:Number(l.unit)||0}));
       if(!itens.length){ alert('Adicione ao menos um passageiro.'); return; }
-      const data = (this.dataSel && this.dataSel!=='__outra') ? this.dataSel : this.dataManual;
-      const qs = new URLSearchParams();
-      qs.set('cli', this.cliente||''); qs.set('doc', this.doc||'');
-      qs.set('org', this.origem||''); qs.set('dst', this.destino||'');
-      qs.set('data', data||''); qs.set('emb', this.embNome()||'');
-      qs.set('itens', JSON.stringify(itens));
+      const data=(this.dataSel&&this.dataSel!=='__outra')?this.dataSel:this.dataManual;
+      const qs=new URLSearchParams();
+      qs.set('cli',this.cliente||''); qs.set('doc',this.doc||'');
+      qs.set('org',this.origem||''); qs.set('dst',this.destino||'');
+      qs.set('data',data||''); qs.set('emb',this.embNome()||'');
+      qs.set('itens',JSON.stringify(itens));
       window.FBRE.abrirDoc('{{ route('orcamentos.gerar') }}?'+qs.toString());
     }
   };
