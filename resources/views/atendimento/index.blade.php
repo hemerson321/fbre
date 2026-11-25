@@ -285,6 +285,7 @@
   @endif
 </div>
 
+@if($sel)
 <script>
 function atd(id, ultimoId, vendaIni){
   return {
@@ -376,6 +377,7 @@ function atd(id, ultimoId, vendaIni){
   }
 }
 </script>
+@endif
 <script>
 (function(){
   var last = null, lastHash = null;
