@@ -127,19 +127,20 @@
       $comProp = $prestacao->bruto > 0 ? round((float) $prestacao->comissao * $recPropTot / (float) $prestacao->bruto, 2) : 0.0;
       $vendAg = round((float) $prestacao->bruto - $recPropTot, 2);
       $comAg = round((float) $prestacao->comissao - $comProp, 2);
+      $nomeEmp = \App\Support\Tenant::empresa()?->nomeExibicao() ?: 'Agência';
     @endphp
     @if($recPropTot > 0.009)
-    <div style="font-size:10px;font-weight:800;color:#334155;text-transform:uppercase;letter-spacing:.04em;margin-top:2px">Vendas da agência</div>
+    <div style="font-size:10px;font-weight:800;color:#334155;text-transform:uppercase;letter-spacing:.04em;margin-top:2px">Vendas · {{ $nomeEmp }}</div>
     <div class="lin"><span>Total de vendas</span><b>R$ {{ number_format($vendAg,2,',','.') }}</b></div>
-    <div class="lin"><span>Comissão da agência{{ $pctTxt }}</span><b style="color:#b91c1c">- R$ {{ number_format($comAg,2,',','.') }}</b></div>
+    <div class="lin"><span>Comissão {{ $nomeEmp }}{{ $pctTxt }}</span><b style="color:#b91c1c">- R$ {{ number_format($comAg,2,',','.') }}</b></div>
     <div class="lin" style="border-top:1px dashed #bbb"><span><b>Total do proprietário</b></span><b>R$ {{ number_format($vendAg - $comAg,2,',','.') }}</b></div>
     <div style="font-size:10px;font-weight:800;color:#0e7490;text-transform:uppercase;letter-spacing:.04em;margin-top:6px">Vendas recebidas pelo proprietário</div>
     <div class="lin"><span>Total de vendas</span><b>R$ {{ number_format($recPropTot,2,',','.') }}</b></div>
-    <div class="lin" style="border-top:1px dashed #bbb"><span><b>Comissão da agência{{ $pctTxt }}</b></span><b style="color:#b91c1c">- R$ {{ number_format($comProp,2,',','.') }}</b></div>
+    <div class="lin" style="border-top:1px dashed #bbb"><span><b>Comissão {{ $nomeEmp }}{{ $pctTxt }}</b></span><b style="color:#b91c1c">- R$ {{ number_format($comProp,2,',','.') }}</b></div>
     <div style="height:5px"></div>
     @else
     <div class="lin"><span>Total vendas de Passagens</span><b>R$ {{ number_format($prestacao->bruto,2,',','.') }}</b></div>
-    <div class="lin"><span>Comissão de Agência{{ $pctTxt }}</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
+    <div class="lin"><span>Comissão {{ $nomeEmp }}{{ $pctTxt }}</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
     @endif
     @if($prestacao->cartao > 0.009)
     <div class="lin"><span>Cartão de crédito</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
@@ -157,7 +158,7 @@
     @endforeach
     @endif
     @if($prestacao->liquido < -0.009)
-    <div class="lin g" style="color:#b91c1c"><span>Proprietário deve à agência</span><span>- R$ {{ number_format(abs($prestacao->liquido),2,',','.') }}</span></div>
+    <div class="lin g" style="color:#b91c1c"><span>Proprietário deve à {{ $nomeEmp }}</span><span>- R$ {{ number_format(abs($prestacao->liquido),2,',','.') }}</span></div>
     <div style="font-size:10px;color:#777">Fica negativo até entrar venda nova; desconta sozinho na próxima prestação.</div>
     @else
     <div class="lin g" style="color:#067d3b"><span>Total a pagar ao proprietário</span><span>R$ {{ number_format($prestacao->liquido,2,',','.') }}</span></div>
