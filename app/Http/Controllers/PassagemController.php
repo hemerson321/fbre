@@ -948,6 +948,8 @@ class PassagemController extends Controller
 
         $m = \App\Support\ManifestoCaixa::dados($passagens);
         $linhas = $m['linhas'];
+        // A LISTA (manifesto) mostra TODAS as vendas, inclusive de agente externo (o dono ve e acerta direto com o agente). So os TOTAIS/contagem/formas/categoria ficam sem o agente.
+        if ($modo === 'prestacao') $linhas = \App\Support\ManifestoCaixa::dados($passagensTodas)['linhas'];
         $totForma = $m['totForma'];
         $totDesconto = $m['totDesconto'];
         $totGeral = $m['totGeral'];
@@ -1020,7 +1022,7 @@ class PassagemController extends Controller
         // Quebra por categoria (Balcão/Proprietário/Agente) × forma, pra prestação.
         $novaCat = fn () => ['qtd' => 0, 'total' => 0.0, 'dinheiro' => 0.0, 'pix' => 0.0, 'debito' => 0.0, 'credito' => 0.0, 'credito_avista' => 0.0, 'credito_parcelado' => 0.0, 'areceber' => 0.0];
         $porCategoria = ['balcao' => $novaCat(), 'proprietario' => $novaCat(), 'agente' => $novaCat()];
-        foreach ($passagensTodas->where('cancelada', false)->where('transferida', false) as $pp) {
+        foreach ($passagens->where('cancelada', false)->where('transferida', false) as $pp) {
             $cat = $pp->revendedor_id
                 ? 'agente'
                 : ($pp->pagamentos->contains(fn ($pg) => (bool) ($pg->pago_proprietario ?? false)) ? 'proprietario' : 'balcao');

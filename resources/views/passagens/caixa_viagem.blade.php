@@ -176,6 +176,7 @@
     <tbody>
       @foreach(['balcao'=>'Balcão','proprietario'=>'Proprietário','agente'=>'Agente interior'] as $ck=>$cl)
       @php $c=$porCategoria[$ck] ?? []; @endphp
+      @if(($c['qtd'] ?? 0) > 0)
       <tr style="border-bottom:1px solid #e5e7eb">
         <td style="text-align:left;padding:3px 6px;font-weight:600">{{ $cl }} <span style="color:#999;font-weight:400">· {{ $c['qtd'] ?? 0 }}</span></td>
         <td style="text-align:right;padding:3px 6px">{{ number_format($c['dinheiro'] ?? 0,2,',','.') }}</td>
@@ -186,6 +187,7 @@
         <td style="text-align:right;padding:3px 6px;color:#b45309">{{ number_format($c['areceber'] ?? 0,2,',','.') }}</td>
         <td style="text-align:right;padding:3px 6px;font-weight:700">{{ number_format($c['total'] ?? 0,2,',','.') }}</td>
       </tr>
+      @endif
       @endforeach
     </tbody>
   </table>
