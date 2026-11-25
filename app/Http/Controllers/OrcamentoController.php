@@ -7,6 +7,7 @@ use App\Models\Passagem;
 use App\Models\Rota;
 use App\Models\TipoPassageiro;
 use App\Models\TrechoPreco;
+use App\Models\Viagem;
 use App\Support\Tenant;
 use Illuminate\Http\Request;
 
@@ -45,15 +46,19 @@ class OrcamentoController extends Controller
             'paradas' => $r->paradas->pluck('localidade')->filter()->values()->all(),
         ])->filter(fn ($l) => $l['emb'] > 0 && count($l['paradas']) >= 2)->values();
 
-        // Datas de viagem já cadastradas no sistema, por transporte (próximas).
-        $datasPorEmb = Passagem::where('empresa_id', Tenant::id())
-            ->where('cancelada', false)->whereNotNull('data_viagem')
-            ->whereDate('data_viagem', '>=', now()->toDateString())
-            ->orderBy('data_viagem')->get(['embarcacao_id', 'data_viagem'])
+        // Viagens PRÉ-PROGRAMADAS (cadastro de viagens), por transporte — próximas e ativas.
+        $datasPorEmb = Viagem::where('empresa_id', Tenant::id())
+            ->whereIn('status', ['planejada', 'em_andamento'])
+            ->whereNotNull('data_partida')
+            ->whereDate('data_partida', '>=', now()->toDateString())
+            ->with('rota:id,nome')
+            ->orderBy('data_partida')
+            ->get(['id', 'embarcacao_id', 'data_partida', 'nome', 'rota_id'])
             ->groupBy('embarcacao_id')
-            ->map(fn ($g) => $g->pluck('data_viagem')
-                ->map(fn ($d) => \Illuminate\Support\Carbon::parse($d)->toDateString())
-                ->unique()->values()->all())
+            ->map(fn ($g) => $g->map(fn ($v) => [
+                'd'   => \Illuminate\Support\Carbon::parse($v->data_partida)->toDateString(),
+                'rot' => (string) ($v->nome ?: ($v->rota->nome ?? '')),
+            ])->unique('d')->values()->all())
             ->toArray();
 
         return view('orcamentos.index', compact('empresa', 'localidades', 'embarcacoes', 'tipos', 'precos', 'linhas', 'datasPorEmb'));

@@ -46,8 +46,8 @@
       {{-- 3) data da viagem (lista do sistema p/ o transporte; ou digitar) --}}
       <div>
         <select x-show="embId && datas().length" x-model="dataSel" class="input w-full">
-          <option value="">Data da viagem…</option>
-          <template x-for="d in datas()" :key="d"><option :value="d" x-text="fmtData(d)"></option></template>
+          <option value="">Viagem programada…</option>
+          <template x-for="v in datas()" :key="v.d"><option :value="v.d" x-text="fmtData(v.d) + (v.rot ? ' · '+v.rot : '')"></option></template>
           <option value="__outra">Outra data (digitar)…</option>
         </select>
         <input x-show="!embId || !datas().length || dataSel==='__outra'" type="date" x-model="dataManual" class="input w-full" title="Data da viagem">
