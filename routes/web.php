@@ -110,6 +110,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/clientes-faturado', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'store'])->name('clientes-faturado.store')->middleware('perm:passagem');
     Route::post('/clientes-faturado/{cliente}', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'update'])->name('clientes-faturado.update')->middleware('perm:passagem');
     Route::delete('/clientes-faturado/{cliente}', [\App\Http\Controllers\Admin\ClienteFaturadoController::class, 'destroy'])->name('clientes-faturado.destroy')->middleware('perm:passagem');
+    // Financeiro: contas a receber (faturados) — gate de permissao no controller (perm_financeiro ou admin)
+    Route::get('/financeiro/contas-receber', [\App\Http\Controllers\FinanceiroController::class, 'contasReceber'])->name('financeiro.contas-receber');
+    Route::post('/financeiro/contas-receber/baixar', [\App\Http\Controllers\FinanceiroController::class, 'baixar'])->name('financeiro.baixar');
+    Route::post('/financeiro/{passagem}/desfazer-baixa', [\App\Http\Controllers\FinanceiroController::class, 'desfazerBaixa'])->name('financeiro.desfazer-baixa');
     Route::get('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteCreate'])->name('passagens.camarote.create')->middleware('perm:camarote');
     Route::post('/passagens/camarote', [\App\Http\Controllers\PassagemController::class, 'camaroteStore'])->name('passagens.camarote.store')->middleware('perm:camarote');
     Route::get('/passagens/camarotes', [\App\Http\Controllers\PassagemController::class, 'camarotesMapa'])->name('passagens.camarotes')->middleware('perm:camarote');

@@ -148,6 +148,13 @@ document.addEventListener('alpine:init', () => {
   if ($g && $modOn('frete')) $grupos['Fretes'] = $g;
   // Caixa, Prestação de Contas e Relatório agora ficam DENTRO do menu Passagens (ver bloco Passagem acima). Sem botões soltos no topo.
   $gruposDiretos = [];
+  // Financeiro: Contas a receber (faturados) + Clientes faturado — admin/super ou perm_financeiro
+  if ($u->isAdmin() || $u->isSuper() || $u->perm_financeiro) {
+    $gf = [];
+    if (Route::has('financeiro.contas-receber')) $gf[] = ['r'=>route('financeiro.contas-receber'), 'l'=>'Contas a receber', 'i'=>'💰'];
+    if (Route::has('clientes-faturado') && ($u->permite('passagem','ver') || $u->isAdmin() || $u->isSuper())) $gf[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
+    if ($gf) $grupos['Financeiro'] = $gf;
+  }
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isAdmin() || $u->isSuper()) {
       $adm = [
@@ -200,6 +207,7 @@ document.addEventListener('alpine:init', () => {
   $metaGrupo['Caixa'] = ['💰', '#059669'];
   $metaGrupo['Prestação de Contas'] = ['🧾', '#d97706'];
   $metaGrupo['Relatório'] = ['📋', '#4f46e5'];
+  $metaGrupo['Financeiro'] = ['💵', '#0d9488'];
   $ativo = function ($r) {
       if (request()->url() !== strtok($r, '?')) return false;
       parse_str(parse_url($r, PHP_URL_QUERY) ?: '', $qq);
