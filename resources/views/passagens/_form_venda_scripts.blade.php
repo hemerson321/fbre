@@ -6,7 +6,7 @@
 
   function novaPassagem(){
     return {
-      salvando:false, edMode:false, edUrl:'', edNumero:'', tipoPag:'balcao', metodosAtivos:['dinheiro'], credParcel:false, dividir:false, pag:{dinheiro:null,pix:null,debito:null,credito:null}, proprietarioMaq:false, parcelas:1, imprimir:'direto',
+      salvando:false, edMode:false, edUrl:'', edNumero:'', edFila:0, tipoPag:'balcao', metodosAtivos:['dinheiro'], credParcel:false, dividir:false, pag:{dinheiro:null,pix:null,debito:null,credito:null}, proprietarioMaq:false, parcelas:1, imprimir:'direto',
       agenteId:'', agenteAcerto:false,
       fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
@@ -72,6 +72,7 @@
         this.$nextTick(()=>{ const _o=this.origemSel; if(_o){ this.origemSel=''; this.$nextTick(()=>{ this.origemSel=_o; }); } });
         this.iniciarCaptura();
         if(window.FBRE_EDICAO){ this.edMode=true; this.edUrl=window.FBRE_EDICAO._url||''; this.edNumero=window.FBRE_EDICAO._numero||''; this.imprimir='nao';
+          this.edFila=((new URLSearchParams(location.search).get('fila')||'').split(',').filter(Boolean)).length;
           // _load SINCRONO: roda antes dos $nextTick de init (re-sync da origem) p/ nao ser sobrescrito pelo default.
           var ED=window.FBRE_EDICAO; this._load(ED);
           // Cascata transporte->origem->destino->viagem: origem/destino sao getters, entao o destino so
@@ -633,7 +634,10 @@
         try{
           const dados=this.montarDados();
           const r=await fetch(this.edUrl,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'X-Requested-With':'fetch','Accept':'application/json'},credentials:'same-origin',body:JSON.stringify(dados)});
-          if(r.ok){ const j=await r.json().catch(()=>null); window.location.href=(j&&j.url)?j.url:'/passagens'; return; }
+          if(r.ok){ const j=await r.json().catch(()=>null);
+            var fq=(new URLSearchParams(location.search).get('fila')||'').split(',').filter(Boolean);
+            if(fq.length){ var nx=fq.shift(); var rest=fq.join(','); window.location.href='/passagens/'+nx+'/editar'+(rest?('?fila='+encodeURIComponent(rest)):''); return; }
+            window.location.href=(j&&j.url)?j.url:'/passagens'; return; }
           if(r.status===422){ const j=await r.json().catch(()=>null); const msg=(j&&j.message)?j.message:'Confira os campos.'; const errs=(j&&j.errors)?Object.values(j.errors).flat().join('\n'):''; alert((msg+'\n'+errs).trim()); this.salvando=false; return; }
           const j=await r.json().catch(()=>null); alert((j&&(j.message||j.erro))||('Não foi possível atualizar ('+r.status+').')); this.salvando=false;
         }catch(e){ alert('Erro ao atualizar: '+e.message); this.salvando=false; }

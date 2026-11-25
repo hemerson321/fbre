@@ -4,7 +4,7 @@
 <div class="flex items-center justify-between gap-3 flex-wrap">
   <div class="flex items-center gap-x-4 gap-y-1 flex-wrap">
     <h1 class="text-lg font-extrabold" style="color:var(--cor1)">🎫 Nova passagem</h1>
-    <span class="text-[11px] font-bold rounded-lg px-2 py-0.5 text-white" style="background:var(--cor1)"><span x-text="edMode ? ('✏️ Editando '+edNumero) : ('Nº '+numeroPreview)"></span></span>
+    <span class="text-[11px] font-bold rounded-lg px-2 py-0.5 text-white" style="background:var(--cor1)"><span x-text="edMode ? ('✏️ Editando '+edNumero+(edFila>0?(' · +'+edFila+' na fila'):'')) : ('Nº '+numeroPreview)"></span></span>
     @if($podeRetroativo)
     <div class="flex items-center gap-1.5">
       <span class="lbl !mb-0 whitespace-nowrap">Lançamento</span>
@@ -408,7 +408,7 @@
 
         <div class="hidden lg:block">
           <button x-show="total>0 || forma!=='avista' || abas.length>1" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || (!passageiros.length && abas.length<=1)">
-            <span x-show="!salvando" x-text="edMode ? '✏️ Atualizar passagem' : (abas.length>1 ? ('✅ Finalizar '+abas.length+' vendas') : '💾 Salvar passagem')"></span><span x-show="salvando">Salvando…</span>
+            <span x-show="!salvando" x-text="edMode ? (edFila>0?'✏️ Atualizar e ir pra próxima':'✏️ Atualizar passagem') : (abas.length>1 ? ('✅ Finalizar '+abas.length+' vendas') : '💾 Salvar passagem')"></span><span x-show="salvando">Salvando…</span>
           </button>
         </div>
         <p class="text-[11px] text-slate-400 text-center" x-show="!passageiros.length">Adicione ao menos um passageiro.</p>
@@ -566,7 +566,7 @@
       </div>
     </div>
     <button type="submit" x-show="total>0 || forma!=='avista' || abas.length>1" class="w-full rounded-2xl py-3.5 text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:opacity-40" style="background:var(--cor1)" :disabled="salvando || (!passageiros.length && abas.length<=1)">
-      <span x-show="!salvando" x-text="edMode ? '✏️ Atualizar venda' : (abas.length>1 ? ('✅ Finalizar '+abas.length+' vendas') : '✅ Confirmar venda')"></span><span x-show="salvando">Salvando…</span>
+      <span x-show="!salvando" x-text="edMode ? (edFila>0?'✏️ Atualizar e próxima':'✏️ Atualizar venda') : (abas.length>1 ? ('✅ Finalizar '+abas.length+' vendas') : '✅ Confirmar venda')"></span><span x-show="salvando">Salvando…</span>
     </button>
     <p class="text-[11px] text-slate-400 text-center mt-1" x-show="!passageiros.length">Adicione ao menos um passageiro.</p>
   </div>

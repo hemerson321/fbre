@@ -231,7 +231,7 @@
         ed:{numero:'',embarcacao_id:'',data_viagem:'',origem:'',destino:'',forma:'avista',comprador_nome:'',comprador_telefone:'',comprador_documento:'',observacao:'',passageiros:[]},
         tiposPax: @json(($tiposPax ?? collect())->pluck('nome')->values()),
         toggle(id){ const i=this.sel.indexOf(id); if(i>=0) this.sel.splice(i,1); else this.sel.push(id); },
-        abrir(){ if(!this.sel.length) return; if(this.sel.length===1){ window.location.href='/passagens/'+this.sel[0]+'/editar'; return; } this.f={embarcacao_id:'',data_viagem:'',origem:'',destino:'',forma:''}; this.modal=true; },
+        abrir(){ if(!this.sel.length) return; const ids=this.sel.slice(); const first=ids.shift(); const fila=ids.join(','); window.location.href='/passagens/'+first+'/editar'+(fila?('?fila='+encodeURIComponent(fila)):''); },
         async editarUm(id){
           this.edId=id; this.edLoading=true; this.edModal=true;
           try{
