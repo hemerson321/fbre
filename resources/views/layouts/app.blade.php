@@ -148,16 +148,23 @@ document.addEventListener('alpine:init', () => {
   $gruposDiretos = [];
   // Financeiro: Caixa + Prestação + Relatório (operação) e, pra admin/perm_financeiro, Contas a receber + Clientes faturado.
   $podeFinModulo = $u->isAdmin() || $u->isSuper() || $u->perm_financeiro;
+  // Cobrança vencida: faturados a receber que já passaram do prazo (created_at + cobrar_dias). Vira notificação no menu.
+  $cobrancaVenc = 0;
+  if ($podeFinModulo) { try { $cobrancaVenc = (int) \App\Models\Passagem::where('forma','faturado')->where('cancelada',false)->where('transferida',false)->where('devido','>',0.009)->whereRaw('DATE_ADD(created_at, INTERVAL COALESCE(cobrar_dias,30) DAY) <= NOW()')->count(); } catch (\Throwable $e) {} }
   if ($podeFinModulo || $u->podeVerCaixa() || $u->podeRelatorio()) {
     $gf = [];
     if ($u->podeVerCaixa()) $gf[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰', 'c'=>'#059669'];
     if ($u->podeVerCaixa() && $u->caixaTodos()) $gf[] = ['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestação de contas', 'i'=>'🧾', 'c'=>'#d97706'];
     if ($u->podeRelatorio()) $gf[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋', 'c'=>'#4f46e5'];
     $sepFin = $podeFinModulo && ! empty($gf);
-    if ($podeFinModulo && Route::has('financeiro.contas-receber')) { $gf[] = ['r'=>route('financeiro.contas-receber'), 'l'=>'Contas a receber', 'i'=>'💵', 'c'=>'#0d9488', 'sep'=>$sepFin]; $sepFin=false; }
+    if ($podeFinModulo && Route::has('financeiro.contas-receber')) { $gf[] = ['r'=>route('financeiro.contas-receber'), 'l'=>'Contas a receber', 'i'=>'💵', 'c'=>'#0d9488', 'sep'=>$sepFin, 'b'=>($cobrancaVenc ?: null), 'bk'=>'cobranca']; $sepFin=false; }
     if ($podeFinModulo && Route::has('clientes-faturado')) $gf[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾', 'c'=>'#0d9488', 'sep'=>$sepFin];
     if ($gf) $grupos['Financeiro'] = $gf;
   }
+  // Desktop: Financeiro e Ferramentas também abrem como submenu (flyout) DENTRO do Passagens. No mobile continuam como grupos.
+  $subPassagens = [];
+  if (! empty($grupos['Financeiro'] ?? [])) $subPassagens['Financeiro'] = $grupos['Financeiro'];
+  if (! empty($grupos['Ferramentas'] ?? [])) $subPassagens['Ferramentas'] = $grupos['Ferramentas'];
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isAdmin() || $u->isSuper()) {
       $adm = [
@@ -249,7 +256,7 @@ document.addEventListener('alpine:init', () => {
   </div>
 
   {{-- ===== MENU HORIZONTAL (desktop) ===== --}}
-  <nav class="hidden lg:block bg-white border-b border-slate-200" x-data="{ aberto:null }" @click.outside="aberto=null">
+  <nav class="hidden lg:block bg-white border-b border-slate-200" x-data="{ aberto:null, sub:null }" @click.outside="aberto=null;sub=null">
     <div class="mx-auto max-w-[1440px] px-4 flex items-stretch h-12 gap-1">
       @if(!$semBemVindo)<a href="{{ route('inicio') }}"
          class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-slate-50"
@@ -257,6 +264,7 @@ document.addEventListener('alpine:init', () => {
         <span class="text-base">👋</span>Bem Vindo
       </a>@endif
       @foreach($grupos as $titulo => $itens)
+        @continue(in_array($titulo, ['Financeiro','Ferramentas'], true))
         @php [$gi,$gc] = $metaGrupo[$titulo] ?? ['•','#475569']; $temAtivo = collect($itens)->contains(fn($it)=>$ativo($it['r'])); @endphp
         @if(in_array($titulo, $gruposDiretos ?? [], true) && count($itens) === 1)
         <a href="{{ $itens[0]['r'] }}"
@@ -273,7 +281,7 @@ document.addEventListener('alpine:init', () => {
             style="{{ $temAtivo ? 'color:'.$gc.';background:color-mix(in srgb,'.$gc.' 12%,white);box-shadow:inset 0 -3px 0 '.$gc : 'color:#334155' }}">
             <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $gc }}"></span>
             <span class="text-base">{{ $gi }}</span>{{ $titulo }}
-            @php $badge = collect($itens)->sum(fn($it)=>(int)($it['b'] ?? 0)); $bkeys = collect($itens)->pluck('bk')->filter()->implode(' '); @endphp
+            @php $subAll = ($titulo==='Passagens' && !empty($subPassagens)) ? collect($subPassagens)->flatten(1) : collect(); $badge = (int) collect($itens)->sum(fn($it)=>(int)($it['b'] ?? 0)) + (int) $subAll->sum(fn($it)=>(int)($it['b'] ?? 0)); $bkeys = collect($itens)->pluck('bk')->filter()->merge($subAll->pluck('bk')->filter())->unique()->implode(' '); @endphp
             @if($bkeys)<span data-badge-keys="{{ $bkeys }}" class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5" @if(!$badge) style="display:none" @endif>{{ $badge ?: '' }}</span>@elseif($badge)<span class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $badge }}</span>@endif
             <svg class="w-3.5 h-3.5 opacity-50 transition" :class="aberto==='{{ $titulo }}'?'rotate-180':''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
           </button>
@@ -294,6 +302,34 @@ document.addEventListener('alpine:init', () => {
                 @if(!empty($it['bk']))<span data-badge-item="{{ $it['bk'] }}" class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5" @if(empty($it['b'])) style="display:none" @endif>{{ $it['b'] ?: '' }}</span>@elseif(!empty($it['b']))<span class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $it['b'] }}</span>@endif
               </a>
             @endforeach
+            @if($titulo==='Passagens' && !empty($subPassagens))
+              @foreach($subPassagens as $subT => $subItens)
+                @php [$si,$sc] = $metaGrupo[$subT] ?? ['•','#475569']; $sb = (int) collect($subItens)->sum(fn($it)=>(int)($it['b'] ?? 0)); $sbk = collect($subItens)->pluck('bk')->filter()->implode(' '); @endphp
+                <div class="relative" @mouseenter="sub='{{ $subT }}'" @mouseleave="sub=null">
+                  <div class="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-bold cursor-default" style="color:{{ $sc }};background:color-mix(in srgb,{{ $sc }} 9%,white)">
+                    <span class="text-lg w-6 text-center">{{ $si }}</span>{{ $subT }}
+                    @if($sbk)<span data-badge-keys="{{ $sbk }}" class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5" @if(!$sb) style="display:none" @endif>{{ $sb ?: '' }}</span>@elseif($sb)<span class="min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $sb }}</span>@endif
+                    <svg class="w-4 h-4 opacity-50 ml-auto" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+                  </div>
+                  <div x-show="sub==='{{ $subT }}'" x-cloak x-transition.origin.top.left class="absolute left-full top-0 ml-1 z-50 w-60 rounded-xl bg-white shadow-xl border border-slate-100 p-1.5">
+                    <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider" style="color:{{ $sc }}">{{ $subT }}</div>
+                    @foreach($subItens as $it)
+                      @php
+                        $ic = $it['c'] ?? null; $at = $ativo($it['r']);
+                        if ($at) { $cls = 'text-white font-bold'; $sty = 'background:'.($ic ?: $sc); }
+                        elseif ($ic) { $cls = 'font-bold'; $sty = 'color:'.$ic.';background:color-mix(in srgb,'.$ic.' 10%,white);box-shadow:inset 3px 0 0 '.$ic; }
+                        else { $cls = 'text-slate-700 hover:bg-slate-50 font-medium'; $sty = ''; }
+                      @endphp
+                      @if(!empty($it['sep']))<div class="my-1 border-t border-slate-100"></div>@endif
+                      <a href="{{ $it['r'] }}" @if($sty) style="{{ $sty }}" @endif class="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm transition {{ $cls }}">
+                        <span class="text-lg w-6 text-center">{{ $it['i'] }}</span>{{ $it['l'] }}
+                        @if(!empty($it['bk']))<span data-badge-item="{{ $it['bk'] }}" class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5" @if(empty($it['b'])) style="display:none" @endif>{{ $it['b'] ?: '' }}</span>@elseif(!empty($it['b']))<span class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $it['b'] }}</span>@endif
+                      </a>
+                    @endforeach
+                  </div>
+                </div>
+              @endforeach
+            @endif
           </div>
         </div>
       @endforeach
