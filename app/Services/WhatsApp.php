@@ -290,7 +290,7 @@ class WhatsApp
     }
 
     /** Publica um STATUS (story) do WhatsApp pelo Evolution: texto, ou imagem/vídeo com legenda. */
-    public function enviarStatus(WhatsappConexao $c, string $texto, ?string $midiaUrl = null, ?string $mime = null): array
+    public function enviarStatus(WhatsappConexao $c, string $texto, ?string $midiaUrl = null, ?string $mime = null, ?array $statusJidList = null): array
     {
         if ($c->tipo === 'oficial') return ['ok' => false, 'erro' => 'status pela API oficial não existe'];
         $base = rtrim((string) $c->base_url, '/');
@@ -299,11 +299,15 @@ class WhatsApp
             if ($midiaUrl && $mime) {
                 $tipo = str_starts_with($mime, 'video/') ? 'video' : 'image';
                 // content = URL publica (Evolution baixa). base64 cru quebra com ENAMETOOLONG no sendStatus.
-                $body = ['type' => $tipo, 'content' => $midiaUrl, 'caption' => $texto, 'allContacts' => true]; // p/ todos: OMITE statusJidList
+                $body = ['type' => $tipo, 'content' => $midiaUrl, 'caption' => $texto];
             } else {
-                $body = ['type' => 'text', 'content' => $texto, 'backgroundColor' => '#0f172a', 'font' => 1, 'allContacts' => true]; // p/ todos: OMITE statusJidList
+                $body = ['type' => 'text', 'content' => $texto, 'backgroundColor' => '#0f172a', 'font' => 1];
             }
-            $r = $this->evoHttp($c)->timeout(120)->post("{$base}/message/sendStatus/{$c->instancia}", $body);
+            // Audiencia: lista explicita de quem ve (confiavel). Sem lista, cai no allContacts (depende do sync da Evolution).
+            $alvos = array_values(array_filter((array) $statusJidList));
+            if ($alvos) $body['statusJidList'] = $alvos;
+            else $body['allContacts'] = true;
+            $r = $this->evoHttp($c)->timeout(180)->post("{$base}/message/sendStatus/{$c->instancia}", $body);
             return $r->successful() ? ['ok' => true, 'resposta' => $r->json()] : ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 500)];
         } catch (\Throwable $e) {
             return ['ok' => false, 'erro' => $e->getMessage()];

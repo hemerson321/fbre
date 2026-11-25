@@ -60,7 +60,17 @@ class EnviarAgendadas extends Command
                 $baseApp = rtrim((string) (\App\Support\Tenant::empresa()?->config('evo_webhook_base') ?: config('app.url')), '/');
                 $midiaUrl = $baseApp.'/storage/'.$rel;
             }
-            return $wa->enviarStatus($cx, (string) $a->texto, $midiaUrl, $temArq ? (string) $a->mime : null);
+            // Audiencia: quem ja conversou no WhatsApp (contatos do Atendimento) -> JIDs 55...@s.whatsapp.net
+            $jids = Conversa::withoutGlobalScopes()
+                ->where('empresa_id', $a->empresa_id)
+                ->whereNotNull('cliente_telefone')->where('cliente_telefone', '!=', '')
+                ->pluck('cliente_telefone')
+                ->map(fn ($tel) => $wa->normalizar((string) $tel))
+                ->filter(fn ($d) => strlen($d) >= 12 && strlen($d) <= 13)
+                ->unique()->values()
+                ->map(fn ($d) => $d.'@s.whatsapp.net')
+                ->all();
+            return $wa->enviarStatus($cx, (string) $a->texto, $midiaUrl, $temArq ? (string) $a->mime : null, $jids);
         }
 
         $conversa = $a->conversa_id ? Conversa::withoutGlobalScopes()->find($a->conversa_id) : null;
