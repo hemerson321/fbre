@@ -407,9 +407,9 @@ class CaixaController extends Controller
         // Tela de escolha da Prestação: pendências por transporte e por data de viagem (pra guiar o operador).
         $pendPorTransporte = collect(); $pendPorData = collect();
         if ($request->input('foco') === 'prestacoes' && auth()->user()->caixaTodos()) {
-            // "Em aberto" por transporte: SEM agente externo (neutro — o dono acerta direto). Conta o que falta prestar (acerto_dono=false) OU o que falta pagar (devido>0, ex.: faturado), independente de já ter sido acertado.
+            // "Em aberto" por transporte = balcão que ainda falta PRESTAR CONTA (acerto_dono=false). Fora: agente externo (neutro) e faturado (esse é acertado no Financeiro / Contas a receber, não na prestação) — por isso, depois de fechar, o barco fica "em dia" mesmo com faturado a receber.
             $pendBase = fn () => \App\Models\Passagem::where('cancelada', false)->where('transferida', false)->whereNull('revendedor_id')
-                ->where(fn ($w) => $w->where('acerto_dono', false)->orWhere('devido', '>', 0.009));
+                ->where('forma', '!=', 'faturado')->where('acerto_dono', false);
             if (! $transporteId) {
                 $pendPorTransporte = $pendBase()->whereNotNull('embarcacao_id')
                     ->selectRaw('embarcacao_id, COUNT(*) as qtd, COALESCE(SUM(total),0) as total')->groupBy('embarcacao_id')->get()->keyBy('embarcacao_id');
