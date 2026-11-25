@@ -62,7 +62,15 @@ class AtendimentoController extends Controller
         abort_unless($conversa->empresa_id === Tenant::id(), 404);
         $data = $request->validate(['texto' => 'nullable|string|max:4000', 'arquivo' => 'nullable|file|max:51200']);
         $texto = trim((string) ($data['texto'] ?? ''));
-        if ($texto === '' && ! $request->hasFile('arquivo')) return back()->with('erro', 'Escreva uma mensagem ou anexe um arquivo.');
+        $ajax = $request->header('X-Requested-With') === 'fetch' || $request->wantsJson();
+        $resp = function (array $r) use ($ajax) {
+            $ok = (bool) ($r['ok'] ?? false);
+            if ($ajax) return response()->json(['ok' => $ok, 'erro' => $ok ? null : ($r['erro'] ?? 'erro')]);
+            return back()->with($ok ? 'ok' : 'erro', $ok ? null : ('Não enviou: '.($r['erro'] ?? 'erro')));
+        };
+        if ($texto === '' && ! $request->hasFile('arquivo')) {
+            return $ajax ? response()->json(['ok' => false, 'erro' => 'Escreva uma mensagem ou anexe um arquivo.'], 422) : back()->with('erro', 'Escreva uma mensagem ou anexe um arquivo.');
+        }
         if ($conversa->status !== 'humano') {
             $at->assumirHumano($conversa, auth()->id());
         }
@@ -70,11 +78,9 @@ class AtendimentoController extends Controller
             // foto, vídeo, áudio ou documento — vai com o texto como legenda
             $f = $request->file('arquivo');
             $caminho = 'storage/'.$f->store('atendimento/'.Tenant::id(), 'public');
-            $r = $at->registrarSaidaMidia($conversa, $caminho, (string) ($f->getMimeType() ?: 'application/octet-stream'), mb_substr($f->getClientOriginalName(), 0, 150), $texto, 'humano', auth()->id());
-            return back()->with($r['ok'] ? 'ok' : 'erro', $r['ok'] ? null : ('Não enviou: '.($r['erro'] ?? 'erro')));
+            return $resp($at->registrarSaidaMidia($conversa, $caminho, (string) ($f->getMimeType() ?: 'application/octet-stream'), mb_substr($f->getClientOriginalName(), 0, 150), $texto, 'humano', auth()->id()));
         }
-        $r = $at->registrarSaida($conversa, $texto, 'humano', auth()->id());
-        return back()->with($r['ok'] ? 'ok' : 'erro', $r['ok'] ? null : ('Não enviou: '.($r['erro'] ?? 'erro')));
+        return $resp($at->registrarSaida($conversa, $texto, 'humano', auth()->id()));
     }
 
     public function assumir(Conversa $conversa, Atendimento $at)

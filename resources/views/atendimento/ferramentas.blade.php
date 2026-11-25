@@ -34,6 +34,7 @@
       <form method="post" :action="rz.action" enctype="multipart/form-data" class="space-y-3">
         @csrf
         <div><label class="label">Nome (aparece no botão ⚡ do atendimento)</label><input name="titulo" x-model="rz.titulo" required maxlength="120" class="input" placeholder="Ex.: Boas-vindas, Tabela de preços, Dados do PIX"></div>
+        <div><label class="label">Categoria (opcional — agrupa as mensagens no painel)</label><input name="categoria" x-model="rz.categoria" list="catsRz" maxlength="60" class="input" placeholder="Ex.: Preços, Embarque, PIX, Boas-vindas"><datalist id="catsRz">@foreach($respostas->pluck('categoria')->filter()->unique()->sort() as $cat)<option value="{{ $cat }}">@endforeach</datalist></div>
         <template x-for="(p,i) in rz.passos" :key="p.k">
           <div class="rounded-xl border p-3 bg-slate-50 space-y-2">
             <div class="flex items-center justify-between">
@@ -69,10 +70,10 @@
       @php $ps = (array) $r->passos; @endphp
       <div class="p-3 flex items-center gap-3">
         <div class="min-w-0 flex-1">
-          <div class="font-semibold text-sm">{{ count($ps) > 1 ? '🔀' : '⚡' }} {{ $r->titulo }} @if(count($ps) > 1)<span class="chip text-[10px] bg-violet-100 text-violet-700 ml-1">funil · {{ count($ps) }} msgs</span>@endif</div>
+          <div class="font-semibold text-sm">{{ count($ps) > 1 ? '🔀' : '⚡' }} {{ $r->titulo }} @if(count($ps) > 1)<span class="chip text-[10px] bg-violet-100 text-violet-700 ml-1">funil · {{ count($ps) }} msgs</span>@endif @if($r->categoria)<span class="chip text-[10px] bg-slate-100 text-slate-600 ml-1">🏷️ {{ $r->categoria }}</span>@endif</div>
           <div class="text-xs text-slate-500 truncate">{{ \Illuminate\Support\Str::limit((string) ($ps[0]['texto'] ?? ''), 110) ?: '📎 '.($ps[0]['nome'] ?? 'arquivo') }}</div>
         </div>
-        <button type="button" class="btn btn-sm" @click="editarResposta(@js(['id' => $r->id, 'titulo' => $r->titulo, 'passos' => $ps]))">✏️</button>
+        <button type="button" class="btn btn-sm" @click="editarResposta(@js(['id' => $r->id, 'titulo' => $r->titulo, 'categoria' => $r->categoria, 'passos' => $ps]))">✏️</button>
         <form method="post" action="{{ route('atendimento.resposta.excluir', $r) }}" onsubmit="return confirm('Excluir?')">@csrf @method('DELETE')<button class="btn btn-sm" style="color:#b91c1c">🗑</button></form>
       </div>
       @empty
@@ -199,11 +200,11 @@ function ferramentasAtd(){
     aba: (location.hash || '#respostas').slice(1),
     pub: 'etiqueta',
     ET_BASE: window.ET_BASE,
-    rz: { id:null, titulo:'', action: RZ_BASE, passos:[{k:1, texto:'', espera:0, arquivo:'', nome:'', mime:''}] },
+    rz: { id:null, titulo:'', categoria:'', action: RZ_BASE, passos:[{k:1, texto:'', espera:0, arquivo:'', nome:'', mime:''}] },
     et: { id:null, nome:'', cor:'#6366f1', action: window.ET_BASE },
-    novaResposta(){ this.rz = { id:null, titulo:'', action: RZ_BASE, passos:[{k:Date.now(), texto:'', espera:0, arquivo:'', nome:'', mime:''}] }; },
+    novaResposta(){ this.rz = { id:null, titulo:'', categoria:'', action: RZ_BASE, passos:[{k:Date.now(), texto:'', espera:0, arquivo:'', nome:'', mime:''}] }; },
     editarResposta(r){
-      this.rz = { id:r.id, titulo:r.titulo, action: RZ_BASE + '/' + r.id, passos:(r.passos||[]).map(function(p,i){ return {k:i+1, texto:p.texto||'', espera:p.espera||0, arquivo:p.arquivo||'', nome:p.nome||'', mime:p.mime||''}; }) };
+      this.rz = { id:r.id, titulo:r.titulo, categoria:r.categoria||'', action: RZ_BASE + '/' + r.id, passos:(r.passos||[]).map(function(p,i){ return {k:i+1, texto:p.texto||'', espera:p.espera||0, arquivo:p.arquivo||'', nome:p.nome||'', mime:p.mime||''}; }) };
       window.scrollTo({top:0, behavior:'smooth'});
     },
     init(){ this.$watch('aba', function(v){ try { history.replaceState(null, '', '#'+v); } catch(e){} }); if (['respostas','etiquetas','agendadas','massa','status'].indexOf(this.aba) < 0) this.aba = 'respostas'; }

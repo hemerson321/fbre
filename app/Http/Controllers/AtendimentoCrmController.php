@@ -82,6 +82,7 @@ class AtendimentoCrmController extends Controller
     {
         $data = $request->validate([
             'titulo' => 'required|string|max:120',
+            'categoria' => 'nullable|string|max:60',
             'passos' => 'required|array|min:1|max:12',
             'passos.*.texto' => 'nullable|string|max:4000',
             'passos.*.espera' => 'nullable|integer|min:0|max:3600',
@@ -104,7 +105,7 @@ class AtendimentoCrmController extends Controller
             $passos[] = ['texto' => $texto, 'espera' => (int) ($p['espera'] ?? 0)] + ($arq ?: ['arquivo' => null, 'mime' => null, 'nome' => null]);
         }
         if (! $passos) return back()->with('erro', 'Escreva pelo menos uma mensagem.')->withInput();
-        $campos = ['titulo' => $data['titulo'], 'passos' => $passos, 'ativo' => true];
+        $campos = ['titulo' => $data['titulo'], 'categoria' => trim((string) ($data['categoria'] ?? '')) ?: null, 'passos' => $passos, 'ativo' => true];
         if ($resposta && $resposta->exists) $resposta->update($campos);
         else AtendResposta::create($campos + ['empresa_id' => Tenant::id(), 'ordem' => (int) AtendResposta::max('ordem') + 1]);
         return back()->with('ok', count($passos) > 1 ? 'Funil de mensagens salvo ('.count($passos).' passos).' : 'Resposta rápida salva.');
@@ -140,6 +141,9 @@ class AtendimentoCrmController extends Controller
             $a->save();
         }
         $n = count($passos);
+        if ($request->header('X-Requested-With') === 'fetch' || $request->wantsJson()) {
+            return response()->json(['ok' => $erros === 0, 'erro' => $erros ? 'A primeira mensagem nao foi enviada. Confira a conexao do WhatsApp.' : null, 'n' => $n]);
+        }
         if ($erros) return back()->with('erro', 'A primeira mensagem não foi enviada. Confira a conexão do WhatsApp.');
         return $n > 1 ? back()->with('ok', 'Funil iniciado: '.$n.' mensagens (as próximas saem sozinhas).') : back();
     }
