@@ -51,10 +51,11 @@ class FinanceiroController extends Controller
             $grupos = $grupos->filter(fn ($g) => str_contains(mb_strtolower((string) $g->nome), $b) || str_contains(mb_strtolower((string) $g->empresa), $b))->values();
         }
 
-        // PAGOS recentemente (faturado quitado, ainda NÃO entrou em prestação fechada) -> dá pra desfazer a baixa
-        $pagas = $base()->where('acerto_dono', false)->orderByDesc('updated_at')->limit(60)->get()
+        // PAGOS: faturado quitado (devido<=0) que teve baixa -> aparece na lista pra poder DESFAZER o pagamento
+        $pagas = $base()->orderByDesc('updated_at')->limit(200)->get()
             ->filter(fn ($p) => (float) $p->devido <= 0.009
-                && $p->pagamentos->where('momento', 'baixa')->where('estornado', false)->count() > 0)
+                && $p->pagamentos->where('estornado', false)->where('momento', 'baixa')->where('meio', '!=', 'desconto')->sum('valor') > 0.009)
+            ->sortByDesc(fn ($p) => optional($p->pagamentos->where('momento', 'baixa')->where('estornado', false)->last())->created_at)
             ->values();
 
         $clientes = ClienteFaturado::orderBy('nome')->get(['id', 'nome']);

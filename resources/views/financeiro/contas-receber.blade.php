@@ -85,7 +85,7 @@
   {{-- Pagas recentemente (desfazer baixa) --}}
   @if($pagas->count())
   <div class="card p-3">
-    <div class="font-bold text-sm mb-2 flex items-center gap-2">↩️ Pagas recentemente <span class="text-[11px] font-normal text-slate-400">(dá pra desfazer a baixa enquanto não entra em prestação fechada)</span></div>
+    <div class="font-bold text-sm mb-2 flex items-center gap-2">💳 Faturados pagos <span class="text-[11px] font-normal text-slate-400">(aqui você desfaz a baixa do que já foi pago)</span></div>
     <div class="divide-y divide-slate-100">
       @foreach($pagas as $p)
       <div class="flex items-center gap-2.5 py-2">
@@ -93,9 +93,13 @@
           <div class="text-sm font-semibold truncate">{{ $p->numeroFormatado() }} · {{ optional($p->clienteFaturado)->nome ?: 'Cliente' }}</div>
           <div class="text-[11px] text-slate-500 truncate">{{ $p->origem }} → {{ $p->destino }} @if($p->data_viagem)· 🗓️ {{ $p->data_viagem->format('d/m/Y') }}@endif · R$ {{ number_format($p->total,2,',','.') }}</div>
         </div>
+        @if($p->acerto_dono || $p->prestacao_id)
+        <span class="text-[10.5px] text-amber-600 shrink-0 text-right leading-tight">já entrou numa prestação fechada<br>desfaça a prestação antes</span>
+        @else
         <form method="post" action="{{ route('financeiro.desfazer-baixa', $p) }}" onsubmit="return confirm('Desfazer a baixa dessa passagem? Ela volta pra contas a receber.')">@csrf
           <button class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[12px] font-semibold text-rose-700 hover:bg-rose-100">↩ Desfazer baixa</button>
         </form>
+        @endif
       </div>
       @endforeach
     </div>
