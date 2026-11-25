@@ -147,57 +147,43 @@
 
       {{-- ===== ABA RÁPIDAS ===== --}}
       <div x-show="tab==='rapidas'" class="flex-1 min-h-0 flex flex-col">
-        {{-- envio rápido de mídia --}}
-        <label class="atd-drop m-2.5 mb-1.5 flex items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 px-3 py-2.5 cursor-pointer text-sm text-slate-500 hover:bg-slate-50"
-               @dragover.prevent="$el.classList.add('drag')" @dragleave="$el.classList.remove('drag')" @drop.prevent="soltarArq($event)">
-          <span class="text-xl">📷</span>
-          <span class="flex-1"><b class="text-slate-700">Enviar imagem ou vídeo</b><br>arraste aqui ou toque para escolher</span>
-          <input type="file" accept="image/*,video/*" class="hidden" @change="pegarArqEnviar($event)">
-        </label>
-        {{-- busca --}}
-        <div class="px-2.5 pb-1.5">
-          <input x-model="busca" class="input !min-h-[38px] py-1.5 text-sm" placeholder="🔎 Buscar resposta…">
+        {{-- busca + mídia, numa linha só (compacto) --}}
+        <div class="flex items-center gap-1.5 px-2 pt-2 pb-1.5">
+          <input x-model="busca" class="input flex-1 !min-h-[36px] py-1.5 text-sm" placeholder="🔎 Buscar resposta…">
+          <label class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 text-lg" title="Enviar imagem ou vídeo">📷<input type="file" accept="image/*,video/*" class="hidden" @change="pegarArqEnviar($event)"></label>
         </div>
-        {{-- categorias --}}
-        <div class="px-2.5 pb-2 flex flex-wrap gap-1">
-          <span class="atd-cat rounded-full px-2.5 py-1 text-xs font-bold" :class="catSel==='Todas' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'" @click="catSel='Todas'">Todas</span>
+        {{-- categorias: barra que rola na horizontal (aguenta muitas) --}}
+        <div class="px-2 pb-1.5 flex gap-1 overflow-x-auto atd-scroll" style="scrollbar-width:thin">
+          <button type="button" class="atd-cat shrink-0 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap" :class="catSel==='Todas' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'" @click="catSel='Todas'">Todas</button>
           @foreach($cats as $c)
-            <span class="atd-cat rounded-full px-2.5 py-1 text-xs font-bold" :class="catSel===@js($c) ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'" @click="catSel=@js($c)">{{ $c }}</span>
+            <button type="button" class="atd-cat shrink-0 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap" :class="catSel===@js($c) ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'" @click="catSel=@js($c)">{{ $c }}</button>
           @endforeach
         </div>
-        {{-- lista de respostas --}}
-        <div class="flex-1 overflow-y-auto atd-scroll px-2.5 pb-3 space-y-1.5">
+        {{-- lista enxuta: 1 clique na resposta = envia --}}
+        <div class="flex-1 overflow-y-auto atd-scroll px-1.5 pb-2">
           @forelse($respostas as $rz)
             @php
-              $rp = (array) $rz->passos; $um = count($rp) === 1 && empty($rp[0]['arquivo']);
+              $rp = (array) $rz->passos;
               $cat = trim((string) $rz->categoria) ?: 'Geral';
-              $prev = \Illuminate\Support\Str::limit((string) ($rp[0]['texto'] ?? ''), 80) ?: ('📎 '.($rp[0]['nome'] ?? 'arquivo'));
+              $prev = \Illuminate\Support\Str::limit((string) ($rp[0]['texto'] ?? ''), 70) ?: ('📎 '.($rp[0]['nome'] ?? 'arquivo'));
               $temMidia = !empty($rp[0]['arquivo']);
               $busStr = \Illuminate\Support\Str::lower($rz->titulo.' '.$cat.' '.($rp[0]['texto'] ?? ''));
             @endphp
-            <div class="atd-card rounded-xl border border-slate-200 bg-white p-2.5"
-                 x-show="(catSel==='Todas' || catSel===@js($cat)) && (busca==='' || @js($busStr).includes(busca.toLowerCase()))">
-              <div class="flex items-start gap-2">
-                <div class="min-w-0 flex-1">
-                  <div class="font-bold text-sm truncate">{{ count($rp) > 1 ? '🔀' : '⚡' }} {{ $rz->titulo }}
-                    @if(count($rp) > 1)<span class="chip text-[9px] bg-violet-100 text-violet-700">funil {{ count($rp) }}</span>@endif
-                    @if($temMidia)<span class="chip text-[9px] bg-sky-100 text-sky-700">📎</span>@endif
-                  </div>
-                  <div class="text-xs text-slate-500 line-clamp-2">{{ $prev }}</div>
-                </div>
-              </div>
-              <div class="flex gap-1.5 mt-2">
-                <button type="button" class="btn btn-primary btn-sm flex-1" style="background:var(--cor1)" @click="enviarResposta({{ $rz->id }}, $el)">Enviar</button>
-                @if($um)
-                <button type="button" class="btn btn-sm" title="Editar antes de enviar" @click="texto=@js((string) ($rp[0]['texto'] ?? '')); tab='rapidas'; painel=false; $nextTick(()=>$refs.txt&&$refs.txt.focus())">✎</button>
-                @endif
-              </div>
-            </div>
+            <button type="button" @click="enviarResposta({{ $rz->id }}, $el)"
+                 x-show="(catSel==='Todas' || catSel===@js($cat)) && (busca==='' || @js($busStr).includes(busca.toLowerCase()))"
+                 class="atd-row group w-full text-left flex items-center gap-2 rounded-lg px-2 py-1.5 border border-transparent hover:bg-emerald-50 hover:border-emerald-200 transition">
+              <span class="shrink-0 text-base leading-none">{{ count($rp) > 1 ? '🔀' : '⚡' }}</span>
+              <span class="min-w-0 flex-1">
+                <span class="block font-semibold text-[13px] truncate leading-tight">{{ $rz->titulo }}@if($temMidia)<span class="text-sky-500 ml-1 text-[11px]">📎</span>@endif@if(count($rp) > 1)<span class="text-violet-500 text-[10px] ml-1 font-bold">{{ count($rp) }}×</span>@endif</span>
+                <span class="block text-[11px] text-slate-400 truncate leading-tight">{{ $prev }}</span>
+              </span>
+              <span class="shrink-0 text-emerald-500 opacity-0 group-hover:opacity-100 transition font-bold">➤</span>
+            </button>
           @empty
             <div class="p-5 text-center text-sm text-slate-500">Nenhuma resposta ainda.<br><a href="{{ route('atendimento.ferramentas') }}" class="underline font-semibold">Criar respostas e funis</a></div>
           @endforelse
-          <a href="{{ route('atendimento.ferramentas') }}" class="block text-center text-xs text-slate-400 underline pt-1">＋ gerenciar respostas e categorias</a>
         </div>
+        <a href="{{ route('atendimento.ferramentas') }}" class="block text-center text-[11px] text-slate-400 underline py-1.5 border-t shrink-0">＋ gerenciar respostas e categorias</a>
       </div>
 
       {{-- ===== ABA VENDER ===== --}}
@@ -330,14 +316,14 @@ function atd(id, ultimoId, vendaIni){
     },
 
     async enviarResposta(rid, el){
-      if(el){ el.disabled=true; el.textContent='…'; }
+      if(el){ if(el.dataset.busy) return; el.dataset.busy='1'; el.classList.add('opacity-40','pointer-events-none'); }
       try{
         var r=await fetch('{{ url('/passagens/atendimento') }}/'+id+'/usar/'+rid, {method:'POST', headers:{'X-Requested-With':'fetch','Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'}, body:'_token={{ csrf_token() }}'});
         var d=await r.json().catch(()=>({ok:r.ok}));
         if(d && d.ok===false) alert(d.erro||'Não enviou.');
         else { await this.puxar(); this.painel=false; }
       }catch(e){ alert('Falha de conexão.'); }
-      if(el){ el.disabled=false; el.textContent='Enviar'; }
+      if(el){ el.classList.remove('opacity-40','pointer-events-none'); delete el.dataset.busy; }
     },
 
     vendaUrl(){ var v=this.venda||{}; var q=new URLSearchParams(); if(v.origem)q.set('origem',v.origem); if(v.destino)q.set('destino',v.destino); if(v.data)q.set('data',v.data); if(v.poltronas&&v.poltronas.length)q.set('poltrona',v.poltronas[0]); if(v.cliente)q.set('nome',v.cliente); q.set('tel','{{ $sel->cliente_telefone }}'); q.set('embed','1'); return '{{ route('passagens.create') }}?'+q.toString(); },
