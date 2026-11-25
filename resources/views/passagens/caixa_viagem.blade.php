@@ -234,7 +234,8 @@
 
 <div class="leg">
   Legenda:
-  <span style="background:#dbeafe">Agente / Município</span>
+  <span style="background:#dbeafe">Agente externo</span>
+  <span style="background:#fed7aa">🧾 Faturado (a receber)</span>
   <span style="background:#dcfce7">Idoso</span>
   <span style="background:#fef9c3">PCD</span>
   <span style="background:#fee2e2;color:#b91c1c">Cancelado / Devolvido</span>

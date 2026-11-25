@@ -14,6 +14,7 @@
   .manif tr.idoso{background:#dcfce7}
   .manif tr.pcd{background:#fef9c3}
   .manif tr.mun{background:#dbeafe}
+  .manif tr.fat{background:#fed7aa}
   .manif .nome{font-weight:600;white-space:normal;min-width:150px}
   .manif .tag{font-size:9px;font-weight:800;padding:0 4px;border-radius:4px}
   .manif .vazio{text-align:center;color:#94a3b8;padding:20px}
@@ -26,7 +27,7 @@
   </tr></thead>
   <tbody>
     @forelse($linhas as $l)
-    <tr class="@if($l->cancelado)canc @elseif($l->pcd)pcd @elseif($l->idoso)idoso @elseif($l->municipio || !empty($l->agencia))mun @endif">
+    <tr class="@if($l->cancelado)canc @elseif($l->pcd)pcd @elseif($l->idoso)idoso @elseif($l->municipio)fat @elseif(!empty($l->agencia))mun @endif">
       <td>{{ $l->nr }}</td>
       <td>{{ $l->ticket }}</td>
       <td>{{ $l->trecho }}</td>
@@ -35,8 +36,8 @@
       <td>{{ $l->vendedor }}</td>
       <td class="r">R$ {{ number_format($l->valor,2,',','.') }}</td>
       <td style="font-weight:700">{{ $l->p }}</td>
-      <td>@if($l->proprietario ?? false)<b style="color:#067d3b">{{ $l->status }}</b>@else{{ $l->status }}@endif</td>
-      <td>{{ $l->forma }}</td>
+      <td>@if($l->municipio)<b style="color:#c2410c">{{ $l->status }}</b>@elseif($l->proprietario ?? false)<b style="color:#067d3b">{{ $l->status }}</b>@else{{ $l->status }}@endif</td>
+      <td>@if($l->municipio)<b style="color:#c2410c">🧾 {{ $l->forma }}</b>@else{{ $l->forma }}@endif</td>
       <td>{{ $l->cliente }}</td>
       <td>@if(!empty($l->agencia))<b style="color:#1d4ed8">🤝 {{ $l->agencia }}</b>@endif</td>
       <td>{{ $l->poltrona }}</td>
