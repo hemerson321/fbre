@@ -925,10 +925,13 @@ class PassagemController extends Controller
         // Agente externo (revendedor) e NEUTRO na prestacao: fica SO na tabela 'Vendas por categoria x forma'. Fora do manifesto, da contagem e das formas.
         $passagensTodas = $passagens;
         if ($modo === 'prestacao') $passagens = $passagens->filter(fn ($p) => ! $p->revendedor_id)->values();
-        // Pré-prestação: faturados EM ABERTO (falta pagar) aparecem na LISTA mesmo se já foram acertados — só pra informar (igual agente externo), fora dos totais/contagem/formas.
-        if ($modo === 'prestacao' && ! $prestFechada) {
+        // Prestação (pré ou já fechada): faturados EM ABERTO (falta pagar) entram na LISTA e na CONTAGEM — igual agente externo. Só NÃO entram nos VALORES em R$.
+        if ($modo === 'prestacao') {
             $idsNaLista = $passagensTodas->pluck('id')->all();
-            $fatAbertos = Passagem::filtrar($f)->where('forma', 'faturado')->where('cancelada', false)->where('transferida', false)
+            $fatBase = $prestFechada
+                ? \App\Models\Passagem::where('embarcacao_id', $embP)->when(! empty($datasP), fn ($q) => $q->where(function ($d) use ($datasP) { foreach ($datasP as $dt) $d->orWhereDate('data_viagem', $dt); }))
+                : Passagem::filtrar($f);
+            $fatAbertos = $fatBase->where('forma', 'faturado')->where('cancelada', false)->where('transferida', false)
                 ->where('devido', '>', 0.009)->when(! empty($idsNaLista), fn ($q) => $q->whereNotIn('id', $idsNaLista))
                 ->with(['passageiros', 'operador', 'pagamentos', 'embarcacao', 'camarote', 'revendedor:id,name', 'clienteFaturado:id,nome,empresa'])
                 ->orderBy('data_viagem')->orderBy('origem')->orderBy('id')->get();
@@ -956,14 +959,14 @@ class PassagemController extends Controller
         $avSaidas = round((float) $avulsos->where('tipo_mov', 'saida')->sum('valor'), 2);
 
         $m = \App\Support\ManifestoCaixa::dados($passagens);
-        $linhas = $m['linhas'];
-        // A LISTA (manifesto) mostra TODAS as vendas, inclusive de agente externo (o dono ve e acerta direto com o agente). So os TOTAIS/contagem/formas/categoria ficam sem o agente.
-        if ($modo === 'prestacao') $linhas = \App\Support\ManifestoCaixa::dados($passagensTodas)['linhas'];
+        // Prestação: a LISTA e a CONTAGEM entram TODOS (balcão + agente externo + faturado a receber); só os VALORES (R$) ficam só com o balcão recebido ($m).
+        $mLista = ($modo === 'prestacao') ? \App\Support\ManifestoCaixa::dados($passagensTodas) : $m;
+        $linhas = $mLista['linhas'];
         $totForma = $m['totForma'];
         $totDesconto = $m['totDesconto'];
         $totGeral = $m['totGeral'];
         $totDevolvido = $m['totDevolvido']; $totCancelado = $m['totCancelado'] ?? 0;
-        $nPax = $m['nPax']; $nIdosos = $m['nIdosos']; $nColos = $m['nColos']; $nDevolvidas = $m['nDevolvidas']; $nCancelados = $m['nCancelados'] ?? 0; $nPcd = $m['nPcd'] ?? 0; $nOutros = $m['nOutros'] ?? 0;
+        $nPax = $mLista['nPax']; $nIdosos = $mLista['nIdosos']; $nColos = $mLista['nColos']; $nDevolvidas = $mLista['nDevolvidas']; $nCancelados = $mLista['nCancelados'] ?? 0; $nPcd = $mLista['nPcd'] ?? 0; $nOutros = $mLista['nOutros'] ?? 0;
 
         $totRecebido = array_sum($totForma);
         $embs = $passagensTodas->map(fn ($p) => $p->embarcacao?->nome)->filter()->unique()->values();
