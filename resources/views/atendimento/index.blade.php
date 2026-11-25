@@ -174,7 +174,7 @@
                  class="atd-row group w-full text-left flex items-center gap-2 rounded-lg px-2 py-1.5 border border-transparent hover:bg-emerald-50 hover:border-emerald-200 transition">
               <span class="shrink-0 text-base leading-none">{{ count($rp) > 1 ? '🔀' : '⚡' }}</span>
               <span class="min-w-0 flex-1">
-                <span class="block font-semibold text-[13px] truncate leading-tight">{{ $rz->titulo }}@if($temMidia)<span class="text-sky-500 ml-1 text-[11px]">📎</span>@endif@if(count($rp) > 1)<span class="text-violet-500 text-[10px] ml-1 font-bold">{{ count($rp) }}×</span>@endif</span>
+                <span class="block font-semibold text-[13px] truncate leading-tight">{{ $rz->titulo }}@if($temMidia)<span class="text-sky-500 ml-1 text-[11px]">📎</span>@endif @if(count($rp) > 1)<span class="text-violet-500 text-[10px] ml-1 font-bold">{{ count($rp) }}×</span>@endif</span>
                 <span class="block text-[11px] text-slate-400 truncate leading-tight">{{ $prev }}</span>
               </span>
               <span class="shrink-0 text-emerald-500 opacity-0 group-hover:opacity-100 transition font-bold">➤</span>
