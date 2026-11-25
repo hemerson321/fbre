@@ -10,14 +10,23 @@
     <span class="chip st-{{ $p->cor() }}">{{ $p->statusTexto() }}</span>
   </div>
 
-  <div class="card p-4 space-y-1 text-sm">
+  <div class="card p-4 space-y-1.5 text-sm">
+    <div class="flex items-center justify-between pb-2 mb-1 border-b border-slate-100">
+      <span class="font-bold text-slate-700">📋 Dados da passagem</span>
+      <span class="chip st-{{ $p->cor() }} !text-[10px]">{{ $p->statusTexto() }}</span>
+    </div>
     @if($p->tipo==='camarote' && $p->camarote)<div class="flex justify-between"><span class="text-slate-500">Suíte/Camarote</span><b>🛏️ {{ $p->camarote->nome }}</b></div>@endif
     <div class="flex justify-between"><span class="text-slate-500">Embarcação</span><b>{{ $p->embarcacao?->nome ?: '—' }}</b></div>
+    <div class="flex justify-between gap-3"><span class="text-slate-500 shrink-0">Trecho</span><b class="text-right">{{ $p->origem }} → {{ $p->destino }}</b></div>
     <div class="flex justify-between"><span class="text-slate-500">Viagem</span><b>@if($p->data_viagem){{ ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][$p->data_viagem->dayOfWeek] }} {{ $p->data_viagem->format('d/m/Y') }}@else—@endif</b></div>
-    @if($p->comprador_nome)<div class="flex justify-between"><span class="text-slate-500">Comprador</span><b>{{ $p->comprador_nome }}</b></div>@endif
-    <div class="flex justify-between"><span class="text-slate-500">Operador</span><b>{{ $p->operador?->name }}</b></div>
-    <div class="flex justify-between"><span class="text-slate-500">Forma</span><b>{{ \App\Models\Passagem::FORMAS[$p->forma] ?? $p->forma }}</b></div>
+    @if($p->comprador_nome)<div class="flex justify-between gap-3"><span class="text-slate-500 shrink-0">Comprador</span><b class="text-right">{{ $p->comprador_nome }}</b></div>@endif
+    @if($p->comprador_telefone)<div class="flex justify-between"><span class="text-slate-500">Telefone</span><b>{{ $p->comprador_telefone }}</b></div>@endif
+    <div class="flex justify-between"><span class="text-slate-500">Operador</span><b>{{ $p->operador?->name ?: '—' }}</b></div>
+    @if($p->revendedor_id && $p->revendedor)<div class="flex justify-between"><span class="text-slate-500">Agente</span><b>🤝 {{ $p->revendedor->name }}</b></div>@endif
+    <div class="flex justify-between"><span class="text-slate-500">Forma</span><b>{{ \App\Models\Passagem::FORMAS[$p->forma] ?? $p->forma }}@if($p->parcelas>1)<span> · {{ $p->parcelas }}x</span>@endif</b></div>
+    @if($p->forma==='faturado' && $p->clienteFaturado)<div class="flex justify-between gap-3"><span class="text-slate-500 shrink-0">Cliente faturado</span><b class="text-right">🧾 {{ $p->clienteFaturado->nome }}</b></div>@endif
     @if($p->pagamentos->contains(fn($pg)=>(bool)($pg->pago_proprietario ?? false)))<div class="flex justify-between"><span class="text-slate-500">Pagamento</span><b class="text-emerald-700">🚤 Realizado pelo proprietário</b></div>@endif
+    <div class="flex justify-between pt-1.5 mt-0.5 border-t border-slate-100"><span class="text-slate-500">Emitida em</span><b>{{ $p->created_at?->format('d/m/Y H:i') ?: '—' }}</b></div>
   </div>
 
   <div class="card p-4">
@@ -76,18 +85,18 @@
 
   <button type="button" onclick="imprimirDiretoPassagem(this)" class="btn btn-ghost w-full">⚡ Imprimir direto (1 por passageiro)</button>
   <div x-data="{ painel:'' }">
-  <div class="flex gap-2 overflow-x-auto pb-1">
-    <button onclick="FBRE.imprimirComprovante('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost shrink-0 whitespace-nowrap">🖨 Comprovante</button>
-    <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost shrink-0 whitespace-nowrap">📲 Enviar PDF (WhatsApp)</button>
-    <button onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost shrink-0 whitespace-nowrap">🖼️ Copiar imagem</button>
+  <div class="grid grid-cols-2 gap-2">
+    <button onclick="FBRE.imprimirComprovante('{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost justify-center text-center">🖨 Comprovante</button>
+    <button onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="btn btn-ghost justify-center text-center">📲 Enviar PDF (WhatsApp)</button>
+    <button onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="btn btn-ghost justify-center text-center">🖼️ Copiar imagem</button>
     @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
-    <button type="button" class="btn btn-danger shrink-0 whitespace-nowrap" @click="painel = painel==='cancel' ? '' : 'cancel'">↩ Cancelamento / Devolução</button>
+    <button type="button" class="btn btn-danger justify-center text-center" @click="painel = painel==='cancel' ? '' : 'cancel'">↩ Cancelamento / Devolução</button>
     @endif
     @if(!$p->cancelada && !$p->transferida && ($empP?->config('usa_cancel_transporte')) && ($u->isAdmin()||$u->isSuper()))
-    <button type="button" class="btn btn-ghost shrink-0 whitespace-nowrap" style="border:1px solid #6366f1;color:#4f46e5" @click="painel = painel==='transf' ? '' : 'transf'">↪ Transferir</button>
+    <button type="button" class="btn btn-ghost justify-center text-center" style="border:1px solid #6366f1;color:#4f46e5" @click="painel = painel==='transf' ? '' : 'transf'">↪ Transferir</button>
     @endif
     @if(!$p->cancelada && !$p->transferida && ($u->isAdmin()||$u->isSuper()))
-    <button type="button" class="btn btn-ghost shrink-0 whitespace-nowrap" style="border:1px solid #06b6d4;color:#0891b2" @click="painel = painel==='troca' ? '' : 'troca'">📅 Trocar viagem</button>
+    <button type="button" class="btn btn-ghost justify-center text-center" style="border:1px solid #06b6d4;color:#0891b2" @click="painel = painel==='troca' ? '' : 'troca'">📅 Trocar viagem</button>
     @endif
   </div>
   @if(!$p->cancelada && ($u->isAdmin()||$u->isSuper()))
