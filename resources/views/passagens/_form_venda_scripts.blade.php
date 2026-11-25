@@ -72,9 +72,25 @@
         this.$nextTick(()=>{ const _o=this.origemSel; if(_o){ this.origemSel=''; this.$nextTick(()=>{ this.origemSel=_o; }); } });
         this.iniciarCaptura();
         if(window.FBRE_EDICAO){ this.edMode=true; this.edUrl=window.FBRE_EDICAO._url||''; this.edNumero=window.FBRE_EDICAO._numero||''; this.imprimir='nao';
-          // _load SINCRONO: precisa rodar antes dos $nextTick de init (re-sync da origem) p/ nao ser sobrescrito pelo valor default.
-          this._load(window.FBRE_EDICAO);
-          this.$nextTick(()=>{ try{ this.resolverLinha(); }catch(e){} this.$nextTick(()=>{ try{ this.carregarOcupadas(); }catch(e){} }); }); }
+          // _load SINCRONO: roda antes dos $nextTick de init (re-sync da origem) p/ nao ser sobrescrito pelo default.
+          var ED=window.FBRE_EDICAO; this._load(ED);
+          // Cascata transporte->origem->destino->viagem: origem/destino sao getters, entao o destino so
+          // 'cola' depois que a origem esta estavel e as options renderizaram; e resolverLinha troca a data
+          // de viagem pela 'proxima', entao restauramos a data real da passagem no fim.
+          var _n=function(x){ return String(x||'').trim().toLowerCase(); };
+          var _tent=0;
+          var reaplicarEd=()=>{
+            var dest=ED.destinoSel||'', via=ED.viagemData||'', rota=ED.rotaId||'';
+            if(dest && _tent<20 && !(this.destinos||[]).some(c=>_n(c)===_n(dest))){ _tent++; return setTimeout(reaplicarEd, 40); }
+            this.destinoSel=dest;
+            this.$nextTick(()=>{
+              try{ this.resolverLinha(); }catch(e){}
+              if(!this.rotaId && rota) this.rotaId=String(rota);
+              if(via){ this.viagemData=via; try{ this.viagemLabel=this.rotulo(via); }catch(e){} }
+              try{ this.carregarOcupadas(); }catch(e){}
+            });
+          };
+          this.$nextTick(()=>setTimeout(reaplicarEd, 0)); }
         else { this.aplicarPrefill(); }
         // Pagamento: o operador escolhe o meio; nada vem preenchido por padrao.
       },
