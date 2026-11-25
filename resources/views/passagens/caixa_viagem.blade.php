@@ -29,8 +29,16 @@
   .nome{font-weight:600}
   .tag{font-size:9px;font-weight:800;padding:0 4px;border-radius:4px}
   .totais{margin-top:16px;display:flex;gap:34px;flex-wrap:wrap}
-  .bloco{min-width:240px}
+  .bloco{min-width:240px;position:relative}
   .bloco h2{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#374151;border-bottom:2px solid #111;padding-bottom:3px;margin:0 0 6px}
+  .step-h{display:flex;align-items:center;gap:8px;margin:0 0 7px;border-bottom:2px solid #111;padding-bottom:5px}
+  .step-n{width:23px;height:23px;border-radius:50%;color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 2px rgba(0,0,0,.25);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .step-t{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#111;line-height:1}
+  .step-s{font-size:9px;color:#94a3b8;font-weight:700}
+  .step-1 .step-n{background:#2563eb}.step-1 .step-h{border-color:#2563eb}
+  .step-2 .step-n{background:#d97706}.step-2 .step-h{border-color:#d97706}
+  .step-3 .step-n{background:#059669}.step-3 .step-h{border-color:#059669}
+  .bloco.step-2::before,.bloco.step-3::before{content:"\2192";position:absolute;left:-24px;top:1px;color:#cbd5e1;font-weight:800;font-size:18px}
   .lin{display:flex;justify-content:space-between;gap:16px;padding:2px 0}
   .lin.g{font-weight:900;font-size:15px;border-top:2px solid #111;margin-top:5px;padding-top:6px}
   .leg{margin-top:12px;font-size:10px;color:#555}
@@ -79,8 +87,8 @@
 @include('passagens._manifesto_tabela', ['linhas' => $linhas])
 
 <div class="totais">
-  <div class="bloco">
-    <h2>Contagem</h2>
+  <div class="bloco step-1">
+    <div class="step-h"><span class="step-n">1</span><div><div class="step-t">Contagem</div><div class="step-s">quem viajou</div></div></div>
     <div class="lin"><span>👥 Total de passageiros</span><b>{{ $nPax }}</b></div>
     <div class="lin"><span>🧓 Idosos</span><b>{{ $nIdosos }}</b></div>
     <div class="lin"><span>♿ PCD</span><b>{{ $nPcd ?? 0 }}</b></div>
@@ -89,8 +97,8 @@
     <div class="lin"><span>↩️ Devolvidas</span><b>{{ $nDevolvidas }}</b></div>
     <div class="lin"><span>❌ Cancelados</span><b>{{ $nCancelados ?? 0 }}</b></div>
   </div>
-  <div class="bloco">
-    <h2>Formas de Pagamentos</h2>
+  <div class="bloco step-2">
+    <div class="step-h"><span class="step-n">2</span><div><div class="step-t">Formas de Pagamentos</div><div class="step-s">como pagaram</div></div></div>
     @php $tfp = $totFormaProp ?? []; $propTot = array_sum($tfp); @endphp
     @foreach($totForma as $meio => $val)
     @php $vp = (float) ($tfp[$meio] ?? 0); $nm = \App\Models\Pagamento::MEIOS[$meio] ?? ucfirst($meio); @endphp
@@ -113,8 +121,8 @@
     @if($totDevolvido > 0.009)<div class="lin" style="color:#b91c1c"><span>Devolvido (fora do caixa)</span><b>- R$ {{ number_format($totDevolvido,2,',','.') }}</b></div>@endif
   </div>
   @if($prestacao ?? false)
-  <div class="bloco">
-    <h2>Prestação de contas</h2>
+  <div class="bloco step-3">
+    <div class="step-h"><span class="step-n">3</span><div><div class="step-t">Prestação de contas</div><div class="step-s">o que acertar com o dono</div></div></div>
     @php
       $recPropTot = round((float) $prestacao->debProp + (float) $prestacao->pixProp + (float) $prestacao->credProp + (float) $prestacao->dinProp, 2);
       $pctTxt = ! is_null($prestacao->pct) ? ' ('.$prestacao->pct.'%)' : '';
