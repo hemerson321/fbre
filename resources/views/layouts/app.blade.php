@@ -130,6 +130,7 @@ document.addEventListener('alpine:init', () => {
   $ft = [];
   if ($u->permite('passagem','atendimento')) $ft[] = ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬', 'bk'=>'atendimento', 'b'=>(\App\Models\Conversa::where('status','aguardando')->count() ?: null)];
   if ($u->permite('passagem','atendimento')) $ft[] = ['r'=>route('atendimento.kanban'), 'l'=>'CRM · Funil de clientes', 'i'=>'📋'];
+  if ($u->permite('passagem','cadastra') && Route::has('orcamentos.index')) $ft[] = ['r'=>route('orcamentos.index'), 'l'=>'Orçamentos', 'i'=>'📝'];
   if ($u->permite('passagem','cadastra') && Route::has('passagens.bloqueios')) $ft[] = ['r'=>route('passagens.bloqueios'), 'l'=>'Travar poltronas', 'i'=>'🔒'];
   if (($u->isAdmin() || $u->isSuper()) && Route::has('passagens.transferencia')) $ft[] = ['r'=>route('passagens.transferencia'), 'l'=>'Transferir transporte', 'i'=>'🔄'];
   if ($ft && $modOn('passagem')) $grupos['Ferramentas'] = $ft;
