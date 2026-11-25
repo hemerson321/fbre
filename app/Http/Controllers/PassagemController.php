@@ -1367,10 +1367,18 @@ class PassagemController extends Controller
     public function recibo(Passagem $passagem)
     {
         abort_unless($passagem->empresa_id === Tenant::id(), 404);
-        $passagem->load(['passageiros', 'embarcacao', 'operador', 'pagamentos']);
-        $empresa = Tenant::empresa();
-        $logo = ($empresa->logo && is_file(public_path($empresa->logo))) ? asset($empresa->logo) : asset('img/ajato-logo.png');
-        return view('docs.recibo', ['p' => $passagem, 'empresa' => $empresa, 'logo' => $logo]);
+        try {
+            $passagem->load(['passageiros', 'embarcacao', 'operador', 'pagamentos']);
+            $empresa = Tenant::empresa();
+            $logo = ($empresa->logo && is_file(public_path($empresa->logo))) ? asset($empresa->logo) : asset('img/ajato-logo.png');
+            return response(view('docs.recibo', ['p' => $passagem, 'empresa' => $empresa, 'logo' => $logo])->render());
+        } catch (\Throwable $e) {
+            report($e);
+            $msg = auth()->user()?->admin
+                ? 'Erro no recibo: '.class_basename($e).': '.$e->getMessage().' @ '.basename($e->getFile()).':'.$e->getLine()
+                : 'Não foi possível gerar o recibo. Tente novamente ou chame o suporte.';
+            return response($msg, 500);
+        }
     }
 
     /** Etiqueta de bagagem do passageiro: N volumes + via do passageiro. */

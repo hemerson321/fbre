@@ -16,7 +16,9 @@
   $pagoVal = (float) $p->pago;
   $devido  = (float) $p->devido;
   $quitado = $devido <= 0.009;
-  $dataExt = \Illuminate\Support\Carbon::now()->locale('pt_BR')->isoFormat('D [de] MMMM [de] YYYY');
+  $mesesPt = [1=>'janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  $agora   = \Illuminate\Support\Carbon::now();
+  $dataExt = $agora->day.' de '.($mesesPt[(int)$agora->month] ?? '').' de '.$agora->year;
 @endphp
 <!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

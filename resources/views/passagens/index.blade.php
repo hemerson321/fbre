@@ -95,7 +95,7 @@
         @if($podeEditar && !$p->cancelada)<input type="checkbox" @change="toggle({{ $p->id }})" :checked="sel.includes({{ $p->id }})" class="w-5 h-5 rounded shrink-0 cursor-pointer" title="Selecionar p/ editar em massa">@endif
         <a href="{{ route('passagens.show',$p) }}" class="flex-1 min-w-0 block">
           <div class="font-semibold">@if($p->tipo==='camarote')🛏️ @endif#{{ $p->numeroFormatado() }} · {{ $p->origem }} → {{ $p->destino }}</div>
-          <div class="text-[11px] text-slate-400 truncate">🚤 {{ $p->embarcacao?->nome ?? '—' }}@if($p->data_viagem) · 📅 {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif</div>
+          <div class="text-[11px] text-slate-400">🚤 {{ $p->embarcacao?->nome ?? '—' }}@if($p->data_viagem) · 📅 viagem {{ \Illuminate\Support\Carbon::parse($p->data_viagem)->format('d/m/Y') }}@endif · 💳 {{ \App\Models\Passagem::FORMAS[$p->forma] ?? $p->forma }}@if($p->created_at) · 🧾 emitido {{ $p->created_at->format('d/m/Y H:i') }}@endif</div>
           <div class="text-xs text-slate-500 truncate">{{ $p->qtd_passageiros }} pax · {{ $p->comprador_nome ?: '—' }} · vendeu: {{ $p->operador?->name }}@if($p->embarcou) · <span class="text-emerald-600 font-semibold">✅ check-in{{ $p->embarcouPor ? ': '.$p->embarcouPor->name : '' }}</span>@elseif(!$p->cancelada) · <span class="text-amber-600 font-semibold">⏳ sem check-in</span>@endif</div>
           @php
             $pagLista = $p->passageiros->filter(fn($x)=>($x->papel ?? '')!=='colo');
