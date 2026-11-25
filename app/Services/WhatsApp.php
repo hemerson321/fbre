@@ -298,12 +298,12 @@ class WhatsApp
         try {
             if ($base64 && $mime) {
                 $tipo = str_starts_with($mime, 'video/') ? 'video' : 'image';
-                $body = ['type' => $tipo, 'content' => $base64, 'caption' => $texto, 'allContacts' => true, 'statusJidList' => []];
+                $body = ['type' => $tipo, 'content' => $base64, 'caption' => $texto, 'allContacts' => true]; // p/ todos: OMITE statusJidList (Evolution rejeita lista vazia)
             } else {
-                $body = ['type' => 'text', 'content' => $texto, 'backgroundColor' => '#0f172a', 'font' => 1, 'allContacts' => true, 'statusJidList' => []];
+                $body = ['type' => 'text', 'content' => $texto, 'backgroundColor' => '#0f172a', 'font' => 1, 'allContacts' => true]; // p/ todos: OMITE statusJidList
             }
             $r = $this->evoHttp($c)->timeout(120)->post("{$base}/message/sendStatus/{$c->instancia}", $body);
-            return $r->successful() ? ['ok' => true, 'resposta' => $r->json()] : ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 150)];
+            return $r->successful() ? ['ok' => true, 'resposta' => $r->json()] : ['ok' => false, 'erro' => 'HTTP '.$r->status().': '.mb_substr($r->body(), 0, 500)];
         } catch (\Throwable $e) {
             return ['ok' => false, 'erro' => $e->getMessage()];
         }
