@@ -281,6 +281,7 @@
       <div class="flex justify-between py-1.5 border-b border-slate-100"><span>Recebido direto pelo proprietário</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->credProp,2,',','.') }}</b></div>
       @if(($prestacaoTransporte->avEntrada ?? 0) > 0)<div class="flex justify-between py-1.5 border-b border-slate-100"><span>Entradas avulsas (transporte)</span><b class="text-emerald-600">+ R$ {{ number_format($prestacaoTransporte->avEntrada,2,',','.') }}</b></div>@endif
       @if(($prestacaoTransporte->avSaida ?? 0) > 0)<div class="flex justify-between py-1.5 border-b border-slate-100"><span>Saídas avulsas (transporte)</span><b class="text-rose-600">− R$ {{ number_format($prestacaoTransporte->avSaida,2,',','.') }}</b></div>@endif
+      @if(($prestacaoTransporte->aberto ?? 0) > 0.009)<div class="flex justify-between py-1.5 border-b border-slate-100 text-blue-700"><span>🧾 Faturado a receber <span class="text-[10px] text-slate-400">(não entra — entra quando for pago no Financeiro)</span></span><b>R$ {{ number_format($prestacaoTransporte->aberto,2,',','.') }}</b></div>@endif
       <div class="flex justify-between py-2 border-t-2 border-slate-300 font-bold text-amber-700"><span>Total de descontos</span><b>R$ {{ number_format($prestacaoTransporte->despesas,2,',','.') }}</b></div>
       <div class="flex justify-between items-center mt-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3"><span class="font-bold text-emerald-800">TOTAL A PAGAR AO PROPRIETÁRIO</span><b class="text-2xl text-emerald-700">R$ {{ number_format($prestacaoTransporte->liquido,2,',','.') }}</b></div>
     </div>
@@ -352,7 +353,10 @@
     <div class="flex items-center justify-between gap-2 p-3 flex-wrap">
       <div class="min-w-0">
         <div class="font-semibold truncate">🚤 {{ $d->emb->nome }}@if($d->dono) <span class="text-[11px] text-slate-400 font-normal">· proprietário {{ $d->dono }}</span>@endif</div>
-        <div class="text-xs text-slate-500">{{ $d->qtd }} passagem(ns) de balcão · vendido <b>R$ {{ number_format($d->bruto ?? 0,2,',','.') }}</b> · comissão {{ (int)$d->emb->comissao_empresa_pct }}% = <b class="text-indigo-700">R$ {{ number_format($d->comissao ?? 0,2,',','.') }}</b></div>
+        <div class="text-xs text-slate-500">{{ $d->qtd }} passagem(ns) de balcão · recebido <b>R$ {{ number_format($d->bruto ?? 0,2,',','.') }}</b> · comissão {{ (int)$d->emb->comissao_empresa_pct }}% = <b class="text-indigo-700">R$ {{ number_format($d->comissao ?? 0,2,',','.') }}</b></div>
+        @if(($d->aberto ?? 0) > 0.009)
+        <div class="text-xs text-slate-500 mt-0.5">🧾 {{ $d->qtdAberto }} faturado(s) <b class="text-blue-700">a receber</b> · <b>R$ {{ number_format($d->aberto,2,',','.') }}</b> <span class="text-[10px] text-slate-400">(neutro — não entra no total; quando pago no Financeiro entra como positivo na próxima prestação)</span></div>
+        @endif
         @if(($d->avE ?? 0) > 0 || ($d->avS ?? 0) > 0)
         <div class="text-xs text-slate-500 mt-0.5">↕️ Avulsos desta prestação: @if($d->avE > 0)<b class="text-emerald-700">+ R$ {{ number_format($d->avE,2,',','.') }}</b> @endif @if($d->avS > 0)<b class="text-rose-600">− R$ {{ number_format($d->avS,2,',','.') }}</b> @endif <span class="text-[10px] text-slate-400">(entram no fechamento)</span></div>
         @endif
