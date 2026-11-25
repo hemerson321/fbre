@@ -93,7 +93,7 @@
         toast.textContent = quem + ' vendeu uma passagem';
         toast.classList.add('show'); card.classList.add('vrec-flash');
         clearTimeout(toast._t);
-        toast._t = setTimeout(function(){ toast.classList.remove('show'); card.classList.remove('vrec-flash'); }, 3000);
+        toast._t = setTimeout(function(){ toast.classList.remove('show'); card.classList.remove('vrec-flash'); }, 6000);
       }
       function processa(vendas){
         var porCard = {}; vendas.forEach(function(v){ porCard[v.emb] = v; });
