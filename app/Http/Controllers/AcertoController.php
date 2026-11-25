@@ -117,17 +117,38 @@ class AcertoController extends Controller
             ->when($viagemId, fn ($x) => $x->where('viagem_id', $viagemId))
             ->when($dataViagem, fn ($x) => $x->whereDate('data_viagem', $dataViagem));
         $valorDono = (float) (clone $q)->selectRaw('COALESCE(SUM(CASE WHEN revendedor_id IS NOT NULL THEN acerto_empresa_valor ELSE total * (100 - '.$pct.') / 100 END),0) as v')->value('v');
-        $n = $q->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id()]);
+        $lote = 'dono-'.(string) \Illuminate\Support\Str::uuid();
+        $n = $q->update(['acerto_dono' => true, 'acerto_dono_em' => now(), 'acerto_dono_por' => auth()->id(), 'acerto_lote' => $lote]);
         if ($valorDono > 0) {
             Pagamento::create([
                 'empresa_id' => Tenant::id(), 'modulo' => 'avulso', 'origem_id' => null, 'encomenda_id' => null,
                 'meio' => 'dinheiro', 'valor' => $valorDono, 'user_id' => auth()->id(),
                 'momento' => 'baixa', 'tipo_mov' => 'saida',
                 'categoria' => 'Pagamento ao dono', 'descricao' => 'Pagamento ao dono - '.$embarcacao->nome.($embarcacao->dono_nome ? ' ('.$embarcacao->dono_nome.')' : ''),
-                'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false,
+                'conferido' => true, 'conferido_em' => now(), 'conferido_por' => auth()->id(), 'acerto_conta' => false, 'acerto_lote' => $lote,
             ]);
         }
         return back()->with('ok', 'Acerto do proprietário de '.$embarcacao->nome.' pago ('.$n.' passagens) - saida de R$ '.number_format($valorDono, 2, ',', '.').' no caixa.');
+    }
+
+    /** Desfaz uma baixa feita ao proprietário (pelo lote): volta as passagens pra "em aberto" e estorna a saída no caixa. */
+    public function desfazerDono(Request $request, \App\Models\Embarcacao $embarcacao)
+    {
+        abort_unless(auth()->user()->podeAcerto(), 403);
+        abort_unless($embarcacao->empresa_id === Tenant::id(), 404);
+        $lote = trim((string) $request->input('lote'));
+        abort_if($lote === '', 422, 'Lote do acerto não informado.');
+        $passagens = Passagem::where('embarcacao_id', $embarcacao->id)->where('acerto_lote', $lote)->get();
+        if ($passagens->isEmpty()) {
+            return back()->with('erro', 'Esse acerto não foi encontrado (talvez já tenha sido desfeito).');
+        }
+        \Illuminate\Support\Facades\DB::transaction(function () use ($embarcacao, $lote) {
+            Passagem::where('embarcacao_id', $embarcacao->id)->where('acerto_lote', $lote)->update([
+                'acerto_dono' => false, 'acerto_dono_em' => null, 'acerto_dono_por' => null, 'acerto_lote' => null,
+            ]);
+            Pagamento::where('acerto_lote', $lote)->where('estornado', false)->update(['estornado' => true]);
+        });
+        return back()->with('ok', 'Baixa desfeita: '.$passagens->count().' passagem(ns) voltaram para "em aberto" e a saída foi estornada no caixa.');
     }
 
     /** Relatorio do acerto de um transporte pra mandar pro dono (admin compartilha no WhatsApp). */
@@ -175,11 +196,15 @@ class AcertoController extends Controller
         $despesas = round($comissao + $debitoProp, 2);
         $liquido = round($dono - $debitoProp - $creditoProp, 2);
 
+        $acertosFeitos = Passagem::where('embarcacao_id', $embarcacao->id)
+            ->where('acerto_dono', true)->whereNotNull('acerto_lote')->where('acerto_lote', 'like', 'dono-%')
+            ->selectRaw("acerto_lote, COUNT(*) as qtd, MAX(acerto_dono_em) as em, SUM(CASE WHEN revendedor_id IS NOT NULL THEN acerto_empresa_valor ELSE total * (100 - ".$pct.") / 100 END) as valor")
+            ->groupBy('acerto_lote')->orderByDesc('em')->limit(12)->get();
         $dados = compact(
             'embarcacao', 'passagens', 'balcao', 'agentes',
             'brutoBalcao', 'donoBalcao', 'brutoAgentes', 'donoAgentes',
             'bruto', 'dono', 'comissao', 'pct', 'viagemId', 'dataViagem',
-            'cartao', 'creditoProp', 'debitoProp', 'despesas', 'liquido'
+            'cartao', 'creditoProp', 'debitoProp', 'despesas', 'liquido', 'acertosFeitos'
         );
         if ($request->boolean('pdf')) {
             return view('acertos.dono-pdf', $dados + ['empresa' => Tenant::empresa()]);

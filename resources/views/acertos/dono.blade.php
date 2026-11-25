@@ -83,6 +83,30 @@
     </form>
   </div>
 
+  {{-- baixas já feitas: desfazer (caso o pagamento não entre) --}}
+  @if(!empty($acertosFeitos) && $acertosFeitos->isNotEmpty())
+  <div class="card overflow-hidden" style="border:1px solid #fde68a">
+    <div class="p-3 font-bold text-sm border-b bg-amber-50 flex items-center gap-2" style="color:#b45309">
+      ↩️ Baixas já feitas <span class="text-[11px] font-normal text-slate-400">— desfaça se o proprietário não pagar / o PIX não cair</span>
+    </div>
+    <div class="divide-y text-sm">
+      @foreach($acertosFeitos as $a)
+        <div class="flex items-center justify-between gap-2 p-3">
+          <div class="min-w-0">
+            <b>{{ $moeda($a->valor) }}</b> <span class="text-xs text-slate-400">· {{ $a->qtd }} passagem(ns)</span>
+            <div class="text-xs text-slate-400">pago em {{ \Illuminate\Support\Carbon::parse($a->em)->format('d/m/Y H:i') }}</div>
+          </div>
+          <form method="post" action="{{ route('admin.acertos.desfazer-dono',$embarcacao) }}" onsubmit="return confirm('Desfazer esta baixa? As passagens voltam para \'em aberto\' e a saída é estornada no caixa.')">
+            @csrf
+            <input type="hidden" name="lote" value="{{ $a->acerto_lote }}">
+            <button class="btn btn-ghost text-sm" style="border:1px solid #d97706;color:#b45309">↩️ Desfazer</button>
+          </form>
+        </div>
+      @endforeach
+    </div>
+  </div>
+  @endif
+
   {{-- lista: balcão --}}
   @if($balcao->isNotEmpty())
   <div class="card overflow-hidden">
