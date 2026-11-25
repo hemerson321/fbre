@@ -25,6 +25,33 @@ class CaixaController extends Controller
         return response()->json(['hash' => md5(($pg->c ?? 0).'|'.($pg->m ?? '').'|'.($py->c ?? 0).'|'.($py->m ?? '').'|'.($py->v ?? 0))]);
     }
 
+    /** Vendas ao vivo nos cards da prestacao — leve e cacheado: 1 consulta a cada ~3s por empresa, nao importa quantos usuarios estao vendo. */
+    public function vendasRecentes(Request $request)
+    {
+        $desde = (int) $request->query('desde', 0);
+        $data = cache()->remember('vrec_'.Tenant::id(), 3, function () {
+            $rows = \App\Models\Passagem::where('cancelada', false)
+                ->where('created_at', '>=', now()->subMinutes(2))
+                ->orderByDesc('id')->limit(50)
+                ->with(['operador:id,name', 'revendedor:id,name'])
+                ->get(['id', 'embarcacao_id', 'user_id', 'revendedor_id', 'created_at']);
+            return [
+                'max' => (int) (\App\Models\Passagem::max('id') ?? 0),
+                'vendas' => $rows->map(fn ($p) => [
+                    'id' => (int) $p->id,
+                    'emb' => (int) $p->embarcacao_id,
+                    'vendedor' => $p->revendedor_id ? ($p->revendedor->name ?? 'Agente') : ($p->operador->name ?? 'Balcao'),
+                    'agente' => (bool) $p->revendedor_id,
+                    'hora' => $p->created_at?->format('H:i'),
+                ])->values()->all(),
+            ];
+        });
+        if ($desde <= 0) return response()->json(['ultimo' => $data['max'], 'vendas' => []]);
+        $novas = array_values(array_filter($data['vendas'], fn ($v) => $v['id'] > $desde));
+        $ultimo = $novas ? max(array_column($novas, 'id')) : $desde;
+        return response()->json(['ultimo' => $ultimo, 'vendas' => $novas]);
+    }
+
     /** Contadores dos badges do menu (atendimento aguardando, pré-cadastros) em tempo real. */
     public function badges()
     {

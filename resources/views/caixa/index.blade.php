@@ -43,13 +43,16 @@
 
   @if(! $tSel)
   <div class="p-4">
-    <div class="text-lg font-extrabold text-slate-800">De qual transporte é a prestação?</div>
+    <div class="flex items-center justify-between gap-2">
+      <div class="text-lg font-extrabold text-slate-800">De qual transporte é a prestação?</div>
+      <button type="button" id="vrecToggle" data-on="1" class="rounded-full px-3 py-1.5 text-[12px] font-bold border transition shrink-0" title="Mostra no card quando alguem acabou de vender, ao vivo">👁 Vendas ao vivo</button>
+    </div>
     <div class="text-[13px] text-slate-500 mb-3">Escolha a lancha. A prestação abre com todas as viagens em aberto; se quiser, depois você filtra uma viagem só.</div>
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
       @forelse($tLista as $t)
         @php $pp = $pendPorTransporte[$t->id] ?? null; @endphp
         <a href="{{ route('caixa.index', ['foco' => 'prestacoes', 'transporte_id' => $t->id]) }}"
-           class="group rounded-2xl border bg-white p-3.5 flex items-center gap-3 transition hover:shadow-md"
+           data-emb="{{ $t->id }}" class="vrec-card relative overflow-hidden group rounded-2xl border bg-white p-3.5 flex items-center gap-3 transition hover:shadow-md"
            style="border-color:{{ $pp ? 'color-mix(in srgb, '.$tema[0].' 45%, white)' : '#e2e8f0' }}">
           <div class="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style="background:color-mix(in srgb, {{ $tema[0] }} 12%, white)">🚤</div>
           <div class="min-w-0 flex-1">
@@ -61,11 +64,55 @@
           @else
             <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-400 whitespace-nowrap">em dia</span>
           @endif
+          <span class="vrec-toast" data-emb-toast="{{ $t->id }}"></span>
         </a>
       @empty
         <div class="col-span-full p-6 text-center text-slate-400">Nenhum transporte cadastrado.</div>
       @endforelse
     </div>
+    <style>
+      .vrec-toast{position:absolute;left:0;right:0;bottom:0;transform:translateY(115%);opacity:0;transition:transform .35s cubic-bezier(.2,.9,.3,1.35),opacity .3s;background:linear-gradient(90deg,#059669,#10b981);color:#fff;font-size:11px;font-weight:800;padding:5px 11px;line-height:1.2;box-shadow:0 -2px 10px rgba(5,150,105,.35);z-index:3;pointer-events:none}
+      .vrec-toast.show{transform:translateY(0);opacity:1}
+      .vrec-card.vrec-flash{box-shadow:0 0 0 3px rgba(16,185,129,.55)!important;transition:box-shadow .2s}
+      #vrecToggle[data-on="1"]{background:#059669;color:#fff;border-color:#059669}
+      #vrecToggle[data-on="0"]{background:#fff;color:#64748b;border-color:#e2e8f0}
+    </style>
+    <script>
+    (function(){
+      var any = document.querySelector('.vrec-card'); if(!any) return;
+      var toggle = document.getElementById('vrecToggle');
+      var on = (localStorage.getItem('vrecOn') !== '0');
+      function setOn(v){ on=v; try{localStorage.setItem('vrecOn', v?'1':'0');}catch(e){} if(toggle) toggle.setAttribute('data-on', v?'1':'0'); }
+      setOn(on);
+      if(toggle) toggle.addEventListener('click', function(){ setOn(!on); });
+      var cursor = 0;
+      function mostra(v){
+        var card = document.querySelector('.vrec-card[data-emb="'+v.emb+'"]'); if(!card) return;
+        var toast = card.querySelector('[data-emb-toast="'+v.emb+'"]'); if(!toast) return;
+        var quem = v.agente ? ('🤝 '+v.vendedor+' (agente)') : ('💰 '+v.vendedor);
+        toast.textContent = quem + ' vendeu uma passagem';
+        toast.classList.add('show'); card.classList.add('vrec-flash');
+        clearTimeout(toast._t);
+        toast._t = setTimeout(function(){ toast.classList.remove('show'); card.classList.remove('vrec-flash'); }, 3000);
+      }
+      function processa(vendas){
+        var porCard = {}; vendas.forEach(function(v){ porCard[v.emb] = v; });
+        var i=0; Object.keys(porCard).forEach(function(k){ setTimeout(function(){ mostra(porCard[k]); }, i*250); i++; });
+      }
+      async function poll(){
+        if(!on || document.visibilityState!=='visible') return;
+        try{
+          var r = await fetch('{{ route('sync.vendas-recentes') }}?desde='+cursor, {headers:{'X-Requested-With':'fetch'}});
+          if(!r.ok) return; var d = await r.json();
+          if(typeof d.ultimo==='number') cursor = d.ultimo;
+          if(d.vendas && d.vendas.length) processa(d.vendas);
+        }catch(e){}
+      }
+      poll();
+      setInterval(poll, 4500);
+      document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') poll(); });
+    })();
+    </script>
   </div>
   @endif
 </div>
