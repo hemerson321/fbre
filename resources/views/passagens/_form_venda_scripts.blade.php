@@ -85,13 +85,20 @@
             var opt=sel ? Array.prototype.find.call(sel.options, function(o){ return dest && _na(o.value)===_na(dest); }) : null;
             // espera a origem estar setada E a <option> do destino existir no DOM antes de aplicar
             if(dest && _tent<30 && (!this.origemSel || !opt)){ _tent++; return setTimeout(reaplicarEd, 50); }
-            if(dest) this.destinoSel = opt ? opt.value : dest;
+            var val = opt ? opt.value : dest;
+            if(dest) this.destinoSel = val;
+            // O <select> do destino dessincroniza: o x-for re-renderiza as options (dependem da origem) e
+            // zera o value do elemento DEPOIS do x-model. Forcamos o value do <select> algumas vezes,
+            // sem disparar change/onRota (p/ nao recalcular preco).
+            var fixSel=()=>{ var sd=this.$refs.fDestino; if(sd && val && sd.value!==val){ try{ sd.value=val; }catch(e){} } };
             this.$nextTick(()=>{
               try{ this.resolverLinha(); }catch(e){}
               if(!this.rotaId && rota) this.rotaId=String(rota);
               if(via){ this.viagemData=via; try{ this.viagemLabel=this.rotulo(via); }catch(e){} }
               try{ this.carregarOcupadas(); }catch(e){}
+              fixSel();
             });
+            fixSel(); setTimeout(fixSel, 80); setTimeout(fixSel, 250); setTimeout(fixSel, 600);
           };
           this.$nextTick(()=>setTimeout(reaplicarEd, 0)); }
         else { this.aplicarPrefill(); }
