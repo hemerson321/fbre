@@ -71,7 +71,7 @@
       @endforelse
     </div>
     <style>
-      .vrec-toast{position:absolute;left:0;right:0;bottom:0;transform:translateY(115%);opacity:0;transition:transform .35s cubic-bezier(.2,.9,.3,1.35),opacity .3s;background:linear-gradient(90deg,#059669,#10b981);color:#fff;font-size:11px;font-weight:800;padding:5px 11px;line-height:1.2;box-shadow:0 -2px 10px rgba(5,150,105,.35);z-index:3;pointer-events:none}
+      .vrec-toast{position:absolute;left:0;right:0;bottom:0;transform:translateY(115%);opacity:0;transition:transform .55s cubic-bezier(.2,.8,.3,1),opacity .6s ease;background:linear-gradient(90deg,#059669,#10b981);color:#fff;font-size:11px;font-weight:800;padding:5px 11px;line-height:1.2;box-shadow:0 -2px 10px rgba(5,150,105,.35);z-index:3;pointer-events:none}
       .vrec-toast.show{transform:translateY(0);opacity:1}
       .vrec-card.vrec-flash{box-shadow:0 0 0 3px rgba(16,185,129,.55)!important;transition:box-shadow .2s}
       #vrecToggle[data-on="1"]{background:#059669;color:#fff;border-color:#059669}
@@ -93,7 +93,7 @@
         toast.textContent = quem + ' vendeu uma passagem';
         toast.classList.add('show'); card.classList.add('vrec-flash');
         clearTimeout(toast._t);
-        toast._t = setTimeout(function(){ toast.classList.remove('show'); card.classList.remove('vrec-flash'); }, 6000);
+        toast._t = setTimeout(function(){ toast.classList.remove('show'); card.classList.remove('vrec-flash'); }, 5000);
       }
       function processa(vendas){
         var porCard = {}; vendas.forEach(function(v){ porCard[v.emb] = v; });
