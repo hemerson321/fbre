@@ -2,8 +2,8 @@
 @section('titulo','Passagens')
 @php $__e=\App\Support\Tenant::empresa(); $cor = (($__e?->config('cores_por_modulo', true) ?? true) ? \App\Support\Modulos::hex('passagem') : ($__e?->cor_primaria ?? '#0b1a33')); @endphp
 @section('conteudo')
-<div class="space-y-4 max-w-5xl mx-auto">
-  <div class="rounded-2xl px-4 py-3 text-white flex items-center gap-3" style="background:{{ $cor }}">
+<div class="space-y-3 max-w-5xl mx-auto">
+  <div class="rounded-2xl px-4 py-2.5 text-white flex items-center gap-3" style="background:{{ $cor }}">
     <span class="text-2xl">🧾</span><div class="font-bold">Passagens / embarque</div>
     @can('cadastra', null)@endcan
     <div class="relative ml-auto" x-data="{o:false}">
@@ -17,13 +17,10 @@
         <a href="{{ route('passagens.caixa-viagem', request()->query()) }}" target="_blank" class="block px-3 py-2 text-sm hover:bg-slate-50 border-t bg-emerald-50">💰 Caixa por viagem <div class="text-[11px] text-slate-500">vendedor · valor · forma · totais do caixa</div></a>
       </div>
     </div>
-    @if(auth()->user()->isAdmin() || auth()->user()->isSuper())<a href="{{ route('passagens.transferencia') }}" class="btn btn-sm bg-white/20 text-white" title="Transferir todos os passageiros de uma viagem para outra lancha">🔄 Transferir</a>@endif
-    <a href="{{ route('clientes-faturado') }}" class="btn btn-sm bg-white/20 text-white" title="Clientes faturado (a receber)">🧾 Faturados</a>
-    <a href="{{ route('passagens.create') }}" class="btn btn-sm bg-white/20 text-white">+ Nova</a>
   </div>
 
   {{-- filtro --}}
-  <form method="get" class="card p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+  <form method="get" class="card p-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
     <input name="busca" value="{{ $f['busca'] ?? '' }}" placeholder="Nome, telefone ou nº" class="input col-span-2">
     <input type="date" name="inicio" value="{{ $f['inicio'] ?? '' }}" class="input">
     <input type="date" name="fim" value="{{ $f['fim'] ?? '' }}" class="input">
@@ -77,12 +74,10 @@
 
   {{-- totais --}}
   @php $verCanc = ($f['cancelada'] ?? '')==='1'; @endphp
-  <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-    <div class="card p-3"><div class="text-xs text-slate-500">Vendas</div><div class="text-lg font-bold">{{ $totais['qtd'] }}</div></div>
-    <div class="card p-3"><div class="text-xs text-slate-500">Passageiros</div><div class="text-lg font-bold">{{ $totais['passageiros'] }}</div></div>
-    <div class="card p-3"><div class="text-xs text-slate-500">Recebido</div><div class="text-lg font-bold text-emerald-600">R$ {{ number_format($totais['recebido'],2,',','.') }}</div></div>
-    <div class="card p-3"><div class="text-xs text-slate-500">A receber</div><div class="text-lg font-bold text-red-600">R$ {{ number_format($totais['a_receber'],2,',','.') }}</div></div>
-    <a href="{{ request()->fullUrlWithQuery(['cancelada'=> $verCanc ? null : '1']) }}" class="card p-3 transition hover:bg-slate-50 {{ $verCanc ? 'ring-2 ring-slate-400 bg-slate-50' : '' }}">
+  <div class="grid grid-cols-3 gap-2">
+    <div class="card p-2.5"><div class="text-xs text-slate-500">Vendas</div><div class="text-lg font-bold">{{ $totais['qtd'] }}</div></div>
+    <div class="card p-2.5"><div class="text-xs text-slate-500">Passageiros</div><div class="text-lg font-bold">{{ $totais['passageiros'] }}</div></div>
+    <a href="{{ request()->fullUrlWithQuery(['cancelada'=> $verCanc ? null : '1']) }}" class="card p-2.5 transition hover:bg-slate-50 {{ $verCanc ? 'ring-2 ring-slate-400 bg-slate-50' : '' }}">
       <div class="text-xs text-slate-500">❌ Cancelados {{ $verCanc ? '· vendo' : '' }}</div>
       <div class="text-lg font-bold text-slate-500">{{ $totais['cancelados'] }}</div>
       <div class="text-[11px] text-slate-400">R$ {{ number_format($totais['cancelados_valor'] ?? 0,2,',','.') }}</div>
