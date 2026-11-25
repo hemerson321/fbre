@@ -130,6 +130,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/passagens/editar-massa', [\App\Http\Controllers\PassagemController::class, 'editarMassa'])->name('passagens.editar-massa')->middleware('perm:passagem.ver');
     Route::get('/passagens/{passagem}/editar-dados', [\App\Http\Controllers\PassagemController::class, 'editarDados'])->name('passagens.editar-dados')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/atualizar', [\App\Http\Controllers\PassagemController::class, 'atualizar'])->name('passagens.atualizar')->middleware('perm:passagem.ver');
+    Route::get('/passagens/{passagem}/editar', [\App\Http\Controllers\PassagemController::class, 'editar'])->name('passagens.editar')->middleware('perm:passagem.ver');
 
     Route::get('/passagens/minhas-vendas', [\App\Http\Controllers\PassagemController::class, 'minhasVendas'])->name('passagens.minhas-vendas')->middleware('perm:passagem.ver');
     Route::get('/passagens/minhas-vendas/exportar', [\App\Http\Controllers\PassagemController::class, 'minhasVendasExportar'])->name('passagens.minhas-vendas.exportar')->middleware('perm:passagem.ver');

@@ -2,10 +2,11 @@
 <script>
   window.FBRE_OP = @js(['prefixo'=>auth()->user()->prefixo ?: 'OP'.auth()->id(), 'proximoSeq'=>(int)(auth()->user()->proximo_seq ?: 1)]);
   window.FBRE_PREFILL = @js($prefill ?? null);
+  window.FBRE_EDICAO = @js($edicao ?? null);
 
   function novaPassagem(){
     return {
-      salvando:false, tipoPag:'balcao', metodosAtivos:['dinheiro'], credParcel:false, dividir:false, pag:{dinheiro:null,pix:null,debito:null,credito:null}, proprietarioMaq:false, parcelas:1, imprimir:'direto',
+      salvando:false, edMode:false, edUrl:'', edNumero:'', tipoPag:'balcao', metodosAtivos:['dinheiro'], credParcel:false, dividir:false, pag:{dinheiro:null,pix:null,debito:null,credito:null}, proprietarioMaq:false, parcelas:1, imprimir:'direto',
       agenteId:'', agenteAcerto:false,
       fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},
@@ -70,7 +71,11 @@
         // modelo correto. Limpa e re-aplica no próximo tick, quando as opções já existem.
         this.$nextTick(()=>{ const _o=this.origemSel; if(_o){ this.origemSel=''; this.$nextTick(()=>{ this.origemSel=_o; }); } });
         this.iniciarCaptura();
-        this.aplicarPrefill();
+        if(window.FBRE_EDICAO){ this.edMode=true; this.edUrl=window.FBRE_EDICAO._url||''; this.edNumero=window.FBRE_EDICAO._numero||''; this.imprimir='nao';
+          // _load SINCRONO: precisa rodar antes dos $nextTick de init (re-sync da origem) p/ nao ser sobrescrito pelo valor default.
+          this._load(window.FBRE_EDICAO);
+          this.$nextTick(()=>{ try{ this.resolverLinha(); }catch(e){} this.$nextTick(()=>{ try{ this.carregarOcupadas(); }catch(e){} }); }); }
+        else { this.aplicarPrefill(); }
         // Pagamento: o operador escolhe o meio; nada vem preenchido por padrao.
       },
       aplicarPrefill(){
@@ -579,6 +584,7 @@
       async fatCriar(){ const nome=(this.fatNome||'').trim(); if(!nome) return; try{ const r=await fetch(@js(route('passagens.cliente-faturado.criar')),{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'Accept':'application/json'},credentials:'same-origin',body:JSON.stringify({nome:nome, empresa:(this.fatEmpresa||'').trim()||null, documento:(this.fatDoc||'').trim()||null})}); const j=await r.json(); if(j&&j.ok&&j.cliente){ this.fatSelecionar(j.cliente); this.fatNome=''; this.fatEmpresa=''; this.fatDoc=''; this.fatDocTipo=''; } else { alert('Nao deu pra cadastrar o cliente.'); } }catch(e){ alert('Erro ao cadastrar cliente.'); } },
       async salvar(ev){
         if(this.salvando) return;
+        if(this.edMode){ return this.atualizarVenda(ev); }
         if(this.abas.length>1){ return this.finalizarAbas(ev); }
         if(!this.validarPassageiros()) return;
         if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Falta lançar '+FBRE.moeda(this.devido)+'. Lance o valor nas formas ou use Faturado pra deixar a receber.'); return; }
@@ -593,6 +599,18 @@
           alert('Sem conexão: passagem '+r.local.dados.numero_completo+' guardada neste aparelho. Sobe sozinha quando a internet voltar.');
           window.location.href='{{ route('passagens.create') }}';
         }catch(e){ alert('Não foi possível salvar: '+e.message); this.salvando=false; }
+      },
+      async atualizarVenda(ev){
+        if(!this.validarPassageiros()) return;
+        if((this.forma==='avista' || this.forma==='online') && this.devido > 0.009){ alert('Falta lançar '+FBRE.moeda(this.devido)+'. Lance o valor nas formas ou use Faturado pra deixar a receber.'); return; }
+        this.salvando=true;
+        try{
+          const dados=this.montarDados();
+          const r=await fetch(this.edUrl,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':FBRE.csrf,'X-Requested-With':'fetch','Accept':'application/json'},credentials:'same-origin',body:JSON.stringify(dados)});
+          if(r.ok){ const j=await r.json().catch(()=>null); window.location.href=(j&&j.url)?j.url:'/passagens'; return; }
+          if(r.status===422){ const j=await r.json().catch(()=>null); const msg=(j&&j.message)?j.message:'Confira os campos.'; const errs=(j&&j.errors)?Object.values(j.errors).flat().join('\n'):''; alert((msg+'\n'+errs).trim()); this.salvando=false; return; }
+          const j=await r.json().catch(()=>null); alert((j&&(j.message||j.erro))||('Não foi possível atualizar ('+r.status+').')); this.salvando=false;
+        }catch(e){ alert('Erro ao atualizar: '+e.message); this.salvando=false; }
       },
       // ---------- ABAS DE VENDAS (várias vendas, cada uma editável) ----------
       _vendaKeys:['origemSel','destinoSel','embarcacaoSel','rotaId','linhaNome','paradasInfo','viagemData','viagemLabel','viagemDia','viagemHora','passageiros','tipoPag','metodosAtivos','credParcel','dividir','pag','proprietarioMaq','parcelas','desconto','agenteId','agenteAcerto','clienteFaturadoId','fatSel','compradorNome','compradorTel','compradorDoc','observacao','documentosGerais'],

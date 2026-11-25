@@ -107,7 +107,7 @@
           <div class="font-bold">R$ {{ number_format($p->total,2,',','.') }}</div>
           @if($p->cancelada)<span class="chip font-extrabold" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5">✖ CANCELADA</span>@else<span class="chip st-{{ $p->cor() }}">{{ $p->statusTexto() }}</span>@endif
           <div class="flex gap-1 mt-1.5 justify-end">
-            @if($podeEditar && !$p->cancelada)<button type="button" @click="editarUm({{ $p->id }})" class="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[12px] font-semibold text-amber-700 hover:bg-amber-100" title="Editar tudo desta passagem">✏️</button>@endif
+            @if($podeEditar && !$p->cancelada)<button type="button" @click="window.location.href='/passagens/{{ $p->id }}/editar'" class="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[12px] font-semibold text-amber-700 hover:bg-amber-100" title="Editar tudo desta passagem">✏️</button>@endif
             <button type="button" onclick="FBRE.imprimirComprovante('{{ route('passagens.comprovante',$p) }}')" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Imprimir comprovante">🖨</button>
             <button type="button" onclick="FBRE.copiarBilheteImg(this,'{{ route('passagens.comprovante',$p) }}')" class="rounded-lg border border-slate-200 px-2 py-1 text-[12px] font-semibold text-slate-600 hover:bg-slate-50" title="Copiar bilhete como imagem (colar no WhatsApp)">🖼️</button>
             <button type="button" onclick="window.open('{{ route('passagens.comprovante',$p) }}?modo=pdf','_blank')" class="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[12px] font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap" title="Baixar PDF / enviar no WhatsApp">📲 PDF</button>
@@ -231,7 +231,7 @@
         ed:{numero:'',embarcacao_id:'',data_viagem:'',origem:'',destino:'',forma:'avista',comprador_nome:'',comprador_telefone:'',comprador_documento:'',observacao:'',passageiros:[]},
         tiposPax: @json(($tiposPax ?? collect())->pluck('nome')->values()),
         toggle(id){ const i=this.sel.indexOf(id); if(i>=0) this.sel.splice(i,1); else this.sel.push(id); },
-        abrir(){ if(!this.sel.length) return; if(this.sel.length===1){ this.editarUm(this.sel[0]); return; } this.f={embarcacao_id:'',data_viagem:'',origem:'',destino:'',forma:''}; this.modal=true; },
+        abrir(){ if(!this.sel.length) return; if(this.sel.length===1){ window.location.href='/passagens/'+this.sel[0]+'/editar'; return; } this.f={embarcacao_id:'',data_viagem:'',origem:'',destino:'',forma:''}; this.modal=true; },
         async editarUm(id){
           this.edId=id; this.edLoading=true; this.edModal=true;
           try{

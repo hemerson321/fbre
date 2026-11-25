@@ -224,6 +224,163 @@ class PassagemService
         });
     }
 
+
+    /** Edicao completa de uma venda: limpa e recria passageiros, pagamentos e agente, recalculando tudo. "Editar livre e recalcular". */
+    public function atualizar(Passagem $p, array $data, int $userId): Passagem
+    {
+        $empresa = Tenant::empresa();
+
+        // viagem a partir da rota + data (igual criar)
+        $viagemId = $data['viagem_id'] ?? null;
+        $rotaId = $data['rota_id'] ?? null;
+        if (! $viagemId && $rotaId) {
+            $rota = \App\Models\Rota::find($rotaId);
+            if ($rota) {
+                $dataRef = ! empty($data['data_viagem']) ? \Carbon\Carbon::parse($data['data_viagem']) : now();
+                $viagemId = $rota->viagemPara($dataRef)->id;
+            }
+        }
+
+        return DB::transaction(function () use ($p, $data, $userId, $empresa, $viagemId, $rotaId) {
+            $origRev = $p->revendedor_id;
+            $origUser = $p->user_id;
+            // "era agente externo" = o dono da venda era o proprio revendedor (is_revendedor). So nesse caso o
+            // operador original se perde, entao o editor vira o vendedor-base; venda normal/vendedor-revendedor mantem o vendedor.
+            $eraAgente = $origRev && $origUser && ((int) $origRev === (int) $origUser)
+                && optional(\App\Models\User::find($origUser))->is_revendedor;
+
+            // limpa o que vai ser recriado (arquivos antigos ficam orfaos, sem problema)
+            \App\Models\Pagamento::where('modulo', 'passagem')->where('origem_id', $p->id)->delete();
+            $p->passageiros()->delete();
+
+            // atualiza a propria passagem (mantem numero/uuid/created_at); reseta agente p/ recalcular
+            $p->forceFill([
+                'embarcacao_id' => ($data['embarcacao_id'] ?? null) ?: null,
+                'viagem_id' => $viagemId,
+                'rota_id' => $rotaId,
+                'data_viagem' => $data['data_viagem'] ?? null,
+                'origem' => $data['origem'],
+                'destino' => $data['destino'],
+                'tipo' => in_array($data['tipo'] ?? null, ['poltrona', 'rede', 'camarote'], true) ? $data['tipo'] : $p->tipo,
+                'comprador_nome' => $data['comprador_nome'] ?? null,
+                'comprador_telefone' => $data['comprador_telefone'] ?? null,
+                'comprador_documento' => $data['comprador_documento'] ?? null,
+                'forma' => $data['forma'] ?? 'avista',
+                'parcelas' => max(1, min(12, (int) ($data['parcelas'] ?? 1))),
+                'cliente_faturado_id' => (($data['forma'] ?? '') === 'faturado' && ! empty($data['cliente_faturado_id'])) ? (int) $data['cliente_faturado_id'] : null,
+                'observacao' => $data['observacao'] ?? null,
+                'desconto' => $data['desconto'] ?? 0,
+                'documentos_gerais' => $this->salvarDocs($data['documentos_gerais'] ?? []) ?: null,
+                'revendedor_id' => null,
+                'acerto_empresa' => false,
+                'acerto_empresa_valor' => 0,
+                'acerto_revendedor_valor' => 0,
+                'user_id' => $eraAgente ? $userId : ($origUser ?: $userId),
+            ])->save();
+
+            $sellerId = (int) $p->user_id;
+
+            foreach ($data['passageiros'] as $pax) {
+                $vp = round((float) ($pax['valor_passagem'] ?? 0), 2);
+                $vt = round((float) ($pax['valor_taxa'] ?? 0), 2);
+                $va = round((float) ($pax['valor_alimentacao'] ?? 0), 2);
+                $vi = round((float) ($pax['valor_integral'] ?? ($vp + $vt + $va)), 2);
+                $docs = $this->salvarDocs($pax['documentos'] ?? []);
+                $paxRow = $p->passageiros()->create([
+                    'nome' => $pax['nome'],
+                    'tipo' => $pax['tipo'] ?? 'Adulto',
+                    'papel' => $pax['papel'] ?? null,
+                    'percentual' => (int) ($pax['percentual'] ?? 100),
+                    'documento' => $pax['documento'] ?? null,
+                    'doc_tipo' => $pax['doc_tipo'] ?? null,
+                    'nascimento' => ($pax['nascimento'] ?? null) ?: null,
+                    'sexo' => $pax['sexo'] ?? null,
+                    'telefone' => $pax['telefone'] ?? null,
+                    'nacionalidade' => $pax['nacionalidade'] ?? null,
+                    'checkin' => (bool) ($pax['checkin'] ?? true),
+                    'foto_rg' => $pax['foto_rg'] ?? null,
+                    'foto' => $pax['foto'] ?? null,
+                    'documentos' => $docs ?: null,
+                    'poltrona' => $pax['poltrona'] ?? null,
+                    'valor_passagem' => $vp,
+                    'valor_taxa' => $vt,
+                    'valor_alimentacao' => $va,
+                    'valor_integral' => $vi,
+                    'valor_total' => round($vp + $vt + $va, 2),
+                    'observacao' => $pax['observacao'] ?? null,
+                ]);
+                $this->lembrarPessoa($pax['nome'], $pax['telefone'] ?? null, $pax['documento'] ?? null, [
+                    'sexo' => $pax['sexo'] ?? null,
+                    'doc_tipo' => $pax['doc_tipo'] ?? null,
+                    'nascimento' => ($pax['nascimento'] ?? null) ?: null,
+                    'nacionalidade' => $pax['nacionalidade'] ?? null,
+                    'foto' => $pax['foto'] ?? null,
+                    'foto_rg' => $pax['foto_rg'] ?? null,
+                ]);
+
+                $bc = $pax['bebe_colo'] ?? null;
+                if (is_array($bc) && trim((string) ($bc['nome'] ?? '')) !== '') {
+                    $p->passageiros()->create([
+                        'nome' => trim($bc['nome']),
+                        'tipo' => 'Bebê de colo',
+                        'papel' => 'colo',
+                        'colo_de_id' => $paxRow->id,
+                        'percentual' => 0,
+                        'documento' => ($bc['documento'] ?? null) ?: null,
+                        'doc_tipo' => null,
+                        'nascimento' => ($bc['nascimento'] ?? null) ?: null,
+                        'sexo' => null,
+                        'telefone' => null,
+                        'nacionalidade' => $pax['nacionalidade'] ?? null,
+                        'checkin' => (bool) ($pax['checkin'] ?? true),
+                        'foto_rg' => null,
+                        'foto' => null,
+                        'documentos' => null,
+                        'poltrona' => null,
+                        'valor_passagem' => 0,
+                        'valor_taxa' => 0,
+                        'valor_alimentacao' => 0,
+                        'valor_integral' => 0,
+                        'valor_total' => 0,
+                        'observacao' => 'Colo de '.trim((string) ($pax['nome'] ?? '')),
+                    ]);
+                }
+            }
+
+            foreach ($data['pagamentos'] ?? [] as $pag) {
+                if ((float) $pag['valor'] <= 0) continue;
+                \App\Models\Pagamento::create([
+                    'empresa_id' => $empresa->id,
+                    'modulo' => 'passagem',
+                    'origem_id' => $p->id,
+                    'encomenda_id' => null,
+                    'meio' => $pag['meio'],
+                    'pix_auto' => ($pag['meio'] === 'pix' && ! empty($pag['auto'])),
+                    'valor' => $pag['valor'],
+                    'user_id' => $sellerId,
+                    'momento' => 'cadastro',
+                    'tipo_mov' => 'entrada',
+                    'pago_proprietario' => ! empty($pag['proprietario']),
+                ]);
+            }
+
+            if ((float) ($data['desconto'] ?? 0) > 0.009) {
+                \App\Models\Pagamento::create([
+                    'empresa_id' => $empresa->id, 'modulo' => 'passagem', 'origem_id' => $p->id, 'encomenda_id' => null,
+                    'meio' => 'desconto', 'valor' => (float) $data['desconto'], 'user_id' => $sellerId,
+                    'momento' => 'cadastro', 'tipo_mov' => 'entrada',
+                ]);
+            }
+
+            $this->lembrarPessoa($data['comprador_nome'] ?? '', $data['comprador_telefone'] ?? null, $data['comprador_documento'] ?? null);
+            $p->recalcular();
+            $this->definirRevendedor($p, $sellerId);
+            $this->atribuirAgenteExterno($p, $data);
+
+            return $p->refresh();
+        });
+    }
+
     /** Baixa: pagamento e/ou embarque (check-in). */
     /**
      * Uso da cota de gratuidade NO TRECHO pedido (soma por segmento da viagem, como as poltronas).
