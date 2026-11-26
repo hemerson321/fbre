@@ -96,11 +96,13 @@
   </div>
 
   {{-- grupos por módulo: caixa com borda e o nome na borda --}}
-  @foreach($grupos as $g)
-  <div class="relative rounded-2xl border-2 bg-white/40 px-4 pb-4 pt-5" style="border-color:{{ $g['cor'] }}">
-    <span class="absolute -top-2.5 left-4 px-2 text-[13px] font-extrabold uppercase tracking-wider" style="color:{{ $g['cor'] }};background:#eef2f7">{{ $g['nome'] }}</span>
+  {{-- uma caixa só com todos os atalhos (adapta aos módulos da empresa) --}}
+  @php $todos = collect($grupos)->flatMap(fn ($g) => $g['itens'])->values()->all(); @endphp
+  @if($todos)
+  <div class="relative rounded-2xl border-2 bg-white/40 px-4 pb-4 pt-5" style="border-color:var(--cor1)">
+    <span class="absolute -top-2.5 left-4 px-2 text-[13px] font-extrabold uppercase tracking-wider" style="color:var(--cor1);background:#eef2f7">Acesso rápido</span>
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-      @foreach($g['itens'] as $it)
+      @foreach($todos as $it)
         <a href="{{ $it['r'] }}" class="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300 transition">
           <span class="text-xl shrink-0">{{ $it['i'] }}</span>
           <span class="font-semibold text-[13px] text-slate-700 leading-tight">{{ $it['l'] }}</span>
@@ -108,7 +110,7 @@
       @endforeach
     </div>
   </div>
-  @endforeach
+  @endif
 
   <p class="text-xs text-slate-400 text-center pt-1">Dúvida? Fale com o administrador ou com o suporte da GERATEC.</p>
 </div>
