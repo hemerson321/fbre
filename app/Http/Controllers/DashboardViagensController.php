@@ -124,7 +124,7 @@ class DashboardViagensController extends Controller
         }
 
         $topPessoas = collect($pessoas)->sortByDesc('qtd')->take(10)->values();
-        $topViagens = collect($viagens)->sort(fn ($a, $b) => [$b['pax'], $b['receita']] <=> [$a['pax'], $a['receita']])->take(10)->values();
+        $topViagens = collect($viagens)->sort(fn ($a, $b) => [$b['pax'], $b['pass']] <=> [$a['pax'], $a['pass']])->take(10)->map(fn ($v) => ['data' => $v['data'], 'lancha' => $v['lancha'], 'pax' => $v['pax'], 'pass' => $v['pass']])->values();
 
         $melhorMes = null;
         if ($mesPax) { $i = array_search(max($mesPax), $mesPax, true); $melhorMes = ['label' => $mesLabels[$i], 'pax' => $mesPax[$i], 'viagens' => $mesViagens[$i]]; }
@@ -142,7 +142,7 @@ class DashboardViagensController extends Controller
             'periodos' => $periodos, 'periodo' => $periodo, 'ini' => $ini, 'fim' => $fim,
             'transportes' => $transportes, 'embId' => $embId, 'emb' => $emb,
             'dv' => [
-                'embNome' => $emb?->nome, 'totPax' => $totPax, 'nViagens' => $nViagens, 'receita' => round($receita, 2),
+                'embNome' => $emb?->nome, 'totPax' => $totPax, 'nViagens' => $nViagens, 'nDestinos' => count($destinos), 'nLanchas' => count($lancha),
                 'mediaPax' => $nViagens ? round($totPax / $nViagens, 1) : 0,
                 'lanchaTop' => $lanchas->first(), 'rotaTop' => $rotas ? ['nome' => array_key_first($rotas), 'pax' => reset($rotas)] : null,
                 'destinoTop' => $destinos ? ['nome' => array_key_first($destinos), 'pax' => reset($destinos)] : null,

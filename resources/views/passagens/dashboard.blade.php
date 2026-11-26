@@ -92,7 +92,6 @@
   const root = document.getElementById('dv-root');
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num = n => Number(n || 0).toLocaleString('pt-BR');
-  const brl = n => 'R$ ' + Number(n || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const dataBr = d => { const p = String(d).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d; };
   const semana = d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][new Date(d + 'T12:00:00').getDay()] || '';
 
@@ -102,12 +101,19 @@
   }
 
   const d = (em, bg, t, n, q) => `<div class="dv-d"><div class="em" style="background:${bg}">${em}</div><div><div class="t">${t}</div><div class="n" title="${esc(n)}">${esc(n)}</div><div class="q">${q}</div></div></div>`;
+  const maxP = Math.max(1, ...DV.pessoas.map(p => p.qtd));
   let h = `
   <div class="dv-kpis">
     <div class="dv-kpi k1"><div class="l">Passageiros</div><div class="v">${num(DV.totPax)}</div><div class="s">pessoas embarcadas no período</div><div class="e">🧑‍🤝‍🧑</div></div>
     <div class="dv-kpi k2"><div class="l">Viagens</div><div class="v">${num(DV.nViagens)}</div><div class="s">saídas com passagem vendida</div><div class="e">🚤</div></div>
     <div class="dv-kpi k3"><div class="l">Média por viagem</div><div class="v">${Number(DV.mediaPax).toLocaleString('pt-BR')}</div><div class="s">passageiros por saída</div><div class="e">📈</div></div>
-    <div class="dv-kpi k4"><div class="l">Vendido</div><div class="v">${brl(DV.receita)}</div><div class="s">valor das passagens</div><div class="e">💰</div></div>
+    <div class="dv-kpi k4"><div class="l">Cidades atendidas</div><div class="v">${num(DV.nDestinos)}</div><div class="s">destinos com passageiro</div><div class="e">📍</div></div>
+  </div>
+  <div class="dv-grid">
+    <div class="dv-card"><h2>🍕 Rotas que mais levam passageiros</h2><div class="sub">Participação de cada rota no total de passageiros</div><div class="dv-canvas"><canvas id="dv-rotas"></canvas></div></div>
+    <div class="dv-card">${DV.embNome
+      ? `<h2>📅 Passageiros por dia da semana</h2><div class="sub">Em que dia ${esc(DV.embNome)} mais leva gente</div><div class="dv-canvas"><canvas id="dv-dias"></canvas></div>`
+      : `<h2>🚤 Lanchas que mais viajam</h2><div class="sub">Número de viagens e de passageiros por lancha</div><div class="dv-canvas"><canvas id="dv-lanchas"></canvas></div>`}</div>
   </div>
   <div class="dv-dest">
     ${DV.embNome
@@ -122,18 +128,13 @@
 
   if (DV.embNome && DV.viagens.length) {
     h += `<div class="dv-grid"><div class="dv-card full"><h2>🚤 Viagens que mais venderam — ${esc(DV.embNome)}</h2><div class="sub">As 10 saídas com mais passageiros no período</div>
-      <div style="overflow-x:auto"><table class="dv-tab"><thead><tr><th>#</th><th>Data da viagem</th><th class="r">Passageiros</th><th class="r">Passagens</th><th class="r">Vendido</th></tr></thead><tbody>
-      ${DV.viagens.map((v, i) => `<tr><td>${i === 0 ? '🥇' : i + 1}</td><td>${dataBr(v.data)} <span style="color:#94a3b8;font-weight:500">· ${semana(v.data)}</span></td><td class="r">${num(v.pax)}</td><td class="r">${num(v.pass)}</td><td class="r">${brl(v.receita)}</td></tr>`).join('')}
+      <div style="overflow-x:auto"><table class="dv-tab"><thead><tr><th>#</th><th>Data da viagem</th><th class="r">Passageiros</th><th class="r">Passagens</th></tr></thead><tbody>
+      ${DV.viagens.map((v, i) => `<tr><td>${i === 0 ? '🥇' : i + 1}</td><td>${dataBr(v.data)} <span style="color:#94a3b8;font-weight:500">· ${semana(v.data)}</span></td><td class="r">${num(v.pax)}</td><td class="r">${num(v.pass)}</td></tr>`).join('')}
       </tbody></table></div></div></div>`;
   }
 
-  const maxP = Math.max(1, ...DV.pessoas.map(p => p.qtd));
   h += `
   <div class="dv-grid">
-    <div class="dv-card"><h2>🍕 Rotas que mais levam passageiros</h2><div class="sub">Participação de cada rota no total de passageiros</div><div class="dv-canvas"><canvas id="dv-rotas"></canvas></div></div>
-    <div class="dv-card">${DV.embNome
-      ? `<h2>📅 Passageiros por dia da semana</h2><div class="sub">Em que dia ${esc(DV.embNome)} mais leva gente</div><div class="dv-canvas"><canvas id="dv-dias"></canvas></div>`
-      : `<h2>🚤 Lanchas que mais viajam</h2><div class="sub">Número de viagens e de passageiros por lancha</div><div class="dv-canvas"><canvas id="dv-lanchas"></canvas></div>`}</div>
     <div class="dv-card"><h2>📈 Mês a mês</h2><div class="sub">Passageiros e viagens em cada mês</div><div class="dv-canvas"><canvas id="dv-meses"></canvas></div></div>
     <div class="dv-card"><h2>📍 Cidades que mais recebem passageiros</h2><div class="sub">Pelo destino da passagem</div><div class="dv-canvas"><canvas id="dv-destinos"></canvas></div></div>
     <div class="dv-card"><h2>🧑‍🤝‍🧑 Passageiros que mais viajam</h2><div class="sub">Top 10 por número de viagens no período</div>
@@ -144,7 +145,7 @@
           <tr><td>Média de passageiros por viagem</td><td class="r"><b>${Number(DV.mediaPax).toLocaleString('pt-BR')}</b></td></tr>
           <tr><td>Mês que mais viajou</td><td class="r"><b>${DV.melhorMes ? esc(DV.melhorMes.label) : '—'}</b></td></tr>
           <tr><td>Rota mais vendida</td><td class="r"><b>${DV.rotaTop ? esc(DV.rotaTop.nome) : '—'}</b></td></tr>
-          <tr><td>Total vendido</td><td class="r"><b>${brl(DV.receita)}</b></td></tr></tbody></table>`
+          <tr><td>Cidades atendidas</td><td class="r"><b>${num(DV.nDestinos)}</b></td></tr></tbody></table>`
       : `<h2>📅 Passageiros por dia da semana</h2><div class="sub">Em que dia a agência mais embarca gente</div><div class="dv-canvas"><canvas id="dv-dias"></canvas></div>`}</div>
   </div>`;
   root.innerHTML = h;
