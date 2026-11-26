@@ -80,7 +80,7 @@
           fd.append('estilo', this.f.estilo||'');
           const r=await fetch(this.baseTestar, {method:'POST', headers:{'X-CSRF-TOKEN':this.csrf,'Accept':'application/json'}, body:fd});
           const d=await r.json();
-          if(d.ok){ try{ if(this.f.sino && window.sinoAeroporto){ await window.sinoAeroporto(this.sinoTipo); } }catch(e){} try{ if(this.audioEl){ this.audioEl.pause(); } this.audioEl=new Audio(d.audio); this.audioEl.play(); }catch(e){} this.testMsg='Tocando pela voz do '+(d.provedor==='google'?'Google':'OpenAI')+' ✓'; }
+          if(d.ok){ try{ if(this.f.sino && window.sinoAeroporto){ await window.tocaSinoEscolhido(this.sinoTipo); } }catch(e){} try{ if(this.audioEl){ this.audioEl.pause(); } this.audioEl=new Audio(d.audio); this.audioEl.play(); }catch(e){} this.testMsg='Tocando pela voz do '+(d.provedor==='google'?'Google':'OpenAI')+' ✓'; }
           else { this.testErro=d.msg||'Não deu pra gerar a voz.'; }
         }catch(e){ this.testErro='Erro: '+e; }
         this.testando=false;
@@ -269,11 +269,11 @@
         <label class="label">🔔 Som do sinal (toca antes da fala)</label>
         <div class="flex items-center gap-2 flex-wrap">
           <select name="tts_sino_tipo" x-model="sinoSel" class="input max-w-[260px]">
-            <option value="aviao">✈️ Avião — dim-dom de cabine (tipo Azul)</option>
+            <option value="aviao">✈️ Avião — gravação real (tipo Azul)</option>
             <option value="aeroporto">🔔 Aeroporto — bing-bong</option>
             <option value="suave">🎵 Suave — 3 notinhas</option>
           </select>
-          <button type="button" @click="window.sinoAeroporto && window.sinoAeroporto(sinoSel)" class="btn btn-ghost btn-sm">🔊 Ouvir o sinal</button>
+          <button type="button" @click="window.tocaSinoEscolhido && window.tocaSinoEscolhido(sinoSel)" class="btn btn-ghost btn-sm">🔊 Ouvir o sinal</button>
         </div>
         <p class="text-[11px] text-slate-400 mt-1">É o sininho que toca antes de cada anúncio (quando o áudio está com o sino ligado). Clique em Ouvir e escolha o que ficar mais parecido.</p>
       </div>
@@ -386,6 +386,21 @@ window.sinoAeroporto = function(tipo){
       setTimeout(resolve, Math.max(380,ms));
     }catch(e){ resolve(); }
   });
+};
+window.SINO_URL = @json(asset('marketing/airplane-chime.mp3'));
+window.tocaSinoEscolhido = function(tipo){
+  if(tipo==='aviao' && window.SINO_URL){
+    return new Promise(function(resolve){
+      try{
+        var a=new Audio(window.SINO_URL), feito=false;
+        function fim(){ if(feito)return; feito=true; resolve(); }
+        function fb(){ if(feito)return; feito=true; window.sinoAeroporto('aviao').then(resolve); }
+        a.onended=fim; a.onerror=fb; a.play().catch(fb);
+        setTimeout(fim, 7000);
+      }catch(e){ window.sinoAeroporto('aviao').then(resolve); }
+    });
+  }
+  return window.sinoAeroporto(tipo);
 };
 </script>
 @endsection

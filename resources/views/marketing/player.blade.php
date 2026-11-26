@@ -44,6 +44,7 @@
 (function(){
   var DADOS = @json(route('audio.dados', $terminal->token));
   var SINO_TIPO = @json($sinoTipo ?? 'aviao');
+  var SINO_URL = @json(asset('marketing/airplane-chime.mp3'));
   var played = [];
   try { played = JSON.parse(localStorage.getItem('audioterm_played') || '[]') || []; } catch(e){ played = []; }
   function marca(oid){ played.push(oid); if(played.length>400) played = played.slice(-400); try{ localStorage.setItem('audioterm_played', JSON.stringify(played)); }catch(e){} }
@@ -113,6 +114,20 @@
     });
   }
 
+  // Sino real (MP3 de cabine de aviao). Cai no sino sintetizado se o arquivo falhar.
+  function tocaSinoReal(){
+    return new Promise(function(resolve){
+      try{
+        var a = new Audio(SINO_URL), feito=false;
+        function fim(){ if(feito) return; feito=true; resolve(); }
+        function fallback(){ if(feito) return; feito=true; tocaSino('aviao').then(resolve); }
+        a.onended = fim; a.onerror = fallback;
+        a.play().catch(fallback);
+        setTimeout(fim, 7000);
+      }catch(e){ tocaSino('aviao').then(resolve); }
+    });
+  }
+
   function tocaItem(it, done){
     addLog(it.nome || 'Áudio');
     setNow('🔊 ' + (it.nome||''), true);
@@ -140,7 +155,7 @@
       }
       done();
     }
-    if(it.sino){ escondeHint(); tocaSino(SINO_TIPO).then(falar); }
+    if(it.sino){ escondeHint(); (SINO_TIPO==='aviao' ? tocaSinoReal() : tocaSino(SINO_TIPO)).then(falar); }
     else { falar(); }
   }
   function drena(){
