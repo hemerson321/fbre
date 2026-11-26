@@ -6,7 +6,7 @@
   <div class="rounded-2xl px-4 py-2 text-white flex items-center gap-3" style="background:{{ $cor }}">
     <span class="text-2xl">🧾</span><div class="font-bold">Passagens / embarque</div>
     @can('cadastra', null)@endcan
-    <div class="ml-auto" x-data="{open:false, emb:'', data:'', abrir(n){ if(!this.emb){alert('Escolha o transporte.');return;} if(!this.data){alert('Escolha a data da viagem.');return;} if(n===2){alert('Lista 2: em breve.');return;} const qs=new URLSearchParams({embarcacao_id:this.emb, data_viagem:this.data, tipo:'trecho', print:'1'}); window.open('{{ route('passagens.manifesto') }}?'+qs.toString(),'_blank'); this.open=false; }}">
+    <div class="ml-auto" x-data="{open:false, emb:'', data:'', abrir(n){ if(!this.emb){alert('Escolha o transporte.');return;} if(!this.data){alert('Escolha a data da viagem.');return;} const tipo=(n===2)?'federal':'trecho'; const qs=new URLSearchParams({embarcacao_id:this.emb, data_viagem:this.data, tipo:tipo, print:'1'}); window.open('{{ route('passagens.manifesto') }}?'+qs.toString(),'_blank'); this.open=false; }}">
       <button type="button" @click="open=true" class="btn btn-sm bg-white/20 text-white">📋 Lista de passageiros</button>
       <div x-show="open" x-cloak @keydown.escape.window="open=false" style="position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.5)" class="flex items-center justify-center p-4" @click.self="open=false">
         <div class="bg-white rounded-2xl p-5 w-full max-w-md space-y-4 text-slate-700" @click.stop>
@@ -32,9 +32,9 @@
           </div>
           <div class="grid grid-cols-2 gap-3 pt-1">
             <button type="button" @click="abrir(1)" class="btn text-white font-bold" style="background:#0d9488">📋 Lista 1</button>
-            <button type="button" @click="abrir(2)" class="btn font-bold" style="background:#eef2f7;color:#94a3b8;border:1px dashed #cbd5e1">Lista 2 · em breve</button>
+            <button type="button" @click="abrir(2)" class="btn text-white font-bold" style="background:#13295e">🛂 Lista 2</button>
           </div>
-          <p class="text-[11px] text-slate-400 leading-snug">Lista 1 — passageiros por trecho (origem → destino), do jeito atual. Escolha o transporte e a data da viagem.</p>
+          <p class="text-[11px] text-slate-400 leading-snug"><b>Lista 1</b> — passageiros por trecho (origem → destino). <b>Lista 2</b> — órgão federal (nome · nascimento · sexo, bilíngue). Escolha o transporte e a data.</p>
         </div>
       </div>
     </div>
