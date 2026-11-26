@@ -290,7 +290,7 @@
 
 @endunless
 
-@if($prestacaoTransporte ?? false)
+@if(($prestacaoTransporte ?? false) && $focoPrest)
 <div class="card overflow-hidden border-2 border-indigo-300">
   <div class="p-3 border-b bg-indigo-50 flex items-center justify-between flex-wrap gap-2">
     <div class="font-bold text-sm text-indigo-800">📋 Prestação de contas — 🚤 {{ $prestacaoTransporte->nome }}</div>
