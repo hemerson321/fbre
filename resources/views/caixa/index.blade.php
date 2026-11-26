@@ -240,26 +240,52 @@
 @if($viagemId)<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Mostrando o caixa da viagem selecionada (o período acima é ignorado).</div>@endif
 
 @unless($focoPrest)
-<div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2">
-  <div class="card p-3 text-white" style="background:var(--cor1)"><div class="text-[11px] uppercase opacity-70">Caixa líquido (agência)</div><div class="text-2xl font-extrabold">R$ {{ number_format($liquidoAgencia ?? $total,2,',','.') }}</div><div class="text-[10px] opacity-70">comissão {{ number_format($comissaoAgencia ?? 0,2,',','.') }} · saídas {{ number_format($saidas,2,',','.') }}</div></div>
-  <div class="card p-3" style="border:2px solid var(--cor1)"><div class="text-[11px] uppercase text-slate-500">💰 Vendas (bruto)</div><div class="text-2xl font-extrabold" style="color:var(--cor1)">R$ {{ number_format($vendasBruto ?? 0,2,',','.') }}</div><div class="text-[10px] text-slate-400">só balcão (operadores)</div></div>
-  @foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)
-    <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m]->valor ?? 0,2,',','.') }}</div><div class="text-xs text-slate-400">{{ $porMeio[$m]->qtd ?? 0 }} lançamentos</div></div>
-  @endforeach
-</div>
-<div class="card px-4 py-2.5">
-  <div class="flex flex-wrap items-center gap-x-7 gap-y-1.5 text-[13px]">
-    <span class="text-slate-500">Saídas avulsas <b class="text-red-600 ml-1">R$ {{ number_format($saidas,2,',','.') }}</b></span>
-    <span class="text-slate-300">·</span>
-    <span class="text-slate-500">Descontos <b class="text-slate-800 ml-1">R$ {{ number_format($descontos,2,',','.') }}</b></span>
-    <span class="text-slate-300">·</span>
-    <span class="text-slate-500">Cadastros <b class="text-slate-800 ml-1">{{ $cadastros }}</b></span>
-    <span class="text-slate-300">·</span>
-    <span class="text-slate-500">Entregas <b class="text-slate-800 ml-1">{{ $entregas }}</b></span>
-    <span class="text-slate-300">·</span>
-    <span class="text-slate-500">❌ Cancelados <b class="text-slate-800 ml-1">{{ $cancelados->qtd ?? 0 }} · R$ {{ number_format($cancelados->valor ?? 0,2,',','.') }}</b></span>
+<style>
+  details.vendas-det > summary{list-style:none}
+  details.vendas-det > summary::-webkit-details-marker{display:none}
+  details.vendas-det[open] .vd-ver{display:none}
+  details.vendas-det:not([open]) .vd-fechar{display:none}
+  @media print{ details.vendas-det > div{display:block !important} details.vendas-det .vd-ver,details.vendas-det .vd-fechar{display:none} }
+</style>
+<div class="card p-4 text-white" style="background:var(--cor1)">
+  <div class="flex items-end justify-between gap-3 flex-wrap">
+    <div>
+      <div class="text-[11px] uppercase tracking-wide opacity-75">Caixa · dinheiro em mãos agora</div>
+      <div class="text-[34px] leading-none font-extrabold mt-1">R$ {{ number_format($liquidoAgencia ?? $total,2,',','.') }}</div>
+      <div class="text-[11px] opacity-80 mt-2">sua comissão R$ {{ number_format($comissaoAgencia ?? 0,2,',','.') }} · saídas R$ {{ number_format($saidas,2,',','.') }}</div>
+    </div>
+    <div class="text-[11px] opacity-75 leading-snug max-w-[240px]">O bruto da venda fica no caixa até você acertar com o dono. Depois da prestação, sai a parte dele e fica só a comissão.</div>
   </div>
 </div>
+
+<details class="card vendas-det overflow-hidden">
+  <summary class="px-4 py-3 flex items-center justify-between cursor-pointer">
+    <span class="text-[13px] font-bold text-slate-700 flex items-center gap-2">💰 Vendas e formas de pagamento
+      <span class="text-[12px] font-normal text-slate-400">bruto R$ {{ number_format($vendasBruto ?? 0,2,',','.') }}</span></span>
+    <span class="vd-ver text-slate-400 text-[12px] font-semibold">ver totais ▾</span>
+    <span class="vd-fechar text-slate-400 text-[12px] font-semibold">ocultar ▴</span>
+  </summary>
+  <div class="px-4 pb-4 pt-2 border-t space-y-2.5">
+    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+      <div class="card p-3" style="border:2px solid var(--cor1)"><div class="text-[11px] uppercase text-slate-500">Vendas (bruto)</div><div class="text-xl font-extrabold" style="color:var(--cor1)">R$ {{ number_format($vendasBruto ?? 0,2,',','.') }}</div><div class="text-[10px] text-slate-400">só balcão (operadores)</div></div>
+      @foreach(['dinheiro','pix_manual','pix_auto','debito','credito'] as $m)
+        <div class="card p-3"><div class="text-[11px] font-semibold text-slate-500 uppercase">{{ $meios[$m] }}</div><div class="text-lg font-extrabold">R$ {{ number_format($porMeio[$m]->valor ?? 0,2,',','.') }}</div><div class="text-xs text-slate-400">{{ $porMeio[$m]->qtd ?? 0 }} lançamentos</div></div>
+      @endforeach
+    </div>
+    <div class="flex flex-wrap items-center gap-x-7 gap-y-1.5 text-[13px]">
+      <span class="text-slate-500">Saídas avulsas <b class="text-red-600 ml-1">R$ {{ number_format($saidas,2,',','.') }}</b></span>
+      <span class="text-slate-300">·</span>
+      <span class="text-slate-500">Descontos <b class="text-slate-800 ml-1">R$ {{ number_format($descontos,2,',','.') }}</b></span>
+      <span class="text-slate-300">·</span>
+      <span class="text-slate-500">Cadastros <b class="text-slate-800 ml-1">{{ $cadastros }}</b></span>
+      <span class="text-slate-300">·</span>
+      <span class="text-slate-500">Entregas <b class="text-slate-800 ml-1">{{ $entregas }}</b></span>
+      <span class="text-slate-300">·</span>
+      <span class="text-slate-500">❌ Cancelados <b class="text-slate-800 ml-1">{{ $cancelados->qtd ?? 0 }} · R$ {{ number_format($cancelados->valor ?? 0,2,',','.') }}</b></span>
+    </div>
+  </div>
+</details>
+
 @endunless
 
 @if($prestacaoTransporte ?? false)

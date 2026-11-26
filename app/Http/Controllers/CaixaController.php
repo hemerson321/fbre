@@ -327,12 +327,19 @@ class CaixaController extends Controller
                 ->orWhereIn('id', Pagamento::where('modulo', 'passagem')->where('estornado', false)->where('conferido', true)->select('origem_id'))))
             // Prestação sem data = todas as viagens em aberto do transporte (não corta por período)
             ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem), fn ($q) => $request->input('foco') === 'prestacoes' ? $q : $q->whereBetween('created_at', [$inicio, $fim]));
-        $passAll = (clone $pqAll)->get(['id', 'embarcacao_id', 'total']);
+        $passAll = (clone $pqAll)->get(['id', 'embarcacao_id', 'total', 'devido', 'acerto_dono']);
         if ($passAll->count() > 0) {
             $embIdsA = $passAll->pluck('embarcacao_id')->filter()->unique()->values();
             $pctsA = \App\Models\Embarcacao::whereIn('id', $embIdsA)->pluck('comissao_empresa_pct', 'id');
             $comissaoAgencia = round((float) $passAll->sum(fn ($p) => (float) $p->total * (int) ($pctsA[$p->embarcacao_id] ?? 0) / 100), 2);
-            $ownerShareG = round((float) $passAll->sum(fn ($p) => (float) $p->total * (100 - (int) ($pctsA[$p->embarcacao_id] ?? 0)) / 100), 2);
+            // CAIXA = dinheiro em maos: a parte do dono so SAI do caixa quando a venda foi acertada com o dono
+            // (acerto_dono) ou e venda do proprietario (ele ja recebeu direto na maquininha dele). Ate la, o bruto
+            // fica no caixa. Base no recebido (total - devido) p/ respeitar parcelado.
+            $propIds = \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passAll->pluck('id'))
+                ->where('estornado', false)->where('pago_proprietario', true)->distinct()->pluck('origem_id')->flip();
+            $recebidoA = fn ($p) => max(0.0, (float) $p->total - (float) $p->devido);
+            $ownerShareG = round((float) $passAll->filter(fn ($p) => $p->acerto_dono || $propIds->has($p->id))
+                ->sum(fn ($p) => $recebidoA($p) * (100 - (int) ($pctsA[$p->embarcacao_id] ?? 0)) / 100), 2);
         }
         // PENDENTE (acerto_dono=false): é o que a PRESTAÇÃO mostra — zera depois do fechamento.
         $pqG = (clone $pqAll)->where('acerto_dono', false);
