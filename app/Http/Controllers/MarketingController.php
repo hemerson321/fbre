@@ -27,6 +27,7 @@ class MarketingController extends Controller
             'openai_voz' => (string) ($emp?->config('tts_openai_voz', 'nova')),
             'estilo' => (string) ($emp?->config('tts_estilo', '')),
             'google_tem_chave' => filled($emp?->config('tts_google_key')),
+            'google_tem_sa' => filled($emp?->config('tts_google_sa')),
             'google_voz' => (string) ($emp?->config('tts_google_voz', 'pt-BR-Chirp3-HD-Aoede')),
             'google_ritmo' => (float) ($emp?->config('tts_google_ritmo', 1.0)),
         ];
@@ -42,6 +43,7 @@ class MarketingController extends Controller
             'tts_openai_voz' => 'nullable|string|max:40',
             'tts_estilo' => 'nullable|string|max:600',
             'tts_google_key' => 'nullable|string|max:200',
+            'tts_google_sa' => 'nullable|string|max:8000',
             'tts_google_voz' => 'nullable|string|max:60',
             'tts_google_ritmo' => 'nullable|numeric|min:0.5|max:1.5',
         ]);
@@ -53,6 +55,17 @@ class MarketingController extends Controller
         $cfg['tts_google_voz'] = $data['tts_google_voz'] ?: 'pt-BR-Chirp3-HD-Aoede';
         $cfg['tts_google_ritmo'] = (float) ($data['tts_google_ritmo'] ?? 1.0);
         if (! empty($data['tts_google_key'])) $cfg['tts_google_key'] = trim((string) $data['tts_google_key']); // em branco mantém a atual
+
+        // Conta de serviço do Google (JSON) — é o que funciona com as vozes Chirp 3 HD.
+        if ($request->boolean('tts_google_sa_limpar')) {
+            unset($cfg['tts_google_sa']);
+        } elseif (! empty($data['tts_google_sa'])) {
+            $sa = json_decode((string) $data['tts_google_sa'], true);
+            if (! is_array($sa) || empty($sa['client_email']) || empty($sa['private_key'])) {
+                return back()->with('erro', 'O JSON da conta de serviço do Google parece inválido: precisa ser o arquivo .json inteiro (com client_email e private_key).')->withInput();
+            }
+            $cfg['tts_google_sa'] = trim((string) $data['tts_google_sa']);
+        }
         $e->forceFill(['config' => $cfg])->save();
 
         return back()->with('ok', 'Integrações de voz salvas.');
@@ -66,7 +79,7 @@ class MarketingController extends Controller
         $prov = (string) ($emp?->config('tts_provider', 'openai'));
         $texto = 'Atenção, senhores passageiros. Teste de voz do terminal.';
         if ($prov === 'google') {
-            $b64 = $svc->sintetizarGoogle($texto, (string) $emp?->config('tts_google_voz', 'pt-BR-Chirp3-HD-Aoede'), (string) $emp?->config('tts_google_key'), (float) $emp?->config('tts_google_ritmo', 1.0));
+            $b64 = $svc->sintetizarGoogle($texto, (string) $emp?->config('tts_google_voz', 'pt-BR-Chirp3-HD-Aoede'), (string) $emp?->config('tts_google_key'), (float) $emp?->config('tts_google_ritmo', 1.0), (string) $emp?->config('tts_google_sa'));
         } else {
             $b64 = $svc->sintetizar($texto, (string) ($emp?->config('tts_openai_voz') ?: 'nova'), null, (string) ($emp?->config('tts_estilo') ?: ''));
         }
@@ -142,7 +155,7 @@ class MarketingController extends Controller
                 $estilo = (string) ($a->estilo ?: ($emp?->config('tts_estilo') ?: 'Narre em português do Brasil com voz feminina natural, calma, clara e acolhedora, como uma recepcionista de terminal de embarque anunciando aos passageiros. Boa dicção, ritmo tranquilo e sotaque brasileiro neutro. Soe humana, nunca robótica.'));
                 $prov = $a->provedor ?: (string) ($emp?->config('tts_provider', 'openai'));
                 if ($prov === 'google') {
-                    $b64 = $svc->sintetizarGoogle($a->texto, (string) ($a->voz ?: $emp?->config('tts_google_voz', 'pt-BR-Neural2-A')), (string) $emp?->config('tts_google_key'), (float) $emp?->config('tts_google_ritmo', 1.0));
+                    $b64 = $svc->sintetizarGoogle($a->texto, (string) ($a->voz ?: $emp?->config('tts_google_voz', 'pt-BR-Neural2-A')), (string) $emp?->config('tts_google_key'), (float) $emp?->config('tts_google_ritmo', 1.0), (string) $emp?->config('tts_google_sa'));
                 } else {
                     $b64 = $svc->sintetizar($a->texto, (string) ($a->voz ?: ($emp?->config('tts_openai_voz') ?: 'nova')), null, $estilo);
                 }

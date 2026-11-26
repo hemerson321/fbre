@@ -273,25 +273,49 @@
         <p class="text-[11px] text-slate-400">Usa a chave OpenAI já configurada em <a href="{{ route('admin.llm') }}" class="underline">Provedores de IA</a> (a mesma dos Agentes).</p>
       </div>
 
-      <div x-show="prov==='google'" x-cloak class="space-y-2 rounded-xl border border-slate-200 p-3">
-        <div class="text-[11px] font-bold uppercase text-slate-400">Google Cloud Text-to-Speech · Chirp 3 HD</div>
-        <div><label class="label">Chave da API {!! $tts['google_tem_chave'] ? '<span class="text-emerald-600">✓ salva</span>' : '' !!}</label>
+      <div x-show="prov==='google'" x-cloak class="space-y-3 rounded-xl border border-slate-200 p-3">
+        <div class="text-[11px] font-bold uppercase text-slate-400">Google Cloud Text-to-Speech</div>
+
+        {{-- Opção A: conta de serviço (recomendada, funciona com Chirp 3 HD) --}}
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50/40 p-2.5 space-y-1.5">
+          <div class="text-[12px] font-bold text-emerald-800">✅ Conta de serviço (JSON) — recomendado</div>
+          <p class="text-[11px] text-slate-500 leading-snug">É o único jeito que funciona com as vozes <b>Chirp 3 HD</b> (as mais naturais). A chave de API comum dá erro 401 nelas.</p>
+          <label class="label">JSON da conta de serviço {!! $tts['google_tem_sa'] ? '<span class="text-emerald-600">✓ salvo</span>' : '' !!}</label>
+          <textarea name="tts_google_sa" rows="3" autocomplete="off" class="input font-mono !text-[11px]" placeholder="{{ $tts['google_tem_sa'] ? '•••••• (deixe em branco pra manter o salvo)' : 'cole aqui todo o conteúdo do arquivo .json baixado do Google Cloud' }}"></textarea>
+          @if($tts['google_tem_sa'])
+          <label class="flex items-center gap-1.5 text-[11px] text-rose-600 cursor-pointer"><input type="checkbox" name="tts_google_sa_limpar" value="1" class="w-3.5 h-3.5"> remover a conta de serviço salva</label>
+          @endif
+          <details class="text-[11px] text-slate-500">
+            <summary class="cursor-pointer font-semibold text-slate-600">Como pegar esse JSON (passo a passo)</summary>
+            <ol class="list-decimal ml-4 mt-1 space-y-0.5">
+              <li>Abra o <a href="https://console.cloud.google.com/" target="_blank" class="underline">console.cloud.google.com</a> e crie/escolha um projeto (com faturamento ativo).</li>
+              <li>Ative a <b>Cloud Text-to-Speech API</b> em <i>APIs e serviços → Ativar APIs e serviços</i>.</li>
+              <li>Vá em <b>IAM e administrador → Contas de serviço → Criar conta de serviço</b> (papel: <i>Cloud Text-to-Speech API User</i>, ou Editor).</li>
+              <li>Abra a conta criada → aba <b>Chaves → Adicionar chave → Criar nova chave → JSON</b>. Baixa um arquivo <span class="font-mono">.json</span>.</li>
+              <li>Abra o arquivo, copie <b>todo</b> o conteúdo e cole no campo acima. Pronto.</li>
+            </ol>
+          </details>
+        </div>
+
+        {{-- Opção B: chave de API (só Neural2/Wavenet) --}}
+        <div><label class="label">… ou Chave de API {!! $tts['google_tem_chave'] ? '<span class="text-emerald-600">✓ salva</span>' : '' !!} <span class="text-slate-400 font-normal">· só vozes Neural2/Wavenet</span></label>
           <input type="password" name="tts_google_key" class="input" autocomplete="off" placeholder="{{ $tts['google_tem_chave'] ? '•••••• (deixe em branco pra manter)' : 'cole a chave do Google Cloud' }}">
         </div>
+
         <div><label class="label">Voz</label>
           <select name="tts_google_voz" class="input">
-            <optgroup label="Garantidas (Neural2 / Wavenet)">
-              @foreach(['pt-BR-Neural2-A'=>'👩 Neural2 A — moça','pt-BR-Neural2-C'=>'👩 Neural2 C — moça','pt-BR-Wavenet-A'=>'👩 Wavenet A — moça','pt-BR-Wavenet-C'=>'👩 Wavenet C — moça','pt-BR-Neural2-B'=>'👨 Neural2 B — homem','pt-BR-Wavenet-B'=>'👨 Wavenet B — homem'] as $vk=>$vl)
-                <option value="{{ $vk }}" @selected($tts['google_voz']===$vk)>{{ $vl }}</option>
-              @endforeach
-            </optgroup>
-            <optgroup label="Chirp 3 HD (mais natural, se disponível na sua conta)">
+            <optgroup label="Chirp 3 HD — mais natural (precisa de conta de serviço)">
               @foreach(['pt-BR-Chirp3-HD-Aoede'=>'👩 Aoede — moça','pt-BR-Chirp3-HD-Kore'=>'👩 Kore — moça','pt-BR-Chirp3-HD-Leda'=>'👩 Leda — moça','pt-BR-Chirp3-HD-Zephyr'=>'👩 Zephyr — moça','pt-BR-Chirp3-HD-Sulafat'=>'👩 Sulafat — moça','pt-BR-Chirp3-HD-Charon'=>'👨 Charon — homem','pt-BR-Chirp3-HD-Puck'=>'👨 Puck — homem'] as $vk=>$vl)
                 <option value="{{ $vk }}" @selected($tts['google_voz']===$vk)>{{ $vl }}</option>
               @endforeach
             </optgroup>
+            <optgroup label="Neural2 / Wavenet — funcionam com chave de API">
+              @foreach(['pt-BR-Neural2-A'=>'👩 Neural2 A — moça','pt-BR-Neural2-C'=>'👩 Neural2 C — moça','pt-BR-Wavenet-A'=>'👩 Wavenet A — moça','pt-BR-Wavenet-C'=>'👩 Wavenet C — moça','pt-BR-Neural2-B'=>'👨 Neural2 B — homem','pt-BR-Wavenet-B'=>'👨 Wavenet B — homem'] as $vk=>$vl)
+                <option value="{{ $vk }}" @selected($tts['google_voz']===$vk)>{{ $vl }}</option>
+              @endforeach
+            </optgroup>
           </select>
-          <p class="text-[11px] text-slate-400 mt-1">Se a Chirp 3 HD der erro no teste, use uma Neural2/Wavenet (sempre disponíveis).</p>
+          <p class="text-[11px] text-slate-400 mt-1">Chirp 3 HD só funciona com a conta de serviço acima. Com chave de API, escolha Neural2/Wavenet.</p>
         </div>
         <div><label class="label">Ritmo</label>
           <select name="tts_google_ritmo" class="input max-w-[200px]">
@@ -300,7 +324,6 @@
             <option value="0.85" @selected(abs($tts['google_ritmo']-0.85)<0.01)>Bem pausado</option>
           </select>
         </div>
-        <p class="text-[11px] text-slate-400">Precisa ativar a <b>Cloud Text-to-Speech API</b> e gerar uma <b>chave de API</b> no Google Cloud (com faturamento ativo).</p>
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
