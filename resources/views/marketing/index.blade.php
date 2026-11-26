@@ -61,12 +61,12 @@
   <div class="card overflow-hidden" x-data="{
       modalNovo:false, editId:0,
       baseAudio:@js(url('/marketing/audio')), baseTestar:@js(route('marketing.audio.testar')), csrf:@js(csrf_token()),
-      f:{ nome:'', tipo:'tts', texto:'', provedor:'google', voz:'nova', vozGoogle:'pt-BR-Neural2-A', estilo:'' },
+      f:{ nome:'', tipo:'tts', texto:'', provedor:'google', voz:'nova', vozGoogle:'pt-BR-Neural2-A', estilo:'', sino:true },
       testando:false, testMsg:'', testErro:'', audioEl:null,
-      resetF(){ this.f={ nome:'', tipo:'tts', texto:'', provedor:'google', voz:'nova', vozGoogle:'pt-BR-Neural2-A', estilo:'' }; this.testMsg=''; this.testErro=''; },
+      resetF(){ this.f={ nome:'', tipo:'tts', texto:'', provedor:'google', voz:'nova', vozGoogle:'pt-BR-Neural2-A', estilo:'', sino:true }; this.testMsg=''; this.testErro=''; },
       abrirNovo(){ this.editId=0; this.resetF(); this.modalNovo=true; },
       fecharNovo(){ this.modalNovo=false; },
-      abrirEditar(a){ this.modalNovo=false; this.resetF(); this.f.nome=a.nome||''; this.f.tipo=a.tipo||'tts'; this.f.texto=a.texto||''; this.f.estilo=a.estilo||''; this.f.provedor=a.provedor||'google'; if(this.f.provedor==='google'){ this.f.vozGoogle=a.voz||'pt-BR-Neural2-A'; } else { this.f.voz=a.voz||'nova'; } this.editId=a.id; },
+      abrirEditar(a){ this.modalNovo=false; this.resetF(); this.f.nome=a.nome||''; this.f.tipo=a.tipo||'tts'; this.f.texto=a.texto||''; this.f.estilo=a.estilo||''; this.f.provedor=a.provedor||'google'; if(this.f.provedor==='google'){ this.f.vozGoogle=a.voz||'pt-BR-Neural2-A'; } else { this.f.voz=a.voz||'nova'; } this.f.sino = (a.sino===undefined ? true : !!a.sino); this.editId=a.id; },
       fecharEditar(){ this.editId=0; this.testMsg=''; this.testErro=''; },
       async testar(){
         if(this.f.tipo!=='tts'){ return; }
@@ -80,7 +80,7 @@
           fd.append('estilo', this.f.estilo||'');
           const r=await fetch(this.baseTestar, {method:'POST', headers:{'X-CSRF-TOKEN':this.csrf,'Accept':'application/json'}, body:fd});
           const d=await r.json();
-          if(d.ok){ try{ if(this.audioEl){ this.audioEl.pause(); } this.audioEl=new Audio(d.audio); this.audioEl.play(); }catch(e){} this.testMsg='Tocando pela voz do '+(d.provedor==='google'?'Google':'OpenAI')+' ✓'; }
+          if(d.ok){ try{ if(this.f.sino && window.sinoAeroporto){ await window.sinoAeroporto(); } }catch(e){} try{ if(this.audioEl){ this.audioEl.pause(); } this.audioEl=new Audio(d.audio); this.audioEl.play(); }catch(e){} this.testMsg='Tocando pela voz do '+(d.provedor==='google'?'Google':'OpenAI')+' ✓'; }
           else { this.testErro=d.msg||'Não deu pra gerar a voz.'; }
         }catch(e){ this.testErro='Erro: '+e; }
         this.testando=false;
@@ -101,7 +101,7 @@
               </div>
               <div class="text-[11px] text-slate-400 truncate">{{ $a->tipo === 'arquivo' ? 'arquivo de áudio' : \Illuminate\Support\Str::limit((string) $a->texto, 70) }}</div>
             </div>
-            <button type="button" @click="editId === {{ $a->id }} ? fecharEditar() : abrirEditar(@js(['id'=>$a->id,'nome'=>(string)$a->nome,'tipo'=>(string)$a->tipo,'texto'=>(string)$a->texto,'voz'=>(string)$a->voz,'provedor'=>(string)$a->provedor,'estilo'=>(string)$a->estilo]))" class="btn btn-ghost btn-sm" title="Editar" x-text="editId === {{ $a->id }} ? '✖ Fechar' : '✏️ Editar'"></button>
+            <button type="button" @click="editId === {{ $a->id }} ? fecharEditar() : abrirEditar(@js(['id'=>$a->id,'nome'=>(string)$a->nome,'tipo'=>(string)$a->tipo,'texto'=>(string)$a->texto,'voz'=>(string)$a->voz,'provedor'=>(string)$a->provedor,'estilo'=>(string)$a->estilo,'sino'=>(bool)($a->sino ?? true)]))" class="btn btn-ghost btn-sm" title="Editar" x-text="editId === {{ $a->id }} ? '✖ Fechar' : '✏️ Editar'"></button>
             <form method="post" action="{{ route('marketing.audio.excluir', $a) }}" onsubmit="return confirm('Excluir o áudio {{ $a->nome }}?')">@csrf @method('DELETE')
               <button class="btn btn-ghost btn-sm text-rose-600">🗑</button>
             </form>
@@ -341,4 +341,37 @@
   </div>
 
 </div>
+
+{{-- Sino "tim-tim" de aeroporto (Web Audio) usado no botão Ouvir --}}
+<script>
+window.sinoAeroporto = function(){
+  return new Promise(function(resolve){
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      window._sinoCtx = window._sinoCtx || (AC ? new AC() : null);
+      var ctx = window._sinoCtx;
+      if(!ctx){ resolve(); return; }
+      if(ctx.state==='suspended'){ ctx.resume(); }
+      var t0 = ctx.currentTime + 0.03;
+      var notas = [ {f:784.00,t:0.00}, {f:523.25,t:0.42} ];
+      var fim = t0;
+      notas.forEach(function(n){
+        var sct = t0 + n.t;
+        [[1,0.5],[2.0,0.16]].forEach(function(p){
+          var osc=ctx.createOscillator(), g=ctx.createGain();
+          osc.type='sine'; osc.frequency.value=n.f*p[0];
+          g.gain.setValueAtTime(0.0001,sct);
+          g.gain.exponentialRampToValueAtTime(p[1],sct+0.012);
+          g.gain.exponentialRampToValueAtTime(0.0001,sct+1.15);
+          osc.connect(g); g.connect(ctx.destination);
+          osc.start(sct); osc.stop(sct+1.2);
+        });
+        fim=Math.max(fim,sct+1.15);
+      });
+      var ms=(fim-ctx.currentTime)*1000-220;
+      setTimeout(resolve, Math.max(350,ms));
+    }catch(e){ resolve(); }
+  });
+};
+</script>
 @endsection

@@ -11,7 +11,7 @@ class MarketingAudio extends Model
 
     protected $table = 'marketing_audios';
     protected $guarded = [];
-    protected $casts = ['ativo' => 'boolean'];
+    protected $casts = ['ativo' => 'boolean', 'sino' => 'boolean'];
 
     /** URL do arquivo de áudio (quando tipo = arquivo). */
     public function url(): ?string
@@ -32,6 +32,7 @@ class MarketingAudio extends Model
             'texto' => (string) $this->texto,
             'voz' => (string) $this->voz,
             'url' => $this->url(),
+            'sino' => (bool) ($this->sino ?? true),
         ];
     }
 }

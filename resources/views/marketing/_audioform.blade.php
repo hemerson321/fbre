@@ -37,6 +37,9 @@
     <div><label class="label !text-[10px] !mb-0.5 opacity-70">Estilo / como se comportar (opcional)</label>
       <input name="estilo" x-model="f.estilo" class="input !py-1 text-[12px]" placeholder="ex.: voz de aeromoça, calma e clara">
     </div>
+    <label class="flex items-center gap-2 text-[13px] text-slate-600 cursor-pointer select-none">
+      <input type="checkbox" name="sino" value="1" x-model="f.sino" class="w-4 h-4 rounded"> 🔔 Tocar sinal (tim-tim) antes de falar
+    </label>
   </div>
 
   <div x-show="f.tipo==='arquivo'" x-cloak class="space-y-2">

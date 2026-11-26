@@ -72,31 +72,71 @@
     document.getElementById('ico').textContent = on ? '🔊' : '🔈';
   }
 
+  var _actx = null;
+  function ensureAudio(){
+    try{
+      if(!_actx){ var AC = window.AudioContext || window.webkitAudioContext; if(AC) _actx = new AC(); }
+      if(_actx && _actx.state === 'suspended') _actx.resume();
+    }catch(e){}
+    return _actx;
+  }
+  // Sino "tim-tim" de aeroporto (dois tons) via Web Audio — sem arquivo. Resolve a Promise quando termina.
+  function tocaSino(){
+    return new Promise(function(resolve){
+      var ctx = ensureAudio();
+      if(!ctx){ resolve(); return; }
+      try{
+        var t0 = ctx.currentTime + 0.03;
+        var notas = [ {f:784.00, t:0.00}, {f:523.25, t:0.42} ]; // Sol5 -> Do5 (bing-bong)
+        var fim = t0;
+        notas.forEach(function(n){
+          var s = t0 + n.t;
+          [[1,0.5],[2.0,0.16]].forEach(function(p){
+            var osc = ctx.createOscillator(), g = ctx.createGain();
+            osc.type = 'sine'; osc.frequency.value = n.f * p[0];
+            g.gain.setValueAtTime(0.0001, s);
+            g.gain.exponentialRampToValueAtTime(p[1], s + 0.012);
+            g.gain.exponentialRampToValueAtTime(0.0001, s + 1.15);
+            osc.connect(g); g.connect(ctx.destination);
+            osc.start(s); osc.stop(s + 1.2);
+          });
+          fim = Math.max(fim, s + 1.15);
+        });
+        var ms = (fim - ctx.currentTime) * 1000 - 220; // entra na fala pouco antes do decay acabar
+        setTimeout(resolve, Math.max(350, ms));
+      }catch(e){ resolve(); }
+    });
+  }
+
   function tocaItem(it, done){
     addLog(it.nome || 'Áudio');
     setNow('🔊 ' + (it.nome||''), true);
-    if(it.url){
-      try{
-        var au = new Audio(it.url);
-        au.onplay = escondeHint;
-        au.onended = done; au.onerror = done;
-        au.play().catch(done);
-      }catch(e){ done(); }
-      return;
+    function falar(){
+      if(it.url){
+        try{
+          var au = new Audio(it.url);
+          au.onplay = escondeHint;
+          au.onended = done; au.onerror = done;
+          au.play().catch(done);
+        }catch(e){ done(); }
+        return;
+      }
+      // TTS (falado) — fallback quando nao ha MP3 gerado (sem provedor de voz)
+      if(window.speechSynthesis && it.texto){
+        try{
+          var u = new SpeechSynthesisUtterance(it.texto);
+          u.lang = 'pt-BR'; u.rate = 1; u.pitch = 1;
+          if(ptbr) u.voice = ptbr;
+          u.onstart = escondeHint;
+          u.onend = done; u.onerror = done;
+          speechSynthesis.speak(u);
+        }catch(e){ done(); }
+        return;
+      }
+      done();
     }
-    // TTS (falado) — fallback quando não há MP3 gerado (sem provedor de voz)
-    if(window.speechSynthesis && it.texto){
-      try{
-        var u = new SpeechSynthesisUtterance(it.texto);
-        u.lang = 'pt-BR'; u.rate = 1; u.pitch = 1;
-        if(ptbr) u.voice = ptbr;
-        u.onstart = escondeHint;
-        u.onend = done; u.onerror = done;
-        speechSynthesis.speak(u);
-      }catch(e){ done(); }
-      return;
-    }
-    done();
+    if(it.sino){ escondeHint(); tocaSino().then(falar); }
+    else { falar(); }
   }
   function drena(){
     if(tocando) return;
@@ -138,6 +178,7 @@
   function escondeHint(){ var h=document.getElementById('somhint'); if(h) h.style.display='none'; }
   var somLiberado=false;
   function liberaSom(){ if(somLiberado) return; somLiberado=true;
+    ensureAudio();
     try{ if(window.speechSynthesis){ var w=new SpeechSynthesisUtterance(' '); w.volume=0; speechSynthesis.speak(w); escolheVoz(); } }catch(e){}
     escondeHint();
   }

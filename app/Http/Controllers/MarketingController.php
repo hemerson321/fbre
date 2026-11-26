@@ -170,6 +170,7 @@ class MarketingController extends Controller
         $a->nome = trim((string) $data['nome']);
         $a->tipo = $data['tipo'];
         $a->ativo = $request->boolean('ativo', true);
+        $a->sino = $request->boolean('sino', true); // tocar o tim-tim de aeroporto antes da fala
         $a->provedor = $data['provedor'] ?? 'google';
         $a->voz = $a->provedor === 'google' ? (trim((string) ($data['voz_google'] ?? '')) ?: null) : (trim((string) ($data['voz'] ?? '')) ?: null);
         $a->estilo = trim((string) ($data['estilo'] ?? '')) ?: null;
