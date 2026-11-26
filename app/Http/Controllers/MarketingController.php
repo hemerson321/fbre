@@ -21,7 +21,41 @@ class MarketingController extends Controller
         $programacoes = MarketingProgramacao::with(['audio', 'terminal'])->orderBy('hora')->get();
         $disparos = MarketingDisparo::with(['audio', 'terminal'])->orderByDesc('id')->limit(15)->get();
 
-        return view('marketing.index', compact('terminais', 'audios', 'programacoes', 'disparos'));
+        $emp = Tenant::empresa();
+        $tts = [
+            'provider' => (string) ($emp?->config('tts_provider', 'openai')),
+            'openai_voz' => (string) ($emp?->config('tts_openai_voz', 'nova')),
+            'estilo' => (string) ($emp?->config('tts_estilo', '')),
+            'google_tem_chave' => filled($emp?->config('tts_google_key')),
+            'google_voz' => (string) ($emp?->config('tts_google_voz', 'pt-BR-Chirp3-HD-Aoede')),
+            'google_ritmo' => (float) ($emp?->config('tts_google_ritmo', 1.0)),
+        ];
+
+        return view('marketing.index', compact('terminais', 'audios', 'programacoes', 'disparos', 'tts'));
+    }
+
+    /** Salva as integrações de voz (provedor OpenAI/Google, voz, estilo, chave do Google). */
+    public function ttsSalvar(Request $request)
+    {
+        $data = $request->validate([
+            'tts_provider' => 'required|in:openai,google',
+            'tts_openai_voz' => 'nullable|string|max:40',
+            'tts_estilo' => 'nullable|string|max:600',
+            'tts_google_key' => 'nullable|string|max:200',
+            'tts_google_voz' => 'nullable|string|max:60',
+            'tts_google_ritmo' => 'nullable|numeric|min:0.5|max:1.5',
+        ]);
+        $e = Tenant::empresa();
+        $cfg = $e->config ?? [];
+        $cfg['tts_provider'] = $data['tts_provider'];
+        $cfg['tts_openai_voz'] = $data['tts_openai_voz'] ?: 'nova';
+        $cfg['tts_estilo'] = trim((string) ($data['tts_estilo'] ?? ''));
+        $cfg['tts_google_voz'] = $data['tts_google_voz'] ?: 'pt-BR-Chirp3-HD-Aoede';
+        $cfg['tts_google_ritmo'] = (float) ($data['tts_google_ritmo'] ?? 1.0);
+        if (! empty($data['tts_google_key'])) $cfg['tts_google_key'] = trim((string) $data['tts_google_key']); // em branco mantém a atual
+        $e->forceFill(['config' => $cfg])->save();
+
+        return back()->with('ok', 'Integrações de voz salvas.');
     }
 
     // -------- Terminais --------
@@ -79,8 +113,14 @@ class MarketingController extends Controller
             // Gera o MP3 com voz de verdade (OpenAI TTS), reaproveitando o provedor OpenAI ativo da empresa.
             $gerado = false;
             try {
-                $instr = 'Narre em português do Brasil com voz feminina natural, calma, clara e acolhedora, como uma recepcionista de terminal de embarque anunciando aos passageiros. Boa dicção, ritmo tranquilo e sotaque brasileiro neutro. Soe humana, nunca robótica.';
-                $b64 = app(\App\Services\SinteseVoz::class)->sintetizar($a->texto, $a->voz, null, $instr);
+                $emp = Tenant::empresa();
+                $svc = app(\App\Services\SinteseVoz::class);
+                $estilo = (string) ($emp?->config('tts_estilo') ?: 'Narre em português do Brasil com voz feminina natural, calma, clara e acolhedora, como uma recepcionista de terminal de embarque anunciando aos passageiros. Boa dicção, ritmo tranquilo e sotaque brasileiro neutro. Soe humana, nunca robótica.');
+                if ($emp?->config('tts_provider', 'openai') === 'google' && $emp?->config('tts_google_key')) {
+                    $b64 = $svc->sintetizarGoogle($a->texto, (string) $emp->config('tts_google_voz', 'pt-BR-Chirp3-HD-Aoede'), (string) $emp->config('tts_google_key'), (float) $emp->config('tts_google_ritmo', 1.0));
+                } else {
+                    $b64 = $svc->sintetizar($a->texto, (string) ($emp?->config('tts_openai_voz') ?: 'nova'), null, $estilo);
+                }
                 if ($b64 !== '') {
                     $path = 'marketing/'.Tenant::id().'/tts_'.$a->id.'_'.time().'.mp3';
                     Storage::disk('public')->put($path, base64_decode($b64));
@@ -92,7 +132,7 @@ class MarketingController extends Controller
             }
             $this->apagar($antigo);
 
-            return back()->with('ok', ($editando ? 'Áudio atualizado. ' : 'Áudio "'.$a->nome.'" criado. ').($gerado ? '🔊 Voz gerada.' : 'Sem provedor de voz (OpenAI) ativo — vai falar pela voz do navegador.'));
+            return back()->with('ok', ($editando ? 'Áudio atualizado. ' : 'Áudio "'.$a->nome.'" criado. ').($gerado ? '🔊 Voz gerada.' : 'Não consegui gerar a voz (confira Integrações / provedor) — por ora fala pela voz do navegador.'));
         } else {
             $a->texto = null;
             if ($request->hasFile('arquivo')) {

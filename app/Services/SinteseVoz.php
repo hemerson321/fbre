@@ -61,4 +61,31 @@ class SinteseVoz
         }
         return '';
     }
+
+    /** Google Cloud Text-to-Speech (Chirp 3 HD, WaveNet, Neural2). Retorna base64 mp3 ('' se falhar). */
+    public function sintetizarGoogle(string $texto, string $voz, string $apiKey, float $ritmo = 1.0): string
+    {
+        $texto = trim($texto);
+        $apiKey = trim($apiKey);
+        if ($texto === '' || $apiKey === '') return '';
+        $texto = mb_substr($texto, 0, 1800);
+        $voz = $voz ?: 'pt-BR-Chirp3-HD-Aoede';
+        $audio = ['audioEncoding' => 'MP3'];
+        if (abs($ritmo - 1.0) > 0.001) $audio['speakingRate'] = max(0.5, min(1.5, $ritmo));
+        try {
+            $r = Http::timeout(60)->post('https://texttospeech.googleapis.com/v1/text:synthesize?key='.urlencode($apiKey), [
+                'input' => ['text' => $texto],
+                'voice' => ['languageCode' => 'pt-BR', 'name' => $voz],
+                'audioConfig' => $audio,
+            ]);
+            if ($r->successful()) {
+                $b64 = (string) $r->json('audioContent');
+                if ($b64 !== '') return $b64; // o Google já devolve base64
+            }
+            Log::warning('Google TTS falhou HTTP '.$r->status().': '.mb_substr((string) $r->body(), 0, 200));
+        } catch (\Throwable $e) {
+            Log::warning('Google TTS erro: '.$e->getMessage());
+        }
+        return '';
+    }
 }

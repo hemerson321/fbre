@@ -76,17 +76,7 @@
         <input type="hidden" name="tipo" :value="tipo">
         <div x-show="tipo==='tts'" x-cloak class="space-y-2">
           <div><label class="label">Texto que vai ser falado</label><textarea name="texto" x-model="texto" class="input" rows="3" placeholder="Ex.: Senhores passageiros, o barco para Codajás parte às 14 horas."></textarea></div>
-          <div><label class="label">Voz</label>
-            <select name="voz" x-model="voz" class="input">
-              <option value="nova">👩 Nova — moça, clara (recomendada)</option>
-              <option value="shimmer">👩 Shimmer — moça, suave</option>
-              <option value="coral">👩 Coral — moça, simpática</option>
-              <option value="alloy">🧑 Alloy — neutra</option>
-              <option value="onyx">👨 Onyx — homem, grave</option>
-              <option value="echo">👨 Echo — homem</option>
-            </select>
-            <p class="text-[11px] text-slate-400 mt-1">Gera um áudio de verdade com voz natural (usa a API de voz da OpenAI já configurada nos Agentes). Sem provedor ativo, fala pela voz do navegador.</p>
-          </div>
+          <p class="text-[11px] text-slate-400">A voz (moça) e o provedor (OpenAI ou Google) ficam em <b>Integrações</b>, ali embaixo. Gera um MP3 de verdade; sem provedor, fala pela voz do navegador.</p>
         </div>
         <div x-show="tipo==='arquivo'" x-cloak class="space-y-2">
           <div><label class="label">Arquivo de áudio (mp3, ogg, wav…)</label><input type="file" name="arquivo" accept="audio/*" class="input"></div>
@@ -194,6 +184,63 @@
     </div>
   </div>
   @endif
+
+  {{-- INTEGRAÇÕES (VOZ) --}}
+  <div class="card overflow-hidden" x-data="{ prov: @js($tts['provider']) }">
+    <div class="p-3 border-b bg-slate-50 font-bold text-sm text-slate-700">🔌 Integrações · voz do áudio falado</div>
+    <form method="post" action="{{ route('marketing.tts.salvar') }}" class="p-3 space-y-3">
+      @csrf
+      <div>
+        <label class="label">Provedor de voz</label>
+        <div class="grid grid-cols-2 gap-2 max-w-md">
+          <button type="button" @click="prov='openai'" :class="prov==='openai' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">🤖 OpenAI</button>
+          <button type="button" @click="prov='google'" :class="prov==='google' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">🟦 Google · Chirp 3 HD</button>
+        </div>
+        <input type="hidden" name="tts_provider" :value="prov">
+      </div>
+
+      <div><label class="label">Estilo / como se comportar <span class="text-slate-400 font-normal">(ex.: voz de aeromoça, calma e clara)</span></label>
+        <textarea name="tts_estilo" class="input" rows="2" placeholder="Narre com voz feminina, calma, clara e acolhedora, sotaque brasileiro neutro.">{{ $tts['estilo'] }}</textarea>
+        <p class="text-[11px] text-slate-400 mt-1">Melhor aproveitado na OpenAI (gpt-4o-mini-tts). No Google, a voz escolhida já define o tom.</p>
+      </div>
+
+      <div x-show="prov==='openai'" x-cloak class="space-y-2 rounded-xl border border-slate-200 p-3">
+        <div class="text-[11px] font-bold uppercase text-slate-400">OpenAI</div>
+        <div><label class="label">Voz</label>
+          <select name="tts_openai_voz" class="input">
+            @foreach(['nova'=>'👩 Nova — moça, clara','shimmer'=>'👩 Shimmer — moça, suave','coral'=>'👩 Coral — moça, simpática','alloy'=>'🧑 Alloy — neutra','onyx'=>'👨 Onyx — homem','echo'=>'👨 Echo — homem'] as $vk=>$vl)
+              <option value="{{ $vk }}" @selected($tts['openai_voz']===$vk)>{{ $vl }}</option>
+            @endforeach
+          </select>
+        </div>
+        <p class="text-[11px] text-slate-400">Usa a chave OpenAI já configurada em <a href="{{ route('admin.llm') }}" class="underline">Provedores de IA</a> (a mesma dos Agentes).</p>
+      </div>
+
+      <div x-show="prov==='google'" x-cloak class="space-y-2 rounded-xl border border-slate-200 p-3">
+        <div class="text-[11px] font-bold uppercase text-slate-400">Google Cloud Text-to-Speech · Chirp 3 HD</div>
+        <div><label class="label">Chave da API {!! $tts['google_tem_chave'] ? '<span class="text-emerald-600">✓ salva</span>' : '' !!}</label>
+          <input type="password" name="tts_google_key" class="input" autocomplete="off" placeholder="{{ $tts['google_tem_chave'] ? '•••••• (deixe em branco pra manter)' : 'cole a chave do Google Cloud' }}">
+        </div>
+        <div><label class="label">Voz (Chirp 3 HD)</label>
+          <select name="tts_google_voz" class="input">
+            @foreach(['pt-BR-Chirp3-HD-Aoede'=>'👩 Aoede — moça','pt-BR-Chirp3-HD-Kore'=>'👩 Kore — moça','pt-BR-Chirp3-HD-Leda'=>'👩 Leda — moça','pt-BR-Chirp3-HD-Zephyr'=>'👩 Zephyr — moça','pt-BR-Chirp3-HD-Sulafat'=>'👩 Sulafat — moça','pt-BR-Chirp3-HD-Charon'=>'👨 Charon — homem','pt-BR-Chirp3-HD-Puck'=>'👨 Puck — homem'] as $vk=>$vl)
+              <option value="{{ $vk }}" @selected($tts['google_voz']===$vk)>{{ $vl }}</option>
+            @endforeach
+          </select>
+        </div>
+        <div><label class="label">Ritmo</label>
+          <select name="tts_google_ritmo" class="input max-w-[200px]">
+            <option value="1.0" @selected(abs($tts['google_ritmo']-1.0)<0.01)>Normal</option>
+            <option value="0.9" @selected(abs($tts['google_ritmo']-0.9)<0.01)>Calmo</option>
+            <option value="0.85" @selected(abs($tts['google_ritmo']-0.85)<0.01)>Bem pausado</option>
+          </select>
+        </div>
+        <p class="text-[11px] text-slate-400">Precisa ativar a <b>Cloud Text-to-Speech API</b> e gerar uma <b>chave de API</b> no Google Cloud (com faturamento ativo).</p>
+      </div>
+
+      <button class="btn btn-primary btn-sm">Salvar integrações</button>
+    </form>
+  </div>
 
 </div>
 @endsection
