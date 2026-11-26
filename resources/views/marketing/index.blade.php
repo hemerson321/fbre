@@ -256,12 +256,20 @@
         <div><label class="label">Chave da API {!! $tts['google_tem_chave'] ? '<span class="text-emerald-600">✓ salva</span>' : '' !!}</label>
           <input type="password" name="tts_google_key" class="input" autocomplete="off" placeholder="{{ $tts['google_tem_chave'] ? '•••••• (deixe em branco pra manter)' : 'cole a chave do Google Cloud' }}">
         </div>
-        <div><label class="label">Voz (Chirp 3 HD)</label>
+        <div><label class="label">Voz</label>
           <select name="tts_google_voz" class="input">
-            @foreach(['pt-BR-Chirp3-HD-Aoede'=>'👩 Aoede — moça','pt-BR-Chirp3-HD-Kore'=>'👩 Kore — moça','pt-BR-Chirp3-HD-Leda'=>'👩 Leda — moça','pt-BR-Chirp3-HD-Zephyr'=>'👩 Zephyr — moça','pt-BR-Chirp3-HD-Sulafat'=>'👩 Sulafat — moça','pt-BR-Chirp3-HD-Charon'=>'👨 Charon — homem','pt-BR-Chirp3-HD-Puck'=>'👨 Puck — homem'] as $vk=>$vl)
-              <option value="{{ $vk }}" @selected($tts['google_voz']===$vk)>{{ $vl }}</option>
-            @endforeach
+            <optgroup label="Garantidas (Neural2 / Wavenet)">
+              @foreach(['pt-BR-Neural2-A'=>'👩 Neural2 A — moça','pt-BR-Neural2-C'=>'👩 Neural2 C — moça','pt-BR-Wavenet-A'=>'👩 Wavenet A — moça','pt-BR-Wavenet-C'=>'👩 Wavenet C — moça','pt-BR-Neural2-B'=>'👨 Neural2 B — homem','pt-BR-Wavenet-B'=>'👨 Wavenet B — homem'] as $vk=>$vl)
+                <option value="{{ $vk }}" @selected($tts['google_voz']===$vk)>{{ $vl }}</option>
+              @endforeach
+            </optgroup>
+            <optgroup label="Chirp 3 HD (mais natural, se disponível na sua conta)">
+              @foreach(['pt-BR-Chirp3-HD-Aoede'=>'👩 Aoede — moça','pt-BR-Chirp3-HD-Kore'=>'👩 Kore — moça','pt-BR-Chirp3-HD-Leda'=>'👩 Leda — moça','pt-BR-Chirp3-HD-Zephyr'=>'👩 Zephyr — moça','pt-BR-Chirp3-HD-Sulafat'=>'👩 Sulafat — moça','pt-BR-Chirp3-HD-Charon'=>'👨 Charon — homem','pt-BR-Chirp3-HD-Puck'=>'👨 Puck — homem'] as $vk=>$vl)
+                <option value="{{ $vk }}" @selected($tts['google_voz']===$vk)>{{ $vl }}</option>
+              @endforeach
+            </optgroup>
           </select>
+          <p class="text-[11px] text-slate-400 mt-1">Se a Chirp 3 HD der erro no teste, use uma Neural2/Wavenet (sempre disponíveis).</p>
         </div>
         <div><label class="label">Ritmo</label>
           <select name="tts_google_ritmo" class="input max-w-[200px]">
