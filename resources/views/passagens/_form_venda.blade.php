@@ -430,11 +430,12 @@
 {{-- MAPA DE POLTRONAS --}}
 <style>
   /* Poltrona com cara de poltrona: encosto (topo) + braços (laterais) */
-  .poltrona{position:relative;width:34px;height:37px;border-radius:10px 10px 5px 5px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center}
+  .poltrona{position:relative;flex:none;width:34px;height:37px;border-radius:10px 10px 5px 5px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center}
   .poltrona::before{content:"";position:absolute;top:3px;left:4px;right:4px;height:6px;border-radius:5px;background:currentColor;opacity:.15;pointer-events:none}
   .poltrona::after{content:"";position:absolute;bottom:4px;left:-3px;right:-3px;height:14px;border-left:4px solid currentColor;border-right:4px solid currentColor;border-radius:4px;opacity:.22;pointer-events:none}
   .poltrona.text-white{background:var(--cor1);border-color:var(--cor1)}
-  .poltrona-vazia{visibility:hidden}
+  .poltrona-larga{width:auto;padding:0 7px}
+  .poltrona-fila{display:grid;justify-content:center;column-gap:16px;min-height:37px}
 </style>
 <div x-show="mapaAberto" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-3" @click="mapaAberto=false">
   <div class="bg-white rounded-2xl p-4 w-full max-w-md max-h-[85vh] overflow-auto" @click.stop>
@@ -464,11 +465,11 @@
           <template x-for="(bloco,bi) in blocosPoltrona" :key="bi">
             <div :class="bi>0 ? 'mt-2.5 pt-2.5 border-t border-dashed border-slate-300 space-y-2' : 'space-y-2'">
               <template x-for="(f,ri) in bloco.rows" :key="ri">
-                <div class="flex items-end justify-center">
+                <div class="poltrona-fila" :style="polGrid(bloco)">
                   <template x-for="ci in bloco.colMax.length" :key="ci">
-                    <div class="flex gap-1" :class="ci>1 ? 'ml-4' : ''">
-                      <template x-for="si in bloco.colMax[ci-1]" :key="si">
-                        <button type="button" class="poltrona border-2 text-[11px] font-bold" :class="pol(f,ci-1,si-1) ? assentoClasse(pol(f,ci-1,si-1)) : 'poltrona-vazia'" :disabled="!pol(f,ci-1,si-1) || ((estaOcupada(pol(f,ci-1,si-1))||estaReservada(pol(f,ci-1,si-1))) && !poltronaMinha(pol(f,ci-1,si-1)))" @click="pol(f,ci-1,si-1) && escolherPoltrona(pol(f,ci-1,si-1))" :title="pol(f,ci-1,si-1) ? tituloAssento(pol(f,ci-1,si-1)) : ''" x-text="pol(f,ci-1,si-1) || ''"></button>
+                    <div class="flex gap-1 whitespace-nowrap" :class="(ci>1 && ci===bloco.colMax.length) ? 'justify-end' : ''">
+                      <template x-for="n in (f.cols[ci-1]||[])" :key="n">
+                        <button type="button" class="poltrona border-2 text-[11px] font-bold" :class="[assentoClasse(n), String(n).length>4 ? 'poltrona-larga' : '']" :disabled="(estaOcupada(n)||estaReservada(n)) && !poltronaMinha(n)" @click="escolherPoltrona(n)" :title="tituloAssento(n)" x-text="n"></button>
                       </template>
                     </div>
                   </template>

@@ -437,17 +437,24 @@
       // mapa por NOME: cada bloco = fileiras; "|" separa esquerda/direita; linha vazia separa blocos
       get blocosPoltrona(){
         const txt=(this.poltronasLayout||'').replace(/\r/g,'');
-        return txt.split(/\n[ \t]*\n/).map(b=>{
-          // mantém colunas vazias ("| |") pra alinhar as fileiras em grade fixa
-          const rows=b.split('\n').filter(l=>l.trim()).map(linha=>{
+        const blocos=txt.split(/\n[ \t]*\n/).map(b=>
+          b.split('\n').filter(l=>l.trim()).map(linha=>{
             const cols=linha.split('|').map(x=>x.trim().split(/\s+/).filter(Boolean));
             return { cols, esq:cols[0]||[], dir:cols.slice(1).flat() };
-          });
-          const nc=rows.reduce((m,r)=>Math.max(m,r.cols.length),0);
-          const colMax=[]; for(let i=0;i<nc;i++) colMax.push(rows.reduce((m,r)=>Math.max(m,(r.cols[i]||[]).length),0));
-          return { rows, colMax };
-        }).filter(b=>b.rows.length);
+          })
+        ).filter(b=>b.length);
+        // grade ÚNICA pra lancha toda: mesmas colunas em todos os blocos (fileiras, fundo e áreas)
+        const todas=blocos.flat();
+        const nc=todas.reduce((m,r)=>Math.max(m,r.cols.length),0);
+        todas.forEach(r=>{
+          if(r.cols.length===2 && nc>=3){ const z=r.cols[1]; r.cols=[r.cols[0]]; while(r.cols.length<nc-1) r.cols.push([]); r.cols.push(z); } // "esq | dir" sem o meio
+          while(r.cols.length<nc) r.cols.push([]);
+        });
+        const curto=n=>String(n).length<=4;
+        const colMax=[]; for(let i=0;i<nc;i++) colMax.push(todas.reduce((m,r)=>Math.max(m,r.cols[i].filter(curto).length),0));
+        return blocos.map(rows=>({ rows, colMax }));
       },
+      polGrid(bloco){ return 'grid-template-columns:'+bloco.colMax.map(n=>Math.max(0,n*34+(n-1)*4)+'px').join(' '); },
       pol(f,ci,si){ return (f && f.cols[ci] && f.cols[ci][si]) ? f.cols[ci][si] : null; },
 
       // contagem de poltronas livres (total + por tipo), pra mostrar no topo do mapa
