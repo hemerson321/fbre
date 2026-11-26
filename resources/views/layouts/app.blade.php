@@ -83,7 +83,7 @@ document.addEventListener('alpine:init', () => {
   html, body { overflow-x: hidden; max-width: 100%; }
   body { background: #eef2f7; }
   .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-semibold text-sm transition active:scale-[.98] disabled:opacity-50; min-height: 48px; }
-  .btn-primary { background: var(--cor1); color: #fff; }
+  .btn-primary { background: var(--cor2); color: #fff; }
   .btn-accent { background: var(--cor2); color: #fff; }
   .text-cor3 { color: var(--cor3); }
   .bg-cor3 { background: var(--cor3); }

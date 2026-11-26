@@ -23,7 +23,7 @@
     </div>
     <div id="status" class="text-xs text-slate-500 text-center"></div>
     <div class="flex gap-2">
-      <button id="btnCam" type="button" class="btn btn-primary flex-1" style="background:var(--cor1)" onclick="iniciarCam()">📷 Ativar câmera</button>
+      <button id="btnCam" type="button" class="btn btn-primary flex-1" onclick="iniciarCam()">📷 Ativar câmera</button>
       <button id="btnStop" type="button" class="btn btn-ghost flex-1 hidden" onclick="pararCam()">Parar</button>
     </div>
     <p class="text-[11px] text-slate-400 text-center">O QR está no comprovante da passagem. Ao ler, abre o check-in pra confirmar o embarque.</p>

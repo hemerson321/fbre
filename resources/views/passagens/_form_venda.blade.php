@@ -502,7 +502,7 @@
         <label class="rounded-xl border-2 font-bold py-2.5 text-sm text-center cursor-pointer" style="border-color:var(--cor1);color:var(--cor1)">📁 Selecionar arquivo
           <input type="file" accept="image/*" class="hidden" @change="selecionarArquivo($event)"></label>
       </div>
-      <button type="button" @click="capturarCam()" :disabled="camLendo" class="w-full rounded-xl text-white font-extrabold py-3 text-lg disabled:opacity-50" style="background:var(--cor1)" x-text="camLendo?'Lendo...':'📸 Tirar foto e ler'"></button>
+      <button type="button" @click="capturarCam()" :disabled="camLendo" class="w-full rounded-xl text-white font-extrabold py-3 text-lg disabled:opacity-50" style="background:var(--cor2)" x-text="camLendo?'Lendo...':'📸 Tirar foto e ler'"></button>
       <button type="button" @click="fecharCam()" class="w-full text-slate-500 text-sm py-1">Fechar</button>
     </div>
   </div>
@@ -512,7 +512,7 @@
     <div class="bg-white rounded-2xl p-5 w-full max-w-sm text-center space-y-3">
       <div class="font-extrabold text-lg" style="color:var(--cor1)">📷 Captura por foto</div>
       <p class="text-sm text-slate-500">Neste aparelho: toque em <b>“Abrir”</b>. Em outro: aponte a câmera pro QR. Tire a foto do documento — o passageiro é preenchido aqui sozinho.</p>
-      <a :href="capturaUrl" x-show="capturaUrl" x-cloak target="_blank" rel="noopener" class="block w-full rounded-xl text-white font-extrabold py-3 text-base active:scale-[.98] transition" style="background:var(--cor1)">📷 Abrir</a>
+      <a :href="capturaUrl" x-show="capturaUrl" x-cloak target="_blank" rel="noopener" class="block w-full rounded-xl text-white font-extrabold py-3 text-base active:scale-[.98] transition" style="background:var(--cor2)">📷 Abrir</a>
       <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">ou escaneie o QR de outro aparelho</div>
       <div id="qr-captura" class="inline-block p-3 bg-white rounded-xl border border-slate-200 mx-auto"></div>
       <div class="text-sm font-semibold" style="color:var(--cor1)" x-text="capturaStatus"></div>
@@ -572,7 +572,7 @@
         <div class="text-[11px] text-slate-400 font-semibold" x-text="passageiros.length+(passageiros.length===1?' passageiro':' passageiros')"></div>
       </div>
     </div>
-    <button type="submit" x-show="total>0 || forma!=='avista' || abas.length>1" class="w-full rounded-2xl py-3.5 text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:opacity-40" style="background:var(--cor1)" :disabled="salvando || (!passageiros.length && abas.length<=1)">
+    <button type="submit" x-show="total>0 || forma!=='avista' || abas.length>1" class="w-full rounded-2xl py-3.5 text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || (!passageiros.length && abas.length<=1)">
       <span x-show="!salvando" x-text="edMode ? (edFila>0?'✏️ Atualizar e próxima':'✏️ Atualizar venda') : (abas.length>1 ? ('✅ Finalizar '+abas.length+' vendas') : '✅ Confirmar venda')"></span><span x-show="salvando">Salvando…</span>
     </button>
     <p class="text-[11px] text-slate-400 text-center mt-1" x-show="!passageiros.length">Adicione ao menos um passageiro.</p>

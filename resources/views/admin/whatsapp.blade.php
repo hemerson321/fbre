@@ -99,7 +99,7 @@
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('criar-{{ $c->id }}').submit()">Criar instância</button>
-          <button type="button" class="btn btn-primary btn-sm" style="background:var(--cor1)" @click="abrirQr()">Conectar (QR)</button>
+          <button type="button" class="btn btn-primary btn-sm" @click="abrirQr()">Conectar (QR)</button>
           <button type="button" class="btn btn-ghost btn-sm text-red-500" onclick="if(confirm('Desconectar este WhatsApp?'))document.getElementById('desc-{{ $c->id }}').submit()">Desconectar</button>
         </div>
         <div class="flex flex-wrap gap-2">

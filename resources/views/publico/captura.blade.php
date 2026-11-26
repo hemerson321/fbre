@@ -52,8 +52,8 @@
       <input type="file" accept="image/*" capture="environment" class="hidden" x-ref="cam" @change="escolher($event)">
       <input type="file" accept="image/*" multiple class="hidden" x-ref="gal" @change="escolher($event)">
       <div class="grid grid-cols-2 gap-2">
-        <button type="button" @click="$refs.cam.click()" class="rounded-xl text-white font-bold py-4 text-base" style="background:var(--cor1)">📷 Câmera</button>
-        <button type="button" @click="$refs.gal.click()" class="rounded-xl font-bold py-4 text-base border-2" style="border-color:var(--cor1);color:var(--cor1)">🖼️ Galeria</button>
+        <button type="button" @click="$refs.cam.click()" class="rounded-xl text-white font-bold py-4 text-base" style="background:var(--cor2)">📷 Câmera</button>
+        <button type="button" @click="$refs.gal.click()" class="rounded-xl font-bold py-4 text-base border-2" style="border-color:var(--cor2);color:var(--cor2)">🖼️ Galeria</button>
       </div>
       <template x-if="fila.length">
         <div class="mt-2 grid grid-cols-3 gap-2">

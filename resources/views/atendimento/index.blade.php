@@ -72,7 +72,7 @@
         </div>
         <button type="button" @click="painel=!painel" class="lg:hidden btn btn-ghost btn-sm shrink-0" title="Ferramentas">🧰</button>
         @if($sel->status!=='humano')
-        <form method="post" action="{{ route('atendimento.assumir',$sel) }}" class="shrink-0">@csrf<button class="btn btn-primary btn-sm" style="background:var(--cor1)">Assumir</button></form>
+        <form method="post" action="{{ route('atendimento.assumir',$sel) }}" class="shrink-0">@csrf<button class="btn btn-primary btn-sm">Assumir</button></form>
         @endif
         <form method="post" action="{{ route('atendimento.reiniciar',$sel) }}" onsubmit="return confirm('Reiniciar a sessão? O agente atende como novo.')" class="shrink-0">@csrf<button class="btn btn-ghost btn-sm" title="Agente esquece o histórico">🔄</button></form>
         <form method="post" action="{{ route('atendimento.fechar',$sel) }}" onsubmit="return confirm('Finalizar o pedido? A conversa é encerrada.')" class="shrink-0">@csrf<button class="btn btn-primary btn-sm" style="background:var(--cor2)">✅ Finalizar</button></form>
@@ -129,7 +129,7 @@
             <button type="button" class="btn btn-ghost btn-sm !px-2" title="Respostas rápidas" @click="tab='rapidas'; painel=true">⚡</button>
           </div>
           <textarea x-ref="txt" x-model="texto" rows="1" @keydown.enter.exact.prevent="enviar()" @input="autoGrow()" class="input flex-1 !min-h-[42px] max-h-32 resize-none py-2.5" placeholder="Escreva uma mensagem…  (Enter envia)"></textarea>
-          <button type="submit" :disabled="sending" class="btn btn-primary shrink-0 !px-4" style="background:var(--cor1)"><span x-show="!sending">Enviar</span><span x-show="sending" x-cloak>…</span></button>
+          <button type="submit" :disabled="sending" class="btn btn-primary shrink-0 !px-4"><span x-show="!sending">Enviar</span><span x-show="sending" x-cloak>…</span></button>
         </form>
       </div>
     </section>
@@ -258,7 +258,7 @@
             <textarea name="texto" rows="2" maxlength="4000" class="input !min-h-[60px] py-2 text-sm" placeholder="Ex.: Bom dia! Seu embarque é amanhã às 05:00."></textarea>
             <div><label class="label">Enviar em</label><input type="datetime-local" name="enviar_em" required class="input !min-h-[40px]" value="{{ now()->addHour()->format('Y-m-d\TH:i') }}"></div>
             <div><label class="label">Arquivo (opcional)</label><input type="file" name="arquivo" class="input py-1.5 text-sm"></div>
-            <button class="btn btn-sm btn-primary w-full" style="background:var(--cor1)">Agendar</button>
+            <button class="btn btn-sm btn-primary w-full">Agendar</button>
           </form>
         </details>
       </div>

@@ -256,7 +256,7 @@
   <span class="text-slate-400">até</span>
   <input type="date" name="fim" value="{{ \Illuminate\Support\Carbon::parse($fim)->format('Y-m-d') }}" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[13px]">
   <input type="hidden" name="periodo" value="personalizado">
-  <button type="submit" class="rounded-lg text-white px-3 py-1 text-[13px] font-semibold" style="background:var(--cor1)">Ver</button>
+  <button type="submit" class="rounded-lg text-white px-3 py-1 text-[13px] font-semibold" style="background:var(--cor2)">Ver</button>
   @if(($periodo ?? 'hoje') !== 'hoje')<a href="{{ route('caixa.index') }}" class="underline text-slate-400 ml-1">voltar p/ hoje</a>@endif
 </form>
 @endif
