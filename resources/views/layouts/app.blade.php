@@ -173,7 +173,7 @@ document.addEventListener('alpine:init', () => {
   if (! empty($grupos['Ferramentas'] ?? [])) $subPassagens['Ferramentas'] = $grupos['Ferramentas'];
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->podeMarketing()) $grupos['Mídia Indoor'] = [
-      ['r'=>route('marketing.signage'), 'l'=>'TV indoor', 'i'=>'🖥️'],
+      ['r'=>route('marketing.signage'), 'l'=>'Tela indoor', 'i'=>'🖼️'],
       ['r'=>route('marketing.index'), 'l'=>'Áudio indoor', 'i'=>'🔊'],
   ];
   if ($u->isAdmin() || $u->isSuper()) {

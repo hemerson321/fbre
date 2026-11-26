@@ -18,7 +18,7 @@
         <div class="text-[12px] text-slate-500">Crie áudios falados, programe por horário/dia e toque agora nos terminais (caixas de som).</div>
       </div>
     </div>
-    <a href="{{ route('marketing.signage') }}" class="btn btn-ghost btn-sm">📺 Ir pro TV indoor</a>
+    <a href="{{ route('marketing.signage') }}" class="btn btn-ghost btn-sm">🖼️ Ir pra Tela indoor</a>
   </div>
 
   {{-- TERMINAIS --}}
