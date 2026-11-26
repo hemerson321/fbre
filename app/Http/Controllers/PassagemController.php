@@ -1072,8 +1072,35 @@ class PassagemController extends Controller
         if (! empty($f['busca'])) $filtros['Busca'] = $f['busca'];
         $filtros = array_filter($filtros, fn ($v) => $v !== null && $v !== '');
 
+        // Trecho "ponta a ponta" da viagem (ex.: Manaus → Tabatinga): 1ª parada → última parada,
+        // pela ordem da rota — não cada perninha (Manaus/Borba, Manaus/Coari...).
+        $trechoViagem = '';
+        try {
+            $cidades = $passagens->flatMap(fn ($p) => [trim((string) $p->origem), trim((string) $p->destino)])->filter()->unique()->values();
+            if ($cidades->count() === 1) {
+                $trechoViagem = (string) $cidades->first();
+            } elseif ($cidades->isNotEmpty()) {
+                $rotaRef = $passagens->firstWhere('rota_id', '!=', null)?->rota;
+                $ordem = $rotaRef ? collect($rotaRef->localidades())->map(fn ($c) => mb_strtolower(trim((string) $c)))->values() : collect();
+                if ($ordem->isNotEmpty()) {
+                    $idx = fn ($c) => $ordem->search(mb_strtolower(trim((string) $c)));
+                    $ok = $cidades->filter(fn ($c) => $idx($c) !== false)->sortBy($idx)->values();
+                    if ($ok->count() >= 2) $trechoViagem = $ok->first().' → '.$ok->last();
+                    elseif ($ok->count() === 1) $trechoViagem = (string) $ok->first();
+                }
+                if ($trechoViagem === '') { // sem rota conhecida: origem que nunca é destino → destino que nunca é origem
+                    $org = $passagens->pluck('origem')->map(fn ($c) => trim((string) $c))->filter();
+                    $dst = $passagens->pluck('destino')->map(fn ($c) => trim((string) $c))->filter();
+                    $ini = $org->reject(fn ($c) => $dst->contains($c))->first() ?: $org->first();
+                    $fim = $dst->reject(fn ($c) => $org->contains($c))->last() ?: $dst->last();
+                    if ($ini && $fim) $trechoViagem = ($ini === $fim) ? (string) $ini : $ini.' → '.$fim;
+                }
+            }
+        } catch (\Throwable $e) { $trechoViagem = ''; }
+
         return view('passagens.caixa_viagem', [
             'linhas' => $linhas,
+            'trechoViagem' => $trechoViagem,
             'ehRelatorio' => $ehRelatorio,
             'filtros' => $filtros,
             'totForma' => $totForma,

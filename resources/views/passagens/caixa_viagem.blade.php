@@ -84,9 +84,8 @@
   {{ $linhas->count() }} linha(s) · Emitido {{ now()->format('d/m/Y H:i') }}
 </div>
 
-@php $trechosTopo = $linhas->pluck('trecho')->map(fn ($t) => trim((string) $t))->filter()->unique()->values(); @endphp
-@if($trechosTopo->isNotEmpty())
-<div class="sub" style="margin:4px 0 8px;font-size:13px"><b>Trecho(s) da viagem:</b> {{ $trechosTopo->implode('  ·  ') }}</div>
+@if(!empty($trechoViagem))
+<div style="margin:6px 0 10px;padding:7px 12px;background:#eef2ff;border-left:4px solid #3730a3;border-radius:6px;font-weight:800;font-size:16px;color:#1e293b">🧭 Trecho: {{ $trechoViagem }}</div>
 @endif
 
 @include('passagens._manifesto_tabela', ['linhas' => $linhas])
