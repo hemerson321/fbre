@@ -254,6 +254,19 @@ class CaixaController extends Controller
         }
         $linhasCaixa = \App\Support\ManifestoCaixa::dados($passCx)['linhas'];
 
+        // Lançamentos separados por transporte (lancha): uma sub-tabela por embarcação.
+        $tmapNome = $transportes->keyBy('id');
+        $linhasCaixaGrupos = $passCx->groupBy('embarcacao_id')->map(function ($grupo, $eid) use ($tmapNome) {
+            $linhas = \App\Support\ManifestoCaixa::dados($grupo)['linhas'];
+            return (object) [
+                'eid' => $eid ?: null,
+                'nome' => $eid ? (optional($tmapNome[$eid] ?? null)->nome ?: ('Transporte '.$eid)) : null,
+                'linhas' => $linhas,
+                'qtd' => $linhas->where('cancelado', false)->count(),
+                'vendas' => round((float) $linhas->where('cancelado', false)->sum('valor'), 2),
+            ];
+        })->sortBy(fn ($g) => mb_strtolower((string) ($g->nome ?? 'zzzz')))->values();
+
         // 3 categorias de venda (Balcão · Proprietário · Agente interior), cada uma por forma de pagamento.
         $novaCat = fn () => ['qtd' => 0, 'total' => 0.0, 'dinheiro' => 0.0, 'pix' => 0.0, 'debito' => 0.0, 'credito' => 0.0, 'areceber' => 0.0];
         $porCategoria = ['balcao' => $novaCat(), 'proprietario' => $novaCat(), 'agente' => $novaCat()];
@@ -583,7 +596,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('operadoresPrest', 'prestOperador', 'seguraCaixa', 'emAbertoOperadores', 'porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'pendPorTransporte', 'pendPorData', 'porCategoria', 'viagensTransporte', 'maqProprietarios', 'saidasCaixa', 'ownerShareG'))
+        return view('caixa.index', compact('operadoresPrest', 'prestOperador', 'seguraCaixa', 'emAbertoOperadores', 'porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'linhasCaixaGrupos', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'pendPorTransporte', 'pendPorData', 'porCategoria', 'viagensTransporte', 'maqProprietarios', 'saidasCaixa', 'ownerShareG'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 

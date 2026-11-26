@@ -253,8 +253,15 @@
   <span class="text-slate-400">até</span>
   <input type="date" name="fim" value="{{ \Illuminate\Support\Carbon::parse($fim)->format('Y-m-d') }}" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[13px]">
   <input type="hidden" name="periodo" value="personalizado">
+  @if($podeTransporte)
+  <span class="font-semibold text-slate-400 ml-1">🚤 Transporte</span>
+  <select name="transporte_id" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[13px]" onchange="this.form.submit()">
+    <option value="">Todos</option>
+    @foreach($transportes as $t)<option value="{{ $t->id }}" @selected((string)$transporteId===(string)$t->id)>{{ $t->nome }}</option>@endforeach
+  </select>
+  @endif
   <button type="submit" class="rounded-lg text-white px-3 py-1 text-[13px] font-semibold" style="background:var(--cor2)">Ver</button>
-  @if(($periodo ?? 'hoje') !== 'hoje')<a href="{{ route('caixa.index') }}" class="underline text-slate-400 ml-1">voltar p/ hoje</a>@endif
+  @if(($periodo ?? 'hoje') !== 'hoje' || $transporteId)<a href="{{ route('caixa.index') }}" class="underline text-slate-400 ml-1">voltar p/ hoje</a>@endif
 </form>
 @endif
 @unless($ehRel)
@@ -769,7 +776,15 @@
 
   {{-- Passagens do periodo no modelo da prestacao (sem agente externo) --}}
   <div class="px-3 pt-3 pb-1 font-bold text-[11px] text-slate-400 uppercase">🧾 Passagens do período {{ ($ehRelatorio ?? false) ? '(com agente externo)' : '(sem agente externo)' }}</div>
-  @include('passagens._manifesto_tabela', ['linhas' => $linhasCaixa])
+  @forelse(($linhasCaixaGrupos ?? collect()) as $g)
+    <div class="px-3 pt-3 pb-1 flex flex-wrap items-center gap-2 text-[12px] font-bold text-slate-700 border-t-2 border-slate-100 first:border-t-0">
+      <span>{{ $g->nome ? '🚤 '.$g->nome : '— sem transporte —' }}</span>
+      <span class="text-slate-400 font-medium">· {{ $g->qtd }} passagem(ns) · Vendas R$ {{ number_format($g->vendas,2,',','.') }}</span>
+    </div>
+    @include('passagens._manifesto_tabela', ['linhas' => $g->linhas])
+  @empty
+    @include('passagens._manifesto_tabela', ['linhas' => ($linhasCaixa ?? collect())])
+  @endforelse
   <div class="px-3 py-2 text-[10px] text-slate-500 flex flex-wrap gap-2 border-b">Legenda:
     <span style="background:#dbeafe;padding:1px 7px;border-radius:4px">Agente/Município</span>
     <span style="background:#dcfce7;padding:1px 7px;border-radius:4px">Idoso</span>
