@@ -149,6 +149,21 @@ class SignageController extends Controller
         return back()->with('ok', $midia->ativo ? 'Mídia ativada.' : 'Mídia pausada.');
     }
 
+    /** Reordena a programação da tela (arrastar e soltar). Recebe os IDs na nova ordem. */
+    public function midiaOrdenar(Request $request, SignageTela $tela)
+    {
+        $ids = (array) $request->input('ids', []);
+        $ordem = 1;
+        foreach ($ids as $id) {
+            $id = (int) $id;
+            if ($id <= 0) continue;
+            // midias() já é escopado pela tela e pela empresa (global scope) — só atualiza o que é desta tela.
+            $tela->midias()->where('id', $id)->update(['ordem' => $ordem++]);
+        }
+
+        return response()->json(['ok' => true, 'total' => $ordem - 1]);
+    }
+
     protected function apagarArquivos(SignageMidia $m): void
     {
         $this->apagar($m->arquivo);

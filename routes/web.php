@@ -382,6 +382,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/signage/tela/{tela}/midia/{midia?}', [\App\Http\Controllers\Admin\SignageController::class, 'midiaSalvar'])->name('signage.midia.salvar');
         Route::delete('/signage/midia/{midia}', [\App\Http\Controllers\Admin\SignageController::class, 'midiaExcluir'])->name('signage.midia.excluir');
         Route::post('/signage/midia/{midia}/ativar', [\App\Http\Controllers\Admin\SignageController::class, 'midiaAtivar'])->name('signage.midia.ativar');
+        Route::post('/signage/tela/{tela}/ordenar', [\App\Http\Controllers\Admin\SignageController::class, 'midiaOrdenar'])->name('signage.midia.ordenar'); // arrastar pra reordenar a programação
     });
 
     // ---------------- Super-admin (GERATEC) ----------------

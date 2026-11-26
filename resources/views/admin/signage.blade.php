@@ -21,6 +21,13 @@
   .sgx-lay{border-radius:10px;overflow:hidden;position:relative;aspect-ratio:16/10;cursor:pointer;outline:3px solid transparent;outline-offset:2px;transition:.15s}
   .sgx-lay.sel{outline-color:#7c3aed}
   .sgx-chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700}
+  .sg-row{cursor:grab}
+  .sg-row:active{cursor:grabbing}
+  .sg-row.sg-drag{opacity:.4;background:#f8fafc}
+  .sg-grip{flex:none;color:#cbd5e1;font-size:17px;line-height:1;cursor:grab;user-select:none;padding:0 1px}
+  .sg-grip:hover{color:#94a3b8}
+  .sg-row img,.sg-row video{-webkit-user-drag:none;user-drag:none}
+  [data-sortable].sg-saved{outline:2px solid #86efac;outline-offset:-2px;border-radius:.75rem}
 </style>
 
 <div x-data="sgAdmin()" class="space-y-5">
@@ -116,7 +123,7 @@
             <button type="button" class="btn btn-sm btn-accent" @click="novaMidia({{ $t->id }}, @js($t->orientacao), 'texto')">📝 Aviso em texto</button>
           </div>
         </div>
-        <div class="divide-y rounded-xl border bg-white">
+        <div class="divide-y rounded-xl border bg-white" data-sortable data-url="{{ route('marketing.signage.midia.ordenar', $t) }}" data-csrf="{{ csrf_token() }}">
           @forelse($t->midias as $m)
           @php
             $mr = $modoRot[$m->modo] ?? $modoRot['sequencia'];
@@ -127,12 +134,13 @@
               'data_inicio' => optional($m->data_inicio)->toDateString(), 'data_fim' => optional($m->data_fim)->toDateString(), 'som' => (bool) $m->som, 'ativo' => (bool) $m->ativo,
               'ordem' => (int) $m->ordem, 'url' => $m->url('arquivo'), 'audio' => $m->url('audio')];
           @endphp
-          <div class="p-2.5 flex items-center gap-3 {{ $m->ativo ? '' : 'opacity-50' }}">
+          <div class="p-2.5 flex items-center gap-3 sg-row {{ $m->ativo ? '' : 'opacity-50' }}" draggable="true" data-id="{{ $m->id }}">
+            <div class="sg-grip" title="Arraste para reordenar">⠿</div>
             <div class="sgx-thumb {{ $t->vertical() ? 'v' : '' }}">
               @if($m->tipo === 'imagem')
-                <img src="{{ $m->url('arquivo') }}" alt="" loading="lazy">
+                <img src="{{ $m->url('arquivo') }}" alt="" loading="lazy" draggable="false">
               @elseif($m->tipo === 'video')
-                <video src="{{ $m->url('arquivo') }}#t=0.5" preload="metadata" muted></video>
+                <video src="{{ $m->url('arquivo') }}#t=0.5" preload="metadata" muted draggable="false"></video>
                 <span class="absolute inset-0 flex items-center justify-center text-white text-lg" style="text-shadow:0 1px 4px #000">▶</span>
               @else
                 <div class="sg-stage" style="position:absolute;inset:0" x-init="$nextTick(() => SG.desenhar($el, @js($dj), {empresa: @js($empresa)}))"></div>
@@ -369,5 +377,55 @@ function sgAdmin(){
     }
   };
 }
+
+/* Arrastar pra reordenar a programacao (drag & drop nativo) */
+(function(){
+  function wire(list){
+    list.addEventListener('dragstart', function(e){
+      var row = e.target.closest ? e.target.closest('[data-id]') : null;
+      if(!row || !list.contains(row)) return;
+      list._drag = row; row.classList.add('sg-drag');
+      e.dataTransfer.effectAllowed = 'move';
+      try{ e.dataTransfer.setData('text/plain', row.getAttribute('data-id')); }catch(_){}
+    });
+    list.addEventListener('dragover', function(e){
+      if(!list._drag) return;
+      e.preventDefault();
+      var apos = posicao(list, e.clientY);
+      if(apos == null) list.appendChild(list._drag);
+      else if(apos !== list._drag) list.insertBefore(list._drag, apos);
+    });
+    list.addEventListener('drop', function(e){ e.preventDefault(); });
+    list.addEventListener('dragend', function(){
+      if(list._drag){ list._drag.classList.remove('sg-drag'); list._drag = null; salvar(list); }
+    });
+  }
+  function posicao(list, y){
+    var linhas = [].slice.call(list.querySelectorAll('[data-id]:not(.sg-drag)'));
+    var escolha = null, menor = -Infinity;
+    linhas.forEach(function(row){
+      var box = row.getBoundingClientRect();
+      var off = y - box.top - box.height/2;
+      if(off < 0 && off > menor){ menor = off; escolha = row; }
+    });
+    return escolha;
+  }
+  var timer = null;
+  function salvar(list){
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      var ids = [].slice.call(list.querySelectorAll('[data-id]')).map(function(r){ return r.getAttribute('data-id'); });
+      fetch(list.getAttribute('data-url'), {
+        method:'POST',
+        headers:{'X-CSRF-TOKEN': list.getAttribute('data-csrf'), 'Content-Type':'application/json', 'Accept':'application/json'},
+        body: JSON.stringify({ids: ids})
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if(d && d.ok){ list.classList.add('sg-saved'); setTimeout(function(){ list.classList.remove('sg-saved'); }, 800); }
+      }).catch(function(){});
+    }, 250);
+  }
+  function init(){ document.querySelectorAll('[data-sortable]').forEach(wire); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
 </script>
 @endsection
