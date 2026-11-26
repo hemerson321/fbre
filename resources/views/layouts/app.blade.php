@@ -172,26 +172,32 @@ document.addEventListener('alpine:init', () => {
   if (! empty($grupos['Ferramentas'] ?? [])) $subPassagens['Ferramentas'] = $grupos['Ferramentas'];
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isAdmin() || $u->isSuper()) {
-      $adm = [];
-      $adm[] = ['sec'=>'Cadastros'];
-      $adm[] = ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'];
-      $adm[] = ['r'=>route('admin.transportes'), 'l'=>'Transportes', 'i'=>'⛴️'];
-      if ($u->temModulo('passagem')) $adm[] = ['r'=>route('admin.rotas'), 'l'=>'Rotas e horários', 'i'=>'🗺️'];
-      if ($modOn('camarote')) $adm[] = ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'];
-      $adm[] = ['sec'=>'Usuários & Empresa'];
-      $adm[] = ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'];
-      $adm[] = ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'];
-      $adm[] = ['sec'=>'Integrações'];
-      $adm[] = ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'];
-      $adm[] = ['r'=>route('admin.pagamentos'), 'l'=>'Pagamentos (APIs)', 'i'=>'💳'];
-      $adm[] = ['r'=>route('admin.llm'), 'l'=>'Provedores de IA', 'i'=>'🧠'];
-      $adm[] = ['r'=>route('admin.agentes'), 'l'=>'Agentes IA', 'i'=>'🤖'];
-      $adm[] = ['r'=>route('admin.signage'), 'l'=>'Digital Signage', 'i'=>'📺'];
-      $adm[] = ['sec'=>'Painel'];
-      $adm[] = ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'];
-      $adm[] = ['r'=>route('admin.movimentos'), 'l'=>'Entradas e saídas', 'i'=>'↕️'];
-      $adm[] = ['r'=>route('simulacao.telas'), 'l'=>'Simulação (demo)', 'i'=>'🧪'];
-      $grupos['Administração'] = $adm;
+      $subAdmin = [];
+      $cadast = [];
+      $cadast[] = ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'];
+      $cadast[] = ['r'=>route('admin.transportes'), 'l'=>'Transportes', 'i'=>'⛴️'];
+      if ($u->temModulo('passagem')) $cadast[] = ['r'=>route('admin.rotas'), 'l'=>'Rotas e horários', 'i'=>'🗺️'];
+      if ($modOn('camarote')) $cadast[] = ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'];
+      $subAdmin['Cadastros'] = $cadast;
+      $subAdmin['Usuários & Empresa'] = [
+          ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
+          ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'],
+      ];
+      $subAdmin['Integrações'] = [
+          ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'],
+          ['r'=>route('admin.pagamentos'), 'l'=>'Pagamentos (APIs)', 'i'=>'💳'],
+          ['r'=>route('admin.llm'), 'l'=>'Provedores de IA', 'i'=>'🧠'],
+          ['r'=>route('admin.agentes'), 'l'=>'Agentes IA', 'i'=>'🤖'],
+          ['r'=>route('admin.signage'), 'l'=>'Digital Signage', 'i'=>'📺'],
+      ];
+      $subAdmin['Painel'] = [
+          ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'],
+          ['r'=>route('admin.movimentos'), 'l'=>'Entradas e saídas', 'i'=>'↕️'],
+          ['r'=>route('simulacao.telas'), 'l'=>'Simulação (demo)', 'i'=>'🧪'],
+      ];
+      $admFlat = [];
+      foreach ($subAdmin as $cat => $its) { $admFlat[] = ['sec'=>$cat]; foreach ($its as $it) $admFlat[] = $it; }
+      $grupos['Administração'] = $admFlat;
   }
   if ($u->ehRevendedor() && \App\Support\Tenant::empresa()?->config('revendedor_multi')) $grupos['Revendedor'] = [['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝']];
   if ($u->isSuper() && ! config('fbre.single')) $grupos['GERATEC'] = [['r'=>route('super.empresas'), 'l'=>'Empresas (clientes)', 'i'=>'🛠️']];
@@ -227,6 +233,10 @@ document.addEventListener('alpine:init', () => {
   $metaGrupo['Relatório'] = ['📋', '#4f46e5'];
   $metaGrupo['Financeiro'] = ['💵', '#0d9488'];
   $metaGrupo['Ferramentas'] = ['🛠️', '#7c3aed'];
+  $metaGrupo['Cadastros'] = ['🗂️', '#334155'];
+  $metaGrupo['Usuários & Empresa'] = ['👥', '#334155'];
+  $metaGrupo['Integrações'] = ['🔌', '#334155'];
+  $metaGrupo['Painel'] = ['📊', '#334155'];
   $ativo = function ($r) {
       if (request()->url() !== strtok($r, '?')) return false;
       parse_str(parse_url($r, PHP_URL_QUERY) ?: '', $qq);
@@ -297,8 +307,9 @@ document.addEventListener('alpine:init', () => {
             <svg class="w-3.5 h-3.5 opacity-50 transition" :class="aberto==='{{ $titulo }}'?'rotate-180':''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div x-show="aberto==='{{ $titulo }}'" x-cloak x-transition.origin.top.left
-               class="absolute left-0 top-full mt-1 z-50 w-60 rounded-xl bg-white shadow-xl border border-slate-100 p-1.5 {{ $titulo==='Passagens' ? '' : 'max-h-[calc(100vh-6rem)] overflow-y-auto' }}">
+               class="absolute left-0 top-full mt-1 z-50 w-60 rounded-xl bg-white shadow-xl border border-slate-100 p-1.5 {{ in_array($titulo, ['Passagens','Administração'], true) ? '' : 'max-h-[calc(100vh-6rem)] overflow-y-auto' }}">
             <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider" style="color:{{ $gc }}">{{ $titulo }}</div>
+            @unless($titulo==='Administração')
             @foreach($itens as $it)
               @if(!empty($it['sec']))<div class="px-2.5 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ $it['sec'] }}</div>@continue @endif
               @php
@@ -314,8 +325,10 @@ document.addEventListener('alpine:init', () => {
                 @if(!empty($it['bk']))<span data-badge-item="{{ $it['bk'] }}" class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5" @if(empty($it['b'])) style="display:none" @endif>{{ $it['b'] ?: '' }}</span>@elseif(!empty($it['b']))<span class="ml-auto min-w-[18px] text-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 py-0.5">{{ $it['b'] }}</span>@endif
               </a>
             @endforeach
-            @if($titulo==='Passagens' && !empty($subPassagens))
-              @foreach($subPassagens as $subT => $subItens)
+            @endunless
+            @php $subsDoGrupo = $titulo==='Passagens' ? ($subPassagens ?? []) : ($titulo==='Administração' ? ($subAdmin ?? []) : []); @endphp
+            @if(!empty($subsDoGrupo))
+              @foreach($subsDoGrupo as $subT => $subItens)
                 @php [$si,$sc] = $metaGrupo[$subT] ?? ['•','#475569']; $sb = (int) collect($subItens)->sum(fn($it)=>(int)($it['b'] ?? 0)); $sbk = collect($subItens)->pluck('bk')->filter()->implode(' '); @endphp
                 <div class="relative" @mouseenter="sub='{{ $subT }}'" @mouseleave="sub=null">
                   <div class="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-bold cursor-default transition hover:bg-slate-50" :class="sub==='{{ $subT }}' ? 'bg-slate-50' : ''" style="color:{{ $sc }}">
