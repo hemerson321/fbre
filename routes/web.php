@@ -281,6 +281,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/prestacoes/{prestacao}', [PrestacaoController::class, 'detalhe'])->name('prestacoes.detalhe')->middleware('perm:caixa');
     Route::get('/meu-relatorio', [\App\Http\Controllers\CaixaController::class, 'relatorio'])->name('relatorio.meu')->middleware('perm:relatorio');
     Route::get('/meu-relatorio/exportar', [RelatorioController::class, 'exportar'])->name('relatorio.meu.exportar')->middleware('perm:relatorio');
+    Route::get('/dashboard-viagens', [\App\Http\Controllers\DashboardViagensController::class, 'index'])->name('passagens.dashboard')->middleware('perm:relatorio');
 
     // ---------------- Viagens (módulo rotas) ----------------
     Route::get('/viagens', [ViagemController::class, 'index'])->name('viagens.index')->middleware('perm:filtro');
