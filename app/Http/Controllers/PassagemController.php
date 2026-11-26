@@ -227,7 +227,7 @@ class PassagemController extends Controller
         }
         // solta as reservas (holds) deste operador nas poltronas recém-vendidas
         if ($usaPol) {
-            $seats = collect($data['passageiros'])->pluck('poltrona')->filter()->values()->all();
+            $seats = collect($data['passageiros'])->pluck('poltrona')->filter()->reject(fn ($s) => mb_strtoupper(trim((string) $s)) === 'LIVRE')->values()->all();
             if ($seats) \App\Models\PoltronaHold::where('embarcacao_id', $data['embarcacao_id'])->where('user_id', auth()->id())->whereIn('poltrona', $seats)->delete();
         }
         session(['ultima_origem_pass' => $data['origem']]);
@@ -550,7 +550,7 @@ class PassagemController extends Controller
     {
         $emb = ($data['embarcacao_id'] ?? null) ? Embarcacao::find($data['embarcacao_id']) : null;
         if (! $emb || ! $emb->usa_poltrona) return;
-        $assentos = collect($data['passageiros'])->pluck('poltrona')->filter()->values();
+        $assentos = collect($data['passageiros'])->pluck('poltrona')->filter()->reject(fn ($s) => mb_strtoupper(trim((string) $s)) === 'LIVRE')->values();
         if ($assentos->isEmpty()) return;
         abort_if($assentos->duplicates()->isNotEmpty(), 422, 'Há poltronas repetidas no mesmo cadastro.');
         $ocupadas = $this->ocupadas($emb->id, $data['data_viagem'] ?? null, $data['viagem_id'] ?? null, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null);
@@ -1541,7 +1541,7 @@ class PassagemController extends Controller
         // poltrona nao repete no mesmo cadastro nem bate com outra venda (ignora a propria)
         $emb = ! empty($data['embarcacao_id']) ? \App\Models\Embarcacao::find($data['embarcacao_id']) : null;
         if ($emb && $emb->usa_poltrona) {
-            $assentos = collect($data['passageiros'])->pluck('poltrona')->filter()->values();
+            $assentos = collect($data['passageiros'])->pluck('poltrona')->filter()->reject(fn ($s) => mb_strtoupper(trim((string) $s)) === 'LIVRE')->values();
             abort_if($assentos->duplicates()->isNotEmpty(), 422, 'Ha poltronas repetidas no mesmo cadastro.');
             $ocup = $this->ocupadas($data['embarcacao_id'], $data['data_viagem'] ?? null, $data['viagem_id'] ?? null, $data['rota_id'] ?? null, $data['origem'] ?? null, $data['destino'] ?? null, $passagem->id);
             $conflito = $assentos->intersect($ocup);

@@ -196,9 +196,12 @@
                   <input class="field !min-h-0 py-1 text-sm flex-1 w-full" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(p.documento)}" placeholder="número do documento" x-model="p.documento" title="Número do documento. Se for CPF, precisa ser válido.">
                 </div>
                 <div x-show="!FBRE.docOk(p.documento)" x-cloak class="text-[10px] text-red-500 mt-0.5">CPF inválido</div></div>
-              <button type="button" x-show="usaPoltrona" x-cloak class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" style="border-color:var(--cor1);color:var(--cor1)" @click="abrirMapa(i)" title="Poltrona (F2)">
-                <span x-text="p.poltrona ? ('🪑 '+p.poltrona) : '🪑'"></span>
-              </button>
+              <div x-show="usaPoltrona" x-cloak class="flex gap-1 shrink-0">
+                <button type="button" class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" :style="!p.livre ? 'border-color:var(--cor1);background:var(--cor1);color:#fff' : 'border-color:#cbd5e1;color:#94a3b8'" @click="p.livre=false; abrirMapa(i)" title="Escolher poltrona (F2)">
+                  <span x-text="(!p.livre && p.poltrona) ? ('💺 '+p.poltrona) : '💺'"></span>
+                </button>
+                <button type="button" class="rounded-lg border-2 px-3 py-1.5 text-sm font-extrabold whitespace-nowrap" :style="p.livre ? 'border-color:#059669;background:#059669;color:#fff' : 'border-color:#cbd5e1;color:#94a3b8'" @click="marcarLivre(i)" title="Poltrona livre (sem assento fixo)">L</button>
+              </div>
             </div>
             {{-- linha final: telefone + nacionalidade + check-in/bebê + anexos --}}
             <div class="flex items-end gap-2 mt-2 pt-1.5 border-t border-slate-100">
