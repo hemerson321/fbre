@@ -427,9 +427,18 @@ class CaixaController extends Controller
             ];
         }
 
-        // Líquido da AGÊNCIA = entradas - parte dos donos (passagens) - saídas próprias. Comissão é o que fica pra agência.
+        // Saídas avulsas amarradas a transporte (adiantamentos etc.) também saem do caixa agora
+        // (depois são recuperadas na prestação, onde abatem o que a agência paga ao dono).
+        $saidasAvulsoTransp = round((float) Pagamento::where('modulo', 'avulso')->where('estornado', false)->where('tipo_mov', 'saida')->whereNotNull('embarcacao_id')
+            ->whereBetween('created_at', [$inicio, $fim])
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->sum('valor'), 2);
+        $saidasCaixa = round((float) $saidas + $saidasAvulsoTransp, 2);
+
+        // Líquido da AGÊNCIA = entradas - parte dos donos (passagens) - saídas (próprias + avulsas de transporte). Comissão é o que fica pra agência.
         $entradasVal = (float) $porMeio->sum('valor');
-        $liquidoAgencia = round($entradasVal - $ownerShareG - (float) $saidas, 2);
+        $liquidoAgencia = round($entradasVal - $ownerShareG - $saidasCaixa, 2);
 
         // Tela de escolha da Prestação: pendências por transporte e por data de viagem (pra guiar o operador).
         $pendPorTransporte = collect(); $pendPorData = collect();
@@ -566,7 +575,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('operadoresPrest', 'prestOperador', 'seguraCaixa', 'emAbertoOperadores', 'porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'pendPorTransporte', 'pendPorData', 'porCategoria', 'viagensTransporte', 'maqProprietarios'))
+        return view('caixa.index', compact('operadoresPrest', 'prestOperador', 'seguraCaixa', 'emAbertoOperadores', 'porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'pendPorTransporte', 'pendPorData', 'porCategoria', 'viagensTransporte', 'maqProprietarios', 'saidasCaixa'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 
@@ -618,6 +627,55 @@ class CaixaController extends Controller
             'acerto_pct' => $cat ? (int) $cat->comissao_pct : 0,
         ]);
         return back()->with('ok', ($data['tipo_mov'] === 'entrada' ? 'Entrada' : 'Saída') . ' avulsa registrada.');
+    }
+
+    /** Garante que o avulso pode ser editado/excluído pelo caixa (ainda não entrou numa prestação). */
+    protected function avulsoDoCaixa(Pagamento $avulso): void
+    {
+        abort_unless($avulso->empresa_id === Tenant::id(), 404);
+        abort_unless($avulso->modulo === 'avulso' && $avulso->momento === 'cadastro' && ! $avulso->estornado, 404);
+        abort_if($avulso->prestacao_id, 422, 'Esse avulso já entrou numa prestação — edite por lá.');
+    }
+
+    /** Edita um avulso lançado pelo caixa (ainda não prestado). */
+    public function avulsoEditar(Request $request, Pagamento $avulso)
+    {
+        $this->avulsoDoCaixa($avulso);
+        $data = $request->validate([
+            'tipo_mov' => 'required|in:entrada,saida',
+            'categoria' => 'nullable|string|max:60',
+            'valor' => 'required|numeric|min:0.01',
+            'meio' => 'required|in:dinheiro,pix,debito,credito',
+            'descricao' => 'nullable|string|max:200',
+            'embarcacao_id' => 'nullable|integer',
+            'data_viagem' => 'nullable|date',
+        ]);
+        $embId = ! empty($data['embarcacao_id'])
+            ? (int) optional(\App\Models\Embarcacao::where('id', $data['embarcacao_id'])->where('empresa_id', Tenant::id())->first())->id
+            : null;
+        $cat = ! empty($data['categoria']) ? AvulsoCategoria::where('nome', $data['categoria'])->first() : null;
+        $avulso->update([
+            'tipo_mov' => $data['tipo_mov'],
+            'categoria' => $data['categoria'] ?? null,
+            'valor' => $data['valor'],
+            'meio' => $data['meio'],
+            'descricao' => $data['descricao'] ?? null,
+            'embarcacao_id' => $embId,
+            'data_viagem' => $embId ? ($data['data_viagem'] ?? null) : null,
+            'acerto_conta' => $cat ? (bool) $cat->conta_acerto : true,
+            'acerto_pct' => $cat ? (int) $cat->comissao_pct : 0,
+        ]);
+
+        return back()->with('ok', 'Avulso atualizado.');
+    }
+
+    /** Exclui (estorna) um avulso lançado pelo caixa. */
+    public function avulsoExcluir(Request $request, Pagamento $avulso)
+    {
+        $this->avulsoDoCaixa($avulso);
+        $avulso->update(['estornado' => true]);
+
+        return back()->with('ok', 'Avulso excluído.');
     }
 
     /** Resolve o período: hoje | semana | mes | personalizado */

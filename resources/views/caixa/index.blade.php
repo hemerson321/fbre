@@ -146,27 +146,31 @@
 @endif
 @if($podeAvulso && ! ($ehRelatorio ?? false))
 <script>window.VIAGENS = @json($viagensTransporte ?? []);</script>
-<div x-data="{open:false, tipo:'entrada', emb:'{{ $focoPrest ? (int) $transporteId : '' }}', viagemSel:''}" class="no-print" @abrir-avulso.window="tipo=$event.detail.tipo; open=true">
+<div x-data="{open:false, editId:0, tipo:'entrada', emb:'{{ $focoPrest ? (int) $transporteId : '' }}', viagemSel:'', meio:'dinheiro', categoria:'', descricao:'', baseAvulso: @js(url('/caixa/avulso')),
+  setVal(v){ try{ this.$refs.valorInp.value = v||''; this.$refs.valorInp.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){} },
+  novoAv(t){ this.editId=0; this.tipo=t; this.emb='{{ $focoPrest ? (int) $transporteId : '' }}'; this.viagemSel=''; this.meio='dinheiro'; this.categoria=''; this.descricao=''; this.open=true; this.$nextTick(()=>this.setVal('')); },
+  editarAv(a){ this.editId=a.id; this.tipo=a.tipo_mov; this.emb=a.emb||''; this.viagemSel=a.data_viagem||''; this.meio=a.meio||'dinheiro'; this.categoria=a.categoria||''; this.descricao=a.descricao||''; this.open=true; this.$nextTick(()=>this.setVal(a.valor)); } }"
+  class="no-print" @abrir-avulso.window="novoAv($event.detail.tipo)" @editar-avulso.window="editarAv($event.detail)">
   <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3" @click="open=false">
-    <form method="post" action="{{ route('caixa.avulso') }}" class="bg-white rounded-2xl p-4 w-full max-w-sm space-y-3" @click.stop>
+    <form method="post" :action="editId ? (baseAvulso + '/' + editId + '/editar') : baseAvulso" class="bg-white rounded-2xl p-4 w-full max-w-sm space-y-3" @click.stop>
       @csrf
       <input type="hidden" name="tipo_mov" :value="tipo">
-      <div class="font-bold text-lg" x-text="tipo==='entrada' ? '➕ Entrada avulsa' : '➖ Saída avulsa'"></div>
+      <div class="font-bold text-lg" x-text="(editId ? '✏️ Editar ' : '') + (tipo==='entrada' ? '➕ Entrada avulsa' : '➖ Saída avulsa')"></div>
       @php $avNaPrest = $focoPrest && $transporteId; @endphp
       @if($avNaPrest)
       <div class="text-[12px] text-slate-500 -mt-1">🚤 {{ optional($transportes->firstWhere('id', (int) $transporteId))->nome }} · entra na prestação deste transporte</div>
       <input type="hidden" name="embarcacao_id" value="{{ (int) $transporteId }}">
       @endif
       <div @if($avNaPrest) style="display:none" @endif><label class="label">Categoria</label>
-        <select name="categoria" class="input" :required="!emb" @disabled($avNaPrest)>
+        <select name="categoria" x-model="categoria" class="input" :required="!emb" @disabled($avNaPrest)>
           <option value="">— escolher —</option>
           @foreach($categorias as $c)<option value="{{ $c->nome }}" x-show="'{{ $c->tipo }}'==='ambos' || '{{ $c->tipo }}'===tipo">{{ $c->nome }}</option>@endforeach
         </select>
         @if(auth()->user()->isAdmin() || auth()->user()->isSuper())<p class="text-[11px] text-slate-400 mt-1">Criar/editar categorias em <a href="{{ route('admin.cadastros') }}" class="underline">Cadastros gerais</a>.</p>@endif
       </div>
-      <div><label class="label">Valor</label><input name="valor" class="input" x-money></div>
+      <div><label class="label">Valor</label><input name="valor" class="input" x-money x-ref="valorInp"></div>
       <div><label class="label">Forma</label>
-        <select name="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select></div>
+        <select name="meio" x-model="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select></div>
       <div @if($avNaPrest) style="display:none" @endif><label class="label">Transporte (p/ prestação) — vazio = caixa da agência</label>
         <select name="embarcacao_id" class="input" x-model="emb" @change="viagemSel = (window.VIAGENS[$event.target.value] && window.VIAGENS[$event.target.value][0]) ? window.VIAGENS[$event.target.value][0].d : ''" @disabled($avNaPrest)>
           <option value="">— caixa da agência —</option>
@@ -181,10 +185,10 @@
         </select>
         <p class="text-[11px] text-slate-400 mt-1" x-show="!(window.VIAGENS[emb] && window.VIAGENS[emb].length)">Sem próximas viagens cadastradas pra esse transporte — vai valer pra todas.</p>
       </div>
-      <div><label class="label">{{ $avNaPrest ? 'Motivo / descrição' : 'Descrição (opcional)' }}</label><input name="descricao" class="input" maxlength="200"></div>
+      <div><label class="label">{{ $avNaPrest ? 'Motivo / descrição' : 'Descrição (opcional)' }}</label><input name="descricao" x-model="descricao" class="input" maxlength="200"></div>
       <div class="flex gap-2 pt-1">
         <button type="button" class="btn btn-ghost flex-1" @click="open=false">Cancelar</button>
-        <button class="btn flex-1 text-white" :style="tipo==='entrada'?'background:#059669':'background:#e11d48'">Registrar</button>
+        <button class="btn flex-1 text-white" :style="tipo==='entrada'?'background:#059669':'background:#e11d48'" x-text="editId ? 'Salvar' : 'Registrar'"></button>
       </div>
     </form>
   </div>
@@ -259,7 +263,9 @@
   $pmV = fn ($k) => (float) ($porMeio[$k]->valor ?? 0);
   $cxDinheiro = $pmV('dinheiro');
   $cxPix      = $pmV('pix_manual') + $pmV('pix_auto');
-  $cxCartao   = $pmV('debito') + $pmV('credito');
+  $cxDebito   = $pmV('debito');
+  $cxCredito  = $pmV('credito');
+  $cxCartao   = $cxDebito + $cxCredito;
   $cxVendas   = (int) collect($porCategoria ?? [])->sum('qtd');
   $cxAvL      = $avulsosLista ?? collect();
   $cxAvE      = (float) $cxAvL->where('tipo_mov', 'entrada')->sum('valor');
@@ -278,7 +284,7 @@
     <div class="font-extrabold leading-none mt-2 mb-4" style="font-size:clamp(34px,6vw,56px);color:#34d399">R$ {{ number_format($liquidoAgencia ?? $total,2,',','.') }}</div>
     <div class="flex gap-8">
       <div><div class="text-[10px] font-bold uppercase tracking-wide" style="color:rgba(255,255,255,.58)">Recebeu ↑</div><div class="text-lg font-extrabold" style="color:#34d399">R$ {{ number_format($entradas ?? 0,2,',','.') }}</div></div>
-      <div><div class="text-[10px] font-bold uppercase tracking-wide" style="color:rgba(255,255,255,.58)">Saídas ↓</div><div class="text-lg font-extrabold" style="color:#fb7185">R$ {{ number_format($saidas,2,',','.') }}</div></div>
+      <div><div class="text-[10px] font-bold uppercase tracking-wide" style="color:rgba(255,255,255,.58)">Saídas ↓</div><div class="text-lg font-extrabold" style="color:#fb7185">R$ {{ number_format($saidasCaixa ?? $saidas,2,',','.') }}</div></div>
     </div>
     @if($podeAvulso)
     <div class="flex gap-2 mt-auto pt-4" style="border-top:1px solid rgba(255,255,255,.14);margin-top:18px">
@@ -291,7 +297,8 @@
     <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Formas de pagamento</div>
     <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💵 Dinheiro</span><b class="font-extrabold">R$ {{ number_format($cxDinheiro,2,',','.') }}</b></div>
     <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">⚡ Pix</span><b class="font-extrabold">R$ {{ number_format($cxPix,2,',','.') }}</b></div>
-    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💳 Cartão</span><b class="font-extrabold">R$ {{ number_format($cxCartao,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💳 Débito</span><b class="font-extrabold">R$ {{ number_format($cxDebito,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💳 Crédito</span><b class="font-extrabold">R$ {{ number_format($cxCredito,2,',','.') }}</b></div>
     <div class="flex items-center justify-between border-t pt-2 mt-0.5"><span class="text-[13px] font-bold text-slate-700">Total recebido</span><b class="font-extrabold text-emerald-600">R$ {{ number_format($entradas ?? 0,2,',','.') }}</b></div>
     <div class="flex items-center justify-between"><span class="text-[12px] text-slate-500">🏧 Maquineta dos proprietários</span><b class="font-bold text-slate-600">R$ {{ number_format($maqProprietarios ?? 0,2,',','.') }}</b></div>
     <div class="flex items-center justify-between"><span class="text-[12px] text-slate-500">🎫 Vendas</span><b class="font-bold text-slate-600">{{ $cxVendas }}</b></div>
@@ -313,6 +320,14 @@
           <div class="text-[10px] text-slate-400 truncate">{{ optional($av->created_at)->format('d/m H:i') }}@if($av->embarcacao) · 🚤 {{ $av->embarcacao->nome }}@endif</div>
         </div>
         <div class="text-[12px] font-bold whitespace-nowrap shrink-0 {{ $av->tipo_mov==='saida' ? 'text-rose-600' : 'text-emerald-700' }}">{{ $av->tipo_mov==='saida' ? '−' : '+' }} {{ number_format($av->valor,2,',','.') }}</div>
+        @if($podeAvulso && ! $av->prestacao_id)
+        <div class="flex items-center shrink-0 -mr-1">
+          <button type="button" title="Editar" onclick="window.dispatchEvent(new CustomEvent('editar-avulso',{detail: @js(['id'=>$av->id,'tipo_mov'=>$av->tipo_mov,'valor'=>number_format($av->valor,2,',','.'),'meio'=>(string)$av->meio,'categoria'=>(string)$av->categoria,'descricao'=>(string)$av->descricao,'emb'=>(string)($av->embarcacao_id ?? ''),'data_viagem'=>$av->data_viagem ? \Illuminate\Support\Carbon::parse($av->data_viagem)->toDateString() : ''])}))" class="text-slate-300 hover:text-indigo-600 px-1 text-[13px]">✏️</button>
+          <form method="post" action="{{ route('caixa.avulso.excluir', $av->id) }}" onsubmit="return confirm('Excluir este avulso?')">@csrf
+            <button type="submit" title="Excluir" class="text-slate-300 hover:text-rose-600 px-1 text-[13px]">🗑</button>
+          </form>
+        </div>
+        @endif
       </div>
       @empty
       <div class="p-5 text-center text-slate-400 text-[12px]">Nenhuma entrada/saída avulsa no período.</div>

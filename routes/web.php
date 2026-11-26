@@ -264,6 +264,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/sync/vendas-recentes', [CaixaController::class, 'vendasRecentes'])->name('sync.vendas-recentes');
     Route::get('/sync/badges', [CaixaController::class, 'badges'])->name('sync.badges');
     Route::post('/caixa/avulso', [CaixaController::class, 'avulso'])->name('caixa.avulso')->middleware('perm:avulso');
+    Route::post('/caixa/avulso/{avulso}/editar', [CaixaController::class, 'avulsoEditar'])->name('caixa.avulso.editar')->middleware('perm:avulso');
+    Route::post('/caixa/avulso/{avulso}/excluir', [CaixaController::class, 'avulsoExcluir'])->name('caixa.avulso.excluir')->middleware('perm:avulso');
     // Prestação de contas com proprietário (balcão): fechar ciclo, baixar saldo, desfazer
     Route::post('/prestacoes/fechar/{embarcacao}', [PrestacaoController::class, 'fechar'])->name('prestacoes.fechar')->middleware('perm:caixa');
     Route::post('/prestacoes/{prestacao}/pagar', [PrestacaoController::class, 'pagar'])->name('prestacoes.pagar')->middleware('perm:caixa');
