@@ -12,7 +12,7 @@ class MarketingProgramacao extends Model
 
     protected $table = 'marketing_programacoes';
     protected $guarded = [];
-    protected $casts = ['ativo' => 'boolean', 'dias' => 'array'];
+    protected $casts = ['ativo' => 'boolean', 'dias' => 'array', 'repetir_min' => 'integer', 'vezes' => 'integer', 'intervalo_seg' => 'integer'];
 
     public function audio(): BelongsTo { return $this->belongsTo(MarketingAudio::class, 'audio_id'); }
 

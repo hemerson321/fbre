@@ -125,7 +125,7 @@
   <div class="card overflow-hidden">
     <div class="p-3 border-b bg-slate-50 font-bold text-sm text-slate-700">⏰ Programação <span class="text-[11px] font-normal text-slate-400">· toca sozinho no dia e horário</span></div>
     <div class="p-3 grid gap-3 lg:grid-cols-2">
-      <form method="post" action="{{ route('marketing.prog.salvar') }}" class="rounded-xl border border-slate-200 p-3 space-y-2">
+      <form method="post" action="{{ route('marketing.prog.salvar') }}" class="rounded-xl border border-slate-200 p-3 space-y-2" x-data="{ janela:false }">
         @csrf
         <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Nova programação</div>
         <div><label class="label">Áudio</label>
@@ -135,7 +135,7 @@
           </select>
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <div><label class="label">Horário</label><input type="time" name="hora" class="input" required></div>
+          <div><label class="label" x-text="janela ? 'Hora inicial' : 'Horário'">Horário</label><input type="time" name="hora" class="input" required></div>
           <div><label class="label">Terminal</label>
             <select name="terminal_id" class="input">
               <option value="">Todos</option>
@@ -143,6 +143,20 @@
             </select>
           </div>
         </div>
+
+        <label class="flex items-center gap-2 text-[13px] text-slate-600 cursor-pointer">
+          <input type="checkbox" x-model="janela" class="w-4 h-4 rounded"> Repetir dentro de uma janela de horário
+        </label>
+        <div x-show="janela" x-cloak class="grid grid-cols-2 gap-2">
+          <div><label class="label">Hora final</label><input type="time" name="hora_fim" class="input"></div>
+          <div><label class="label">A cada (min)</label><input type="number" name="repetir_min" class="input" min="1" max="1440" placeholder="ex.: 30"></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="label">Tocar quantas vezes</label><input type="number" name="vezes" class="input" min="1" max="50" value="1"></div>
+          <div><label class="label">Intervalo (seg)</label><input type="number" name="intervalo_seg" class="input" min="0" max="600" value="5"></div>
+        </div>
+
         <div>
           <label class="label">Dias da semana <span class="text-slate-400 font-normal">(nenhum = todos)</span></label>
           <div class="flex flex-wrap gap-1.5 mt-1">
@@ -156,13 +170,19 @@
       <div class="space-y-2">
         @forelse($programacoes as $p)
         <div class="rounded-xl border border-slate-200 p-3 flex items-center gap-2 flex-wrap">
-          <div class="text-center shrink-0 rounded-lg bg-slate-100 px-2.5 py-1"><div class="text-base font-extrabold text-slate-800 leading-none">{{ $p->hora }}</div></div>
+          <div class="text-center shrink-0 rounded-lg bg-slate-100 px-2.5 py-1">
+            <div class="text-base font-extrabold text-slate-800 leading-none">{{ $p->hora }}</div>
+            @if($p->hora_fim)<div class="text-[10px] text-slate-400 leading-tight">→ {{ $p->hora_fim }}</div>@endif
+          </div>
           <div class="min-w-0 flex-1">
             <div class="font-semibold text-slate-800 truncate">{{ optional($p->audio)->nome ?? '—' }} @unless($p->ativo)<span class="text-[10px] text-slate-400">(pausado)</span>@endunless</div>
             <div class="text-[11px] text-slate-400 truncate">
               {{ optional($p->terminal)->nome ?? 'Todos os terminais' }} ·
               @php $ds = array_map('intval', (array) $p->dias); @endphp
               {{ empty($ds) ? 'todos os dias' : collect($ds)->map(fn ($d) => $diasLabel[$d] ?? '')->implode(', ') }}
+            </div>
+            <div class="text-[11px] text-slate-400 truncate">
+              @if($p->hora_fim && $p->repetir_min)a cada {{ $p->repetir_min }} min · @endif{{ (int) $p->vezes }}x @if((int) $p->vezes > 1 && (int) $p->intervalo_seg > 0)(intervalo {{ $p->intervalo_seg }}s)@endif
             </div>
           </div>
           <form method="post" action="{{ route('marketing.prog.excluir', $p) }}" onsubmit="return confirm('Remover esta programação?')">@csrf @method('DELETE')

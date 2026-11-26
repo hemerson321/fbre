@@ -45,17 +45,27 @@ class MarketingPlayerController extends Controller
                 if ($a = $audios->get($d->audio_id)) $itens[] = $a->paraPlayer('disp-'.$d->id);
             }
 
-            // Programação: casa com dia da semana + horário (minuto atual)
+            // Programação: dia da semana + horário único OU janela (hora→hora_fim) que repete a cada X min.
             $dow = (int) now()->dayOfWeek;         // 0=dom..6=sáb
-            $hora = now()->format('H:i');
+            $nowMin = (int) now()->format('H') * 60 + (int) now()->format('i');
             $marca = now()->format('Ymd-Hi');
             $progs = MarketingProgramacao::withoutGlobalScopes()->where('empresa_id', $emp)->where('ativo', true)
-                ->where('hora', $hora)
                 ->where(fn ($q) => $q->whereNull('terminal_id')->orWhere('terminal_id', $terminal->id))
                 ->get();
             foreach ($progs as $p) {
                 if (! $p->tocaNoDia($dow)) continue;
-                if ($a = $audios->get($p->audio_id)) $itens[] = $a->paraPlayer('prog-'.$p->id.'-'.$marca);
+                $ini = (int) substr((string) $p->hora, 0, 2) * 60 + (int) substr((string) $p->hora, 3, 2);
+                $fim = $p->hora_fim ? ((int) substr((string) $p->hora_fim, 0, 2) * 60 + (int) substr((string) $p->hora_fim, 3, 2)) : null;
+                $toca = ($fim !== null && (int) $p->repetir_min > 0)
+                    ? ($nowMin >= $ini && $nowMin <= $fim && (($nowMin - $ini) % (int) $p->repetir_min) === 0)
+                    : ($nowMin === $ini);
+                if (! $toca) continue;
+                if ($a = $audios->get($p->audio_id)) {
+                    $it = $a->paraPlayer('prog-'.$p->id.'-'.$marca);
+                    $it['vezes'] = max(1, (int) $p->vezes);
+                    $it['intervalo'] = max(0, (int) $p->intervalo_seg);
+                    $itens[] = $it;
+                }
             }
         }
 

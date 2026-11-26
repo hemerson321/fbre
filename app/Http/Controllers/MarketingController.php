@@ -185,6 +185,10 @@ class MarketingController extends Controller
             'audio_id' => 'required|integer',
             'terminal_id' => 'nullable|integer',
             'hora' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            'hora_fim' => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            'repetir_min' => 'nullable|integer|min:1|max:1440',
+            'vezes' => 'nullable|integer|min:1|max:50',
+            'intervalo_seg' => 'nullable|integer|min:0|max:600',
             'dias' => 'nullable|array',
             'dias.*' => 'integer|min:0|max:6',
         ]);
@@ -192,11 +196,20 @@ class MarketingController extends Controller
         $terminalId = $data['terminal_id'] ?? null;
         if ($terminalId && ! MarketingTerminal::whereKey($terminalId)->exists()) $terminalId = null;
 
+        // Janela (hora_fim + repetir a cada X min): só vale se os dois estiverem definidos e o fim for depois do início.
+        $horaFim = $data['hora_fim'] ?? null;
+        $repetir = ($horaFim && ! empty($data['repetir_min'])) ? max(1, (int) $data['repetir_min']) : null;
+        if (! $repetir || ($horaFim && $horaFim <= $data['hora'])) { $horaFim = null; $repetir = null; }
+
         $payload = [
             'empresa_id' => Tenant::id(),
             'audio_id' => (int) $data['audio_id'],
             'terminal_id' => $terminalId,
             'hora' => $data['hora'],
+            'hora_fim' => $horaFim,
+            'repetir_min' => $repetir,
+            'vezes' => max(1, min(50, (int) ($data['vezes'] ?? 1))),
+            'intervalo_seg' => max(0, min(600, (int) ($data['intervalo_seg'] ?? 5))),
             'dias' => array_values(array_unique(array_map('intval', $data['dias'] ?? []))) ?: null,
             'ativo' => $request->boolean('ativo', true),
         ];

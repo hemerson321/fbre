@@ -103,7 +103,16 @@
     var it = fila.shift();
     if(!it){ setNow('aguardando…', false); return; }
     tocando = true;
-    tocaItem(it, function(){ tocando = false; setTimeout(drena, 400); });
+    var vezes = Math.max(1, parseInt(it.vezes||1,10));
+    var intervalo = Math.max(0, parseInt(it.intervalo||0,10))*1000;
+    var n = 0;
+    (function umaVez(){
+      n++;
+      tocaItem(it, function(){
+        if(n < vezes){ setTimeout(umaVez, intervalo); }
+        else { tocando = false; setTimeout(drena, 400); }
+      });
+    })();
   }
 
   async function poll(){
