@@ -161,11 +161,11 @@ document.addEventListener('alpine:init', () => {
   if ($podeFinModulo) { try { $cobrancaVenc = (int) \App\Models\Passagem::where('forma','faturado')->where('cancelada',false)->where('transferida',false)->where('devido','>',0.009)->whereRaw('DATE_ADD(created_at, INTERVAL COALESCE(cobrar_dias,30) DAY) <= NOW()')->count(); } catch (\Throwable $e) {} }
   if ($podeFinModulo || $u->podeVerCaixa() || $u->podeRelatorio()) {
     $gf = [];
-    if ($u->podeRelatorio()) $gf[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋', 'c'=>'#4f46e5'];
-    $sepFin = $podeFinModulo && ! empty($gf);
-    if ($podeFinModulo && Route::has('financeiro.contas-receber')) { $gf[] = ['r'=>route('financeiro.contas-receber'), 'l'=>'Contas a receber', 'i'=>'💵', 'c'=>'#0d9488', 'sep'=>$sepFin, 'b'=>($cobrancaVenc ?: null), 'bk'=>'cobranca']; $sepFin=false; }
-    if ($podeFinModulo && Route::has('clientes-faturado')) $gf[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾', 'c'=>'#0d9488', 'sep'=>$sepFin];
-    if (($u->isAdmin() || $u->isSuper()) && Route::has('admin.movimentos')) $gf[] = ['r'=>route('admin.movimentos'), 'l'=>'Entradas e saídas', 'i'=>'↕️', 'c'=>'#0d9488', 'sep'=>true];
+    if ($podeFinModulo && Route::has('financeiro.contas-receber')) $gf[] = ['r'=>route('financeiro.contas-receber'), 'l'=>'Contas a receber', 'i'=>'💵', 'c'=>'#0d9488', 'b'=>($cobrancaVenc ?: null), 'bk'=>'cobranca'];
+    if ($podeFinModulo && Route::has('clientes-faturado')) $gf[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾', 'c'=>'#0d9488'];
+    if (($u->isAdmin() || $u->isSuper()) && Route::has('admin.movimentos')) $gf[] = ['r'=>route('admin.movimentos'), 'l'=>'Entradas e saídas', 'i'=>'↕️', 'c'=>'#0d9488', 'sep'=>! empty($gf)];
+    // Relatório geral fica por último, abaixo de Entradas e saídas (pedido do cliente)
+    if ($u->podeRelatorio()) $gf[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋', 'c'=>'#4f46e5', 'sep'=>! empty($gf)];
     if ($gf) $grupos['Financeiro'] = $gf;
   }
   // Desktop: Financeiro e Ferramentas também abrem como submenu (flyout) DENTRO do Passagens. No mobile continuam como grupos.
