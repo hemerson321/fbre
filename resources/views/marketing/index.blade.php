@@ -387,7 +387,7 @@ window.sinoAeroporto = function(tipo){
     }catch(e){ resolve(); }
   });
 };
-window.SINO_URL = @json(asset('marketing/airplane-chime.mp3'));
+window.SINO_URL = @json(asset('sounds/airplane-chime.mp3'));
 window.tocaSinoEscolhido = function(tipo){
   if(tipo==='aviao' && window.SINO_URL){
     return new Promise(function(resolve){

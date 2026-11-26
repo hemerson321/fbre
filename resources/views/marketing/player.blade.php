@@ -44,7 +44,7 @@
 (function(){
   var DADOS = @json(route('audio.dados', $terminal->token));
   var SINO_TIPO = @json($sinoTipo ?? 'aviao');
-  var SINO_URL = @json(asset('marketing/airplane-chime.mp3'));
+  var SINO_URL = @json(asset('sounds/airplane-chime.mp3'));
   var played = [];
   try { played = JSON.parse(localStorage.getItem('audioterm_played') || '[]') || []; } catch(e){ played = []; }
   function marca(oid){ played.push(oid); if(played.length>400) played = played.slice(-400); try{ localStorage.setItem('audioterm_played', JSON.stringify(played)); }catch(e){} }
