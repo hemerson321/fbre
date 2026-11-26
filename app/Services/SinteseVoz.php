@@ -23,7 +23,7 @@ class SinteseVoz
     }
 
     /** Sintetiza o texto em áudio (base64 mp3). $tokenPref = token OpenAI do agente (preferido). '' se não der. */
-    public function sintetizar(string $texto, string $voz = 'alloy', ?string $tokenPref = null): string
+    public function sintetizar(string $texto, string $voz = 'alloy', ?string $tokenPref = null, string $instrucoes = ''): string
     {
         $texto = trim($texto);
         if ($texto === '') return '';
@@ -31,16 +31,20 @@ class SinteseVoz
         if (! $token) { Log::warning('SinteseVoz: nenhum provedor OpenAI ativo para gerar áudio.'); return ''; }
 
         $texto = mb_substr($texto, 0, 1800); // limite seguro de TTS
+        $instrucoes = trim($instrucoes);
 
         foreach (['gpt-4o-mini-tts', 'tts-1'] as $modelo) {
             try {
+                $payload = [
+                    'model' => $modelo,
+                    'voice' => $voz ?: 'alloy',
+                    'input' => $texto,
+                    'response_format' => 'mp3',
+                ];
+                // 'instructions' (tom/estilo da fala) só é suportado no gpt-4o-mini-tts
+                if ($instrucoes !== '' && $modelo === 'gpt-4o-mini-tts') $payload['instructions'] = $instrucoes;
                 $r = Http::timeout(60)->withToken($token)
-                    ->post('https://api.openai.com/v1/audio/speech', [
-                        'model' => $modelo,
-                        'voice' => $voz ?: 'alloy',
-                        'input' => $texto,
-                        'response_format' => 'mp3',
-                    ]);
+                    ->post('https://api.openai.com/v1/audio/speech', $payload);
                 if ($r->successful()) {
                     $bin = (string) $r->body();
                     if ($bin !== '') return base64_encode($bin);

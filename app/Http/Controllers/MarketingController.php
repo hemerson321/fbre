@@ -79,7 +79,8 @@ class MarketingController extends Controller
             // Gera o MP3 com voz de verdade (OpenAI TTS), reaproveitando o provedor OpenAI ativo da empresa.
             $gerado = false;
             try {
-                $b64 = app(\App\Services\SinteseVoz::class)->sintetizar($a->texto, $a->voz);
+                $instr = 'Narre em português do Brasil com voz feminina natural, calma, clara e acolhedora, como uma recepcionista de terminal de embarque anunciando aos passageiros. Boa dicção, ritmo tranquilo e sotaque brasileiro neutro. Soe humana, nunca robótica.';
+                $b64 = app(\App\Services\SinteseVoz::class)->sintetizar($a->texto, $a->voz, null, $instr);
                 if ($b64 !== '') {
                     $path = 'marketing/'.Tenant::id().'/tts_'.$a->id.'_'.time().'.mp3';
                     Storage::disk('public')->put($path, base64_decode($b64));
