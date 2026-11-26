@@ -35,7 +35,7 @@
         <div class="grid grid-cols-2 gap-2 items-start">
           <div><label class="lbl">Transporte</label>
             <select class="field" x-model="embarcacaoSel"><option value="">—</option>
-              @foreach($embarcacoes as $b)<option value="{{ $b->id }}">{{ $b->nome }}{{ $b->usa_poltrona?' 🪑':'' }}</option>@endforeach
+              @foreach($embarcacoes as $b)<option value="{{ $b->id }}">🚤 {{ $b->nome }}{{ $b->usa_poltrona?' 🪑':'' }}</option>@endforeach
             </select></div>
         <div x-show="viagemData" x-cloak class="max-w-full min-w-0">
           <label class="lbl">Viagem</label>
