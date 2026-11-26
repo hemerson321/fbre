@@ -31,7 +31,7 @@ class MarketingAudio extends Model
             'nome' => (string) $this->nome,
             'texto' => (string) $this->texto,
             'voz' => (string) $this->voz,
-            'url' => $this->tipo === 'arquivo' ? $this->url() : null,
+            'url' => $this->url(),
         ];
     }
 }

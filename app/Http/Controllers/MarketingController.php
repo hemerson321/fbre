@@ -71,10 +71,27 @@ class MarketingController extends Controller
 
         if ($data['tipo'] === 'tts') {
             if (trim((string) ($data['texto'] ?? '')) === '') return back()->with('erro', 'Escreva o texto que vai ser falado.')->withInput();
-            if ($editando) $this->apagar($a->arquivo);
             $a->texto = trim((string) $data['texto']);
-            $a->voz = trim((string) ($data['voz'] ?? '')) ?: null;
+            $a->voz = trim((string) ($data['voz'] ?? '')) ?: 'nova';
+            $antigo = $a->arquivo;
             $a->arquivo = null;
+            $a->save();
+            // Gera o MP3 com voz de verdade (OpenAI TTS), reaproveitando o provedor OpenAI ativo da empresa.
+            $gerado = false;
+            try {
+                $b64 = app(\App\Services\SinteseVoz::class)->sintetizar($a->texto, $a->voz);
+                if ($b64 !== '') {
+                    $path = 'marketing/'.Tenant::id().'/tts_'.$a->id.'_'.time().'.mp3';
+                    Storage::disk('public')->put($path, base64_decode($b64));
+                    $a->arquivo = 'storage/'.$path;
+                    $a->save();
+                    $gerado = true;
+                }
+            } catch (\Throwable $e) {
+            }
+            $this->apagar($antigo);
+
+            return back()->with('ok', ($editando ? 'Áudio atualizado. ' : 'Áudio "'.$a->nome.'" criado. ').($gerado ? '🔊 Voz gerada.' : 'Sem provedor de voz (OpenAI) ativo — vai falar pela voz do navegador.'));
         } else {
             $a->texto = null;
             if ($request->hasFile('arquivo')) {

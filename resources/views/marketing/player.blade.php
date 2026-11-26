@@ -80,7 +80,7 @@
   function tocaItem(it, done){
     addLog(it.nome || 'Áudio');
     setNow('🔊 ' + (it.nome||''), true);
-    if(it.tipo === 'arquivo' && it.url){
+    if(it.url){
       try{
         var au = new Audio(it.url);
         au.onended = done; au.onerror = done;
@@ -88,7 +88,7 @@
       }catch(e){ done(); }
       return;
     }
-    // TTS (falado)
+    // TTS (falado) — fallback quando não há MP3 gerado (sem provedor de voz)
     if(window.speechSynthesis && it.texto){
       try{
         var u = new SpeechSynthesisUtterance(it.texto);

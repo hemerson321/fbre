@@ -4,7 +4,9 @@
 @php
   $diasLabel = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 @endphp
-<div class="space-y-4" x-data="{ tipo:'tts' }">
+<div class="space-y-4" x-data="{ tipo:'tts', editId:0, nome:'', texto:'', voz:'nova', baseAudio: @js(url('/marketing/audio')),
+  editarAudio(a){ this.editId=a.id; this.nome=a.nome||''; this.tipo=a.tipo||'tts'; this.texto=a.texto||''; this.voz=a.voz||'nova'; window.scrollTo({top:0,behavior:'smooth'}); },
+  novoAudio(){ this.editId=0; this.nome=''; this.tipo='tts'; this.texto=''; this.voz='nova'; } }">
 
   {{-- Cabeçalho --}}
   <div class="rounded-2xl bg-white px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
@@ -60,23 +62,37 @@
   <div class="card overflow-hidden">
     <div class="p-3 border-b bg-slate-50 font-bold text-sm text-slate-700">🎙 Áudios</div>
     <div class="p-3 grid gap-3 lg:grid-cols-2">
-      <form method="post" action="{{ route('marketing.audio.salvar') }}" enctype="multipart/form-data" class="rounded-xl border border-slate-200 p-3 space-y-2">
+      <form method="post" :action="editId ? baseAudio + '/' + editId : baseAudio" enctype="multipart/form-data" class="rounded-xl border p-3 space-y-2" :class="editId ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'">
         @csrf
-        <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Novo áudio</div>
-        <div><label class="label">Nome</label><input name="nome" class="input" required placeholder="Ex.: Chamada de embarque Codajás"></div>
+        <div class="flex items-center justify-between">
+          <div class="text-[11px] font-bold uppercase tracking-wide" :class="editId ? 'text-amber-700' : 'text-slate-400'" x-text="editId ? 'Editando áudio' : 'Novo áudio'"></div>
+          <button type="button" x-show="editId" @click="novoAudio()" class="text-[11px] font-semibold text-indigo-600">+ novo</button>
+        </div>
+        <div><label class="label">Nome</label><input name="nome" x-model="nome" class="input" required placeholder="Ex.: Chamada de embarque Codajás"></div>
         <div class="grid grid-cols-2 gap-2">
           <button type="button" @click="tipo='tts'" :class="tipo==='tts' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">🗣 Falado (texto)</button>
           <button type="button" @click="tipo='arquivo'" :class="tipo==='arquivo' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">📁 Arquivo</button>
         </div>
         <input type="hidden" name="tipo" :value="tipo">
         <div x-show="tipo==='tts'" x-cloak class="space-y-2">
-          <div><label class="label">Texto que vai ser falado</label><textarea name="texto" class="input" rows="3" placeholder="Ex.: Senhores passageiros, o barco para Codajás parte às 14 horas."></textarea></div>
+          <div><label class="label">Texto que vai ser falado</label><textarea name="texto" x-model="texto" class="input" rows="3" placeholder="Ex.: Senhores passageiros, o barco para Codajás parte às 14 horas."></textarea></div>
+          <div><label class="label">Voz</label>
+            <select name="voz" x-model="voz" class="input">
+              <option value="nova">👩 Nova — moça, clara (recomendada)</option>
+              <option value="shimmer">👩 Shimmer — moça, suave</option>
+              <option value="coral">👩 Coral — moça, simpática</option>
+              <option value="alloy">🧑 Alloy — neutra</option>
+              <option value="onyx">👨 Onyx — homem, grave</option>
+              <option value="echo">👨 Echo — homem</option>
+            </select>
+            <p class="text-[11px] text-slate-400 mt-1">Gera um áudio de verdade com voz natural (usa a API de voz da OpenAI já configurada nos Agentes). Sem provedor ativo, fala pela voz do navegador.</p>
+          </div>
         </div>
         <div x-show="tipo==='arquivo'" x-cloak class="space-y-2">
           <div><label class="label">Arquivo de áudio (mp3, ogg, wav…)</label><input type="file" name="arquivo" accept="audio/*" class="input"></div>
           <div><label class="label">…ou cole o link do áudio</label><input name="arquivo_url" class="input" placeholder="https://..."></div>
         </div>
-        <button class="btn btn-primary btn-sm">Salvar áudio</button>
+        <button class="btn btn-primary btn-sm" x-text="editId ? 'Salvar alterações' : 'Salvar áudio'"></button>
       </form>
       <div class="space-y-2">
         @forelse($audios as $a)
@@ -88,6 +104,7 @@
               </div>
               <div class="text-[11px] text-slate-400 truncate">{{ $a->tipo === 'arquivo' ? 'arquivo de áudio' : \Illuminate\Support\Str::limit((string) $a->texto, 70) }}</div>
             </div>
+            <button type="button" @click="editarAudio(@js(['id'=>$a->id,'nome'=>(string)$a->nome,'tipo'=>(string)$a->tipo,'texto'=>(string)$a->texto,'voz'=>(string)$a->voz]))" class="btn btn-ghost btn-sm" title="Editar">✏️</button>
             <form method="post" action="{{ route('marketing.audio.excluir', $a) }}" onsubmit="return confirm('Excluir o áudio {{ $a->nome }}?')">@csrf @method('DELETE')
               <button class="btn btn-ghost btn-sm text-rose-600">🗑</button>
             </form>
