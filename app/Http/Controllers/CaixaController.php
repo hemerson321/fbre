@@ -409,8 +409,11 @@ class CaixaController extends Controller
         if ($request->input('foco') === 'prestacoes') {
             $avulsosLista = (clone $avBase)->with(['user:id,name', 'embarcacao:id,nome'])->orderByDesc('id')->limit(300)->get();
         } elseif (! $ehRelatorio) {
-            // Caixa: mostra TODOS os avulsos do período — da agência e os amarrados a transporte (com o nome do transporte).
+            // Caixa: avulsos da agência + os de transporte AINDA NÃO prestados (depois do acerto saem).
+            // Com filtro de transporte, só os daquele transporte.
             $avulsosLista = Pagamento::where('modulo', 'avulso')->where('estornado', false)->where('momento', 'cadastro')
+                ->whereNull('prestacao_id')
+                ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
                 ->whereBetween('created_at', [$inicio, $fim])
                 ->when($userId, fn ($q) => $q->where('user_id', $userId))
                 ->with(['user:id,name', 'embarcacao:id,nome'])->orderByDesc('id')->limit(300)->get();
@@ -466,7 +469,12 @@ class CaixaController extends Controller
         //    a parte do dono ($ownerShareG) SAI do caixa no dia da venda (não vira saída/negativo — só deixa de contar).
         //  • Menos os AVULSOS da lista (entradas/saídas avulsas do operador).
         // O "Pagamento ao dono" da baixa continua FORA de $saidas (senão descontaria 2x).
+        // Avulsos do caixa: da agência (sem transporte) + os amarrados a transporte AINDA NÃO prestados.
+        // Depois do acerto com o dono (prestacao_id preenchido) saem do caixa — entram na prestação dele.
+        // Com filtro de transporte, só os daquele transporte.
         $avCaixaQ = Pagamento::where('modulo', 'avulso')->where('estornado', false)->where('momento', 'cadastro')
+            ->whereNull('prestacao_id')
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->whereBetween('created_at', [$inicio, $fim])->when($userId, fn ($q) => $q->where('user_id', $userId));
         $avCaixaSaidas = round((float) (clone $avCaixaQ)->where('tipo_mov', 'saida')->sum('valor'), 2);
         $avCaixaEntradas = round((float) (clone $avCaixaQ)->where('tipo_mov', 'entrada')->sum('valor'), 2);
