@@ -19,6 +19,7 @@ class OrcamentoController extends Controller
 {
     public function index()
     {
+        try {
         $empresa = Tenant::empresa();
         $localidades = TrechoPreco::where('ativo', true)->get(['origem', 'destino'])
             ->flatMap(fn ($t) => [$t->origem, $t->destino])
@@ -59,11 +60,19 @@ class OrcamentoController extends Controller
             ])->unique('d')->values()->all())
             ->toArray();
 
-        return view('orcamentos.index', compact('empresa', 'localidades', 'embarcacoes', 'tipos', 'trechoPrecos', 'taxas', 'usaAlim', 'usaEmbarque', 'linhas', 'datasPorEmb'));
+        return response(view('orcamentos.index', compact('empresa', 'localidades', 'embarcacoes', 'tipos', 'trechoPrecos', 'taxas', 'usaAlim', 'usaEmbarque', 'linhas', 'datasPorEmb'))->render());
+        } catch (\Throwable $e) {
+            report($e);
+            if (auth()->user()?->admin) {
+                return response('Erro no orçamento (builder): '.class_basename($e).': '.$e->getMessage().' @ '.basename($e->getFile()).':'.$e->getLine(), 500);
+            }
+            throw $e;
+        }
     }
 
     public function gerar(Request $request)
     {
+        try {
         $empresa = Tenant::empresa();
         $logo = ($empresa->logo && is_file(public_path($empresa->logo))) ? asset($empresa->logo) : asset('img/ajato-logo.png');
 
@@ -81,7 +90,7 @@ class OrcamentoController extends Controller
         $pax = (int) array_sum(array_column($itens, 'q'));
         $num = preg_replace('/[^0-9A-Za-z-]/', '', (string) $request->query('num')) ?: date('ymdHi');
 
-        return view('docs.orcamento', [
+        return response(view('docs.orcamento', [
             'empresa'    => $empresa,
             'logo'       => $logo,
             'cliente'    => trim((string) $request->query('cli')) ?: 'Cliente',
@@ -94,6 +103,13 @@ class OrcamentoController extends Controller
             'total'      => $total,
             'pax'        => $pax,
             'num'        => $num,
-        ]);
+        ])->render());
+        } catch (\Throwable $e) {
+            report($e);
+            if (auth()->user()?->admin) {
+                return response('Erro no orçamento (PDF): '.class_basename($e).': '.$e->getMessage().' @ '.basename($e->getFile()).':'.$e->getLine(), 500);
+            }
+            throw $e;
+        }
     }
 }
