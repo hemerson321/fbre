@@ -262,6 +262,7 @@
   @if(($periodo ?? 'hoje') !== 'hoje')<a href="{{ route('caixa.index') }}" class="underline text-slate-400 ml-1">voltar p/ hoje</a>@endif
 </form>
 @endif
+@unless($ehRel)
 @php
   $navy = \App\Support\Tenant::empresa()?->cor_primaria ?: '#0b1a33';
   $pmV = fn ($k) => (float) ($porMeio[$k]->valor ?? 0);
@@ -297,6 +298,7 @@
     <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">🎫 Vendas</div><div class="text-xl font-extrabold mt-1">{{ $cxVendas }}</div></div>
   </div>
 </div>
+@endunless
 
 <details class="vendas-det">
   <summary class="cursor-pointer text-[12px] font-semibold text-slate-400 px-1 py-1 select-none">
