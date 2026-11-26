@@ -4,9 +4,9 @@
 @php
   $diasLabel = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 @endphp
-<div class="space-y-4" x-data="{ tipo:'tts', editId:0, nome:'', texto:'', voz:'nova', provedor: @js($tts['provider']), baseAudio: @js(url('/marketing/audio')),
-  editarAudio(a){ this.editId=a.id; this.nome=a.nome||''; this.tipo=a.tipo||'tts'; this.texto=a.texto||''; this.voz=a.voz||'nova'; this.provedor=a.provedor||@js($tts['provider']); window.scrollTo({top:0,behavior:'smooth'}); },
-  novoAudio(){ this.editId=0; this.nome=''; this.tipo='tts'; this.texto=''; this.voz='nova'; this.provedor=@js($tts['provider']); } }">
+<div class="space-y-4" x-data="{ tipo:'tts', editId:0, nome:'', texto:'', voz:'nova', vozGoogle:'pt-BR-Neural2-A', estilo:'', provedor:'google', baseAudio: @js(url('/marketing/audio')),
+  editarAudio(a){ this.editId=a.id; this.nome=a.nome||''; this.tipo=a.tipo||'tts'; this.texto=a.texto||''; this.estilo=a.estilo||''; this.provedor=a.provedor||'google'; if(this.provedor==='google'){ this.vozGoogle=a.voz||'pt-BR-Neural2-A'; } else { this.voz=a.voz||'nova'; } window.scrollTo({top:0,behavior:'smooth'}); },
+  novoAudio(){ this.editId=0; this.nome=''; this.tipo='tts'; this.texto=''; this.estilo=''; this.voz='nova'; this.vozGoogle='pt-BR-Neural2-A'; this.provedor='google'; } }">
 
   {{-- Cabeçalho --}}
   <div class="rounded-2xl bg-white px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
@@ -76,13 +76,33 @@
         <input type="hidden" name="tipo" :value="tipo">
         <div x-show="tipo==='tts'" x-cloak class="space-y-2">
           <div><label class="label">Texto que vai ser falado</label><textarea name="texto" x-model="texto" class="input" rows="3" placeholder="Ex.: Senhores passageiros, o barco para Codajás parte às 14 horas."></textarea></div>
-          <div><label class="label">Falar com</label>
-            <select name="provedor" x-model="provedor" class="input">
-              <option value="openai">🤖 OpenAI</option>
-              <option value="google">🟦 Google · Chirp 3 HD</option>
-            </select>
-            <p class="text-[11px] text-slate-400 mt-1">A voz, a chave e o estilo de cada provedor ficam em <b>Integrações</b> (lá embaixo). Sem provedor configurado, fala pela voz do navegador.</p>
+          <div class="grid grid-cols-2 gap-2">
+            <div><label class="label">Falar com</label>
+              <select name="provedor" x-model="provedor" class="input">
+                <option value="google">🟦 Google</option>
+                <option value="openai">🤖 OpenAI</option>
+              </select>
+            </div>
+            <div x-show="provedor==='openai'" x-cloak><label class="label">Tipo de voz</label>
+              <select name="voz" x-model="voz" class="input">
+                <option value="nova">👩 Nova</option><option value="shimmer">👩 Shimmer</option><option value="coral">👩 Coral</option><option value="alloy">🧑 Alloy</option><option value="onyx">👨 Onyx</option><option value="echo">👨 Echo</option>
+              </select>
+            </div>
+            <div x-show="provedor==='google'" x-cloak><label class="label">Tipo de voz</label>
+              <select name="voz_google" x-model="vozGoogle" class="input">
+                <optgroup label="Garantidas">
+                  <option value="pt-BR-Neural2-A">👩 Neural2 A</option><option value="pt-BR-Neural2-C">👩 Neural2 C</option><option value="pt-BR-Wavenet-A">👩 Wavenet A</option><option value="pt-BR-Wavenet-C">👩 Wavenet C</option><option value="pt-BR-Neural2-B">👨 Neural2 B</option>
+                </optgroup>
+                <optgroup label="Chirp 3 HD (se disponível)">
+                  <option value="pt-BR-Chirp3-HD-Aoede">👩 Aoede</option><option value="pt-BR-Chirp3-HD-Kore">👩 Kore</option><option value="pt-BR-Chirp3-HD-Leda">👩 Leda</option><option value="pt-BR-Chirp3-HD-Zephyr">👩 Zephyr</option><option value="pt-BR-Chirp3-HD-Charon">👨 Charon</option>
+                </optgroup>
+              </select>
+            </div>
           </div>
+          <div><label class="label !text-[10px] !mb-0.5 opacity-70">Estilo / como se comportar (opcional)</label>
+            <input name="estilo" x-model="estilo" class="input !py-1 text-[12px]" placeholder="ex.: voz de aeromoça, calma e clara">
+          </div>
+          <p class="text-[11px] text-slate-400">A chave do Google / OpenAI fica em <b>Integrações</b>. Sem chave, fala pela voz do navegador.</p>
         </div>
         <div x-show="tipo==='arquivo'" x-cloak class="space-y-2">
           <div><label class="label">Arquivo de áudio (mp3, ogg, wav…)</label><input type="file" name="arquivo" accept="audio/*" class="input"></div>
@@ -100,7 +120,7 @@
               </div>
               <div class="text-[11px] text-slate-400 truncate">{{ $a->tipo === 'arquivo' ? 'arquivo de áudio' : \Illuminate\Support\Str::limit((string) $a->texto, 70) }}</div>
             </div>
-            <button type="button" @click="editarAudio(@js(['id'=>$a->id,'nome'=>(string)$a->nome,'tipo'=>(string)$a->tipo,'texto'=>(string)$a->texto,'voz'=>(string)$a->voz,'provedor'=>(string)$a->provedor]))" class="btn btn-ghost btn-sm" title="Editar">✏️</button>
+            <button type="button" @click="editarAudio(@js(['id'=>$a->id,'nome'=>(string)$a->nome,'tipo'=>(string)$a->tipo,'texto'=>(string)$a->texto,'voz'=>(string)$a->voz,'provedor'=>(string)$a->provedor,'estilo'=>(string)$a->estilo]))" class="btn btn-ghost btn-sm" title="Editar">✏️</button>
             <form method="post" action="{{ route('marketing.audio.excluir', $a) }}" onsubmit="return confirm('Excluir o áudio {{ $a->nome }}?')">@csrf @method('DELETE')
               <button class="btn btn-ghost btn-sm text-rose-600">🗑</button>
             </form>

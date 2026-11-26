@@ -113,6 +113,8 @@ class MarketingController extends Controller
             'tipo' => 'required|in:tts,arquivo',
             'texto' => 'nullable|string|max:2000',
             'voz' => 'nullable|string|max:60',
+            'voz_google' => 'nullable|string|max:60',
+            'estilo' => 'nullable|string|max:600',
             'provedor' => 'nullable|in:openai,google',
             'arquivo' => 'nullable|file|max:30720|mimes:mp3,ogg,wav,m4a,aac',
             'arquivo_url' => 'nullable|url|max:255',
@@ -122,12 +124,13 @@ class MarketingController extends Controller
         $a->nome = trim((string) $data['nome']);
         $a->tipo = $data['tipo'];
         $a->ativo = $request->boolean('ativo', true);
-        $a->provedor = $data['provedor'] ?? null;
+        $a->provedor = $data['provedor'] ?? 'google';
+        $a->voz = $a->provedor === 'google' ? (trim((string) ($data['voz_google'] ?? '')) ?: null) : (trim((string) ($data['voz'] ?? '')) ?: null);
+        $a->estilo = trim((string) ($data['estilo'] ?? '')) ?: null;
 
         if ($data['tipo'] === 'tts') {
             if (trim((string) ($data['texto'] ?? '')) === '') return back()->with('erro', 'Escreva o texto que vai ser falado.')->withInput();
             $a->texto = trim((string) $data['texto']);
-            $a->voz = trim((string) ($data['voz'] ?? '')) ?: 'nova';
             $antigo = $a->arquivo;
             $a->arquivo = null;
             $a->save();
@@ -136,12 +139,12 @@ class MarketingController extends Controller
             try {
                 $emp = Tenant::empresa();
                 $svc = app(\App\Services\SinteseVoz::class);
-                $estilo = (string) ($emp?->config('tts_estilo') ?: 'Narre em português do Brasil com voz feminina natural, calma, clara e acolhedora, como uma recepcionista de terminal de embarque anunciando aos passageiros. Boa dicção, ritmo tranquilo e sotaque brasileiro neutro. Soe humana, nunca robótica.');
+                $estilo = (string) ($a->estilo ?: ($emp?->config('tts_estilo') ?: 'Narre em português do Brasil com voz feminina natural, calma, clara e acolhedora, como uma recepcionista de terminal de embarque anunciando aos passageiros. Boa dicção, ritmo tranquilo e sotaque brasileiro neutro. Soe humana, nunca robótica.'));
                 $prov = $a->provedor ?: (string) ($emp?->config('tts_provider', 'openai'));
                 if ($prov === 'google') {
-                    $b64 = $svc->sintetizarGoogle($a->texto, (string) $emp?->config('tts_google_voz', 'pt-BR-Chirp3-HD-Aoede'), (string) $emp?->config('tts_google_key'), (float) $emp?->config('tts_google_ritmo', 1.0));
+                    $b64 = $svc->sintetizarGoogle($a->texto, (string) ($a->voz ?: $emp?->config('tts_google_voz', 'pt-BR-Neural2-A')), (string) $emp?->config('tts_google_key'), (float) $emp?->config('tts_google_ritmo', 1.0));
                 } else {
-                    $b64 = $svc->sintetizar($a->texto, (string) ($emp?->config('tts_openai_voz') ?: 'nova'), null, $estilo);
+                    $b64 = $svc->sintetizar($a->texto, (string) ($a->voz ?: ($emp?->config('tts_openai_voz') ?: 'nova')), null, $estilo);
                 }
                 if ($b64 !== '') {
                     $path = 'marketing/'.Tenant::id().'/tts_'.$a->id.'_'.time().'.mp3';
