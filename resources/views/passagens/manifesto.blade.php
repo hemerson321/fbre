@@ -35,6 +35,7 @@
 </head>
 <body>
   <div class="acoes">
+    <button class="btn g" onclick="window.close(); setTimeout(function(){ if(!window.closed && window.history.length>1) history.back(); }, 150)">✕ Fechar</button>
     <button class="btn" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
   </div>
 
