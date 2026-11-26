@@ -172,22 +172,25 @@ document.addEventListener('alpine:init', () => {
   if (! empty($grupos['Ferramentas'] ?? [])) $subPassagens['Ferramentas'] = $grupos['Ferramentas'];
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
   if ($u->isAdmin() || $u->isSuper()) {
-      $adm = [
-          ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'],
-          ['r'=>route('simulacao.telas'), 'l'=>'Simulação (demo)', 'i'=>'🧪'],
-          ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
-          ['r'=>route('admin.transportes'), 'l'=>'Transportes', 'i'=>'⛴️'],
-          ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'],
-      ];
-      if ($u->temModulo('passagem')) array_splice($adm, 4, 0, [['r'=>route('admin.rotas'), 'l'=>'Rotas e horários', 'i'=>'🗺️']]);
+      $adm = [];
+      $adm[] = ['sec'=>'Cadastros'];
+      $adm[] = ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'];
+      $adm[] = ['r'=>route('admin.transportes'), 'l'=>'Transportes', 'i'=>'⛴️'];
+      if ($u->temModulo('passagem')) $adm[] = ['r'=>route('admin.rotas'), 'l'=>'Rotas e horários', 'i'=>'🗺️'];
       if ($modOn('camarote')) $adm[] = ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'];
+      $adm[] = ['sec'=>'Usuários & Empresa'];
+      $adm[] = ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'];
+      $adm[] = ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'];
+      $adm[] = ['sec'=>'Integrações'];
       $adm[] = ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'];
       $adm[] = ['r'=>route('admin.pagamentos'), 'l'=>'Pagamentos (APIs)', 'i'=>'💳'];
       $adm[] = ['r'=>route('admin.llm'), 'l'=>'Provedores de IA', 'i'=>'🧠'];
       $adm[] = ['r'=>route('admin.agentes'), 'l'=>'Agentes IA', 'i'=>'🤖'];
       $adm[] = ['r'=>route('admin.signage'), 'l'=>'Digital Signage', 'i'=>'📺'];
+      $adm[] = ['sec'=>'Painel'];
+      $adm[] = ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'];
       $adm[] = ['r'=>route('admin.movimentos'), 'l'=>'Entradas e saídas', 'i'=>'↕️'];
-      $adm[] = ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'];
+      $adm[] = ['r'=>route('simulacao.telas'), 'l'=>'Simulação (demo)', 'i'=>'🧪'];
       $grupos['Administração'] = $adm;
   }
   if ($u->ehRevendedor() && \App\Support\Tenant::empresa()?->config('revendedor_multi')) $grupos['Revendedor'] = [['r'=>route('filiados.meus'), 'l'=>'Meus filiados', 'i'=>'🤝']];
@@ -273,7 +276,7 @@ document.addEventListener('alpine:init', () => {
       </a>@endif
       @foreach($grupos as $titulo => $itens)
         @continue(in_array($titulo, ['Financeiro','Ferramentas'], true))
-        @php [$gi,$gc] = $metaGrupo[$titulo] ?? ['•','#475569']; $temAtivo = collect($itens)->contains(fn($it)=>$ativo($it['r'])); @endphp
+        @php [$gi,$gc] = $metaGrupo[$titulo] ?? ['•','#475569']; $temAtivo = collect($itens)->contains(fn($it)=>!empty($it['r']) && $ativo($it['r'])); @endphp
         @if(in_array($titulo, $gruposDiretos ?? [], true) && count($itens) === 1)
         <a href="{{ $itens[0]['r'] }}"
            class="flex items-center gap-2 rounded-lg px-3 py-2 my-1 text-[13px] font-bold whitespace-nowrap transition hover:brightness-95"
@@ -294,9 +297,10 @@ document.addEventListener('alpine:init', () => {
             <svg class="w-3.5 h-3.5 opacity-50 transition" :class="aberto==='{{ $titulo }}'?'rotate-180':''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div x-show="aberto==='{{ $titulo }}'" x-cloak x-transition.origin.top.left
-               class="absolute left-0 top-full mt-1 z-50 w-60 rounded-xl bg-white shadow-xl border border-slate-100 p-1.5">
+               class="absolute left-0 top-full mt-1 z-50 w-60 rounded-xl bg-white shadow-xl border border-slate-100 p-1.5 {{ $titulo==='Passagens' ? '' : 'max-h-[calc(100vh-6rem)] overflow-y-auto' }}">
             <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider" style="color:{{ $gc }}">{{ $titulo }}</div>
             @foreach($itens as $it)
+              @if(!empty($it['sec']))<div class="px-2.5 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ $it['sec'] }}</div>@continue @endif
               @php
                 $ic = $it['c'] ?? null; $at = $ativo($it['r']);
                 if ($at) { $cls = 'font-bold'; $sty = 'color:'.($ic ?: $gc).';box-shadow:inset 3px 0 0 '.($ic ?: $gc); }
@@ -362,6 +366,7 @@ document.addEventListener('alpine:init', () => {
       <div>
         <div class="px-3 pb-1 text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{{ $titulo }}</div>
         @foreach($itens as $it)
+          @if(!empty($it['sec']))<div class="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ $it['sec'] }}</div>@continue @endif
           @php
             $ic = $it['c'] ?? null; $at = $ativo($it['r']);
             if ($at && $ic) { $cls = 'font-bold text-white'; $sty = 'background:'.$ic; }
