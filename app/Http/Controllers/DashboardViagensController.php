@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
  */
 class DashboardViagensController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, bool $home = false)
     {
         $u = auth()->user();
         $periodos = ['30d' => 'Últimos 30 dias', '3m' => '3 meses', '6m' => '6 meses', '12m' => '12 meses', 'ano' => 'Este ano'];
@@ -139,6 +139,7 @@ class DashboardViagensController extends Controller
         ];
 
         return view('passagens.dashboard', [
+            'home' => $home, 'rotaForm' => $home ? 'inicio' : 'passagens.dashboard',
             'periodos' => $periodos, 'periodo' => $periodo, 'ini' => $ini, 'fim' => $fim,
             'transportes' => $transportes, 'embId' => $embId, 'emb' => $emb,
             'dv' => [

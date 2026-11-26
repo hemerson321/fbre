@@ -31,6 +31,11 @@ class EncomendaController extends Controller
         if ($u && ! $u->isAdmin() && ! $u->isSuper() && ! $u->gerente() && $u->permite('passagem', 'cadastra')) {
             return redirect()->route('passagens.create', $preview);
         }
+        // Início = dashboard de viagens (com as boas-vindas) pra quem tem relatório e usa o módulo de passagens.
+        $mods = \App\Support\Tenant::empresa()?->config('modulos_ativos');
+        if ($u && $u->podeRelatorio() && (empty($mods) || in_array('passagem', (array) $mods, true))) {
+            return app(\App\Http\Controllers\DashboardViagensController::class)->index(request(), true);
+        }
         return view('home');
     }
 
