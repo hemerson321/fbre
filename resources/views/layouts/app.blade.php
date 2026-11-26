@@ -276,7 +276,7 @@ document.addEventListener('alpine:init', () => {
       </a>@endif
       @foreach($grupos as $titulo => $itens)
         @continue(in_array($titulo, ['Financeiro','Ferramentas'], true))
-        @php [$gi,$gc] = $metaGrupo[$titulo] ?? ['•','#475569']; $temAtivo = collect($itens)->contains(fn($it)=>!empty($it['r']) && $ativo($it['r'])); @endphp
+        @php [$gi,$gc] = $metaGrupo[$titulo] ?? ['•','#475569']; $chkItens = ($titulo==='Passagens' && !empty($subPassagens)) ? collect($itens)->merge(collect($subPassagens)->flatten(1)) : collect($itens); $temAtivo = $chkItens->contains(fn($it)=>!empty($it['r']) && $ativo($it['r'])); @endphp
         @if(in_array($titulo, $gruposDiretos ?? [], true) && count($itens) === 1)
         <a href="{{ $itens[0]['r'] }}"
            class="flex items-center gap-2 rounded-lg px-3 py-2 my-1 text-[13px] font-bold whitespace-nowrap transition hover:brightness-95"
