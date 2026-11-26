@@ -66,6 +66,10 @@ class MovimentoController extends Controller
                 default => $cat,
             };
             return (object) [
+                'id' => $p->id,
+                'editavel' => $ehAvulso, // só avulso pode ser editado; derivados vêm da passagem
+                'meio_raw' => (string) $p->meio,
+                'categoria' => $cat,
                 'data' => $p->created_at,
                 'tipo' => $tipo,
                 'oque' => $oque,
@@ -101,5 +105,42 @@ class MovimentoController extends Controller
             'transportes' => Embarcacao::orderBy('nome')->get(['id', 'nome']),
             'usuarios' => User::where('empresa_id', \App\Support\Tenant::id())->orderBy('name')->get(['id', 'name']),
         ]);
+    }
+
+    /** Edita um lançamento AVULSO (os derivados — devolução/transferência — vêm da passagem e não são editáveis aqui). */
+    public function editar(Request $request, Pagamento $pagamento)
+    {
+        abort_unless($pagamento->empresa_id === \App\Support\Tenant::id(), 404);
+        abort_unless($pagamento->modulo === 'avulso' && $pagamento->momento === 'cadastro', 422, 'Só lançamentos avulsos podem ser editados aqui.');
+        abort_if($pagamento->estornado, 422, 'Lançamento estornado não pode ser editado.');
+        abort_if((bool) $pagamento->prestacao_id, 422, 'Esse avulso já entrou numa prestação e não pode ser editado.');
+
+        $data = $request->validate([
+            'tipo_mov' => 'required|in:entrada,saida',
+            'valor' => 'required|numeric|min:0.01|max:9999999',
+            'meio' => 'nullable|string|max:20',
+            'categoria' => 'nullable|string|max:80',
+            'descricao' => 'nullable|string|max:255',
+        ]);
+        $pagamento->update([
+            'tipo_mov' => $data['tipo_mov'],
+            'valor' => round((float) $data['valor'], 2),
+            'meio' => $data['meio'] ?: $pagamento->meio,
+            'categoria' => trim((string) ($data['categoria'] ?? '')) ?: $pagamento->categoria,
+            'descricao' => trim((string) ($data['descricao'] ?? '')),
+        ]);
+
+        return back()->with('ok', 'Lançamento avulso atualizado.');
+    }
+
+    /** Estorna (soft delete) um lançamento. Avulso some de vez; derivado (devolução/transferência) reverte só o
+     *  lançamento no caixa — NÃO descancela a passagem (pra isso, mexer no cancelamento da passagem). */
+    public function estornar(Pagamento $pagamento)
+    {
+        abort_unless($pagamento->empresa_id === \App\Support\Tenant::id(), 404);
+        if ($pagamento->estornado) return back()->with('ok', 'Esse lançamento já estava estornado.');
+        $pagamento->update(['estornado' => true]);
+
+        return back()->with('ok', 'Lançamento estornado.');
     }
 }

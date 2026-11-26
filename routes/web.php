@@ -345,6 +345,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/llm/{provedor}/testar', [LlmController::class, 'testar'])->name('llm.testar');
         // Relatório de entradas e saídas (cancelamentos, devoluções, transferências, avulsos)
         Route::get('/movimentos', [\App\Http\Controllers\Admin\MovimentoController::class, 'index'])->name('movimentos');
+        Route::post('/movimentos/{pagamento}/editar', [\App\Http\Controllers\Admin\MovimentoController::class, 'editar'])->name('movimentos.editar');     // só avulso
+        Route::post('/movimentos/{pagamento}/estornar', [\App\Http\Controllers\Admin\MovimentoController::class, 'estornar'])->name('movimentos.estornar'); // soft delete (estornado=true)
         // Agentes IA — multi
         Route::get('/agentes', [AgenteController::class, 'index'])->name('agentes');
         Route::post('/agentes/{agente?}', [AgenteController::class, 'salvar'])->name('agentes.salvar');
