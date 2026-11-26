@@ -1074,19 +1074,33 @@ class PassagemController extends Controller
 
         // Trecho "ponta a ponta" da viagem (ex.: Manaus → Tabatinga): 1ª parada → última parada,
         // pela ordem da rota — não cada perninha (Manaus/Borba, Manaus/Coari...).
+        // Respeita o sentido real (subida x descida) pelo fluxo das passagens.
         $trechoViagem = '';
         try {
+            $norm = fn ($c) => mb_strtolower(trim((string) $c));
             $cidades = $passagens->flatMap(fn ($p) => [trim((string) $p->origem), trim((string) $p->destino)])->filter()->unique()->values();
             if ($cidades->count() === 1) {
                 $trechoViagem = (string) $cidades->first();
             } elseif ($cidades->isNotEmpty()) {
                 $rotaRef = $passagens->firstWhere('rota_id', '!=', null)?->rota;
-                $ordem = $rotaRef ? collect($rotaRef->localidades())->map(fn ($c) => mb_strtolower(trim((string) $c)))->values() : collect();
+                $ordem = $rotaRef ? collect($rotaRef->localidades())->map($norm)->values() : collect();
                 if ($ordem->isNotEmpty()) {
-                    $idx = fn ($c) => $ordem->search(mb_strtolower(trim((string) $c)));
+                    $idx = fn ($c) => $ordem->search($norm($c));
                     $ok = $cidades->filter(fn ($c) => $idx($c) !== false)->sortBy($idx)->values();
-                    if ($ok->count() >= 2) $trechoViagem = $ok->first().' → '.$ok->last();
-                    elseif ($ok->count() === 1) $trechoViagem = (string) $ok->first();
+                    // sentido real: quantas passagens vão no sentido da rota (ida) x contra (volta)
+                    $ida = 0; $volta = 0;
+                    foreach ($passagens as $p) {
+                        $io = $idx($p->origem); $id = $idx($p->destino);
+                        if ($io === false || $id === false || $io === $id) continue;
+                        $io < $id ? $ida++ : $volta++;
+                    }
+                    if ($ok->count() >= 2) {
+                        $trechoViagem = ($volta > $ida)
+                            ? $ok->last().' → '.$ok->first()
+                            : $ok->first().' → '.$ok->last();
+                    } elseif ($ok->count() === 1) {
+                        $trechoViagem = (string) $ok->first();
+                    }
                 }
                 if ($trechoViagem === '') { // sem rota conhecida: origem que nunca é destino → destino que nunca é origem
                     $org = $passagens->pluck('origem')->map(fn ($c) => trim((string) $c))->filter();
