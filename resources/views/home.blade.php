@@ -8,109 +8,108 @@
   $h = now()->hour;
   $saud = $h < 12 ? 'Bom dia' : ($h < 18 ? 'Boa tarde' : 'Boa noite');
   $primeiro = \Illuminate\Support\Str::of($u->name)->explode(' ')->first();
-
-  // Cards GRANDES por módulo (só os que já existem e que o operador pode usar)
-  $rotaCriar = [
-    'encomenda' => fn() => route('encomendas.create'),
-    'passagem'  => fn() => route('passagens.create'),
-    'camarote'  => fn() => route('passagens.camarote.create'),
-    'frete'     => fn() => route('fretes.create'),
-  ];
-  $desc = [
-    'encomenda' => 'Cadastrar encomenda, comprovante e etiqueta.',
-    'passagem'  => 'Vender passagem por tipo de passageiro.',
-    'frete'     => 'Em breve.',
-    'camarote'  => 'Vender suíte/camarote por trecho.',
-    'lanchonete'=> 'Em breve.',
-    'wifi'      => 'Em breve.',
-    'avulso'    => 'Em breve.',
-    'recibo'    => 'Em breve.',
-  ];
-  $emp = \App\Support\Tenant::empresa();
+  $emp = $empresa;
   $coresPorModulo = (bool) ($emp?->config('cores_por_modulo', true) ?? true);
-  $corEmp = $emp?->cor_primaria ?? '#0b1a33';
+  $corEmp = $emp?->cor_primaria ?? '#13295e';
   $modAtivos = $emp?->config('modulos_ativos');
   $modOn = fn ($m) => empty($modAtivos) || in_array($m, (array) $modAtivos, true);
-  $mods = [];
-  foreach (Modulos::LISTA as $k => [$rot,$ic,$cor,$hex]) {
-    if (! $u->temModulo($k)) continue;      // sem o módulo, nem aparece
-    if (! $modOn($k)) continue;             // empresa não usa esse módulo
-    if (! isset($rotaCriar[$k])) continue;  // módulo ainda não construído: não mostra "Em breve"
-    $corMod = $emp?->config('cores_modulo.'.$k) ?: $hex;
-    $mods[] = ['k'=>$k, 't'=>$rot, 'i'=>$ic, 'hex'=>($coresPorModulo ? $corMod : $corEmp), 'r'=>$rotaCriar[$k](), 'd'=>$desc[$k] ?? ''];
+  $corMod = function ($k) use ($emp, $coresPorModulo, $corEmp) {
+    if (! $coresPorModulo) return $corEmp;
+    return $emp?->config('cores_modulo.'.$k) ?: Modulos::hex($k);
+  };
+
+  $grupos = [];
+
+  // PASSAGEM
+  if ($u->temModulo('passagem') && $modOn('passagem')) {
+    $it = [];
+    if ($u->permite('passagem','cadastra')) $it[] = ['r'=>route('passagens.create'), 'l'=>'Nova passagem', 'i'=>'🎫'];
+    if ($u->permite('passagem','ver'))      $it[] = ['r'=>route('passagens.index'), 'l'=>'Passagens / embarque', 'i'=>'🧾'];
+    if ($u->permite('passagem','cadastra') && Route::has('orcamentos.index')) $it[] = ['r'=>route('orcamentos.index'), 'l'=>'Orçamento', 'i'=>'📝'];
+    if ($u->permite('passagem','baixa'))    $it[] = ['r'=>route('passagens.scanner'), 'l'=>'Check-in / embarque', 'i'=>'📷'];
+    if ($u->permite('passagem','cadastra') && Route::has('passagens.bloqueios')) $it[] = ['r'=>route('passagens.bloqueios'), 'l'=>'Travar poltronas', 'i'=>'🔒'];
+    if (($u->isAdmin() || $u->isSuper()) && Route::has('passagens.transferencia')) $it[] = ['r'=>route('passagens.transferencia'), 'l'=>'Transferir transporte', 'i'=>'🔄'];
+    if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $it[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
+    if ($it) $grupos[] = ['nome'=>'Passagem', 'cor'=>$corMod('passagem'), 'itens'=>$it];
   }
 
-  // Ferramentas (caixa, relatório, admin)
-  $tools = [];
-  if (($u->temModulo('encomenda') || $u->podeFiltrar()) && $modOn('encomenda')) $tools[] = ['r'=>route('encomendas.index'), 'i'=>'📦', 't'=>'Encomendas / baixa'];
-  if ($u->temModulo('passagem') && $modOn('passagem')) $tools[] = ['r'=>route('passagens.index'), 'i'=>'🧾', 't'=>'Passagens / embarque'];
-  if ($u->temModulo('frete') && $modOn('frete')) $tools[] = ['r'=>route('fretes.index'), 'i'=>'📦', 't'=>'Fretes / entrega'];
-  if ($u->podeVerCaixa())  $tools[] = ['r'=>route('caixa.index'), 'i'=>'💰', 't'=>$u->caixaTodos()?'Caixa geral':'Meu caixa'];
-  if ($u->podeRelatorio()) $tools[] = ['r'=>route('relatorio.meu'), 'i'=>'📋', 't'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório'];
-  if ($u->isAdmin() || $u->isSuper()) {
-    $tools[] = ['r'=>route('admin.usuarios.index'), 'i'=>'👥', 't'=>'Usuários'];
-    $tools[] = ['r'=>route('admin.cadastros'), 'i'=>'🗂️', 't'=>'Cadastros gerais'];
-    if ($modOn('camarote')) $tools[] = ['r'=>route('admin.camarotes'), 'i'=>'🛏️', 't'=>'Suítes / Camarotes'];
-    if ($u->temModulo('passagem')) $tools[] = ['r'=>route('admin.rotas'), 'i'=>'🗺️', 't'=>'Rotas e horários'];
-    if ($u->temModulo('passagem')) $tools[] = ['r'=>route('clientes-faturado'), 'i'=>'🧾', 't'=>'Clientes faturado'];
-    $tools[] = ['r'=>route('admin.empresa'), 'i'=>'🏢', 't'=>'Minha empresa'];
+  // CAMAROTE
+  if ($u->temModulo('camarote') && $modOn('camarote')) {
+    $it = [];
+    if ($u->permite('camarote','cadastra')) $it[] = ['r'=>route('passagens.camarote.create'), 'l'=>'Vender suíte/camarote', 'i'=>'🛏️'];
+    if (Route::has('passagens.camarote.lista')) $it[] = ['r'=>route('passagens.camarote.lista'), 'l'=>'Camarotes / embarque', 'i'=>'🧾'];
+    if (Route::has('passagens.camarotes')) $it[] = ['r'=>route('passagens.camarotes'), 'l'=>'Ocupação / reservas', 'i'=>'🗺️'];
+    if ($it) $grupos[] = ['nome'=>'Camarote', 'cor'=>$corMod('camarote'), 'itens'=>$it];
   }
-  if ($u->isSuper() && ! config('fbre.single')) $tools[] = ['r'=>route('super.empresas'), 'i'=>'🛠️', 't'=>'Empresas'];
+
+  // ENCOMENDA
+  if ($u->temModulo('encomenda') && $modOn('encomenda')) {
+    $it = [];
+    if ($u->permite('encomenda','cadastra')) $it[] = ['r'=>route('encomendas.create'), 'l'=>'Nova encomenda', 'i'=>'📦'];
+    if (Route::has('encomendas.index')) $it[] = ['r'=>route('encomendas.index'), 'l'=>'Encomendas / baixa', 'i'=>'📋'];
+    if ($it) $grupos[] = ['nome'=>'Encomenda', 'cor'=>$corMod('encomenda'), 'itens'=>$it];
+  }
+
+  // FRETE
+  if ($u->temModulo('frete') && $modOn('frete')) {
+    $it = [];
+    if ($u->permite('frete','cadastra')) $it[] = ['r'=>route('fretes.create'), 'l'=>'Nova frete', 'i'=>'🚚'];
+    if (Route::has('fretes.index')) $it[] = ['r'=>route('fretes.index'), 'l'=>'Fretes / entrega', 'i'=>'📋'];
+    if ($it) $grupos[] = ['nome'=>'Frete', 'cor'=>$corMod('frete'), 'itens'=>$it];
+  }
+
+  // FINANCEIRO
+  $fin = [];
+  if ($u->podeVerCaixa())  $fin[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰'];
+  if ($u->podeRelatorio()) $fin[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋'];
+  if ($fin) $grupos[] = ['nome'=>'Financeiro', 'cor'=>'#059669', 'itens'=>$fin];
+
+  // ATENDIMENTO
+  if ($u->permite('passagem','atendimento')) {
+    $at = [
+      ['r'=>route('atendimento.index'), 'l'=>'Atendimento (WhatsApp)', 'i'=>'💬'],
+      ['r'=>route('atendimento.kanban'), 'l'=>'CRM · Funil', 'i'=>'📋'],
+    ];
+    $grupos[] = ['nome'=>'Atendimento', 'cor'=>'#0ea5a4', 'itens'=>$at];
+  }
+
+  // ADMINISTRAÇÃO
+  $adm = [];
+  if ($u->isAdmin() || $u->isSuper()) {
+    $adm[] = ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'];
+    $adm[] = ['r'=>route('admin.cadastros'), 'l'=>'Cadastros gerais', 'i'=>'🗂️'];
+    if ($modOn('camarote') && Route::has('admin.camarotes')) $adm[] = ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'];
+    if ($u->temModulo('passagem') && Route::has('admin.rotas')) $adm[] = ['r'=>route('admin.rotas'), 'l'=>'Rotas e horários', 'i'=>'🗺️'];
+    if ($u->temModulo('passagem') && Route::has('clientes-faturado')) $adm[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
+    $adm[] = ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'];
+  }
+  if ($u->isSuper() && ! config('fbre.single') && Route::has('super.empresas')) $adm[] = ['r'=>route('super.empresas'), 'l'=>'Empresas', 'i'=>'🛠️'];
+  if ($adm) $grupos[] = ['nome'=>'Administração', 'cor'=>$corEmp, 'itens'=>$adm];
 @endphp
 
-<div class="max-w-5xl mx-auto space-y-5">
+<div class="max-w-5xl mx-auto space-y-4">
 
-  {{-- Boas-vindas --}}
-  <div class="rounded-2xl p-5 text-white shadow-md" style="background: linear-gradient(120deg, var(--cor1), color-mix(in srgb, var(--cor1) 65%, var(--cor2)))">
-    <div class="flex items-center gap-4">
-      @if($empresa?->logo)<img onerror="this.style.display='none'" src="/{{ $empresa->logo }}" alt="" class="h-14 w-14 rounded-xl object-cover bg-white p-1 shrink-0">@endif
-      <div class="min-w-0">
-        <div class="text-sm opacity-80">{{ $saud }},</div>
-        <h1 class="text-2xl font-extrabold leading-tight truncate">{{ $primeiro }} 👋</h1>
-        <div class="text-sm opacity-80 truncate">{{ $empresa?->nomeExibicao() ?? 'FBRE' }} · {{ $u->setor ?: 'Operador' }}</div>
-      </div>
-    </div>
+  {{-- saudação enxuta (sem card grandão) --}}
+  <div class="flex items-center gap-3 pt-1">
+    @if($empresa?->logo)<img onerror="this.style.display='none'" src="/{{ $empresa->logo }}" alt="" class="h-9 w-9 rounded-lg object-cover bg-white p-0.5 border border-slate-200 shrink-0">@endif
+    <div class="text-[13px] text-slate-500">{{ $saud }}, <b class="text-slate-700">{{ $primeiro }}</b> · {{ $empresa?->nomeExibicao() ?? 'FBRE' }}</div>
   </div>
 
-  {{-- MÓDULOS (cards grandes coloridos) --}}
-  @if(count($mods))
-  <div>
-    <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">O que você quer fazer?</div>
-    <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
-      @foreach($mods as $m)
-        @if($m['r'])
-          <a href="{{ $m['r'] }}" class="rounded-2xl p-5 text-white shadow-sm hover:shadow-lg hover:scale-[1.02] transition flex flex-col gap-2 min-h-[120px]" style="background:{{ $m['hex'] }}">
-            <div class="text-3xl">{{ $m['i'] }}</div>
-            <div class="font-extrabold text-lg leading-tight">{{ $m['t'] }}</div>
-            <div class="text-xs text-white/80">{{ $m['d'] }}</div>
-          </a>
-        @else
-          <div class="rounded-2xl p-5 shadow-sm flex flex-col gap-2 min-h-[120px] opacity-60 border-2 border-dashed" style="border-color:{{ $m['hex'] }}40">
-            <div class="text-3xl grayscale">{{ $m['i'] }}</div>
-            <div class="font-bold text-lg leading-tight" style="color:{{ $m['hex'] }}">{{ $m['t'] }}</div>
-            <div class="text-xs text-slate-400">Em breve</div>
-          </div>
-        @endif
-      @endforeach
-    </div>
-  </div>
-  @endif
-
-  {{-- FERRAMENTAS --}}
-  @if(count($tools))
-  <div>
-    <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Consultas e gestão</div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-      @foreach($tools as $t)
-        <a href="{{ $t['r'] }}" class="card p-4 flex items-center gap-3 hover:shadow-md transition">
-          <span class="text-2xl">{{ $t['i'] }}</span>
-          <span class="font-semibold text-sm" style="color:var(--cor1)">{{ $t['t'] }}</span>
+  {{-- grupos por módulo: caixa com borda e o nome na borda --}}
+  @foreach($grupos as $g)
+  <div class="relative rounded-2xl border-2 bg-white/40 px-4 pb-4 pt-5" style="border-color:{{ $g['cor'] }}">
+    <span class="absolute -top-2.5 left-4 px-2 text-[13px] font-extrabold uppercase tracking-wider" style="color:{{ $g['cor'] }};background:#eef2f7">{{ $g['nome'] }}</span>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+      @foreach($g['itens'] as $it)
+        <a href="{{ $it['r'] }}" class="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 hover:shadow-md hover:-translate-y-0.5 hover:border-slate-300 transition">
+          <span class="text-xl shrink-0">{{ $it['i'] }}</span>
+          <span class="font-semibold text-[13px] text-slate-700 leading-tight">{{ $it['l'] }}</span>
         </a>
       @endforeach
     </div>
   </div>
-  @endif
+  @endforeach
 
-  <p class="text-xs text-slate-400 text-center">Dúvida? Fale com o administrador ou com o suporte da GERATEC.</p>
+  <p class="text-xs text-slate-400 text-center pt-1">Dúvida? Fale com o administrador ou com o suporte da GERATEC.</p>
 </div>
 @endsection
