@@ -23,7 +23,7 @@
       <div class="text-[12px] text-slate-500">{{ $tema[4] }}</div>
     </div>
   </div>
-  @if(! ($focoPrest && ! $transporteId))<div class="flex items-center gap-2 no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null),'modo'=>($focoPrest ? 'prestacao' : (($ehRelatorio ?? false) ? 'relatorio' : 'caixa'))])) }}" class="btn btn-ghost btn-sm">📄 {{ $focoPrest ? 'Pré-prestação' : ($ehRel ? 'Relatório' : 'Caixa') }} (PDF)</a><button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div>@endif</div>
+  @if(! ($focoPrest && ! $transporteId))<div class="flex items-center gap-2 no-print">@unless($focoPrest)<a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'user_id'=>$userId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'relatorio'=>(($ehRelatorio ?? false) ? 1 : null),'modo'=>($focoPrest ? 'prestacao' : (($ehRelatorio ?? false) ? 'relatorio' : 'caixa'))])) }}" class="btn btn-ghost btn-sm">📄 {{ $focoPrest ? 'Pré-prestação' : ($ehRel ? 'Relatório' : 'Caixa') }} (PDF)</a>@endunless<button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button></div>@endif</div>
 
 @php $escolher = $focoPrest && ! $transporteId; @endphp
 @if($escolher)
@@ -312,6 +312,7 @@
       @if(($prestacaoTransporte->aberto ?? 0) > 0.009)<div class="flex justify-between py-1.5 border-b border-slate-100 text-blue-700"><span>🧾 Faturado a receber <span class="text-[10px] text-slate-400">(não entra — entra quando for pago no Financeiro)</span></span><b>R$ {{ number_format($prestacaoTransporte->aberto,2,',','.') }}</b></div>@endif
       <div class="flex justify-between py-2 border-t-2 border-slate-300 font-bold text-amber-700"><span>Total de descontos</span><b>R$ {{ number_format($prestacaoTransporte->despesas,2,',','.') }}</b></div>
       <div class="flex justify-between items-center mt-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3"><span class="font-bold text-emerald-800">TOTAL A PAGAR AO PROPRIETÁRIO</span><b class="text-2xl text-emerald-700">R$ {{ number_format($prestacaoTransporte->liquido,2,',','.') }}</b></div>
+<div class="mt-3 flex justify-end no-print"><a href="{{ route('passagens.caixa-viagem', array_filter(['inicio'=>\Illuminate\Support\Carbon::parse($inicio)->toDateString(),'fim'=>\Illuminate\Support\Carbon::parse($fim)->toDateString(),'embarcacao_id'=>$transporteId,'data_viagem'=>$dataViagem,'viagem_id'=>$viagemId,'modo'=>'prestacao'])) }}" class="inline-flex items-center gap-1 rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50">📄 Pré-prestação (PDF)</a></div>
     </div>
   </div>
 </div>
