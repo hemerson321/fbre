@@ -21,12 +21,13 @@
     <a href="{{ route('marketing.signage') }}" class="btn btn-ghost btn-sm">🖼️ Ir pra Tela indoor</a>
   </div>
 
+  <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
   {{-- TERMINAIS --}}
   <div class="card overflow-hidden">
     <div class="p-3 border-b bg-slate-50 flex items-center justify-between gap-2 flex-wrap">
       <div class="font-bold text-sm text-slate-700">🖥 Terminais <span class="text-[11px] font-normal text-slate-400">· onde o áudio toca (tablet/PC com caixa de som)</span></div>
     </div>
-    <div class="p-3 grid gap-3 lg:grid-cols-2">
+    <div class="p-3 space-y-3">
       <form method="post" action="{{ route('marketing.terminal.salvar') }}" class="rounded-xl border border-slate-200 p-3 space-y-2">
         @csrf
         <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Novo terminal</div>
@@ -61,7 +62,7 @@
   {{-- ÁUDIOS --}}
   <div class="card overflow-hidden">
     <div class="p-3 border-b bg-slate-50 font-bold text-sm text-slate-700">🎙 Áudios</div>
-    <div class="p-3 grid gap-3 lg:grid-cols-2">
+    <div class="p-3 space-y-3">
       <form method="post" :action="editId ? baseAudio + '/' + editId : baseAudio" enctype="multipart/form-data" class="rounded-xl border p-3 space-y-2" :class="editId ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'">
         @csrf
         <div class="flex items-center justify-between">
@@ -144,7 +145,7 @@
   {{-- PROGRAMAÇÃO --}}
   <div class="card overflow-hidden">
     <div class="p-3 border-b bg-slate-50 font-bold text-sm text-slate-700">⏰ Programação <span class="text-[11px] font-normal text-slate-400">· toca sozinho no dia e horário</span></div>
-    <div class="p-3 grid gap-3 lg:grid-cols-2">
+    <div class="p-3 space-y-3">
       <form method="post" action="{{ route('marketing.prog.salvar') }}" class="rounded-xl border border-slate-200 p-3 space-y-2" x-data="{ janela:false }">
         @csrf
         <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Nova programação</div>
@@ -215,6 +216,7 @@
       </div>
     </div>
   </div>
+  </div>{{-- fim das 3 colunas --}}
 
   {{-- DISPAROS RECENTES --}}
   @if($disparos->isNotEmpty())
