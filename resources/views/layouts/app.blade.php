@@ -129,10 +129,14 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','cadastra') && Route::has('clientes-faturado')) $g[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if ($u->ehRevendedor()) $g[] = ['r'=>route('meus-acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
-  // Caixa e Prestação de contas: direto no menu Passagens (não mais dentro do Financeiro)
-  if ($u->podeVerCaixa()) $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰', 'c'=>'#059669', 'sep'=>true];
-  if ($u->podeVerCaixa() && $u->caixaTodos()) $g[] = ['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestação de contas', 'i'=>'🧾', 'c'=>'#d97706'];
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;
+  // Caixa e Prestação de contas: botões próprios no topo, ao lado de Passagens — mas do grupo Passagens:
+  // só aparecem com o MÓDULO passagem ligado E permissão de caixa (senão nem exibe).
+  $caixaLbl = $u->caixaTodos() ? 'Caixa geral' : 'Meu caixa';
+  if ($modOn('passagem') && $u->podeVerCaixa()) {
+    $grupos[$caixaLbl] = [['r'=>route('caixa.index'), 'l'=>$caixaLbl, 'i'=>'💰']];
+    if ($u->caixaTodos()) $grupos['Prestação de contas'] = [['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestação de contas', 'i'=>'🧾']];
+  }
   // Ferramentas: atendimento, CRM, travar poltronas e transferir transporte (saíram do Passagens pra organizar)
   $ft = [];
   if ($u->permite('passagem','cadastra') && Route::has('orcamentos.index')) $ft[] = ['r'=>route('orcamentos.index'), 'l'=>'Orçamentos', 'i'=>'📝'];
@@ -153,7 +157,7 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('frete','ver'))      $g[] = ['r'=>route('fretes.index'), 'l'=>'Fretes / entrega', 'i'=>'📦'];
   if ($g && $modOn('frete')) $grupos['Fretes'] = $g;
   // Caixa, Prestação de Contas e Relatório agora ficam DENTRO do menu Passagens (ver bloco Passagem acima). Sem botões soltos no topo.
-  $gruposDiretos = [];
+  $gruposDiretos = ['Caixa geral', 'Meu caixa', 'Prestação de contas'];
   // Financeiro: Relatório (operação) e, pra admin/perm_financeiro, Contas a receber + Clientes faturado + Entradas e saídas. (Caixa e Prestação foram pro menu Passagens.)
   $podeFinModulo = $u->isAdmin() || $u->isSuper() || $u->perm_financeiro;
   // Cobrança vencida: faturados a receber que já passaram do prazo (created_at + cobrar_dias). Vira notificação no menu.
@@ -225,6 +229,9 @@ document.addEventListener('alpine:init', () => {
     'Lanchonete'    => ['🍔', $corModulo('lanchonete')],
     'WiFi'          => ['📶', $corModulo('wifi')],
     'Caixa'         => ['💰', '#0b1a33'],
+    'Caixa geral'   => ['💰', '#059669'],
+    'Meu caixa'     => ['💰', '#059669'],
+    'Prestação de contas' => ['🧾', '#d97706'],
     'Revendedor'    => ['🤝', '#0e7490'],
     'Meu transporte' => ['🚤', '#0e7490'],
     'Administração' => ['⚙️', '#334155'],
