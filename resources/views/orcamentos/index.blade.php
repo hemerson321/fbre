@@ -87,12 +87,16 @@
   <p class="text-[11px] text-slate-400 text-center">No orçamento aberto você poderá imprimir, baixar o PDF ou enviar no WhatsApp.</p>
 </div>
 
+@php
+  $embsJs = $embarcacoes->map(fn ($e) => ['id' => $e->id, 'nome' => $e->nome])->values();
+  $tiposJs = $tipos->map(fn ($t) => ['id' => $t->id, 'nome' => $t->nome, 'percentual' => $t->percentual, 'pct_sobre' => $t->pct_sobre ?? null, 'paga_taxa' => (bool) $t->paga_taxa, 'modo' => $t->modo ?? 'valor', 'normal' => (bool) $t->eh_normal, 'tarifa_padrao' => $t->tarifa_padrao ?? 0, 'alimentacao_padrao' => $t->alimentacao_padrao ?? 0])->values();
+@endphp
 <script>
 function orc(){
   const LINHAS = @json($linhas);
   const DATAS  = @json($datasPorEmb);
-  const EMBS   = @json($embarcacoes->map(fn($e)=>['id'=>$e->id,'nome'=>$e->nome])->values());
-  const TIPOS  = @json($tipos->map(fn($t)=>['id'=>$t->id,'nome'=>$t->nome,'percentual'=>$t->percentual,'pct_sobre'=>$t->pct_sobre ?? null,'paga_taxa'=>(bool)$t->paga_taxa,'modo'=>$t->modo ?? 'valor','normal'=>(bool)$t->eh_normal,'tarifa_padrao'=>$t->tarifa_padrao ?? 0,'alimentacao_padrao'=>$t->alimentacao_padrao ?? 0])->values());
+  const EMBS   = @json($embsJs);
+  const TIPOS  = @json($tiposJs);
   const TRECHOS= @json($trechoPrecos);
   const TAXAS  = @json($taxas);
   const USAALIM = @json($usaAlim);
