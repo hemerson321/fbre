@@ -249,6 +249,17 @@
   details.vendas-det:not([open]) .vd-fechar{display:none}
   @media print{ details.vendas-det > div{display:block !important} details.vendas-det .vd-ver,details.vendas-det .vd-fechar{display:none} }
 </style>
+@if(! $ehRel)
+<form method="GET" action="{{ route('caixa.index') }}" class="flex items-center gap-2 flex-wrap text-[13px] text-slate-500 px-1">
+  <span class="font-semibold text-slate-400">📅 Período</span>
+  <input type="date" name="inicio" value="{{ \Illuminate\Support\Carbon::parse($inicio)->format('Y-m-d') }}" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[13px]">
+  <span class="text-slate-400">até</span>
+  <input type="date" name="fim" value="{{ \Illuminate\Support\Carbon::parse($fim)->format('Y-m-d') }}" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[13px]">
+  <input type="hidden" name="periodo" value="personalizado">
+  <button type="submit" class="rounded-lg text-white px-3 py-1 text-[13px] font-semibold" style="background:var(--cor1)">Ver</button>
+  @if(($periodo ?? 'hoje') !== 'hoje')<a href="{{ route('caixa.index') }}" class="underline text-slate-400 ml-1">voltar p/ hoje</a>@endif
+</form>
+@endif
 <div class="card p-4">
   <div class="flex items-center justify-between gap-4 flex-wrap">
     <div>
