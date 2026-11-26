@@ -197,6 +197,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/passagens/{passagem}/recibo', [\App\Http\Controllers\PassagemController::class, 'recibo'])->name('passagens.recibo')->middleware('perm:passagem.ver');
     Route::get('/orcamentos', [\App\Http\Controllers\OrcamentoController::class, 'index'])->name('orcamentos.index')->middleware('perm:passagem');
     Route::get('/orcamentos/gerar', [\App\Http\Controllers\OrcamentoController::class, 'gerar'])->name('orcamentos.gerar')->middleware('perm:passagem');
+    Route::post('/orcamentos/salvar', [\App\Http\Controllers\OrcamentoController::class, 'salvar'])->name('orcamentos.salvar')->middleware('perm:passagem');
+    Route::get('/orcamentos/{orcamento}/editar', [\App\Http\Controllers\OrcamentoController::class, 'editar'])->name('orcamentos.editar')->middleware('perm:passagem');
+    Route::post('/orcamentos/{orcamento}/excluir', [\App\Http\Controllers\OrcamentoController::class, 'excluir'])->name('orcamentos.excluir')->middleware('perm:passagem');
     Route::get('/passagens/{passagem}/etiqueta/{pax}', [\App\Http\Controllers\PassagemController::class, 'etiqueta'])->name('passagens.etiqueta')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/etiqueta/{pax}/direto', [\App\Http\Controllers\PassagemController::class, 'etiquetaDireto'])->name('passagens.etiqueta-direto')->middleware('perm:passagem.ver');
     Route::post('/passagens/{passagem}/imprimir-direto', [\App\Http\Controllers\PassagemController::class, 'imprimirDireto'])->name('passagens.imprimir-direto')->middleware('perm:passagem.ver');

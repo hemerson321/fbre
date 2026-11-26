@@ -83,13 +83,38 @@
     </div>
   </div>
 
-  <button type="button" @click="gerar()" class="btn w-full text-white font-bold" style="background:{{ $navy }}">📄 Gerar orçamento</button>
-  <p class="text-[11px] text-slate-400 text-center">No orçamento aberto você poderá imprimir, baixar o PDF ou enviar no WhatsApp.</p>
+  <button type="button" @click="gerar()" :disabled="gerando" class="btn w-full text-white font-bold disabled:opacity-60" style="background:{{ $navy }}" x-text="gerando ? 'Salvando…' : '📄 Gerar orçamento'"></button>
+  <p class="text-[11px] text-slate-400 text-center">O orçamento é salvo na lista abaixo e abre para imprimir, baixar o PDF ou enviar no WhatsApp.</p>
+
+  {{-- Orçamentos gerados --}}
+  <div class="card p-4 space-y-2" x-show="salvos.length" x-cloak>
+    <div class="flex items-center justify-between">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Orçamentos gerados</div>
+      <span class="text-[10px] text-slate-400" x-text="salvos.length + (salvos.length===1?' orçamento':' orçamentos')"></span>
+    </div>
+    <div class="space-y-2">
+      <template x-for="o in salvos" :key="o.id">
+        <div class="flex items-center gap-3 border rounded-xl px-3 py-2">
+          <div class="min-w-0 flex-1">
+            <div class="font-bold text-sm truncate" style="color:{{ $navy }}" x-text="'#'+o.numero+' · '+o.cliente"></div>
+            <div class="text-[11px] text-slate-400 truncate"><span x-text="(o.origem||'—')+' → '+(o.destino||'—')"></span><template x-if="o.emb"><span> · <span x-text="o.emb"></span></span></template></div>
+            <div class="text-[11px] text-slate-400 truncate">👤 <span x-text="o.operador"></span> · <span x-text="o.quando"></span> · <span class="font-semibold" x-text="o.pax+'p · '+brl(o.total)"></span></div>
+          </div>
+          <div class="flex items-center gap-1 flex-none">
+            <button type="button" @click="abrirPdf(o)" class="btn btn-sm text-white font-bold" style="background:{{ $navy }}" title="Abrir / PDF">🧾</button>
+            <button type="button" @click="editarOrc(o)" class="btn btn-sm bg-slate-100 text-slate-600" title="Editar">✏️</button>
+            <button type="button" @click="excluirOrc(o)" class="btn btn-sm bg-rose-50 text-rose-500" title="Excluir">✕</button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
 </div>
 
 @php
   $embsJs = $embarcacoes->map(fn ($e) => ['id' => $e->id, 'nome' => $e->nome])->values();
   $tiposJs = $tipos->map(fn ($t) => ['id' => $t->id, 'nome' => $t->nome, 'percentual' => $t->percentual, 'pct_sobre' => $t->pct_sobre ?? null, 'paga_taxa' => (bool) $t->paga_taxa, 'modo' => $t->modo ?? 'valor', 'normal' => (bool) $t->eh_normal, 'tarifa_padrao' => $t->tarifa_padrao ?? 0, 'alimentacao_padrao' => $t->alimentacao_padrao ?? 0])->values();
+  $orcListJs = ($orcList ?? collect())->values();
 @endphp
 <script>
 function orc(){
@@ -113,6 +138,8 @@ function orc(){
   return {
     cliente:'', doc:'', origem:'', destino:'', embId:'', dataSel:'', dataManual:'',
     linhas:[ {tipo:String(normalId||''), qtd:1, unit:0} ],
+    salvos: @json($orcListJs),
+    gerando:false,
     init(){ this.$watch('origem',()=>this.autoTransporte()); this.$watch('destino',()=>this.autoTransporte()); this.$watch('embId',()=>{ this.dataSel=''; this.reprecificar(); }); this.reprecificar(); },
     brl(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); },
     fmtData(d){ if(!d) return ''; const p=String(d).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):d; },
@@ -160,15 +187,31 @@ function orc(){
     totalPax(){ return this.linhas.reduce((s,l)=>s+(Number(l.qtd)||0),0); },
     embNome(){ const e=[...this.opcoesTransporte(),...EMBS].find(x=>String(x.id)===String(this.embId)); return e?e.nome:''; },
     gerar(){
-      const itens=this.linhas.filter(l=>(Number(l.qtd)||0)>0).map(l=>({d:'Passagem '+this.tipoNome(l.tipo).toLowerCase(), q:Number(l.qtd)||0, u:Number(l.unit)||0}));
-      if(!itens.length){ alert('Adicione ao menos um passageiro.'); return; }
+      const linhasOk=this.linhas.filter(l=>(Number(l.qtd)||0)>0);
+      if(!linhasOk.length){ alert('Adicione ao menos um passageiro.'); return; }
+      const itens=linhasOk.map(l=>({d:'Passagem '+this.tipoNome(l.tipo).toLowerCase(), q:Number(l.qtd)||0, u:Number(l.unit)||0, tipo:l.tipo}));
       const data=(this.dataSel&&this.dataSel!=='__outra')?this.dataSel:this.dataManual;
-      const qs=new URLSearchParams();
-      qs.set('cli',this.cliente||''); qs.set('doc',this.doc||'');
-      qs.set('org',this.origem||''); qs.set('dst',this.destino||'');
-      qs.set('data',data||''); qs.set('emb',this.embNome()||'');
-      qs.set('itens',JSON.stringify(itens));
-      window.FBRE.abrirDoc('{{ route('orcamentos.gerar') }}?'+qs.toString());
+      const payload={ cli:this.cliente||'', doc:this.doc||'', org:this.origem||'', dst:this.destino||'', data:data||'', emb:this.embNome()||'', emb_id:this.embId||'', itens };
+      this.gerando=true;
+      fetch('{{ route('orcamentos.salvar') }}',{ method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':window.FBRE.csrf,'Accept':'application/json'}, body:JSON.stringify(payload) })
+        .then(r=>r.json())
+        .then(j=>{ this.gerando=false; if(j&&j.ok){ this.salvos.unshift(j.orcamento); this.abrirPdf(j.orcamento); } else { alert((j&&j.erro)||'Não foi possível salvar o orçamento.'); } })
+        .catch(()=>{ this.gerando=false; alert('Erro ao salvar o orçamento.'); });
+    },
+    abrirPdf(o){ window.FBRE.abrirDoc('{{ route('orcamentos.gerar') }}?id='+encodeURIComponent(o.id)); },
+    editarOrc(o){
+      this.cliente=o.cliente||''; this.doc=o.documento||'';
+      this.origem=o.origem||''; this.destino=o.destino||'';
+      this.linhas=(o.itens&&o.itens.length)?o.itens.map(it=>({tipo:String(it.tipo||normalId||''),qtd:Number(it.q)||1,unit:Number(it.u)||0})):[{tipo:String(normalId||''),qtd:1,unit:0}];
+      this.$nextTick(()=>{ this.embId=o.emb_id?String(o.emb_id):''; this.$nextTick(()=>{ const ds=this.datas().map(x=>x.d); if(o.data&&ds.indexOf(o.data)>-1){ this.dataSel=o.data; this.dataManual=''; } else { this.dataSel='__outra'; this.dataManual=o.data||''; } }); });
+      window.scrollTo({top:0,behavior:'smooth'});
+    },
+    excluirOrc(o){
+      if(!confirm('Excluir o orçamento #'+o.numero+' de '+o.cliente+'?')) return;
+      fetch('{{ route('orcamentos.excluir', ['orcamento'=>'__ID__']) }}'.replace('__ID__',o.id),{ method:'POST', headers:{'X-CSRF-TOKEN':window.FBRE.csrf,'Accept':'application/json'} })
+        .then(r=>r.json())
+        .then(j=>{ if(j&&j.ok){ this.salvos=this.salvos.filter(x=>x.id!==o.id); } else { alert('Não foi possível excluir.'); } })
+        .catch(()=>alert('Erro ao excluir.'));
     }
   };
 }

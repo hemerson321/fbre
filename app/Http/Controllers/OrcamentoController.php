@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Embarcacao;
+use App\Models\Orcamento;
 use App\Models\Passagem;
 use App\Models\Rota;
 use App\Models\TipoPassageiro;
@@ -60,7 +61,11 @@ class OrcamentoController extends Controller
             ])->unique('d')->values()->all())
             ->toArray();
 
-        return response(view('orcamentos.index', compact('empresa', 'localidades', 'embarcacoes', 'tipos', 'trechoPrecos', 'taxas', 'usaAlim', 'usaEmbarque', 'linhas', 'datasPorEmb'))->render());
+        $orcList = \Illuminate\Support\Facades\Schema::hasTable('orcamentos')
+            ? Orcamento::where('empresa_id', Tenant::id())->with('user:id,name')->orderByDesc('id')->limit(50)->get()->map(fn ($o) => $this->orcJson($o))->values()
+            : collect();
+
+        return response(view('orcamentos.index', compact('empresa', 'localidades', 'embarcacoes', 'tipos', 'trechoPrecos', 'taxas', 'usaAlim', 'usaEmbarque', 'linhas', 'datasPorEmb', 'orcList'))->render());
         } catch (\Throwable $e) {
             report($e);
             if (auth()->user()?->admin) {
@@ -75,6 +80,22 @@ class OrcamentoController extends Controller
         try {
         $empresa = Tenant::empresa();
         $logo = ($empresa->logo && is_file(public_path($empresa->logo))) ? asset($empresa->logo) : asset('img/ajato-logo.png');
+
+        if ($request->filled('id')) {
+            $o = \Illuminate\Support\Facades\Schema::hasTable('orcamentos') ? Orcamento::where('empresa_id', Tenant::id())->find($request->input('id')) : null;
+            if ($o) {
+                $itensO = array_map(fn ($it) => ['d' => $it['d'] ?? 'Passagem', 'q' => (int) ($it['q'] ?? 0), 'u' => (float) ($it['u'] ?? 0), 't' => round(((int) ($it['q'] ?? 0)) * ((float) ($it['u'] ?? 0)), 2)], (array) ($o->itens ?: []));
+                return response(view('docs.orcamento', [
+                    'empresa' => $empresa, 'logo' => $logo,
+                    'cliente' => $o->cliente ?: 'Cliente', 'doc' => (string) $o->documento,
+                    'origem' => $o->origem ?: '—', 'destino' => $o->destino ?: '—',
+                    'dataViagem' => $o->data_viagem?->toDateString(),
+                    'emb' => (string) $o->embarcacao_nome,
+                    'itens' => $itensO, 'total' => (float) $o->total, 'pax' => (int) $o->pax,
+                    'num' => str_pad((string) ($o->numero ?: $o->id), 4, '0', STR_PAD_LEFT),
+                ])->render());
+            }
+        }
 
         $itens = json_decode((string) $request->query('itens', '[]'), true);
         if (! is_array($itens)) $itens = [];
@@ -111,5 +132,81 @@ class OrcamentoController extends Controller
             }
             throw $e;
         }
+    }
+
+    public function salvar(Request $request)
+    {
+        abort_unless(\Illuminate\Support\Facades\Schema::hasTable('orcamentos'), 503, 'Tabela de orçamentos ainda não migrada.');
+        $itens = $this->normalizaItens($request->input('itens'));
+        if (empty($itens)) {
+            return response()->json(['ok' => false, 'erro' => 'Adicione ao menos um passageiro.'], 422);
+        }
+        $total = round(array_sum(array_column($itens, 't')), 2);
+        $pax = (int) array_sum(array_column($itens, 'q'));
+        $numero = (int) Orcamento::where('empresa_id', Tenant::id())->max('numero') + 1;
+        $o = Orcamento::create([
+            'empresa_id' => Tenant::id(),
+            'numero' => $numero,
+            'cliente' => trim((string) $request->input('cli')) ?: 'Cliente',
+            'documento' => trim((string) $request->input('doc')) ?: null,
+            'origem' => trim((string) $request->input('org')) ?: null,
+            'destino' => trim((string) $request->input('dst')) ?: null,
+            'data_viagem' => $request->input('data') ?: null,
+            'embarcacao_id' => ((int) $request->input('emb_id')) ?: null,
+            'embarcacao_nome' => trim((string) $request->input('emb')) ?: null,
+            'itens' => $itens,
+            'total' => $total,
+            'pax' => $pax,
+            'user_id' => auth()->id(),
+        ]);
+        $o->load('user:id,name');
+        return response()->json(['ok' => true, 'orcamento' => $this->orcJson($o)]);
+    }
+
+    public function editar(Orcamento $orcamento)
+    {
+        abort_unless($orcamento->empresa_id === Tenant::id(), 404);
+        $orcamento->load('user:id,name');
+        return response()->json(['ok' => true, 'orcamento' => $this->orcJson($orcamento)]);
+    }
+
+    public function excluir(Orcamento $orcamento)
+    {
+        abort_unless($orcamento->empresa_id === Tenant::id(), 404);
+        $orcamento->delete();
+        return response()->json(['ok' => true]);
+    }
+
+    protected function normalizaItens($raw): array
+    {
+        $itens = is_array($raw) ? $raw : json_decode((string) $raw, true);
+        if (! is_array($itens)) $itens = [];
+        return array_values(array_filter(array_map(function ($it) {
+            $q = (int) ($it['q'] ?? 0);
+            if ($q <= 0) return null;
+            $u = (float) ($it['u'] ?? 0);
+            $d = trim((string) ($it['d'] ?? ''));
+            return ['d' => $d !== '' ? $d : 'Passagem', 'q' => $q, 'u' => $u, 't' => round($q * $u, 2), 'tipo' => $it['tipo'] ?? null];
+        }, $itens)));
+    }
+
+    protected function orcJson(Orcamento $o): array
+    {
+        return [
+            'id' => $o->id,
+            'numero' => str_pad((string) ($o->numero ?: $o->id), 4, '0', STR_PAD_LEFT),
+            'cliente' => $o->cliente,
+            'documento' => $o->documento,
+            'origem' => $o->origem,
+            'destino' => $o->destino,
+            'data' => $o->data_viagem?->toDateString(),
+            'emb' => $o->embarcacao_nome,
+            'emb_id' => $o->embarcacao_id,
+            'total' => (float) $o->total,
+            'pax' => (int) $o->pax,
+            'operador' => $o->user?->name ?? '—',
+            'quando' => $o->created_at?->format('d/m/Y H:i'),
+            'itens' => $o->itens ?: [],
+        ];
     }
 }
