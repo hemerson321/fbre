@@ -18,7 +18,7 @@
     <select name="entregue" class="input"><option value="">Entrega: todos</option>
       <option value="1" @selected(($f['entregue'] ?? '')==='1')>Entregue</option>
       <option value="0" @selected(($f['entregue'] ?? '')==='0')>Não entregue</option></select>
-    <button class="btn text-white col-span-2 sm:col-span-1" style="background:{{ $cor }}">Filtrar</button>
+    <button class="btn text-white col-span-2 sm:col-span-1" style="background:var(--cor2)">Filtrar</button>
   </form>
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
     <div class="card p-3"><div class="text-xs text-slate-500">Fretes</div><div class="text-lg font-bold">{{ $totais['qtd'] }}</div></div>

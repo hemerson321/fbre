@@ -90,7 +90,7 @@
     </select>
     @endif
     @endif
-    <button class="btn text-white col-span-2 sm:col-span-1 !min-h-[36px] !py-1" style="background:{{ $cor }}">Filtrar</button>
+    <button class="btn text-white col-span-2 sm:col-span-1 !min-h-[36px] !py-1" style="background:var(--cor2)">Filtrar</button>
   </form>
 
   {{-- totais --}}

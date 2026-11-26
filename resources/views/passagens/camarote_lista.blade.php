@@ -39,7 +39,7 @@
       <option value="">Operador: todos</option>
       @foreach($operadores as $op)<option value="{{ $op->id }}" @selected((string)($f['user_id'] ?? '')===(string)$op->id)>{{ $op->name }}</option>@endforeach
     </select>
-    <button class="btn text-white col-span-2 sm:col-span-1" style="background:{{ $cor }}">Filtrar</button>
+    <button class="btn text-white col-span-2 sm:col-span-1" style="background:var(--cor2)">Filtrar</button>
     <a href="{{ route('passagens.camarote.lista') }}" class="btn btn-ghost col-span-2 sm:col-span-1">Limpar</a>
   </form>
 

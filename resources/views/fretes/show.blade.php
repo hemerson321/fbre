@@ -56,7 +56,7 @@
       <div><label class="text-[11px] text-slate-500">Crédito</label><input name="credito" class="input" x-money></div>
     </div>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="entregar" value="1" class="w-5 h-5 rounded"> Confirmar entrega ao pagar</label>
-    <button class="btn w-full text-white" style="background:{{ $cor }}">Registrar pagamento</button>
+    <button class="btn w-full text-white" style="background:var(--cor2)">Registrar pagamento</button>
   </form>
   @endif
   @if(!$f->cancelada && !$f->entregue && ($f->devido<=0.009 || $f->forma==='faturado') && $u->permite('frete','baixa'))
