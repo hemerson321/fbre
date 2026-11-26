@@ -4,6 +4,7 @@
     $previewAs = (int) request('preview_as');
     $cor1 = $empresa?->cor_primaria ?? '#0b1a33';
     $cor2 = $empresa?->cor_secundaria ?? '#00a8e8';
+    $cor3 = $empresa?->cor_terciaria ?? '#f5a623';
     // módulo atual (pela rota) -> cor do topo acompanha o módulo
     $moduloAtual = match (true) {
         request()->routeIs('passagens.camarote.*', 'passagens.camarotes', 'admin.camarotes', 'admin.camarotes.*') => 'camarote',
@@ -39,7 +40,7 @@
 <script>
 tailwind.config = { theme: { extend: {
   fontFamily: { sans: ['Inter','system-ui','sans-serif'] },
-  colors: { brand: { DEFAULT: '{{ $cor1 }}', accent: '{{ $cor2 }}' } }
+  colors: { brand: { DEFAULT: '{{ $cor1 }}', accent: '{{ $cor2 }}', line: '{{ $cor3 }}' } }
 }}}
 </script>
 <script>
@@ -77,13 +78,16 @@ document.addEventListener('alpine:init', () => {
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 <style type="text/tailwindcss">
-  :root { --cor1: {{ $cor1 }}; --cor2: {{ $cor2 }}; }
+  :root { --cor1: {{ $cor1 }}; --cor2: {{ $cor2 }}; --cor3: {{ $cor3 }}; }
   html { -webkit-tap-highlight-color: transparent; }
   html, body { overflow-x: hidden; max-width: 100%; }
   body { background: #eef2f7; }
   .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-semibold text-sm transition active:scale-[.98] disabled:opacity-50; min-height: 48px; }
   .btn-primary { background: var(--cor1); color: #fff; }
   .btn-accent { background: var(--cor2); color: #fff; }
+  .text-cor3 { color: var(--cor3); }
+  .bg-cor3 { background: var(--cor3); }
+  .border-cor3 { border-color: var(--cor3); }
   .btn-ghost { @apply bg-white border border-slate-200 text-slate-700 hover:bg-slate-50; }
   .btn-danger { @apply bg-red-600 text-white; }
   .btn-sm { min-height: 38px; @apply px-3 py-2 text-xs; }
@@ -348,7 +352,7 @@ document.addEventListener('alpine:init', () => {
     <button @click="menu=false" class="p-2">✕</button>
   </div>
   <nav class="p-3 space-y-3 text-sm flex-1 overflow-y-auto overscroll-contain pb-8">
-    @if(!$semBemVindo)<a href="{{ route('inicio') }}" @if($ativo(route('inicio'))) style="border-left:4px solid var(--cor1)" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo(route('inicio')) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
+    @if(!$semBemVindo)<a href="{{ route('inicio') }}" @if($ativo(route('inicio'))) style="border-left:4px solid var(--cor3)" @endif class="flex items-center gap-3 rounded-xl px-3 py-3 font-medium {{ $ativo(route('inicio')) ? 'bg-slate-100 text-[var(--cor1)] font-semibold' : 'text-slate-700' }}">
       <span class="text-lg w-6 text-center">👋</span>Bem Vindo
     </a>@endif
     @foreach($grupos as $titulo => $itens)
@@ -358,7 +362,7 @@ document.addEventListener('alpine:init', () => {
           @php
             $ic = $it['c'] ?? null; $at = $ativo($it['r']);
             if ($at && $ic) { $cls = 'font-bold text-white'; $sty = 'background:'.$ic; }
-            elseif ($at) { $cls = 'bg-slate-100 text-[var(--cor1)] font-semibold'; $sty = 'border-left:4px solid var(--cor1)'; }
+            elseif ($at) { $cls = 'bg-slate-100 text-[var(--cor1)] font-semibold'; $sty = 'border-left:4px solid var(--cor3)'; }
             elseif ($ic) { $cls = 'font-bold'; $sty = 'color:'.$ic.';background:color-mix(in srgb,'.$ic.' 10%,white);border-left:4px solid '.$ic; }
             else { $cls = 'text-slate-700 font-medium'; $sty = ''; }
           @endphp

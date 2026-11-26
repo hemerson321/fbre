@@ -38,6 +38,7 @@ class EmpresaController extends Controller
             'pix' => 'nullable|string|max:150',
             'cor_primaria' => 'required|string|max:9',
             'cor_secundaria' => 'required|string|max:9',
+            'cor_terciaria' => 'nullable|string|max:9',
             'rodape_comprovante' => 'nullable|string|max:500',
             'aviso_comprovante' => 'nullable|string|max:300',
             'logo' => 'nullable|image|max:2048',

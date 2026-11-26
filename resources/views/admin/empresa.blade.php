@@ -53,6 +53,7 @@
     <p class="text-[11px] text-slate-400 mt-0.5">Na DK-1201 (29×90) o papel é estreito: no horizontal o sistema gira o conteúdo 90° pra caber e o texto sair deitado.</p></div>
   <div><label class="label">Cor principal</label><input name="cor_primaria" type="color" class="input !p-1 h-12" value="{{ old('cor_primaria',$empresa->cor_primaria) }}"></div>
   <div><label class="label">Cor de destaque</label><input name="cor_secundaria" type="color" class="input !p-1 h-12" value="{{ old('cor_secundaria',$empresa->cor_secundaria) }}"></div>
+  <div><label class="label">Cor dos detalhes / linhas</label><input name="cor_terciaria" type="color" class="input !p-1 h-12" value="{{ old('cor_terciaria',$empresa->cor_terciaria ?? '#f5a623') }}"></div>
   <div class="sm:col-span-2 flex items-center gap-4"><div>@if($empresa->logo)<img src="/{{ $empresa->logo }}" class="h-16 rounded-lg border">@endif</div><div class="flex-1"><label class="label">Logo (PNG/JPG)</label><input name="logo" type="file" accept="image/*" class="input !py-2.5"></div></div>
 </div>
 <div class="border-t pt-3 mt-1">
