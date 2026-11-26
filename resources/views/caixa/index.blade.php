@@ -168,7 +168,7 @@
       <div><label class="label">Forma</label>
         <select name="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select></div>
       <div @if($avNaPrest) style="display:none" @endif><label class="label">Transporte (p/ prestação) — vazio = caixa da agência</label>
-        <select name="embarcacao_id" class="input" x-model="emb" @change="viagemSel = (window.VIAGENS[emb] && window.VIAGENS[emb][0]) ? window.VIAGENS[emb][0].d : ''" @disabled($avNaPrest)>
+        <select name="embarcacao_id" class="input" x-model="emb" @change="viagemSel = (window.VIAGENS[$event.target.value] && window.VIAGENS[$event.target.value][0]) ? window.VIAGENS[$event.target.value][0].d : ''" @disabled($avNaPrest)>
           <option value="">— caixa da agência —</option>
           @foreach($transportes as $t)<option value="{{ $t->id }}">{{ $t->nome }}</option>@endforeach
         </select></div>
@@ -287,11 +287,14 @@
     </div>
     @endif
   </div>
-  <div class="cx-tiles">
-    <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">💵 Dinheiro</div><div class="text-xl font-extrabold mt-1">R$ {{ number_format($cxDinheiro,2,',','.') }}</div></div>
-    <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">⚡ Pix</div><div class="text-xl font-extrabold mt-1">R$ {{ number_format($cxPix,2,',','.') }}</div></div>
-    <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">💳 Cartão</div><div class="text-xl font-extrabold mt-1">R$ {{ number_format($cxCartao,2,',','.') }}</div></div>
-    <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">🎫 Vendas</div><div class="text-xl font-extrabold mt-1">{{ $cxVendas }}</div></div>
+  <div class="card p-4 flex flex-col gap-2">
+    <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Formas de pagamento</div>
+    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💵 Dinheiro</span><b class="font-extrabold">R$ {{ number_format($cxDinheiro,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">⚡ Pix</span><b class="font-extrabold">R$ {{ number_format($cxPix,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💳 Cartão</span><b class="font-extrabold">R$ {{ number_format($cxCartao,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between border-t pt-2 mt-0.5"><span class="text-[13px] font-bold text-slate-700">Total recebido</span><b class="font-extrabold text-emerald-600">R$ {{ number_format($entradas ?? 0,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[12px] text-slate-500">🏧 Maquineta dos proprietários</span><b class="font-bold text-slate-600">R$ {{ number_format($maqProprietarios ?? 0,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[12px] text-slate-500">🎫 Vendas</span><b class="font-bold text-slate-600">{{ $cxVendas }}</b></div>
   </div>
   <div class="card cx-avlist overflow-hidden flex flex-col">
     <div class="p-3 border-b flex items-center justify-between gap-2">
