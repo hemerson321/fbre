@@ -172,8 +172,8 @@ document.addEventListener('alpine:init', () => {
   if (! empty($grupos['Financeiro'] ?? [])) $subPassagens['Financeiro'] = $grupos['Financeiro'];
   if (! empty($grupos['Ferramentas'] ?? [])) $subPassagens['Ferramentas'] = $grupos['Ferramentas'];
   if ($u->ehDonoTransporte()) $grupos['Meu transporte'] = [['r'=>route('meu-transporte'), 'l'=>'Meu transporte', 'i'=>'🚤']];
-  if ($u->podeMarketing()) $grupos['Marketing'] = [
-      ['r'=>route('marketing.signage'), 'l'=>'TV indoor', 'i'=>'📺'],
+  if ($u->podeMarketing()) $grupos['Mídia Indoor'] = [
+      ['r'=>route('marketing.signage'), 'l'=>'TV indoor', 'i'=>'🖥️'],
       ['r'=>route('marketing.index'), 'l'=>'Áudio indoor', 'i'=>'🔊'],
   ];
   if ($u->isAdmin() || $u->isSuper()) {
@@ -227,7 +227,7 @@ document.addEventListener('alpine:init', () => {
     'Revendedor'    => ['🤝', '#0e7490'],
     'Meu transporte' => ['🚤', '#0e7490'],
     'Administração' => ['⚙️', '#334155'],
-    'Marketing'     => ['📣', '#be185d'],
+    'Mídia Indoor'  => ['📡', '#be185d'],
     'GERATEC'       => ['🛠️', '#334155'],
   ];
   if (! $coresPorModulo) { foreach ($metaGrupo as $k => $v) { $metaGrupo[$k][1] = $cor1; } }
