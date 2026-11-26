@@ -366,6 +366,7 @@ Route::middleware('auth')->group(function () {
         // Áudio indoor (áudio terminal)
         Route::get('/', [\App\Http\Controllers\MarketingController::class, 'index'])->name('index');
         Route::post('/tts', [\App\Http\Controllers\MarketingController::class, 'ttsSalvar'])->name('tts.salvar');
+        Route::post('/tts/testar', [\App\Http\Controllers\MarketingController::class, 'ttsTestar'])->name('tts.testar');
         Route::post('/terminal/{terminal?}', [\App\Http\Controllers\MarketingController::class, 'terminalSalvar'])->name('terminal.salvar');
         Route::delete('/terminal/{terminal}', [\App\Http\Controllers\MarketingController::class, 'terminalExcluir'])->name('terminal.excluir');
         Route::post('/audio/{audio?}', [\App\Http\Controllers\MarketingController::class, 'audioSalvar'])->name('audio.salvar');

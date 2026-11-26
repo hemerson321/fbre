@@ -58,6 +58,25 @@ class MarketingController extends Controller
         return back()->with('ok', 'Integrações de voz salvas.');
     }
 
+    /** Testa a voz configurada nas Integrações: gera uma frase curta e devolve o áudio (ou o erro exato). */
+    public function ttsTestar(Request $request)
+    {
+        $emp = Tenant::empresa();
+        $svc = app(\App\Services\SinteseVoz::class);
+        $prov = (string) ($emp?->config('tts_provider', 'openai'));
+        $texto = 'Atenção, senhores passageiros. Teste de voz do terminal.';
+        if ($prov === 'google') {
+            $b64 = $svc->sintetizarGoogle($texto, (string) $emp?->config('tts_google_voz', 'pt-BR-Chirp3-HD-Aoede'), (string) $emp?->config('tts_google_key'), (float) $emp?->config('tts_google_ritmo', 1.0));
+        } else {
+            $b64 = $svc->sintetizar($texto, (string) ($emp?->config('tts_openai_voz') ?: 'nova'), null, (string) ($emp?->config('tts_estilo') ?: ''));
+        }
+        if ($b64 !== '') {
+            return response()->json(['ok' => true, 'provedor' => $prov, 'audio' => 'data:audio/mp3;base64,'.$b64]);
+        }
+
+        return response()->json(['ok' => false, 'provedor' => $prov, 'msg' => $svc->ultimoErro ?: 'Não foi possível gerar a voz.']);
+    }
+
     // -------- Terminais --------
     public function terminalSalvar(Request $request, ?MarketingTerminal $terminal = null)
     {
@@ -113,14 +132,14 @@ class MarketingController extends Controller
             $a->arquivo = null;
             $a->save();
             // Gera o MP3 com voz de verdade (OpenAI TTS), reaproveitando o provedor OpenAI ativo da empresa.
-            $gerado = false;
+            $gerado = false; $motivoVoz = '';
             try {
                 $emp = Tenant::empresa();
                 $svc = app(\App\Services\SinteseVoz::class);
                 $estilo = (string) ($emp?->config('tts_estilo') ?: 'Narre em português do Brasil com voz feminina natural, calma, clara e acolhedora, como uma recepcionista de terminal de embarque anunciando aos passageiros. Boa dicção, ritmo tranquilo e sotaque brasileiro neutro. Soe humana, nunca robótica.');
                 $prov = $a->provedor ?: (string) ($emp?->config('tts_provider', 'openai'));
-                if ($prov === 'google' && $emp?->config('tts_google_key')) {
-                    $b64 = $svc->sintetizarGoogle($a->texto, (string) $emp->config('tts_google_voz', 'pt-BR-Chirp3-HD-Aoede'), (string) $emp->config('tts_google_key'), (float) $emp->config('tts_google_ritmo', 1.0));
+                if ($prov === 'google') {
+                    $b64 = $svc->sintetizarGoogle($a->texto, (string) $emp?->config('tts_google_voz', 'pt-BR-Chirp3-HD-Aoede'), (string) $emp?->config('tts_google_key'), (float) $emp?->config('tts_google_ritmo', 1.0));
                 } else {
                     $b64 = $svc->sintetizar($a->texto, (string) ($emp?->config('tts_openai_voz') ?: 'nova'), null, $estilo);
                 }
@@ -130,12 +149,15 @@ class MarketingController extends Controller
                     $a->arquivo = 'storage/'.$path;
                     $a->save();
                     $gerado = true;
+                } else {
+                    $motivoVoz = $svc->ultimoErro;
                 }
             } catch (\Throwable $e) {
+                $motivoVoz = $e->getMessage();
             }
             $this->apagar($antigo);
 
-            return back()->with('ok', ($editando ? 'Áudio atualizado. ' : 'Áudio "'.$a->nome.'" criado. ').($gerado ? '🔊 Voz gerada.' : 'Não consegui gerar a voz (confira Integrações / provedor) — por ora fala pela voz do navegador.'));
+            return back()->with('ok', ($editando ? 'Áudio atualizado. ' : 'Áudio "'.$a->nome.'" criado. ').($gerado ? '🔊 Voz gerada.' : '⚠️ Não gerei a voz: '.($motivoVoz ?: 'verifique as Integrações').' — por ora fala pela voz do navegador.'));
         } else {
             $a->texto = null;
             if ($request->hasFile('arquivo')) {

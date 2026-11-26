@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Log;
  */
 class SinteseVoz
 {
+    /** Último erro de síntese (pra mostrar ao operador quando a voz não gera). */
+    public string $ultimoErro = '';
+
     protected function tokenOpenAI(?string $pref = null): ?string
     {
         $pref = trim((string) $pref);
@@ -25,13 +28,15 @@ class SinteseVoz
     /** Sintetiza o texto em áudio (base64 mp3). $tokenPref = token OpenAI do agente (preferido). '' se não der. */
     public function sintetizar(string $texto, string $voz = 'alloy', ?string $tokenPref = null, string $instrucoes = ''): string
     {
+        $this->ultimoErro = '';
         $texto = trim($texto);
-        if ($texto === '') return '';
+        if ($texto === '') { $this->ultimoErro = 'Texto vazio.'; return ''; }
         $token = $this->tokenOpenAI($tokenPref);
-        if (! $token) { Log::warning('SinteseVoz: nenhum provedor OpenAI ativo para gerar áudio.'); return ''; }
+        if (! $token) { $this->ultimoErro = 'Nenhum provedor OpenAI ativo (configure em Provedores de IA).'; Log::warning('SinteseVoz: nenhum provedor OpenAI ativo para gerar áudio.'); return ''; }
 
         $texto = mb_substr($texto, 0, 1800); // limite seguro de TTS
         $instrucoes = trim($instrucoes);
+        $this->ultimoErro = 'A OpenAI não retornou áudio (verifique se a chave tem acesso a TTS).';
 
         foreach (['gpt-4o-mini-tts', 'tts-1'] as $modelo) {
             try {
@@ -65,9 +70,11 @@ class SinteseVoz
     /** Google Cloud Text-to-Speech (Chirp 3 HD, WaveNet, Neural2). Retorna base64 mp3 ('' se falhar). */
     public function sintetizarGoogle(string $texto, string $voz, string $apiKey, float $ritmo = 1.0): string
     {
+        $this->ultimoErro = '';
         $texto = trim($texto);
         $apiKey = trim($apiKey);
-        if ($texto === '' || $apiKey === '') return '';
+        if ($texto === '') { $this->ultimoErro = 'Texto vazio.'; return ''; }
+        if ($apiKey === '') { $this->ultimoErro = 'Sem chave da API do Google nas Integrações.'; return ''; }
         $texto = mb_substr($texto, 0, 1800);
         $voz = $voz ?: 'pt-BR-Chirp3-HD-Aoede';
         $audio = ['audioEncoding' => 'MP3'];
@@ -81,9 +88,13 @@ class SinteseVoz
             if ($r->successful()) {
                 $b64 = (string) $r->json('audioContent');
                 if ($b64 !== '') return $b64; // o Google já devolve base64
+                $this->ultimoErro = 'O Google respondeu sem áudio.';
+            } else {
+                $this->ultimoErro = 'Google HTTP '.$r->status().': '.(string) ($r->json('error.message') ?: mb_substr((string) $r->body(), 0, 220));
             }
-            Log::warning('Google TTS falhou HTTP '.$r->status().': '.mb_substr((string) $r->body(), 0, 200));
+            Log::warning('Google TTS: '.$this->ultimoErro);
         } catch (\Throwable $e) {
+            $this->ultimoErro = 'Erro de conexão com o Google: '.$e->getMessage();
             Log::warning('Google TTS erro: '.$e->getMessage());
         }
         return '';

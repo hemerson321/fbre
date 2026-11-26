@@ -212,7 +212,16 @@
   @endif
 
   {{-- INTEGRAÇÕES (VOZ) --}}
-  <div class="card overflow-hidden" x-data="{ prov: @js($tts['provider']) }">
+  <div class="card overflow-hidden" x-data="{ prov: @js($tts['provider']), testando:false, okmsg:'', erro:'',
+    async testar(){ this.testando=true; this.okmsg=''; this.erro='';
+      try{
+        const r = await fetch(@js(route('marketing.tts.testar')), {method:'POST', headers:{'X-CSRF-TOKEN': @js(csrf_token()), 'Accept':'application/json'}});
+        const d = await r.json();
+        if(d.ok){ try{ new Audio(d.audio).play(); }catch(e){} this.okmsg = 'Tocou pela voz do '+(d.provedor==='google'?'Google':'OpenAI')+' ✓'; }
+        else { this.erro = d.msg || 'Não foi possível gerar a voz.'; }
+      }catch(e){ this.erro = 'Erro: '+e; }
+      this.testando=false;
+    } }">
     <div class="p-3 border-b bg-slate-50 font-bold text-sm text-slate-700">🔌 Integrações · voz do áudio falado</div>
     <form method="post" action="{{ route('marketing.tts.salvar') }}" class="p-3 space-y-3">
       @csrf
@@ -264,7 +273,13 @@
         <p class="text-[11px] text-slate-400">Precisa ativar a <b>Cloud Text-to-Speech API</b> e gerar uma <b>chave de API</b> no Google Cloud (com faturamento ativo).</p>
       </div>
 
-      <button class="btn btn-primary btn-sm">Salvar integrações</button>
+      <div class="flex items-center gap-2 flex-wrap">
+        <button class="btn btn-primary btn-sm">Salvar integrações</button>
+        <button type="button" @click="testar()" :disabled="testando" class="btn btn-ghost btn-sm" x-text="testando ? 'Testando…' : '🔊 Testar voz'"></button>
+      </div>
+      <p class="text-[12px] text-emerald-700 font-semibold" x-show="okmsg" x-text="okmsg" x-cloak></p>
+      <p class="text-[12px] text-rose-600 font-semibold" x-show="erro" x-cloak><span x-text="erro"></span></p>
+      <p class="text-[11px] text-slate-400">Salve antes de testar. O teste usa o provedor e a voz salvos aqui.</p>
     </form>
   </div>
 
