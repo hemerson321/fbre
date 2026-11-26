@@ -7,7 +7,7 @@
   #barra .b-pdf{background:#2aa8e0;color:#fff}
   #barra .b-wa{background:#22c55e;color:#fff}
   #barra .b-img{background:#f5a623;color:#3a2600}
-  @media print{ #barra{display:none!important} body{background:#fff!important} }
+  @media print{ #barra{display:none!important} .ticket{box-shadow:none!important} }
   @media (max-width:820px){ #folha{zoom:.9} }
 </style>
 <div id="barra">
@@ -16,6 +16,7 @@
   <button type="button" class="b-wa" onclick="DOC.whats(this)">📲 Enviar no WhatsApp</button>
   <button type="button" class="b-img" onclick="DOC.copiar(this)">🖼️ Copiar imagem</button>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 (function(){
@@ -28,11 +29,12 @@
   function baixar(blob,nome){ var u=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=u; a.download=nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(u);},1500); }
   function busy(btn,on,txt){ if(!btn||!btn.innerHTML){return;} if(on){ btn._t=btn.innerHTML; btn.disabled=true; btn.innerHTML='⏳'; } else { btn.innerHTML=txt||btn._t; setTimeout(function(){ btn.innerHTML=btn._t; btn.disabled=false; },1300); } }
   window.DOC={
-    imprimir:function(){ window.print(); },
+    imprimir:function(){ try{ if(window.self!==window.top){ var u=location.pathname+location.search+(location.search?'&':'?')+'autoprint=1'; window.open(u,'_blank'); return; } }catch(e){} window.print(); },
     pdf:function(btn){ busy(btn,true); gerar(function(){ baixar(_blob,NOME); busy(btn,false,'✅'); }, function(m){ busy(btn,false,'✖'); alert(m); }); },
     whats:function(btn){ busy(btn,true); gerar(function(){ busy(btn,false,'✅'); if(_file && navigator.canShare && navigator.canShare({files:[_file]})){ navigator.share({files:[_file],title:TITULO,text:TITULO}).catch(function(){}); } else { baixar(_blob,NOME); alert('PDF baixado. No WhatsApp, toque no clipe 📎 e anexe o PDF pra enviar.'); } }, function(m){ busy(btn,false,'✖'); alert(m); }); },
     copiar:function(btn){ busy(btn,true); try{ html2canvas(alvo(),{scale:2,useCORS:true,backgroundColor:'#ffffff'}).then(function(cv){ cv.toBlob(function(blob){ if(!blob){ busy(btn,false,'✖'); return; } if(navigator.clipboard && window.ClipboardItem){ navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).then(function(){ busy(btn,false,'✅'); }).catch(function(){ baixar(blob,NOME.replace('.pdf','.png')); busy(btn,false,'✅'); }); } else { baixar(blob,NOME.replace('.pdf','.png')); busy(btn,false,'✅'); } },'image/png'); }).catch(function(e){ busy(btn,false,'✖'); alert('Erro: '+e.message); }); }catch(e){ busy(btn,false,'✖'); alert('Erro: '+e.message); } }
   };
+  if(new URLSearchParams(location.search).get('autoprint')){ window.addEventListener('load', function(){ setTimeout(function(){ try{ window.print(); }catch(e){} }, 350); }); }
   if(MODO==='pdf'){ setTimeout(function(){ gerar(function(){ if(_file && navigator.canShare && navigator.canShare({files:[_file]})){ navigator.share({files:[_file],title:TITULO,text:TITULO}).catch(function(){ baixar(_blob,NOME); }); } else { baixar(_blob,NOME); } }); },450); }
 })();
 </script>
