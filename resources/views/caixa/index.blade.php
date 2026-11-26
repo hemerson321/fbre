@@ -145,11 +145,13 @@
 </form>
 @endif
 @if($podeAvulso && ! ($ehRelatorio ?? false))
-<div x-data="{open:false, tipo:'entrada', emb:'{{ $focoPrest ? (int) $transporteId : '' }}'}" class="no-print">
+<div x-data="{open:false, tipo:'entrada', emb:'{{ $focoPrest ? (int) $transporteId : '' }}'}" class="no-print" @abrir-avulso.window="tipo=$event.detail.tipo; open=true">
+  @if($focoPrest)
   <div class="flex gap-2">
     <button type="button" @click="tipo='entrada';open=true" class="btn btn-sm text-white" style="background:#059669">➕ Entrada avulsa</button>
     <button type="button" @click="tipo='saida';open=true" class="btn btn-sm text-white" style="background:#e11d48">➖ Saída avulsa</button>
   </div>
+  @endif
   <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3" @click="open=false">
     <form method="post" action="{{ route('caixa.avulso') }}" class="bg-white rounded-2xl p-4 w-full max-w-sm space-y-3" @click.stop>
       @csrf
@@ -260,16 +262,39 @@
   @if(($periodo ?? 'hoje') !== 'hoje')<a href="{{ route('caixa.index') }}" class="underline text-slate-400 ml-1">voltar p/ hoje</a>@endif
 </form>
 @endif
-<div class="card p-4">
-  <div class="flex items-center justify-between gap-4 flex-wrap">
-    <div>
-      <div class="text-[11px] uppercase tracking-wide text-slate-400">No caixa agora</div>
-      <div class="text-[30px] leading-none font-extrabold mt-1" style="color:var(--cor1)">R$ {{ number_format($liquidoAgencia ?? $total,2,',','.') }}</div>
+@php
+  $navy = \App\Support\Tenant::empresa()?->cor_primaria ?: '#0b1a33';
+  $pmV = fn ($k) => (float) ($porMeio[$k]->valor ?? 0);
+  $cxDinheiro = $pmV('dinheiro');
+  $cxPix      = $pmV('pix_manual') + $pmV('pix_auto');
+  $cxCartao   = $pmV('debito') + $pmV('credito');
+  $cxVendas   = (int) collect($porCategoria ?? [])->sum('qtd');
+@endphp
+<style>
+  .cx-painel{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px}
+  .cx-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+  @media (max-width:820px){ .cx-painel{grid-template-columns:1fr} }
+</style>
+<div class="cx-painel">
+  <div class="rounded-2xl p-5 text-white flex flex-col" style="background:linear-gradient(135deg, {{ $navy }}, color-mix(in srgb, {{ $navy }} 60%, #000)); box-shadow:0 10px 26px -14px color-mix(in srgb, {{ $navy }} 70%, #000)">
+    <div class="text-[11px] font-bold uppercase tracking-wider" style="color:rgba(255,255,255,.62)">No caixa agora</div>
+    <div class="font-extrabold leading-none mt-2 mb-4" style="font-size:clamp(34px,6vw,56px);color:#34d399">R$ {{ number_format($liquidoAgencia ?? $total,2,',','.') }}</div>
+    <div class="flex gap-8">
+      <div><div class="text-[10px] font-bold uppercase tracking-wide" style="color:rgba(255,255,255,.58)">Recebeu ↑</div><div class="text-lg font-extrabold" style="color:#34d399">R$ {{ number_format($entradas ?? 0,2,',','.') }}</div></div>
+      <div><div class="text-[10px] font-bold uppercase tracking-wide" style="color:rgba(255,255,255,.58)">Saídas ↓</div><div class="text-lg font-extrabold" style="color:#fb7185">R$ {{ number_format($saidas,2,',','.') }}</div></div>
     </div>
-    <div class="flex items-center gap-6">
-      <div class="text-right"><div class="text-[11px] uppercase tracking-wide text-slate-400">Recebeu</div><div class="text-lg font-bold text-slate-700">R$ {{ number_format($entradas ?? 0,2,',','.') }}</div></div>
-      <div class="text-right"><div class="text-[11px] uppercase tracking-wide text-slate-400">Saídas</div><div class="text-lg font-bold text-slate-500">R$ {{ number_format($saidas,2,',','.') }}</div></div>
+    @if($podeAvulso)
+    <div class="flex gap-2 mt-auto pt-4" style="border-top:1px solid rgba(255,255,255,.14);margin-top:18px">
+      <button type="button" onclick="window.dispatchEvent(new CustomEvent('abrir-avulso',{detail:{tipo:'entrada'}}))" class="btn btn-sm text-white flex-1" style="background:#059669">➕ Entrada avulsa</button>
+      <button type="button" onclick="window.dispatchEvent(new CustomEvent('abrir-avulso',{detail:{tipo:'saida'}}))" class="btn btn-sm text-white flex-1" style="background:#e11d48">➖ Saída avulsa</button>
     </div>
+    @endif
+  </div>
+  <div class="cx-tiles">
+    <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">💵 Dinheiro</div><div class="text-xl font-extrabold mt-1">R$ {{ number_format($cxDinheiro,2,',','.') }}</div></div>
+    <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">⚡ Pix</div><div class="text-xl font-extrabold mt-1">R$ {{ number_format($cxPix,2,',','.') }}</div></div>
+    <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">💳 Cartão</div><div class="text-xl font-extrabold mt-1">R$ {{ number_format($cxCartao,2,',','.') }}</div></div>
+    <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">🎫 Vendas</div><div class="text-xl font-extrabold mt-1">{{ $cxVendas }}</div></div>
   </div>
 </div>
 
