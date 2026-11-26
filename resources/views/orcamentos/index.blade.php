@@ -87,10 +87,17 @@
   <p class="text-[11px] text-slate-400 text-center">O orçamento é salvo na lista abaixo e abre para imprimir, baixar o PDF ou enviar no WhatsApp.</p>
 
   {{-- Orçamentos gerados --}}
-  <div class="card p-4 space-y-2" x-show="salvos.length" x-cloak>
+  <div class="card p-4 space-y-2">
     <div class="flex items-center justify-between">
       <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Orçamentos gerados</div>
-      <span class="text-[10px] text-slate-400" x-text="salvos.length + (salvos.length===1?' orçamento':' orçamentos')"></span>
+      <span class="text-[10px] text-slate-400" x-show="salvos.length" x-text="salvos.length + (salvos.length===1?' orçamento':' orçamentos')"></span>
+    </div>
+    <div x-show="!salvos.length" class="py-1">
+      @if(! $orcTabela && auth()->user()?->admin)
+        <p class="text-sm text-amber-600">⚠️ Tabela de orçamentos ainda não criada. Rode <code>php artisan migrate</code> no servidor para salvar e listar os orçamentos.</p>
+      @else
+        <p class="text-sm text-slate-400">Nenhum orçamento gerado ainda. Ao gerar, ele aparece aqui com o cliente e o operador que criou.</p>
+      @endif
     </div>
     <div class="space-y-2">
       <template x-for="o in salvos" :key="o.id">
@@ -115,6 +122,7 @@
   $embsJs = $embarcacoes->map(fn ($e) => ['id' => $e->id, 'nome' => $e->nome])->values();
   $tiposJs = $tipos->map(fn ($t) => ['id' => $t->id, 'nome' => $t->nome, 'percentual' => $t->percentual, 'pct_sobre' => $t->pct_sobre ?? null, 'paga_taxa' => (bool) $t->paga_taxa, 'modo' => $t->modo ?? 'valor', 'normal' => (bool) $t->eh_normal, 'tarifa_padrao' => $t->tarifa_padrao ?? 0, 'alimentacao_padrao' => $t->alimentacao_padrao ?? 0])->values();
   $orcListJs = ($orcList ?? collect())->values();
+  $orcTabela = \Illuminate\Support\Facades\Schema::hasTable('orcamentos');
 @endphp
 <script>
 function orc(){
