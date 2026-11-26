@@ -270,6 +270,9 @@
   $cxPix      = $pmV('pix_manual') + $pmV('pix_auto');
   $cxCartao   = $pmV('debito') + $pmV('credito');
   $cxVendas   = (int) collect($porCategoria ?? [])->sum('qtd');
+  $cxAvL      = $avulsosLista ?? collect();
+  $cxAvE      = (float) $cxAvL->where('tipo_mov', 'entrada')->sum('valor');
+  $cxAvS      = (float) $cxAvL->where('tipo_mov', 'saida')->sum('valor');
 @endphp
 <style>
   .cx-painel{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px}
@@ -296,6 +299,8 @@
     <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">⚡ Pix</div><div class="text-xl font-extrabold mt-1">R$ {{ number_format($cxPix,2,',','.') }}</div></div>
     <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">💳 Cartão</div><div class="text-xl font-extrabold mt-1">R$ {{ number_format($cxCartao,2,',','.') }}</div></div>
     <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">🎫 Vendas</div><div class="text-xl font-extrabold mt-1">{{ $cxVendas }}</div></div>
+    <div class="card p-3" style="border-left:3px solid #059669"><div class="text-[11px] font-semibold uppercase text-slate-500">➕ Entradas avulsas</div><div class="text-xl font-extrabold mt-1 text-emerald-600">R$ {{ number_format($cxAvE,2,',','.') }}</div></div>
+    <div class="card p-3" style="border-left:3px solid #e11d48"><div class="text-[11px] font-semibold uppercase text-slate-500">➖ Saídas avulsas</div><div class="text-xl font-extrabold mt-1 text-rose-600">R$ {{ number_format($cxAvS,2,',','.') }}</div></div>
   </div>
 </div>
 @endunless
