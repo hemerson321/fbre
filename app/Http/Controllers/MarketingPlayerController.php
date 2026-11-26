@@ -20,9 +20,11 @@ class MarketingPlayerController extends Controller
     public function show(Request $request, string $token)
     {
         $terminal = $this->terminal($token);
-        $empresa = (string) (Empresa::find($terminal->empresa_id)?->nome ?? '');
+        $emp = Empresa::find($terminal->empresa_id);
+        $empresa = (string) ($emp?->nome ?? '');
+        $sinoTipo = (string) ($emp?->config('tts_sino_tipo', 'aviao'));
 
-        return response()->view('marketing.player', ['terminal' => $terminal, 'empresa' => $empresa])
+        return response()->view('marketing.player', ['terminal' => $terminal, 'empresa' => $empresa, 'sinoTipo' => $sinoTipo])
             ->header('X-Frame-Options', 'SAMEORIGIN');
     }
 

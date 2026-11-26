@@ -60,7 +60,7 @@
   {{-- ÁUDIOS --}}
   <div class="card overflow-hidden" x-data="{
       modalNovo:false, editId:0,
-      baseAudio:@js(url('/marketing/audio')), baseTestar:@js(route('marketing.audio.testar')), csrf:@js(csrf_token()),
+      baseAudio:@js(url('/marketing/audio')), baseTestar:@js(route('marketing.audio.testar')), csrf:@js(csrf_token()), sinoTipo:@js($tts['sino_tipo'] ?? 'aviao'),
       f:{ nome:'', tipo:'tts', texto:'', provedor:'google', voz:'nova', vozGoogle:'pt-BR-Neural2-A', estilo:'', sino:true },
       testando:false, testMsg:'', testErro:'', audioEl:null,
       resetF(){ this.f={ nome:'', tipo:'tts', texto:'', provedor:'google', voz:'nova', vozGoogle:'pt-BR-Neural2-A', estilo:'', sino:true }; this.testMsg=''; this.testErro=''; },
@@ -80,7 +80,7 @@
           fd.append('estilo', this.f.estilo||'');
           const r=await fetch(this.baseTestar, {method:'POST', headers:{'X-CSRF-TOKEN':this.csrf,'Accept':'application/json'}, body:fd});
           const d=await r.json();
-          if(d.ok){ try{ if(this.f.sino && window.sinoAeroporto){ await window.sinoAeroporto(); } }catch(e){} try{ if(this.audioEl){ this.audioEl.pause(); } this.audioEl=new Audio(d.audio); this.audioEl.play(); }catch(e){} this.testMsg='Tocando pela voz do '+(d.provedor==='google'?'Google':'OpenAI')+' ✓'; }
+          if(d.ok){ try{ if(this.f.sino && window.sinoAeroporto){ await window.sinoAeroporto(this.sinoTipo); } }catch(e){} try{ if(this.audioEl){ this.audioEl.pause(); } this.audioEl=new Audio(d.audio); this.audioEl.play(); }catch(e){} this.testMsg='Tocando pela voz do '+(d.provedor==='google'?'Google':'OpenAI')+' ✓'; }
           else { this.testErro=d.msg||'Não deu pra gerar a voz.'; }
         }catch(e){ this.testErro='Erro: '+e; }
         this.testando=false;
@@ -238,7 +238,7 @@
   @endif
 
   {{-- INTEGRAÇÕES (VOZ) --}}
-  <div class="card overflow-hidden" x-data="{ prov: @js($tts['provider']), testando:false, okmsg:'', erro:'',
+  <div class="card overflow-hidden" x-data="{ prov: @js($tts['provider']), sinoSel: @js($tts['sino_tipo'] ?? 'aviao'), testando:false, okmsg:'', erro:'',
     async testar(){ this.testando=true; this.okmsg=''; this.erro='';
       try{
         const r = await fetch(@js(route('marketing.tts.testar')), {method:'POST', headers:{'X-CSRF-TOKEN': @js(csrf_token()), 'Accept':'application/json'}});
@@ -263,6 +263,19 @@
       <div><label class="label">Estilo / como se comportar <span class="text-slate-400 font-normal">(ex.: voz de aeromoça, calma e clara)</span></label>
         <textarea name="tts_estilo" class="input" rows="2" placeholder="Narre com voz feminina, calma, clara e acolhedora, sotaque brasileiro neutro.">{{ $tts['estilo'] }}</textarea>
         <p class="text-[11px] text-slate-400 mt-1">Melhor aproveitado na OpenAI (gpt-4o-mini-tts). No Google, a voz escolhida já define o tom.</p>
+      </div>
+
+      <div>
+        <label class="label">🔔 Som do sinal (toca antes da fala)</label>
+        <div class="flex items-center gap-2 flex-wrap">
+          <select name="tts_sino_tipo" x-model="sinoSel" class="input max-w-[260px]">
+            <option value="aviao">✈️ Avião — dim-dom de cabine (tipo Azul)</option>
+            <option value="aeroporto">🔔 Aeroporto — bing-bong</option>
+            <option value="suave">🎵 Suave — 3 notinhas</option>
+          </select>
+          <button type="button" @click="window.sinoAeroporto && window.sinoAeroporto(sinoSel)" class="btn btn-ghost btn-sm">🔊 Ouvir o sinal</button>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">É o sininho que toca antes de cada anúncio (quando o áudio está com o sino ligado). Clique em Ouvir e escolha o que ficar mais parecido.</p>
       </div>
 
       <div x-show="prov==='openai'" x-cloak class="space-y-2 rounded-xl border border-slate-200 p-3">
@@ -344,7 +357,7 @@
 
 {{-- Sino "tim-tim" de aeroporto (Web Audio) usado no botão Ouvir --}}
 <script>
-window.sinoAeroporto = function(){
+window.sinoAeroporto = function(tipo){
   return new Promise(function(resolve){
     try{
       var AC = window.AudioContext || window.webkitAudioContext;
@@ -352,24 +365,25 @@ window.sinoAeroporto = function(){
       var ctx = window._sinoCtx;
       if(!ctx){ resolve(); return; }
       if(ctx.state==='suspended'){ ctx.resume(); }
-      var t0 = ctx.currentTime + 0.03;
-      var notas = [ {f:784.00,t:0.00}, {f:523.25,t:0.42} ];
-      var fim = t0;
+      var notas = (tipo==='aeroporto') ? [ {f:783.99,t:0.00},{f:523.25,t:0.42} ]
+                : (tipo==='suave')     ? [ {f:523.25,t:0.00},{f:659.25,t:0.30},{f:783.99,t:0.60} ]
+                :                        [ {f:587.33,t:0.00},{f:440.00,t:0.44} ];
+      var t0 = ctx.currentTime + 0.03, fim = t0;
       notas.forEach(function(n){
         var sct = t0 + n.t;
-        [[1,0.5],[2.0,0.16]].forEach(function(p){
+        [[1,0.5],[2.0,0.14],[3.0,0.05]].forEach(function(p){
           var osc=ctx.createOscillator(), g=ctx.createGain();
           osc.type='sine'; osc.frequency.value=n.f*p[0];
           g.gain.setValueAtTime(0.0001,sct);
-          g.gain.exponentialRampToValueAtTime(p[1],sct+0.012);
-          g.gain.exponentialRampToValueAtTime(0.0001,sct+1.15);
+          g.gain.exponentialRampToValueAtTime(p[1],sct+0.014);
+          g.gain.exponentialRampToValueAtTime(0.0001,sct+1.35);
           osc.connect(g); g.connect(ctx.destination);
-          osc.start(sct); osc.stop(sct+1.2);
+          osc.start(sct); osc.stop(sct+1.4);
         });
-        fim=Math.max(fim,sct+1.15);
+        fim=Math.max(fim,sct+1.35);
       });
-      var ms=(fim-ctx.currentTime)*1000-220;
-      setTimeout(resolve, Math.max(350,ms));
+      var ms=(fim-ctx.currentTime)*1000-260;
+      setTimeout(resolve, Math.max(380,ms));
     }catch(e){ resolve(); }
   });
 };

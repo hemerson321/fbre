@@ -30,6 +30,7 @@ class MarketingController extends Controller
             'google_tem_sa' => filled($emp?->config('tts_google_sa')),
             'google_voz' => (string) ($emp?->config('tts_google_voz', 'pt-BR-Chirp3-HD-Aoede')),
             'google_ritmo' => (float) ($emp?->config('tts_google_ritmo', 1.0)),
+            'sino_tipo' => (string) ($emp?->config('tts_sino_tipo', 'aviao')),
         ];
 
         return view('marketing.index', compact('terminais', 'audios', 'programacoes', 'disparos', 'tts'));
@@ -46,10 +47,12 @@ class MarketingController extends Controller
             'tts_google_sa' => 'nullable|string|max:8000',
             'tts_google_voz' => 'nullable|string|max:60',
             'tts_google_ritmo' => 'nullable|numeric|min:0.5|max:1.5',
+            'tts_sino_tipo' => 'nullable|in:aviao,aeroporto,suave',
         ]);
         $e = Tenant::empresa();
         $cfg = $e->config ?? [];
         $cfg['tts_provider'] = $data['tts_provider'];
+        $cfg['tts_sino_tipo'] = $data['tts_sino_tipo'] ?? 'aviao';
         $cfg['tts_openai_voz'] = $data['tts_openai_voz'] ?: 'nova';
         $cfg['tts_estilo'] = trim((string) ($data['tts_estilo'] ?? ''));
         $cfg['tts_google_voz'] = $data['tts_google_voz'] ?: 'pt-BR-Chirp3-HD-Aoede';

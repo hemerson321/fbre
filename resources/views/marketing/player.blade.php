@@ -43,6 +43,7 @@
 <script>
 (function(){
   var DADOS = @json(route('audio.dados', $terminal->token));
+  var SINO_TIPO = @json($sinoTipo ?? 'aviao');
   var played = [];
   try { played = JSON.parse(localStorage.getItem('audioterm_played') || '[]') || []; } catch(e){ played = []; }
   function marca(oid){ played.push(oid); if(played.length>400) played = played.slice(-400); try{ localStorage.setItem('audioterm_played', JSON.stringify(played)); }catch(e){} }
@@ -80,30 +81,34 @@
     }catch(e){}
     return _actx;
   }
-  // Sino "tim-tim" de aeroporto (dois tons) via Web Audio — sem arquivo. Resolve a Promise quando termina.
-  function tocaSino(){
+  // Sino de cabine de aviao via Web Audio (sem arquivo). tipo: aviao | aeroporto | suave.
+  function seqSino(tipo){
+    if(tipo==='aeroporto') return [ {f:783.99,t:0.00}, {f:523.25,t:0.42} ];                   // bing-bong agudo->grave
+    if(tipo==='suave')     return [ {f:523.25,t:0.00}, {f:659.25,t:0.30}, {f:783.99,t:0.60} ]; // 3 notas subindo
+    return [ {f:587.33,t:0.00}, {f:440.00,t:0.44} ];                                           // 'aviao': dim-dom grave (cabine)
+  }
+  function tocaSino(tipo){
     return new Promise(function(resolve){
       var ctx = ensureAudio();
       if(!ctx){ resolve(); return; }
       try{
         var t0 = ctx.currentTime + 0.03;
-        var notas = [ {f:784.00, t:0.00}, {f:523.25, t:0.42} ]; // Sol5 -> Do5 (bing-bong)
-        var fim = t0;
+        var notas = seqSino(tipo), fim = t0;
         notas.forEach(function(n){
           var s = t0 + n.t;
-          [[1,0.5],[2.0,0.16]].forEach(function(p){
+          [[1,0.5],[2.0,0.14],[3.0,0.05]].forEach(function(p){   // partais -> timbre de sino quente
             var osc = ctx.createOscillator(), g = ctx.createGain();
             osc.type = 'sine'; osc.frequency.value = n.f * p[0];
             g.gain.setValueAtTime(0.0001, s);
-            g.gain.exponentialRampToValueAtTime(p[1], s + 0.012);
-            g.gain.exponentialRampToValueAtTime(0.0001, s + 1.15);
+            g.gain.exponentialRampToValueAtTime(p[1], s + 0.014);
+            g.gain.exponentialRampToValueAtTime(0.0001, s + 1.35);
             osc.connect(g); g.connect(ctx.destination);
-            osc.start(s); osc.stop(s + 1.2);
+            osc.start(s); osc.stop(s + 1.4);
           });
-          fim = Math.max(fim, s + 1.15);
+          fim = Math.max(fim, s + 1.35);
         });
-        var ms = (fim - ctx.currentTime) * 1000 - 220; // entra na fala pouco antes do decay acabar
-        setTimeout(resolve, Math.max(350, ms));
+        var ms = (fim - ctx.currentTime) * 1000 - 260;
+        setTimeout(resolve, Math.max(380, ms));
       }catch(e){ resolve(); }
     });
   }
@@ -135,7 +140,7 @@
       }
       done();
     }
-    if(it.sino){ escondeHint(); tocaSino().then(falar); }
+    if(it.sino){ escondeHint(); tocaSino(SINO_TIPO).then(falar); }
     else { falar(); }
   }
   function drena(){
