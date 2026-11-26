@@ -145,13 +145,8 @@
 </form>
 @endif
 @if($podeAvulso && ! ($ehRelatorio ?? false))
-<div x-data="{open:false, tipo:'entrada', emb:'{{ $focoPrest ? (int) $transporteId : '' }}'}" class="no-print" @abrir-avulso.window="tipo=$event.detail.tipo; open=true">
-  @if($focoPrest)
-  <div class="flex gap-2">
-    <button type="button" @click="tipo='entrada';open=true" class="btn btn-sm text-white" style="background:#059669">➕ Entrada avulsa</button>
-    <button type="button" @click="tipo='saida';open=true" class="btn btn-sm text-white" style="background:#e11d48">➖ Saída avulsa</button>
-  </div>
-  @endif
+<script>window.VIAGENS = @json($viagensTransporte ?? []);</script>
+<div x-data="{open:false, tipo:'entrada', emb:'{{ $focoPrest ? (int) $transporteId : '' }}', viagemSel:''}" class="no-print" @abrir-avulso.window="tipo=$event.detail.tipo; open=true">
   <div x-show="open" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3" @click="open=false">
     <form method="post" action="{{ route('caixa.avulso') }}" class="bg-white rounded-2xl p-4 w-full max-w-sm space-y-3" @click.stop>
       @csrf
@@ -173,23 +168,19 @@
       <div><label class="label">Forma</label>
         <select name="meio" class="input"><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="debito">Débito</option><option value="credito">Crédito</option></select></div>
       <div @if($avNaPrest) style="display:none" @endif><label class="label">Transporte (p/ prestação) — vazio = caixa da agência</label>
-        <select name="embarcacao_id" class="input" x-model="emb" @disabled($avNaPrest)>
+        <select name="embarcacao_id" class="input" x-model="emb" @change="viagemSel = (window.VIAGENS[emb] && window.VIAGENS[emb][0]) ? window.VIAGENS[emb][0].d : ''" @disabled($avNaPrest)>
           <option value="">— caixa da agência —</option>
           @foreach($transportes as $t)<option value="{{ $t->id }}">{{ $t->nome }}</option>@endforeach
         </select></div>
-      @if($avNaPrest)
-      <div><label class="label">Data da viagem</label>
-        <select name="data_viagem" class="input">
-          <option value="">— sem data (vale pra todas as viagens) —</option>
-          @foreach($datasViagem as $dvA)
-            @php $dvAs = \Illuminate\Support\Carbon::parse($dvA)->toDateString(); @endphp
-            <option value="{{ $dvAs }}" @selected((string) ($dataViagem ?? '') === $dvAs)>{{ \Illuminate\Support\Carbon::parse($dvA)->format('d/m/Y') }}</option>
-          @endforeach
+      <div x-show="emb" x-cloak><label class="label">Viagem (pra cobrar na prestação)</label>
+        <select name="data_viagem" class="input" x-model="viagemSel">
+          <option value="">Todas as viagens</option>
+          <template x-for="v in (window.VIAGENS[emb] || [])" :key="v.d">
+            <option :value="v.d" x-text="v.l"></option>
+          </template>
         </select>
+        <p class="text-[11px] text-slate-400 mt-1" x-show="!(window.VIAGENS[emb] && window.VIAGENS[emb].length)">Sem próximas viagens cadastradas pra esse transporte — vai valer pra todas.</p>
       </div>
-      @else
-      <div x-show="emb" x-cloak><label class="label">Data da viagem</label><input type="date" name="data_viagem" class="input" value="{{ $focoPrest ? $dataViagem : '' }}"></div>
-      @endif
       <div><label class="label">{{ $avNaPrest ? 'Motivo / descrição' : 'Descrição (opcional)' }}</label><input name="descricao" class="input" maxlength="200"></div>
       <div class="flex gap-2 pt-1">
         <button type="button" class="btn btn-ghost flex-1" @click="open=false">Cancelar</button>
@@ -275,9 +266,11 @@
   $cxAvS      = (float) $cxAvL->where('tipo_mov', 'saida')->sum('valor');
 @endphp
 <style>
-  .cx-painel{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px}
+  .cx-painel{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr);gap:12px}
   .cx-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
-  @media (max-width:820px){ .cx-painel{grid-template-columns:1fr} }
+  .cx-avrows{overflow-y:auto;max-height:300px}
+  @media (max-width:1100px){ .cx-painel{grid-template-columns:1fr 1fr} .cx-avlist{grid-column:1 / -1} }
+  @media (max-width:720px){ .cx-painel{grid-template-columns:1fr} .cx-avlist{grid-column:auto} }
 </style>
 <div class="cx-painel">
   <div class="rounded-2xl p-5 text-white flex flex-col" style="background:linear-gradient(135deg, {{ $navy }}, color-mix(in srgb, {{ $navy }} 60%, #000)); box-shadow:0 10px 26px -14px color-mix(in srgb, {{ $navy }} 70%, #000)">
@@ -299,8 +292,29 @@
     <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">⚡ Pix</div><div class="text-xl font-extrabold mt-1">R$ {{ number_format($cxPix,2,',','.') }}</div></div>
     <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">💳 Cartão</div><div class="text-xl font-extrabold mt-1">R$ {{ number_format($cxCartao,2,',','.') }}</div></div>
     <div class="card p-3"><div class="text-[11px] font-semibold uppercase text-slate-500">🎫 Vendas</div><div class="text-xl font-extrabold mt-1">{{ $cxVendas }}</div></div>
-    <div class="card p-3" style="border-left:3px solid #059669"><div class="text-[11px] font-semibold uppercase text-slate-500">➕ Entradas avulsas</div><div class="text-xl font-extrabold mt-1 text-emerald-600">R$ {{ number_format($cxAvE,2,',','.') }}</div></div>
-    <div class="card p-3" style="border-left:3px solid #e11d48"><div class="text-[11px] font-semibold uppercase text-slate-500">➖ Saídas avulsas</div><div class="text-xl font-extrabold mt-1 text-rose-600">R$ {{ number_format($cxAvS,2,',','.') }}</div></div>
+  </div>
+  <div class="card cx-avlist overflow-hidden flex flex-col">
+    <div class="p-3 border-b flex items-center justify-between gap-2">
+      <div class="font-bold text-[13px] text-slate-700">↕️ Avulsas</div>
+      <div class="flex items-center gap-1.5 text-[11px]">
+        <span class="rounded bg-emerald-50 text-emerald-700 px-1.5 py-0.5 font-bold">+{{ number_format($cxAvE,2,',','.') }}</span>
+        <span class="rounded bg-rose-50 text-rose-700 px-1.5 py-0.5 font-bold">−{{ number_format($cxAvS,2,',','.') }}</span>
+      </div>
+    </div>
+    <div class="cx-avrows divide-y">
+      @forelse($cxAvL as $av)
+      <div class="flex items-center gap-2 px-3 py-2">
+        <span class="rounded px-1.5 py-0.5 text-[10px] font-bold shrink-0 {{ $av->tipo_mov==='saida' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700' }}">{{ $av->tipo_mov==='saida' ? 'Saída' : 'Entrada' }}</span>
+        <div class="min-w-0 flex-1">
+          <div class="text-[12px] font-medium truncate">{{ trim(($av->categoria ? $av->categoria.' · ' : '').($av->descricao ?? ''), ' ·') ?: '—' }}</div>
+          <div class="text-[10px] text-slate-400 truncate">{{ optional($av->created_at)->format('d/m H:i') }}@if($av->embarcacao) · 🚤 {{ $av->embarcacao->nome }}@endif</div>
+        </div>
+        <div class="text-[12px] font-bold whitespace-nowrap shrink-0 {{ $av->tipo_mov==='saida' ? 'text-rose-600' : 'text-emerald-700' }}">{{ $av->tipo_mov==='saida' ? '−' : '+' }} {{ number_format($av->valor,2,',','.') }}</div>
+      </div>
+      @empty
+      <div class="p-5 text-center text-slate-400 text-[12px]">Nenhuma entrada/saída avulsa no período.</div>
+      @endforelse
+    </div>
   </div>
 </div>
 @endunless
@@ -361,9 +375,9 @@
 </div>
 @endif
 
-@unless($ehRel)
+@if($focoPrest)
 @include('caixa._avulsos')
-@endunless
+@endif
 
 @if($focoPrest)
 <div x-data="{ open:false, carregando:false, nome:'', linhas:[], total:0, dono:0, comissao:0, erro:'',
