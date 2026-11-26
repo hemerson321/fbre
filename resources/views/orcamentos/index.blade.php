@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('titulo','Orçamentos')
 @section('conteudo')
-@php $navy = '#13295e'; @endphp
+@php $navy = '#13295e'; $orcTabela = \Illuminate\Support\Facades\Schema::hasTable('orcamentos'); @endphp
 <div class="max-w-3xl mx-auto space-y-4" x-data="orc()" x-init="init()">
 
   <div class="flex items-center gap-2">
@@ -122,7 +122,6 @@
   $embsJs = $embarcacoes->map(fn ($e) => ['id' => $e->id, 'nome' => $e->nome])->values();
   $tiposJs = $tipos->map(fn ($t) => ['id' => $t->id, 'nome' => $t->nome, 'percentual' => $t->percentual, 'pct_sobre' => $t->pct_sobre ?? null, 'paga_taxa' => (bool) $t->paga_taxa, 'modo' => $t->modo ?? 'valor', 'normal' => (bool) $t->eh_normal, 'tarifa_padrao' => $t->tarifa_padrao ?? 0, 'alimentacao_padrao' => $t->alimentacao_padrao ?? 0])->values();
   $orcListJs = ($orcList ?? collect())->values();
-  $orcTabela = \Illuminate\Support\Facades\Schema::hasTable('orcamentos');
 @endphp
 <script>
 function orc(){
