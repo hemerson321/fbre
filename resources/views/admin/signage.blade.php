@@ -78,7 +78,7 @@
       </div>
       <div class="flex items-center gap-2">
         <button type="button" class="btn btn-sm" @click="editarTela(@js(['id' => $t->id, 'nome' => $t->nome, 'local' => $t->local, 'orientacao' => $t->orientacao, 'ativo' => $t->ativo]))">✏️ Editar</button>
-        <form method="post" action="{{ route('admin.signage.tela.excluir', $t) }}" onsubmit="return confirm(@js('Excluir a tela '.$t->nome.' e todas as mídias dela? Não dá pra desfazer.'))">
+        <form method="post" action="{{ route('marketing.signage.tela.excluir', $t) }}" onsubmit="return confirm(@js('Excluir a tela '.$t->nome.' e todas as mídias dela? Não dá pra desfazer.'))">
           @csrf @method('DELETE')
           <button class="btn btn-sm" style="color:#b91c1c">🗑 Excluir</button>
         </form>
@@ -156,11 +156,11 @@
               </div>
             </div>
             <div class="flex items-center gap-1 flex-none">
-              <form method="post" action="{{ route('admin.signage.midia.ativar', $m) }}">@csrf
+              <form method="post" action="{{ route('marketing.signage.midia.ativar', $m) }}">@csrf
                 <button class="btn btn-sm" title="{{ $m->ativo ? 'Pausar' : 'Ativar' }}">{{ $m->ativo ? '⏸' : '▶️' }}</button>
               </form>
               <button type="button" class="btn btn-sm" title="Editar" @click="editarMidia({{ $t->id }}, @js($t->orientacao), @js($ed))">✏️</button>
-              <form method="post" action="{{ route('admin.signage.midia.excluir', $m) }}" onsubmit="return confirm('Excluir esta mídia?')">@csrf @method('DELETE')
+              <form method="post" action="{{ route('marketing.signage.midia.excluir', $m) }}" onsubmit="return confirm('Excluir esta mídia?')">@csrf @method('DELETE')
                 <button class="btn btn-sm" title="Excluir" style="color:#b91c1c">🗑</button>
               </form>
             </div>
@@ -322,7 +322,7 @@
 <script>
 function sgAdmin(){
   var EMPRESA = @json($empresa);
-  var BASE_TELA = @json(url('/admin/signage/tela'));
+  var BASE_TELA = @json(url('/marketing/signage/tela'));
   return {
     mt: { open:false, id:null, nome:'', local:'', orientacao:'horizontal', ativo:true, action:'' },
     mm: { open:false, id:null, telaId:null, orient:'horizontal', tipo:'midia', titulo:'', texto:'', layout:1, duracao:10, modo:'sequencia', intervalo_min:'', horarios:'', dias:[], data_inicio:'', data_fim:'', som:false, ativo:true, ordem:0, url:'', audio:'', arquivo_url:'', action:'', blob:null, blobTipo:null },

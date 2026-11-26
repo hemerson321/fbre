@@ -30,6 +30,7 @@ class Permissao
             'filtro'   => $u->podeFiltrar(),
             'relatorio'=> $u->podeRelatorio(),
             'imprimir' => $u->podeImprimir(),
+            'marketing'=> $u->podeMarketing(),
             'admin'    => $u->isAdmin() || $u->isSuper(),
             'super'    => $u->isSuper(),
             default    => array_key_exists($perm, \App\Models\User::MODULOS) ? $u->podeModulo($perm) : false,

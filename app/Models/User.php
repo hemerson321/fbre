@@ -56,6 +56,7 @@ class User extends Authenticatable
             'perm_wifi' => 'boolean',
             'perm_avulso' => 'boolean',
             'perm_recibo' => 'boolean',
+            'perm_marketing' => 'boolean',
             'perm_financeiro' => 'boolean',
             'perm_pix_manual' => 'boolean',
             'perm_pix_dinamico' => 'boolean',
@@ -143,6 +144,7 @@ class User extends Authenticatable
     public function podeAcerto(): bool { return $this->super_admin || $this->admin || $this->gerente() || (bool) $this->perm_acerto; }
     public function podeRelatorio(): bool { return $this->admin || $this->perm_relatorio || $this->financeiro(); }
     public function podeImprimir(): bool  { return $this->permite('encomenda', 'imprimir'); }
+    public function podeMarketing(): bool { return $this->admin || $this->super_admin || (bool) $this->perm_marketing; }
     public function isAdmin(): bool       { return $this->admin; }
     public function isSuper(): bool       { return $this->super_admin; }
     public function podeZerar(): bool     { return $this->super_admin || (bool) $this->perm_zerar; }

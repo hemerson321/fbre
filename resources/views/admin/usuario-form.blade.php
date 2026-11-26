@@ -191,6 +191,10 @@
     <input type="checkbox" name="perm_financeiro" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('perm_financeiro', $u->exists ? $u->perm_financeiro : false))>
     <span><span class="font-semibold text-sm">Financeiro</span><br><span class="text-xs text-slate-500">Só entra no Caixa e Relatório, mas vê TODOS os operadores e TODOS os módulos (filtra por módulo, operador e período). Não cadastra.</span></span>
   </label>
+  <label class="flex items-start gap-3 py-2 cursor-pointer">
+    <input type="checkbox" name="perm_marketing" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('perm_marketing', $u->exists ? $u->perm_marketing : false))>
+    <span><span class="font-semibold text-sm">Marketing (mídia indoor)</span><br><span class="text-xs text-slate-500">Libera o menu Marketing: TV indoor (propagandas nas telas) e Áudio indoor (áudio terminal — criar, programar e tocar áudios).</span></span>
+  </label>
 
   <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 mt-2 border-t pt-2">Administrativo</div>
   @php $admPerms = [

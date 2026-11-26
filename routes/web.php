@@ -48,6 +48,9 @@ Route::post('/c/enviar', [CapturaController::class, 'enviar'])->name('captura.en
 // Digital Signage — player público da TV (sem login; o token do link identifica a tela)
 Route::get('/tv/{token}', [\App\Http\Controllers\SignagePlayerController::class, 'show'])->name('signage.player');
 Route::get('/tv/{token}/dados', [\App\Http\Controllers\SignagePlayerController::class, 'dados'])->name('signage.dados');
+// Áudio terminal — player público (sem login; o token identifica o terminal)
+Route::get('/audio/{token}', [\App\Http\Controllers\MarketingPlayerController::class, 'show'])->name('audio.player');
+Route::get('/audio/{token}/dados', [\App\Http\Controllers\MarketingPlayerController::class, 'dados'])->name('audio.dados');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'form'])->name('login');
@@ -340,13 +343,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/llm/{provedor}/testar', [LlmController::class, 'testar'])->name('llm.testar');
         // Relatório de entradas e saídas (cancelamentos, devoluções, transferências, avulsos)
         Route::get('/movimentos', [\App\Http\Controllers\Admin\MovimentoController::class, 'index'])->name('movimentos');
-        // Digital Signage (mídia indoor): telas e propagandas/avisos
-        Route::get('/signage', [\App\Http\Controllers\Admin\SignageController::class, 'index'])->name('signage');
-        Route::post('/signage/tela/{tela?}', [\App\Http\Controllers\Admin\SignageController::class, 'telaSalvar'])->name('signage.tela.salvar');
-        Route::delete('/signage/tela/{tela}', [\App\Http\Controllers\Admin\SignageController::class, 'telaExcluir'])->name('signage.tela.excluir');
-        Route::post('/signage/tela/{tela}/midia/{midia?}', [\App\Http\Controllers\Admin\SignageController::class, 'midiaSalvar'])->name('signage.midia.salvar');
-        Route::delete('/signage/midia/{midia}', [\App\Http\Controllers\Admin\SignageController::class, 'midiaExcluir'])->name('signage.midia.excluir');
-        Route::post('/signage/midia/{midia}/ativar', [\App\Http\Controllers\Admin\SignageController::class, 'midiaAtivar'])->name('signage.midia.ativar');
         // Agentes IA — multi
         Route::get('/agentes', [AgenteController::class, 'index'])->name('agentes');
         Route::post('/agentes/{agente?}', [AgenteController::class, 'salvar'])->name('agentes.salvar');
@@ -360,6 +356,27 @@ Route::middleware('auth')->group(function () {
         Route::post('/agentes/{agente}/demo/foto', [AgenteDemoController::class, 'foto'])->name('agentes.demo.foto');
         Route::post('/agentes/{agente}/demo/pagar', [AgenteDemoController::class, 'pagar'])->name('agentes.demo.pagar');
         Route::post('/agentes/{agente}/demo/reiniciar', [AgenteDemoController::class, 'reiniciar'])->name('agentes.demo.reiniciar');
+    });
+
+    // ---------------- Marketing / Mídia indoor (TV indoor + Áudio terminal) ----------------
+    // Visível a quem tem perm_marketing (admin incluso). TV indoor = signage; Áudio indoor = áudio terminal.
+    Route::prefix('marketing')->middleware('perm:marketing')->name('marketing.')->group(function () {
+        // Áudio indoor (áudio terminal)
+        Route::get('/', [\App\Http\Controllers\MarketingController::class, 'index'])->name('index');
+        Route::post('/terminal/{terminal?}', [\App\Http\Controllers\MarketingController::class, 'terminalSalvar'])->name('terminal.salvar');
+        Route::delete('/terminal/{terminal}', [\App\Http\Controllers\MarketingController::class, 'terminalExcluir'])->name('terminal.excluir');
+        Route::post('/audio/{audio?}', [\App\Http\Controllers\MarketingController::class, 'audioSalvar'])->name('audio.salvar');
+        Route::delete('/audio/{audio}', [\App\Http\Controllers\MarketingController::class, 'audioExcluir'])->name('audio.excluir');
+        Route::post('/audio/{audio}/tocar', [\App\Http\Controllers\MarketingController::class, 'tocarAgora'])->name('audio.tocar');
+        Route::post('/programacao/{programacao?}', [\App\Http\Controllers\MarketingController::class, 'programacaoSalvar'])->name('prog.salvar');
+        Route::delete('/programacao/{programacao}', [\App\Http\Controllers\MarketingController::class, 'programacaoExcluir'])->name('prog.excluir');
+        // TV indoor (Digital Signage) — movido do Administração pra cá
+        Route::get('/signage', [\App\Http\Controllers\Admin\SignageController::class, 'index'])->name('signage');
+        Route::post('/signage/tela/{tela?}', [\App\Http\Controllers\Admin\SignageController::class, 'telaSalvar'])->name('signage.tela.salvar');
+        Route::delete('/signage/tela/{tela}', [\App\Http\Controllers\Admin\SignageController::class, 'telaExcluir'])->name('signage.tela.excluir');
+        Route::post('/signage/tela/{tela}/midia/{midia?}', [\App\Http\Controllers\Admin\SignageController::class, 'midiaSalvar'])->name('signage.midia.salvar');
+        Route::delete('/signage/midia/{midia}', [\App\Http\Controllers\Admin\SignageController::class, 'midiaExcluir'])->name('signage.midia.excluir');
+        Route::post('/signage/midia/{midia}/ativar', [\App\Http\Controllers\Admin\SignageController::class, 'midiaAtivar'])->name('signage.midia.ativar');
     });
 
     // ---------------- Super-admin (GERATEC) ----------------
