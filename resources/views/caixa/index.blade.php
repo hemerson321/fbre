@@ -282,10 +282,9 @@
   <div class="rounded-2xl p-5 text-white flex flex-col" style="background:linear-gradient(135deg, {{ $navy }}, color-mix(in srgb, {{ $navy }} 60%, #000)); box-shadow:0 10px 26px -14px color-mix(in srgb, {{ $navy }} 70%, #000)">
     <div class="text-[11px] font-bold uppercase tracking-wider" style="color:rgba(255,255,255,.62)">No caixa agora</div>
     <div class="font-extrabold leading-none mt-2 mb-4" style="font-size:clamp(34px,6vw,56px);color:#34d399">R$ {{ number_format($liquidoAgencia ?? $total,2,',','.') }}</div>
-    <div class="flex gap-8 flex-wrap gap-y-3">
+    <div class="flex gap-8">
       <div><div class="text-[10px] font-bold uppercase tracking-wide" style="color:rgba(255,255,255,.58)">Recebeu ↑</div><div class="text-lg font-extrabold" style="color:#34d399">R$ {{ number_format($entradas ?? 0,2,',','.') }}</div></div>
       <div><div class="text-[10px] font-bold uppercase tracking-wide" style="color:rgba(255,255,255,.58)">Saídas ↓</div><div class="text-lg font-extrabold" style="color:#fb7185">R$ {{ number_format($saidasCaixa ?? $saidas,2,',','.') }}</div></div>
-      @if(($ownerShareG ?? 0) > 0)<div title="Parte dos donos (comissão deles) descontada no dia da venda. O pagamento ao dono na baixa não conta como saída."><div class="text-[10px] font-bold uppercase tracking-wide" style="color:rgba(255,255,255,.58)">Parte dos donos ↓</div><div class="text-lg font-extrabold" style="color:#fbbf24">R$ {{ number_format($ownerShareG,2,',','.') }}</div></div>@endif
     </div>
     @if($podeAvulso)
     <div class="flex gap-2 mt-auto pt-4" style="border-top:1px solid rgba(255,255,255,.14);margin-top:18px">

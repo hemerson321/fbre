@@ -437,11 +437,16 @@ class CaixaController extends Controller
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
             ->sum('valor'), 2);
-        $saidasCaixa = round((float) $saidas + $saidasAvulsoTransp, 2);
-
-        // Líquido da AGÊNCIA = entradas - parte dos donos (passagens) - saídas (próprias + avulsas de transporte). Comissão é o que fica pra agência.
+        // CAIXA SIMPLES: No caixa = tudo que a agência recebeu MENOS os AVULSOS da lista (entradas/saídas avulsas
+        // lançadas pelo operador — as mesmas que aparecem no painel "Avulsas"). A parte do dono NÃO entra aqui;
+        // ela é acertada na prestação, à parte. Sem comissão/pagamento ao dono no líquido do caixa.
+        $avCaixaQ = Pagamento::where('modulo', 'avulso')->where('estornado', false)->where('momento', 'cadastro')
+            ->whereBetween('created_at', [$inicio, $fim])->when($userId, fn ($q) => $q->where('user_id', $userId));
+        $avCaixaSaidas = round((float) (clone $avCaixaQ)->where('tipo_mov', 'saida')->sum('valor'), 2);
+        $avCaixaEntradas = round((float) (clone $avCaixaQ)->where('tipo_mov', 'entrada')->sum('valor'), 2);
+        $saidasCaixa = $avCaixaSaidas; // SAÍDAS do caixa = só os avulsos da lista
         $entradasVal = (float) $porMeio->sum('valor');
-        $liquidoAgencia = round($entradasVal - $ownerShareG - $saidasCaixa, 2);
+        $liquidoAgencia = round($entradasVal + $avCaixaEntradas - $avCaixaSaidas, 2);
 
         // Tela de escolha da Prestação: pendências por transporte e por data de viagem (pra guiar o operador).
         $pendPorTransporte = collect(); $pendPorData = collect();
