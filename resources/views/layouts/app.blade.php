@@ -164,6 +164,7 @@ document.addEventListener('alpine:init', () => {
     $sepFin = $podeFinModulo && ! empty($gf);
     if ($podeFinModulo && Route::has('financeiro.contas-receber')) { $gf[] = ['r'=>route('financeiro.contas-receber'), 'l'=>'Contas a receber', 'i'=>'💵', 'c'=>'#0d9488', 'sep'=>$sepFin, 'b'=>($cobrancaVenc ?: null), 'bk'=>'cobranca']; $sepFin=false; }
     if ($podeFinModulo && Route::has('clientes-faturado')) $gf[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾', 'c'=>'#0d9488', 'sep'=>$sepFin];
+    if (($u->isAdmin() || $u->isSuper()) && Route::has('admin.movimentos')) $gf[] = ['r'=>route('admin.movimentos'), 'l'=>'Entradas e saídas', 'i'=>'↕️', 'c'=>'#0d9488', 'sep'=>true];
     if ($gf) $grupos['Financeiro'] = $gf;
   }
   // Desktop: Financeiro e Ferramentas também abrem como submenu (flyout) DENTRO do Passagens. No mobile continuam como grupos.
@@ -192,7 +193,6 @@ document.addEventListener('alpine:init', () => {
       ];
       $subAdmin['Painel'] = [
           ['r'=>route('admin.dashboard'), 'l'=>'Dashboard', 'i'=>'📊'],
-          ['r'=>route('admin.movimentos'), 'l'=>'Entradas e saídas', 'i'=>'↕️'],
           ['r'=>route('simulacao.telas'), 'l'=>'Simulação (demo)', 'i'=>'🧪'],
       ];
       $admFlat = [];
