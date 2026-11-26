@@ -205,7 +205,7 @@ class CaixaController extends Controller
 
         $saidas = Pagamento::where('estornado', false)->where('tipo_mov', 'saida')
             // Pagamento ao dono (baixa de prestacao) NAO e saida do caixa: a parte do dono ja e descontada como comissao no dia da venda.
-            ->where(fn ($q) => $q->whereNull('categoria')->orWhereNotIn('categoria', ['Pagamento ao dono', 'Pagamento ao dono (balcão)']))
+            ->where(fn ($q) => $q->whereNull('categoria')->orWhere(fn ($w) => $w->where('categoria', 'not like', 'Pagamento ao dono%')->where('categoria', 'not like', 'Repasse de agente%')))
             ->when($encIds === null && ! $dataViagem, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('origem_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
