@@ -129,6 +129,9 @@ document.addEventListener('alpine:init', () => {
   if ($u->permite('passagem','cadastra') && Route::has('clientes-faturado')) $g[] = ['r'=>route('clientes-faturado'), 'l'=>'Clientes faturado', 'i'=>'🧾'];
   if ($u->permite('passagem','ver') && $u->revendedorDono() !== null) $g[] = ['r'=>route('passagens.minhas-vendas'), 'l'=>'Minhas vendas', 'i'=>'📊'];
   if ($u->ehRevendedor()) $g[] = ['r'=>route('meus-acertos'), 'l'=>'Acertos', 'i'=>'🤝'];
+  // Caixa e Prestação de contas: direto no menu Passagens (não mais dentro do Financeiro)
+  if ($u->podeVerCaixa()) $g[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰', 'c'=>'#059669', 'sep'=>true];
+  if ($u->podeVerCaixa() && $u->caixaTodos()) $g[] = ['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestação de contas', 'i'=>'🧾', 'c'=>'#d97706'];
   if ($g && $modOn('passagem')) $grupos['Passagens'] = $g;
   // Ferramentas: atendimento, CRM, travar poltronas e transferir transporte (saíram do Passagens pra organizar)
   $ft = [];
@@ -151,15 +154,13 @@ document.addEventListener('alpine:init', () => {
   if ($g && $modOn('frete')) $grupos['Fretes'] = $g;
   // Caixa, Prestação de Contas e Relatório agora ficam DENTRO do menu Passagens (ver bloco Passagem acima). Sem botões soltos no topo.
   $gruposDiretos = [];
-  // Financeiro: Caixa + Prestação + Relatório (operação) e, pra admin/perm_financeiro, Contas a receber + Clientes faturado.
+  // Financeiro: Relatório (operação) e, pra admin/perm_financeiro, Contas a receber + Clientes faturado + Entradas e saídas. (Caixa e Prestação foram pro menu Passagens.)
   $podeFinModulo = $u->isAdmin() || $u->isSuper() || $u->perm_financeiro;
   // Cobrança vencida: faturados a receber que já passaram do prazo (created_at + cobrar_dias). Vira notificação no menu.
   $cobrancaVenc = 0;
   if ($podeFinModulo) { try { $cobrancaVenc = (int) \App\Models\Passagem::where('forma','faturado')->where('cancelada',false)->where('transferida',false)->where('devido','>',0.009)->whereRaw('DATE_ADD(created_at, INTERVAL COALESCE(cobrar_dias,30) DAY) <= NOW()')->count(); } catch (\Throwable $e) {} }
   if ($podeFinModulo || $u->podeVerCaixa() || $u->podeRelatorio()) {
     $gf = [];
-    if ($u->podeVerCaixa()) $gf[] = ['r'=>route('caixa.index'), 'l'=>$u->caixaTodos()?'Caixa geral':'Meu caixa', 'i'=>'💰', 'c'=>'#059669'];
-    if ($u->podeVerCaixa() && $u->caixaTodos()) $gf[] = ['r'=>route('caixa.index', ['foco'=>'prestacoes']), 'l'=>'Prestação de contas', 'i'=>'🧾', 'c'=>'#d97706'];
     if ($u->podeRelatorio()) $gf[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋', 'c'=>'#4f46e5'];
     $sepFin = $podeFinModulo && ! empty($gf);
     if ($podeFinModulo && Route::has('financeiro.contas-receber')) { $gf[] = ['r'=>route('financeiro.contas-receber'), 'l'=>'Contas a receber', 'i'=>'💵', 'c'=>'#0d9488', 'sep'=>$sepFin, 'b'=>($cobrancaVenc ?: null), 'bk'=>'cobranca']; $sepFin=false; }
