@@ -15,7 +15,7 @@
     <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Cliente</div>
     <div class="grid sm:grid-cols-2 gap-3">
       <input x-model="cliente" placeholder="Nome do cliente / empresa" class="input">
-      <input x-model="doc" placeholder="CNPJ/CPF ou A/C (opcional)" class="input">
+      <input x-model="doc" @input="mascaraDoc()" placeholder="CNPJ/CPF ou A/C (opcional)" class="input">
     </div>
   </div>
 
@@ -107,12 +107,16 @@ function orc(){
   TRECHOS.forEach(r=>{ trechoMap[low(r.origem)+'|'+low(r.destino)+'|'+r.tipo_passageiro_id]={tarifa:Number(r.tarifa)||0,alim:Number(r.alimentacao)||0,integral:Number(r.integral)||0}; });
   TAXAS.forEach(r=>{ taxaMap[low(r.origem)+'|'+low(r.destino)]=Number(r.taxa)||0; });
   const tipoById = id => TIPOS.find(t=>String(t.id)===String(id));
+  const soDig = v => String(v==null?'':v).replace(/\D/g,'');
+  const fmtCPF = d => { d=d.slice(0,11); let r=d.slice(0,3); if(d.length>3)r+='.'+d.slice(3,6); if(d.length>6)r+='.'+d.slice(6,9); if(d.length>9)r+='-'+d.slice(9,11); return r; };
+  const fmtCNPJ = d => { d=d.slice(0,14); let r=d.slice(0,2); if(d.length>2)r+='.'+d.slice(2,5); if(d.length>5)r+='.'+d.slice(5,8); if(d.length>8)r+='/'+d.slice(8,12); if(d.length>12)r+='-'+d.slice(12,14); return r; };
   return {
     cliente:'', doc:'', origem:'', destino:'', embId:'', dataSel:'', dataManual:'',
     linhas:[ {tipo:String(normalId||''), qtd:1, unit:0} ],
     init(){ this.$watch('origem',()=>this.autoTransporte()); this.$watch('destino',()=>this.autoTransporte()); this.$watch('embId',()=>{ this.dataSel=''; this.reprecificar(); }); this.reprecificar(); },
     brl(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); },
     fmtData(d){ if(!d) return ''; const p=String(d).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):d; },
+    mascaraDoc(){ let v=String(this.doc||''); if(/[A-Za-z]/.test(v)){ return; } const d=soDig(v); this.doc = d ? (d.length<=11 ? fmtCPF(d) : fmtCNPJ(d)) : v.replace(/[^\d./-]/g,''); },
     tipoNome(id){ const t=tipoById(id); return t?t.nome:'Passagem'; },
     transportes(){ if(!this.origem||!this.destino) return []; const set={}; LINHAS.forEach(l=>{ const io=l.paradas.indexOf(this.origem), id=l.paradas.indexOf(this.destino); if(io>-1&&id>io) set[l.emb]=l.nome||('Transporte #'+l.emb); }); return Object.keys(set).map(id=>({id:Number(id),nome:set[id]})); },
     opcoesTransporte(){ if(!this.origem||!this.destino) return EMBS; const t=this.transportes(); return t.length?t:EMBS; },
