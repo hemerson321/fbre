@@ -106,7 +106,7 @@ document.addEventListener('alpine:init', () => {
   .row-cinza { border-left: 5px solid #94a3b8; }
   [x-cloak] { display: none !important; }
   .safe-b { padding-bottom: env(safe-area-inset-bottom); }
-  @media print { .no-print { display: none !important; } body { background: #fff; } }
+  @media print { .no-print { display: none !important; } body { background: #fff; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
 </style>
 @stack('head')
 </head>

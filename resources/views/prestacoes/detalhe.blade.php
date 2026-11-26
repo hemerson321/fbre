@@ -17,6 +17,13 @@
       <div><div class="text-[11px] uppercase text-slate-400">Forma</div><div class="font-semibold capitalize">{{ $prestacao->forma }}</div></div>
       <div><div class="text-[11px] uppercase text-slate-400">Status</div><div><span class="chip {{ $prestacao->status==='acertada' ? 'bg-emerald-100 text-emerald-700' : ($prestacao->status==='parcial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600') }}">{{ $prestacao->statusLabel() }}</span></div></div>
     </div>
+    @php $trechos = $passagens->map(fn ($p) => trim((string) $p->origem).' → '.trim((string) $p->destino))->reject(fn ($t) => $t === ' → ')->unique()->values(); @endphp
+    @if($trechos->isNotEmpty())
+    <div class="mt-3 border-t pt-3">
+      <div class="text-[11px] uppercase text-slate-400">Trecho(s) da viagem</div>
+      <div class="font-extrabold text-slate-800 text-[15px]">{{ $trechos->implode('  ·  ') }}</div>
+    </div>
+    @endif
     <div class="mt-3 border-t pt-3 max-w-sm ml-auto text-sm space-y-1">
       <div class="flex justify-between"><span>Total vendas (bruto)</span><b>R$ {{ number_format($prestacao->total_bruto,2,',','.') }}</b></div>
       <div class="flex justify-between text-rose-600"><span>Comissão da empresa ({{ (int)$prestacao->comissao_pct }}%)</span><b>− R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
