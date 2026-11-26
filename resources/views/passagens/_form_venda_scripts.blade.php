@@ -437,13 +437,18 @@
       // mapa por NOME: cada bloco = fileiras; "|" separa esquerda/direita; linha vazia separa blocos
       get blocosPoltrona(){
         const txt=(this.poltronasLayout||'').replace(/\r/g,'');
-        return txt.split(/\n[ \t]*\n/).map(b=>
-          b.split('\n').filter(l=>l.trim()).map(linha=>{
-            const cols=linha.split('|').map(x=>x.trim().split(/\s+/).filter(Boolean)).filter(c=>c.length);
+        return txt.split(/\n[ \t]*\n/).map(b=>{
+          // mantém colunas vazias ("| |") pra alinhar as fileiras em grade fixa
+          const rows=b.split('\n').filter(l=>l.trim()).map(linha=>{
+            const cols=linha.split('|').map(x=>x.trim().split(/\s+/).filter(Boolean));
             return { cols, esq:cols[0]||[], dir:cols.slice(1).flat() };
-          })
-        ).filter(b=>b.length);
+          });
+          const nc=rows.reduce((m,r)=>Math.max(m,r.cols.length),0);
+          const colMax=[]; for(let i=0;i<nc;i++) colMax.push(rows.reduce((m,r)=>Math.max(m,(r.cols[i]||[]).length),0));
+          return { rows, colMax };
+        }).filter(b=>b.rows.length);
       },
+      pol(f,ci,si){ return (f && f.cols[ci] && f.cols[ci][si]) ? f.cols[ci][si] : null; },
 
       // contagem de poltronas livres (total + por tipo), pra mostrar no topo do mapa
       get contPoltronas(){
@@ -452,7 +457,7 @@
         const trv=new Set((this.travadas||[]).map(t=>String(t.poltrona)));
         const c={total:0,livre:0,janela:0,meio:0,corredor:0};
         const classeLinha=(cols)=>{ const out=[]; const nc=cols.length; cols.forEach((seats,ci)=>{ const n=seats.length; seats.forEach((s,i)=>{ let t='meio'; const pontaEsq=(i===0), pontaDir=(i===n-1); if(ci===0 && pontaEsq) t='janela'; else if(ci===nc-1 && pontaDir) t='janela'; else if((pontaDir && ci<nc-1)||(pontaEsq && ci>0)) t='corredor'; if(n===1 && (ci===0||ci===nc-1)) t='janela'; out.push({s:String(s),t}); }); }); return out; };
-        (this.blocosPoltrona||[]).forEach(bloco=>bloco.forEach(row=>{
+        (this.blocosPoltrona||[]).forEach(bloco=>bloco.rows.forEach(row=>{
           classeLinha(row.cols||[row.esq||[],row.dir||[]]).forEach(({s,t})=>{
             c.total++;
             if(!occ.has(s)&&!res.has(s)&&!trv.has(s)){ c.livre++; if(c[t]!==undefined)c[t]++; }
