@@ -204,6 +204,8 @@ class CaixaController extends Controller
             ->when($userId, fn ($q) => $q->where('user_id', $userId))->count();
 
         $saidas = Pagamento::where('estornado', false)->where('tipo_mov', 'saida')
+            // Pagamento ao dono (baixa de prestacao) NAO e saida do caixa: a parte do dono ja e descontada como comissao no dia da venda.
+            ->where(fn ($q) => $q->whereNull('categoria')->orWhereNotIn('categoria', ['Pagamento ao dono', 'Pagamento ao dono (balcão)']))
             ->when($encIds === null && ! $dataViagem, fn ($q) => $q->whereBetween('created_at', [$inicio, $fim]))
             ->when($encIds !== null, fn ($q) => $q->whereIn('origem_id', $encIds))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
@@ -351,15 +353,14 @@ class CaixaController extends Controller
             $embIdsA = $passAll->pluck('embarcacao_id')->filter()->unique()->values();
             $pctsA = \App\Models\Embarcacao::whereIn('id', $embIdsA)->pluck('comissao_empresa_pct', 'id');
             $comissaoAgencia = round((float) $passAll->sum(fn ($p) => (float) $p->total * (int) ($pctsA[$p->embarcacao_id] ?? 0) / 100), 2);
-            // CAIXA = dinheiro em maos. A parte do dono so SAI do caixa de duas formas:
-            //  - venda do proprietario (pago_proprietario): caiu direto na maquininha do dono, nunca entrou no caixa.
-            //  - acerto/baixa do proprietario: ja gera uma SAIDA real "Pagamento ao dono" (entra em $saidas).
-            // Por isso NAO contamos acerto_dono aqui: senao a parte do dono sairia 2x (uma como $saidas, outra como
-            // ownerShare) e o caixa ficava negativo. Ate o acerto, o bruto fica no caixa. Base no recebido p/ parcelado.
+            // CAIXA = dinheiro em maos. A parte do dono SAI do caixa quando a venda e acertada (acerto_dono) ou
+            // e venda na maquineta do proprietario (pago_proprietario). Ela e descontada AQUI (ownerShare), no caixa
+            // DO DIA DA VENDA. O "Pagamento ao dono" gerado na baixa fica FORA de $saidas (senao descontaria 2x e
+            // cairia no caixa do dia da baixa, nao no dia da venda). Ate o acerto, o bruto fica no caixa. Base no recebido.
             $propIds = \App\Models\Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $passAll->pluck('id'))
                 ->where('estornado', false)->where('pago_proprietario', true)->distinct()->pluck('origem_id')->flip();
             $recebidoA = fn ($p) => max(0.0, (float) $p->total - (float) $p->devido);
-            $ownerShareG = round((float) $passAll->filter(fn ($p) => $propIds->has($p->id))
+            $ownerShareG = round((float) $passAll->filter(fn ($p) => $p->acerto_dono || $propIds->has($p->id))
                 ->sum(fn ($p) => $recebidoA($p) * (100 - (int) ($pctsA[$p->embarcacao_id] ?? 0)) / 100), 2);
         }
         // PENDENTE (acerto_dono=false): é o que a PRESTAÇÃO mostra — zera depois do fechamento.
@@ -577,7 +578,7 @@ class CaixaController extends Controller
             ]);
         }
 
-        return view('caixa.index', compact('operadoresPrest', 'prestOperador', 'seguraCaixa', 'emAbertoOperadores', 'porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'pendPorTransporte', 'pendPorData', 'porCategoria', 'viagensTransporte', 'maqProprietarios', 'saidasCaixa'))
+        return view('caixa.index', compact('operadoresPrest', 'prestOperador', 'seguraCaixa', 'emAbertoOperadores', 'porMeio', 'porModulo', 'porOperador', 'porLancha', 'usuarios', 'descontos', 'entregas', 'cadastros', 'movimentos', 'passMov', 'linhasCaixa', 'inicio', 'fim', 'periodo', 'userId', 'viagens', 'viagemId', 'verTodos', 'modulo', 'saidas', 'categorias', 'podeAvulso', 'canal', 'transportes', 'cancelados', 'transporteId', 'podeTransporte', 'datasViagem', 'dataViagem', 'donosBalcao', 'acertosRecentes', 'permiteDesfazer', 'prestacaoTransporte', 'prestacoesFechadas', 'comissaoAgencia', 'liquidoAgencia', 'acertoDesfazivel', 'podeDesfazerTransporte', 'avulsosLista', 'pendPorTransporte', 'pendPorData', 'porCategoria', 'viagensTransporte', 'maqProprietarios', 'saidasCaixa', 'ownerShareG'))
             ->with(['meios' => Pagamento::CANAIS, 'entradas' => $porMeio->sum('valor'), 'total' => $porMeio->sum('valor') - $saidas, 'vendasBruto' => $vendasBruto, 'ehRelatorio' => $ehRelatorio]);
     }
 
