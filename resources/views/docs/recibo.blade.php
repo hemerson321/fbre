@@ -26,16 +26,16 @@
 <style>
   @page{size:A4;margin:0}
   *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  body{font-family:Helvetica,Arial,sans-serif;color:#1f2937;font-size:12px;background:#eef1f5}
-  .page{width:210mm;min-height:297mm;padding:24px;margin:0 auto;background:#eef1f5}
+  body{font-family:Helvetica,Arial,sans-serif;color:#1f2937;font-size:12px;background:#ffffff}
+  .page{width:210mm;min-height:297mm;padding:24px;margin:0 auto;background:#ffffff}
   .ticket{background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 8px 24px rgba(0,0,0,.06)}
-  .thead{background:#fffaf0;border-bottom:2px dashed #f5a623;padding:18px 26px;display:flex;justify-content:space-between;align-items:center}
+  .thead{background:#ffffff;border-bottom:2px dashed #f5a623;padding:18px 26px;display:flex;justify-content:space-between;align-items:center}
   .thead img{height:72px;width:auto}
   .doctype{text-align:right}
   .doctype .big{font-size:38px;font-weight:800;letter-spacing:1px;color:#13295e;line-height:.9}
   .doctype .num{font-size:14px;font-weight:800;color:#f5a623;letter-spacing:1px;margin-top:3px}
   .notch{height:0;position:relative}
-  .notch:before,.notch:after{content:"";position:absolute;width:26px;height:26px;background:#eef1f5;border-radius:50%;top:-13px}
+  .notch:before,.notch:after{content:"";position:absolute;width:26px;height:26px;background:#ffffff;border-radius:50%;top:-13px}
   .notch:before{left:-13px}.notch:after{right:-13px}
   .main{padding:22px 26px}
   .cli{margin-bottom:12px}
