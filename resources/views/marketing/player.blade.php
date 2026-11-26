@@ -38,12 +38,7 @@
   <div class="clock" id="clock"></div>
   <div class="log"><h4>Últimos tocados</h4><div id="loglist"></div></div>
 
-  <div id="overlay">
-    <div class="emp">{{ $empresa }}</div>
-    <div class="nome" style="font-size:clamp(22px,5vw,40px)">🔊 {{ $terminal->nome }}</div>
-    <button id="start">▶ Iniciar áudio terminal</button>
-    <div class="hint">Toque uma vez pra liberar o som. Depois é só deixar aberto — os áudios tocam sozinhos no horário e quando alguém mandar tocar agora.</div>
-  </div>
+  <div id="somhint" onclick="this.style.display='none'" style="position:fixed;left:0;right:0;bottom:0;padding:11px;text-align:center;background:rgba(5,150,105,.94);color:#fff;font-size:14px;font-weight:700;cursor:pointer;z-index:9">🔊 Toque na tela pra ativar o som (só na primeira vez)</div>
 
 <script>
 (function(){
@@ -83,6 +78,7 @@
     if(it.url){
       try{
         var au = new Audio(it.url);
+        au.onplay = escondeHint;
         au.onended = done; au.onerror = done;
         au.play().catch(done);
       }catch(e){ done(); }
@@ -94,6 +90,7 @@
         var u = new SpeechSynthesisUtterance(it.texto);
         u.lang = 'pt-BR'; u.rate = 1; u.pitch = 1;
         if(ptbr) u.voice = ptbr;
+        u.onstart = escondeHint;
         u.onend = done; u.onerror = done;
         speechSynthesis.speak(u);
       }catch(e){ done(); }
@@ -129,13 +126,19 @@
     document.getElementById('clock').textContent = new Date().toLocaleString('pt-BR',{weekday:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'});
   }
 
-  document.getElementById('start').addEventListener('click', function(){
-    document.getElementById('overlay').style.display = 'none';
-    // desbloqueia TTS no gesto do usuário
+  function escondeHint(){ var h=document.getElementById('somhint'); if(h) h.style.display='none'; }
+  var somLiberado=false;
+  function liberaSom(){ if(somLiberado) return; somLiberado=true;
     try{ if(window.speechSynthesis){ var w=new SpeechSynthesisUtterance(' '); w.volume=0; speechSynthesis.speak(w); escolheVoz(); } }catch(e){}
-    clock(); setInterval(clock, 1000);
-    poll(); setInterval(poll, 15000);
-  });
+    escondeHint();
+  }
+  ['pointerdown','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, liberaSom); });
+
+  // Inicia sozinho, já aguardando (sem botão). Tenta liberar o som de cara (kiosk com autoplay liberado);
+  // se o navegador exigir gesto, o aviso some no primeiro toque ou quando o 1º áudio tocar.
+  try{ if(window.speechSynthesis){ var w0=new SpeechSynthesisUtterance(' '); w0.volume=0; speechSynthesis.speak(w0); escolheVoz(); } }catch(e){}
+  clock(); setInterval(clock, 1000);
+  poll(); setInterval(poll, 15000);
 })();
 </script>
 </body>
