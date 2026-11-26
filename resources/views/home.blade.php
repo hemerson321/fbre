@@ -12,19 +12,21 @@
   $fone = $empresa?->whatsapp ?: $empresa?->telefone;
 @endphp
 
-<div class="max-w-3xl mx-auto space-y-4">
+<div class="max-w-5xl mx-auto space-y-4">
 
   {{-- HERO de boas-vindas --}}
   <div class="rounded-3xl overflow-hidden shadow-lg">
-    <div class="px-6 py-9 sm:py-11 text-white text-center" style="background:linear-gradient(135deg, var(--cor1), color-mix(in srgb, var(--cor1) 55%, var(--cor2)))">
+    <div class="px-6 sm:px-10 py-7 sm:py-8 text-white flex flex-col sm:flex-row items-center gap-5 sm:gap-9 text-center sm:text-left" style="background:linear-gradient(125deg, var(--cor1), color-mix(in srgb, var(--cor1) 72%, #000))">
       @if($empresa?->logo)
-        <img onerror="this.style.display='none'" src="/{{ $empresa->logo }}" alt="{{ $nomeEmp }}" class="h-20 w-20 sm:h-24 sm:w-24 mx-auto rounded-2xl bg-white p-1.5 shadow-md object-contain mb-4">
+        <img onerror="this.style.display='none'" src="/{{ $empresa->logo }}" alt="{{ $nomeEmp }}" class="h-24 w-24 sm:h-28 sm:w-28 rounded-2xl bg-white p-1.5 shadow-md object-contain shrink-0">
       @endif
-      <div class="text-[12px] font-semibold uppercase tracking-[0.2em] text-white/70">{{ $saud }}, {{ $primeiro }}</div>
-      <h1 class="text-2xl sm:text-3xl font-extrabold mt-1.5 leading-tight text-balance">Bem-vindo(a) à {{ $nomeEmp }}</h1>
-      <p class="text-white/85 mt-3 max-w-xl mx-auto leading-relaxed">Use o menu no topo para acessar as áreas liberadas para o seu perfil. Cada usuário enxerga apenas o que tem permissão — vender passagens, dar baixa, conferir o caixa e muito mais.</p>
-      <div class="mt-5 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-[12px] font-semibold text-white/90">
-        <span class="w-2 h-2 rounded-full" style="background:var(--cor3)"></span>{{ $u->setor ?: 'Operador' }} · {{ $u->name }}
+      <div class="flex-1 min-w-0">
+        <div class="text-[12px] font-semibold uppercase tracking-[0.2em] text-white/70">{{ $saud }}, {{ $primeiro }}</div>
+        <h1 class="text-2xl sm:text-[33px] font-extrabold mt-1 leading-tight text-balance">Bem-vindo(a) à {{ $nomeEmp }}</h1>
+        <p class="text-white/85 mt-2.5 max-w-2xl leading-relaxed">Use o menu no topo para acessar as áreas liberadas para o seu perfil. Cada usuário enxerga apenas o que tem permissão — vender passagens, dar baixa, conferir o caixa e muito mais.</p>
+        <div class="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-[12px] font-semibold text-white/90">
+          <span class="w-2 h-2 rounded-full" style="background:var(--cor3)"></span>{{ $u->setor ?: 'Operador' }} · {{ $u->name }}
+        </div>
       </div>
     </div>
     <div style="height:5px;background:var(--cor3)"></div>
