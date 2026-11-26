@@ -260,12 +260,15 @@ document.addEventListener('alpine:init', () => {
     </form>@endif
   </div>
 
+  {{-- linha da marca (cor3) dividindo o topo --}}
+  <div style="height:3px;background:var(--cor3)"></div>
+
   {{-- ===== MENU HORIZONTAL (desktop) ===== --}}
   <nav class="hidden lg:block bg-white border-b border-slate-200" x-data="{ aberto:null, sub:null }" @click.outside="aberto=null;sub=null">
     <div class="mx-auto max-w-[1440px] px-4 flex items-stretch h-12 gap-1">
       @if(!$semBemVindo)<a href="{{ route('inicio') }}"
          class="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-slate-50"
-         style="{{ $ativo(route('inicio')) ? 'color:'.$cor1.';background:color-mix(in srgb,'.$cor1.' 12%,white);box-shadow:inset 0 -3px 0 '.$cor1 : 'color:#334155' }}">
+         style="{{ $ativo(route('inicio')) ? 'color:'.$cor2.';background:color-mix(in srgb,'.$cor2.' 12%,white);box-shadow:inset 0 -3px 0 '.$cor2 : 'color:#334155' }}">
         <span class="text-base">👋</span>Bem Vindo
       </a>@endif
       @foreach($grupos as $titulo => $itens)
