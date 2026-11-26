@@ -268,6 +268,11 @@
 @php
   $navy = \App\Support\Tenant::empresa()?->cor_primaria ?: '#0b1a33';
   $pmV = fn ($k) => (float) ($porMeio[$k]->valor ?? 0);
+  $ppV = fn ($k) => (float) (($maqPropPorMeio[$k] ?? null)?->valor ?? 0); // parte na maquineta do proprietário
+  $propDin = $ppV('dinheiro');
+  $propPix = $ppV('pix_manual') + $ppV('pix_auto');
+  $propDeb = $ppV('debito');
+  $propCred = $ppV('credito');
   $cxDinheiro = $pmV('dinheiro');
   $cxPix      = $pmV('pix_manual') + $pmV('pix_auto');
   $cxDebito   = $pmV('debito');
@@ -302,12 +307,14 @@
   </div>
   <div class="card p-4 flex flex-col gap-2">
     <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Formas de pagamento</div>
-    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💵 Dinheiro</span><b class="font-extrabold">R$ {{ number_format($cxDinheiro,2,',','.') }}</b></div>
-    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">⚡ Pix</span><b class="font-extrabold">R$ {{ number_format($cxPix,2,',','.') }}</b></div>
-    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💳 Débito</span><b class="font-extrabold">R$ {{ number_format($cxDebito,2,',','.') }}</b></div>
-    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💳 Crédito</span><b class="font-extrabold">R$ {{ number_format($cxCredito,2,',','.') }}</b></div>
-    <div class="flex items-center justify-between border-t pt-2 mt-0.5"><span class="text-[13px] font-bold text-slate-700">Total recebido</span><b class="font-extrabold text-emerald-600">R$ {{ number_format($entradas ?? 0,2,',','.') }}</b></div>
-    <div class="flex items-center justify-between"><span class="text-[12px] text-slate-500">🏧 Maquineta dos proprietários</span><b class="font-bold text-slate-600">R$ {{ number_format($maqProprietarios ?? 0,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💵 Dinheiro @if($propDin>0)<span class="text-[10px] text-amber-600 font-semibold">· 🏧 prop R$ {{ number_format($propDin,2,',','.') }}</span>@endif</span><b class="font-extrabold">R$ {{ number_format($cxDinheiro,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">⚡ Pix @if($propPix>0)<span class="text-[10px] text-amber-600 font-semibold">· 🏧 prop R$ {{ number_format($propPix,2,',','.') }}</span>@endif</span><b class="font-extrabold">R$ {{ number_format($cxPix,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💳 Débito @if($propDeb>0)<span class="text-[10px] text-amber-600 font-semibold">· 🏧 prop R$ {{ number_format($propDeb,2,',','.') }}</span>@endif</span><b class="font-extrabold">R$ {{ number_format($cxDebito,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[13px] text-slate-600">💳 Crédito @if($propCred>0)<span class="text-[10px] text-amber-600 font-semibold">· 🏧 prop R$ {{ number_format($propCred,2,',','.') }}</span>@endif</span><b class="font-extrabold">R$ {{ number_format($cxCredito,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between border-t pt-2 mt-0.5"><span class="text-[13px] font-bold text-slate-700">Total recebido (bruto)</span><b class="font-extrabold text-slate-700">R$ {{ number_format($entradas ?? 0,2,',','.') }}</b></div>
+    <div class="flex items-center justify-between"><span class="text-[12px] text-slate-500">🏧 Maquineta dos proprietários</span><span class="text-right"><b class="font-bold text-slate-600">R$ {{ number_format($maqProprietarios ?? 0,2,',','.') }}</b>@if(($comissaoProp ?? 0)>0)<span class="block text-[10px] text-emerald-600 font-semibold">nosso ~{{ ($maqProprietarios ?? 0)>0 ? round(($comissaoProp/$maqProprietarios)*100) : 10 }}% = R$ {{ number_format($comissaoProp,2,',','.') }}</span>@endif</span></div>
+    @if(($ownerShareG ?? 0)>0.009)<div class="flex items-center justify-between"><span class="text-[12px] text-amber-700">🚤 Parte dos proprietários <span class="text-[10px] text-slate-400">(sai do caixa — acerto)</span></span><b class="font-bold text-amber-700">R$ {{ number_format($ownerShareG,2,',','.') }}</b></div>@endif
+    <div class="flex items-center justify-between border-t pt-2 mt-0.5"><span class="text-[13px] font-bold text-emerald-700">💰 No caixa (nosso)</span><b class="font-extrabold text-emerald-600">R$ {{ number_format($liquidoAgencia ?? 0,2,',','.') }}</b></div>
     <div class="flex items-center justify-between"><span class="text-[12px] text-slate-500">🎫 Vendas</span><b class="font-bold text-slate-600">{{ $cxVendas }}</b></div>
   </div>
   <div class="card cx-avlist overflow-hidden flex flex-col">
