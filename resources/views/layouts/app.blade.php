@@ -171,6 +171,8 @@ document.addEventListener('alpine:init', () => {
     // Relatório geral fica por último, abaixo de Entradas e saídas (pedido do cliente)
     if ($u->podeRelatorio()) $gf[] = ['r'=>route('relatorio.meu'), 'l'=>$u->relatorioTodos()?'Relatório geral':'Meu relatório', 'i'=>'📋', 'c'=>'#4f46e5', 'sep'=>! empty($gf)];
     if ($gf) $grupos['Financeiro'] = $gf;
+    // Clientes faturado aparece UMA vez: se já está no Financeiro, sai da lista direta de Passagens.
+    if (collect($gf)->contains('l', 'Clientes faturado') && ! empty($grupos['Passagens'])) $grupos['Passagens'] = array_values(array_filter($grupos['Passagens'], fn ($it) => ($it['l'] ?? '') !== 'Clientes faturado'));
   }
   // Desktop: Financeiro e Ferramentas também abrem como submenu (flyout) DENTRO do Passagens. No mobile continuam como grupos.
   $subPassagens = [];
