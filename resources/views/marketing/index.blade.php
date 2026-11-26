@@ -4,9 +4,9 @@
 @php
   $diasLabel = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 @endphp
-<div class="space-y-4" x-data="{ tipo:'tts', editId:0, nome:'', texto:'', voz:'nova', baseAudio: @js(url('/marketing/audio')),
-  editarAudio(a){ this.editId=a.id; this.nome=a.nome||''; this.tipo=a.tipo||'tts'; this.texto=a.texto||''; this.voz=a.voz||'nova'; window.scrollTo({top:0,behavior:'smooth'}); },
-  novoAudio(){ this.editId=0; this.nome=''; this.tipo='tts'; this.texto=''; this.voz='nova'; } }">
+<div class="space-y-4" x-data="{ tipo:'tts', editId:0, nome:'', texto:'', voz:'nova', provedor: @js($tts['provider']), baseAudio: @js(url('/marketing/audio')),
+  editarAudio(a){ this.editId=a.id; this.nome=a.nome||''; this.tipo=a.tipo||'tts'; this.texto=a.texto||''; this.voz=a.voz||'nova'; this.provedor=a.provedor||@js($tts['provider']); window.scrollTo({top:0,behavior:'smooth'}); },
+  novoAudio(){ this.editId=0; this.nome=''; this.tipo='tts'; this.texto=''; this.voz='nova'; this.provedor=@js($tts['provider']); } }">
 
   {{-- Cabeçalho --}}
   <div class="rounded-2xl bg-white px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
@@ -76,7 +76,13 @@
         <input type="hidden" name="tipo" :value="tipo">
         <div x-show="tipo==='tts'" x-cloak class="space-y-2">
           <div><label class="label">Texto que vai ser falado</label><textarea name="texto" x-model="texto" class="input" rows="3" placeholder="Ex.: Senhores passageiros, o barco para Codajás parte às 14 horas."></textarea></div>
-          <p class="text-[11px] text-slate-400">A voz (moça) e o provedor (OpenAI ou Google) ficam em <b>Integrações</b>, ali embaixo. Gera um MP3 de verdade; sem provedor, fala pela voz do navegador.</p>
+          <div><label class="label">Falar com</label>
+            <select name="provedor" x-model="provedor" class="input">
+              <option value="openai">🤖 OpenAI</option>
+              <option value="google">🟦 Google · Chirp 3 HD</option>
+            </select>
+            <p class="text-[11px] text-slate-400 mt-1">A voz, a chave e o estilo de cada provedor ficam em <b>Integrações</b> (lá embaixo). Sem provedor configurado, fala pela voz do navegador.</p>
+          </div>
         </div>
         <div x-show="tipo==='arquivo'" x-cloak class="space-y-2">
           <div><label class="label">Arquivo de áudio (mp3, ogg, wav…)</label><input type="file" name="arquivo" accept="audio/*" class="input"></div>
@@ -94,7 +100,7 @@
               </div>
               <div class="text-[11px] text-slate-400 truncate">{{ $a->tipo === 'arquivo' ? 'arquivo de áudio' : \Illuminate\Support\Str::limit((string) $a->texto, 70) }}</div>
             </div>
-            <button type="button" @click="editarAudio(@js(['id'=>$a->id,'nome'=>(string)$a->nome,'tipo'=>(string)$a->tipo,'texto'=>(string)$a->texto,'voz'=>(string)$a->voz]))" class="btn btn-ghost btn-sm" title="Editar">✏️</button>
+            <button type="button" @click="editarAudio(@js(['id'=>$a->id,'nome'=>(string)$a->nome,'tipo'=>(string)$a->tipo,'texto'=>(string)$a->texto,'voz'=>(string)$a->voz,'provedor'=>(string)$a->provedor]))" class="btn btn-ghost btn-sm" title="Editar">✏️</button>
             <form method="post" action="{{ route('marketing.audio.excluir', $a) }}" onsubmit="return confirm('Excluir o áudio {{ $a->nome }}?')">@csrf @method('DELETE')
               <button class="btn btn-ghost btn-sm text-rose-600">🗑</button>
             </form>
