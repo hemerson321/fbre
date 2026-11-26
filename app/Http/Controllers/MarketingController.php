@@ -90,6 +90,39 @@ class MarketingController extends Controller
         return response()->json(['ok' => false, 'provedor' => $prov, 'msg' => $svc->ultimoErro ?: 'Não foi possível gerar a voz.']);
     }
 
+    /** Ouvir/testar a voz com o texto e a voz escolhidos no FORMULÁRIO do áudio (antes de salvar). */
+    public function audioTestar(Request $request)
+    {
+        $data = $request->validate([
+            'texto' => 'required|string|max:2000',
+            'provedor' => 'nullable|in:openai,google',
+            'voz' => 'nullable|string|max:60',
+            'estilo' => 'nullable|string|max:600',
+        ]);
+        $emp = Tenant::empresa();
+        $svc = app(\App\Services\SinteseVoz::class);
+        $prov = $data['provedor'] ?? 'google';
+        $texto = trim((string) $data['texto']);
+        $voz = trim((string) ($data['voz'] ?? ''));
+        if ($prov === 'google') {
+            $b64 = $svc->sintetizarGoogle(
+                $texto,
+                $voz ?: (string) $emp?->config('tts_google_voz', 'pt-BR-Neural2-A'),
+                (string) $emp?->config('tts_google_key'),
+                (float) $emp?->config('tts_google_ritmo', 1.0),
+                (string) $emp?->config('tts_google_sa')
+            );
+        } else {
+            $estilo = trim((string) ($data['estilo'] ?? '')) ?: (string) ($emp?->config('tts_estilo') ?: '');
+            $b64 = $svc->sintetizar($texto, $voz ?: (string) ($emp?->config('tts_openai_voz') ?: 'nova'), null, $estilo);
+        }
+        if ($b64 !== '') {
+            return response()->json(['ok' => true, 'provedor' => $prov, 'audio' => 'data:audio/mp3;base64,'.$b64]);
+        }
+
+        return response()->json(['ok' => false, 'provedor' => $prov, 'msg' => $svc->ultimoErro ?: 'Não foi possível gerar a voz.']);
+    }
+
     // -------- Terminais --------
     public function terminalSalvar(Request $request, ?MarketingTerminal $terminal = null)
     {

@@ -367,6 +367,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [\App\Http\Controllers\MarketingController::class, 'index'])->name('index');
         Route::post('/tts', [\App\Http\Controllers\MarketingController::class, 'ttsSalvar'])->name('tts.salvar');
         Route::post('/tts/testar', [\App\Http\Controllers\MarketingController::class, 'ttsTestar'])->name('tts.testar');
+        Route::post('/audio-testar', [\App\Http\Controllers\MarketingController::class, 'audioTestar'])->name('audio.testar'); // ouvir a voz do formulário (antes de salvar) — path distinto pra não cair em /audio/{audio?}
         Route::post('/terminal/{terminal?}', [\App\Http\Controllers\MarketingController::class, 'terminalSalvar'])->name('terminal.salvar');
         Route::delete('/terminal/{terminal}', [\App\Http\Controllers\MarketingController::class, 'terminalExcluir'])->name('terminal.excluir');
         Route::post('/audio/{audio?}', [\App\Http\Controllers\MarketingController::class, 'audioSalvar'])->name('audio.salvar');

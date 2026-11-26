@@ -4,9 +4,7 @@
 @php
   $diasLabel = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 @endphp
-<div class="space-y-4" x-data="{ tipo:'tts', editId:0, nome:'', texto:'', voz:'nova', vozGoogle:'pt-BR-Neural2-A', estilo:'', provedor:'google', baseAudio: @js(url('/marketing/audio')),
-  editarAudio(a){ this.editId=a.id; this.nome=a.nome||''; this.tipo=a.tipo||'tts'; this.texto=a.texto||''; this.estilo=a.estilo||''; this.provedor=a.provedor||'google'; if(this.provedor==='google'){ this.vozGoogle=a.voz||'pt-BR-Neural2-A'; } else { this.voz=a.voz||'nova'; } window.scrollTo({top:0,behavior:'smooth'}); },
-  novoAudio(){ this.editId=0; this.nome=''; this.tipo='tts'; this.texto=''; this.estilo=''; this.voz='nova'; this.vozGoogle='pt-BR-Neural2-A'; this.provedor='google'; } }">
+<div class="space-y-4">
 
   {{-- Cabeçalho --}}
   <div class="rounded-2xl bg-white px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
@@ -60,60 +58,42 @@
   </div>
 
   {{-- ÁUDIOS --}}
-  <div class="card overflow-hidden">
-    <div class="p-3 border-b bg-slate-50 font-bold text-sm text-slate-700">🎙 Áudios</div>
-    <div class="p-3 space-y-3">
-      <form method="post" :action="editId ? baseAudio + '/' + editId : baseAudio" enctype="multipart/form-data" class="rounded-xl border p-3 space-y-2" :class="editId ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'">
-        @csrf
-        <div class="flex items-center justify-between">
-          <div class="text-[11px] font-bold uppercase tracking-wide" :class="editId ? 'text-amber-700' : 'text-slate-400'" x-text="editId ? 'Editando áudio' : 'Novo áudio'"></div>
-          <button type="button" x-show="editId" @click="novoAudio()" class="text-[11px] font-semibold text-indigo-600">+ novo</button>
-        </div>
-        <div><label class="label">Nome</label><input name="nome" x-model="nome" class="input" required placeholder="Ex.: Chamada de embarque Codajás"></div>
-        <div class="grid grid-cols-2 gap-2">
-          <button type="button" @click="tipo='tts'" :class="tipo==='tts' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">🗣 Falado (texto)</button>
-          <button type="button" @click="tipo='arquivo'" :class="tipo==='arquivo' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300'" class="rounded-xl border py-2 text-sm font-bold">📁 Arquivo</button>
-        </div>
-        <input type="hidden" name="tipo" :value="tipo">
-        <div x-show="tipo==='tts'" x-cloak class="space-y-2">
-          <div><label class="label">Texto que vai ser falado</label><textarea name="texto" x-model="texto" class="input" rows="3" placeholder="Ex.: Senhores passageiros, o barco para Codajás parte às 14 horas."></textarea></div>
-          <div class="grid grid-cols-2 gap-2">
-            <div><label class="label">Falar com</label>
-              <select name="provedor" x-model="provedor" class="input">
-                <option value="google">🟦 Google</option>
-                <option value="openai">🤖 OpenAI</option>
-              </select>
-            </div>
-            <div x-show="provedor==='openai'" x-cloak><label class="label">Tipo de voz</label>
-              <select name="voz" x-model="voz" class="input">
-                <option value="nova">👩 Nova</option><option value="shimmer">👩 Shimmer</option><option value="coral">👩 Coral</option><option value="alloy">🧑 Alloy</option><option value="onyx">👨 Onyx</option><option value="echo">👨 Echo</option>
-              </select>
-            </div>
-            <div x-show="provedor==='google'" x-cloak><label class="label">Tipo de voz</label>
-              <select name="voz_google" x-model="vozGoogle" class="input">
-                <optgroup label="Garantidas">
-                  <option value="pt-BR-Neural2-A">👩 Neural2 A</option><option value="pt-BR-Neural2-C">👩 Neural2 C</option><option value="pt-BR-Wavenet-A">👩 Wavenet A</option><option value="pt-BR-Wavenet-C">👩 Wavenet C</option><option value="pt-BR-Neural2-B">👨 Neural2 B</option>
-                </optgroup>
-                <optgroup label="Chirp 3 HD (se disponível)">
-                  <option value="pt-BR-Chirp3-HD-Aoede">👩 Aoede</option><option value="pt-BR-Chirp3-HD-Kore">👩 Kore</option><option value="pt-BR-Chirp3-HD-Leda">👩 Leda</option><option value="pt-BR-Chirp3-HD-Zephyr">👩 Zephyr</option><option value="pt-BR-Chirp3-HD-Charon">👨 Charon</option>
-                </optgroup>
-              </select>
-            </div>
-          </div>
-          <div><label class="label !text-[10px] !mb-0.5 opacity-70">Estilo / como se comportar (opcional)</label>
-            <input name="estilo" x-model="estilo" class="input !py-1 text-[12px]" placeholder="ex.: voz de aeromoça, calma e clara">
-          </div>
-          <p class="text-[11px] text-slate-400">A chave do Google / OpenAI fica em <b>Integrações</b>. Sem chave, fala pela voz do navegador.</p>
-        </div>
-        <div x-show="tipo==='arquivo'" x-cloak class="space-y-2">
-          <div><label class="label">Arquivo de áudio (mp3, ogg, wav…)</label><input type="file" name="arquivo" accept="audio/*" class="input"></div>
-          <div><label class="label">…ou cole o link do áudio</label><input name="arquivo_url" class="input" placeholder="https://..."></div>
-        </div>
-        <button class="btn btn-primary btn-sm" x-text="editId ? 'Salvar alterações' : 'Salvar áudio'"></button>
-      </form>
-      <div class="space-y-2">
-        @forelse($audios as $a)
-        <div class="rounded-xl border border-slate-200 p-3">
+  <div class="card overflow-hidden" x-data="{
+      modalNovo:false, editId:0,
+      baseAudio:@js(url('/marketing/audio')), baseTestar:@js(route('marketing.audio.testar')), csrf:@js(csrf_token()),
+      f:{ nome:'', tipo:'tts', texto:'', provedor:'google', voz:'nova', vozGoogle:'pt-BR-Neural2-A', estilo:'' },
+      testando:false, testMsg:'', testErro:'', audioEl:null,
+      resetF(){ this.f={ nome:'', tipo:'tts', texto:'', provedor:'google', voz:'nova', vozGoogle:'pt-BR-Neural2-A', estilo:'' }; this.testMsg=''; this.testErro=''; },
+      abrirNovo(){ this.editId=0; this.resetF(); this.modalNovo=true; },
+      fecharNovo(){ this.modalNovo=false; },
+      abrirEditar(a){ this.modalNovo=false; this.resetF(); this.f.nome=a.nome||''; this.f.tipo=a.tipo||'tts'; this.f.texto=a.texto||''; this.f.estilo=a.estilo||''; this.f.provedor=a.provedor||'google'; if(this.f.provedor==='google'){ this.f.vozGoogle=a.voz||'pt-BR-Neural2-A'; } else { this.f.voz=a.voz||'nova'; } this.editId=a.id; },
+      fecharEditar(){ this.editId=0; this.testMsg=''; this.testErro=''; },
+      async testar(){
+        if(this.f.tipo!=='tts'){ return; }
+        if(!(this.f.texto||'').trim()){ this.testErro='Escreva o texto primeiro.'; this.testMsg=''; return; }
+        this.testando=true; this.testMsg=''; this.testErro='';
+        try{
+          const fd=new FormData();
+          fd.append('texto', this.f.texto||'');
+          fd.append('provedor', this.f.provedor||'google');
+          fd.append('voz', this.f.provedor==='google' ? (this.f.vozGoogle||'') : (this.f.voz||''));
+          fd.append('estilo', this.f.estilo||'');
+          const r=await fetch(this.baseTestar, {method:'POST', headers:{'X-CSRF-TOKEN':this.csrf,'Accept':'application/json'}, body:fd});
+          const d=await r.json();
+          if(d.ok){ try{ if(this.audioEl){ this.audioEl.pause(); } this.audioEl=new Audio(d.audio); this.audioEl.play(); }catch(e){} this.testMsg='Tocando pela voz do '+(d.provedor==='google'?'Google':'OpenAI')+' ✓'; }
+          else { this.testErro=d.msg||'Não deu pra gerar a voz.'; }
+        }catch(e){ this.testErro='Erro: '+e; }
+        this.testando=false;
+      }
+    }">
+    <div class="p-3 border-b bg-slate-50 flex items-center justify-between gap-2">
+      <div class="font-bold text-sm text-slate-700">🎙 Áudios</div>
+      <button type="button" @click="abrirNovo()" class="btn btn-primary btn-sm">+ Novo áudio</button>
+    </div>
+    <div class="p-3 space-y-2">
+      @forelse($audios as $a)
+      <div class="rounded-xl border overflow-hidden" :class="editId === {{ $a->id }} ? 'border-amber-300' : 'border-slate-200'">
+        <div class="p-3">
           <div class="flex items-center gap-2 flex-wrap">
             <div class="min-w-0 flex-1">
               <div class="font-semibold text-slate-800 truncate">{{ $a->tipo === 'arquivo' ? '📁' : '🗣' }} {{ $a->nome }}
@@ -121,7 +101,7 @@
               </div>
               <div class="text-[11px] text-slate-400 truncate">{{ $a->tipo === 'arquivo' ? 'arquivo de áudio' : \Illuminate\Support\Str::limit((string) $a->texto, 70) }}</div>
             </div>
-            <button type="button" @click="editarAudio(@js(['id'=>$a->id,'nome'=>(string)$a->nome,'tipo'=>(string)$a->tipo,'texto'=>(string)$a->texto,'voz'=>(string)$a->voz,'provedor'=>(string)$a->provedor,'estilo'=>(string)$a->estilo]))" class="btn btn-ghost btn-sm" title="Editar">✏️</button>
+            <button type="button" @click="editId === {{ $a->id }} ? fecharEditar() : abrirEditar(@js(['id'=>$a->id,'nome'=>(string)$a->nome,'tipo'=>(string)$a->tipo,'texto'=>(string)$a->texto,'voz'=>(string)$a->voz,'provedor'=>(string)$a->provedor,'estilo'=>(string)$a->estilo]))" class="btn btn-ghost btn-sm" title="Editar" x-text="editId === {{ $a->id }} ? '✖ Fechar' : '✏️ Editar'"></button>
             <form method="post" action="{{ route('marketing.audio.excluir', $a) }}" onsubmit="return confirm('Excluir o áudio {{ $a->nome }}?')">@csrf @method('DELETE')
               <button class="btn btn-ghost btn-sm text-rose-600">🗑</button>
             </form>
@@ -135,9 +115,33 @@
             <button class="btn btn-sm text-white" style="background:#059669">▶ Tocar agora</button>
           </form>
         </div>
-        @empty
-        <div class="text-center text-slate-400 text-sm p-4">Nenhum áudio ainda.</div>
-        @endforelse
+        {{-- expansão: editar ali mesmo --}}
+        <div x-show="editId === {{ $a->id }}" x-cloak class="border-t border-amber-200 bg-amber-50/40 p-3">
+          <div class="text-[11px] font-bold uppercase tracking-wide text-amber-700 mb-1.5">Editando áudio</div>
+          <template x-if="editId === {{ $a->id }}">
+            @include('marketing._audioform')
+          </template>
+        </div>
+      </div>
+      @empty
+      <div class="text-center text-slate-400 text-sm p-4">Nenhum áudio ainda. Clique em <b>+ Novo áudio</b>.</div>
+      @endforelse
+    </div>
+
+    {{-- MODAL: novo áudio --}}
+    <div x-show="modalNovo" x-cloak class="fixed inset-0 z-[60] overflow-y-auto" @keydown.escape.window="fecharNovo()">
+      <div class="min-h-full flex items-start justify-center p-4" style="background:rgba(15,23,42,.45)" @click.self="fecharNovo()">
+        <div class="card w-full max-w-lg my-8">
+          <div class="p-3 border-b bg-slate-50 flex items-center justify-between">
+            <div class="font-bold text-sm text-slate-700">🎙 Novo áudio</div>
+            <button type="button" @click="fecharNovo()" class="btn btn-ghost btn-sm">✖</button>
+          </div>
+          <div class="p-3">
+            <template x-if="modalNovo">
+              @include('marketing._audioform')
+            </template>
+          </div>
+        </div>
       </div>
     </div>
   </div>
