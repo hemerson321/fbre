@@ -238,7 +238,7 @@ document.addEventListener('alpine:init', () => {
     'Mídia Indoor'  => ['📡', '#be185d'],
     'GERATEC'       => ['🛠️', '#334155'],
   ];
-  if (! $coresPorModulo) { foreach ($metaGrupo as $k => $v) { $metaGrupo[$k][1] = $cor1; } }
+  if (! $coresPorModulo) { foreach ($metaGrupo as $k => $v) { if (in_array($k, ['Caixa geral','Meu caixa','Prestação de contas'], true)) continue; $metaGrupo[$k][1] = $cor1; } }
   // Cores fixas do financeiro (sempre diferentes entre si, cada uma com a sua página).
   $metaGrupo['Caixa'] = ['💰', '#059669'];
   $metaGrupo['Prestação de Contas'] = ['🧾', '#d97706'];
@@ -301,8 +301,8 @@ document.addEventListener('alpine:init', () => {
         @php [$gi,$gc] = $metaGrupo[$titulo] ?? ['•','#475569']; $chkItens = ($titulo==='Passagens' && !empty($subPassagens)) ? collect($itens)->merge(collect($subPassagens)->flatten(1)) : collect($itens); $temAtivo = $chkItens->contains(fn($it)=>!empty($it['r']) && $ativo($it['r'])); @endphp
         @if(in_array($titulo, $gruposDiretos ?? [], true) && count($itens) === 1)
         <a href="{{ $itens[0]['r'] }}"
-           class="flex items-center gap-2 rounded-lg px-3 py-2 my-1 text-[13px] font-bold whitespace-nowrap transition hover:brightness-95"
-           style="{{ $temAtivo ? 'color:#fff;background:'.$gc.';box-shadow:0 2px 8px -2px '.$gc : 'color:'.$gc.';background:color-mix(in srgb,'.$gc.' 10%,white)' }}">
+           class="flex items-center gap-2 rounded-lg px-3 py-2 my-1 text-[13px] font-bold whitespace-nowrap transition hover:brightness-[0.97]"
+           style="color:{{ $gc }};background:color-mix(in srgb,{{ $gc }} {{ $temAtivo ? '16' : '9' }}%,white);border:1px solid color-mix(in srgb,{{ $gc }} {{ $temAtivo ? '55' : '22' }}%,white)">
           <span class="text-base">{{ $gi }}</span>{{ $titulo }}
         </a>
         @continue
