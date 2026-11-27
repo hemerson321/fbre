@@ -267,6 +267,8 @@ class AgenteBot
         $this->registrarUso($prim, $r);
         $texto = ($r['ok'] ?? false) ? trim((string) $r['texto']) : '';
         $pediuAjuda = $texto !== '' && preg_match('/\[\[ESCALAR[^\]]*\]\]/i', $texto);
+        // modelo barato se enrolou: veio vazio, ou com marcador [[...]] aberto/cortado -> sobe pro modelo melhor
+        if (($r['ok'] ?? false) && ($texto === '' || substr_count($texto, '[[') !== substr_count($texto, ']]'))) $pediuAjuda = true;
 
         if ($esc && $esc->id !== ($prim->id ?? null) && ((! ($r['ok'] ?? false)) || $pediuAjuda)) {
             $r2 = $this->llm->chat($esc, $hist, $sistema, $max);

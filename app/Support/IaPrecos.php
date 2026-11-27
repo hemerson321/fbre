@@ -12,6 +12,21 @@ class IaPrecos
     public const DOLAR_PADRAO = 5.50;
 
     public const TABELA = [
+        // DeepSeek (preço de horário de pico; fora do pico custa a metade)
+        'deepseek-v4-pro' => [1.32, 3.96, 0.044],
+        'deepseek' => [0.30, 1.20, 0.006],
+        // GLM (Z.ai) — antes do Gemini: 'glm-5-3-flash' também casaria com '3-flash'
+        'glm-4-7-flashx' => [0.07, 0.40, 0.01],
+        'glm-4-7-flash' => [0.0, 0.0, 0.0],
+        'glm-4-5-flash' => [0.0, 0.0, 0.0],
+        'glm-5-3-flashx' => [0.37, 1.25, 0.075],
+        'glm-5-3-flash' => [0.15, 0.50, 0.03],
+        'glm-4-5-airx' => [1.10, 4.50, 0.22],
+        'glm-4-5-air' => [0.20, 1.10, 0.03],
+        'glm-4-5-x' => [2.20, 8.90, 0.45],
+        'glm-4-' => [0.60, 2.20, 0.11],
+        'glm-5-' => [1.40, 4.40, 0.26],
+        'glm-5' => [1.00, 3.20, 0.20],
         // Claude (Anthropic)
         'haiku-5-5' => [0.10, 0.50, 0.01],
         'haiku' => [1.00, 5.00, 0.10],

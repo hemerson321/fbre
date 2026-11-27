@@ -6,7 +6,7 @@ use App\Models\LlmProvedor;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Chat de texto genérico sobre Claude (Anthropic) e OpenAI.
+ * Chat de texto genérico sobre Claude (Anthropic), OpenAI, Gemini, DeepSeek e GLM (Z.ai).
  * $mensagens = [['role'=>'user'|'assistant','content'=>'...'], ...].
  * À prova de modelo descontinuado: descobre modelos válidos na conta se o escolhido falhar.
  */
@@ -17,11 +17,13 @@ class LLM
     {
         $token = (string) $p->token;
         if ($token === '') return ['ok' => false, 'erro' => 'Provedor sem token.'];
-        $provider = in_array($p->provider, ['openai', 'gemini'], true) ? $p->provider : 'claude';
+        $provider = in_array($p->provider, ['openai', 'gemini', 'deepseek', 'glm'], true) ? $p->provider : 'claude';
+        $base = rtrim(trim((string) ($p->base_url ?? '')), '/'); // só DeepSeek/GLM usam (endereço alternativo da API)
 
         $candidatos = array_values(array_filter(array_unique(array_merge(
             [trim((string) $p->modelo)],
-            $this->descobrir($provider, $token)
+            // DeepSeek/GLM: com modelo informado não gasta chamada extra descobrindo; sem modelo usa o padrão barato
+            in_array($provider, ['deepseek', 'glm'], true) ? self::PADRAO[$provider] : $this->descobrir($provider, $token)
         ))));
         if (! $candidatos) return ['ok' => false, 'erro' => 'Nenhum modelo disponível na conta.'];
 
@@ -30,11 +32,12 @@ class LLM
             $r = match ($provider) {
                 'openai' => $this->openai($token, $modelo, $mensagens, $sistema, $maxTokens),
                 'gemini' => $this->gemini($token, $modelo, $mensagens, $sistema, $maxTokens),
+                'deepseek', 'glm' => $this->compativel($provider, $base, $token, $modelo, $mensagens, $sistema, $maxTokens),
                 default  => $this->claude($token, $modelo, $mensagens, $sistema, $maxTokens),
             };
             if ($r['ok']) return ['ok' => true, 'texto' => $r['texto'], 'modelo' => $modelo, 'provider' => $provider, 'uso' => $r['uso'] ?? null];
-            $ultErro = 'HTTP '.$r['status'].' ('.$modelo.'): '.mb_substr($r['body'], 0, 200);
-            $invalido = $r['status'] === 404 || str_contains(mb_strtolower($r['body']), 'model');
+            $ultErro = 'HTTP '.$r['status'].' ('.$modelo.'): '.mb_substr((string) ($r['body'] ?? ($r['erro'] ?? '')), 0, 200);
+            $invalido = $r['status'] === 404 || str_contains(mb_strtolower((string) ($r['body'] ?? '')), 'model');
             if (! $invalido) break; // auth/cota: para
         }
         return ['ok' => false, 'erro' => $ultErro];
@@ -98,6 +101,52 @@ class LLM
             'cache_w' => 0,
         ];
         return ['ok' => true, 'texto' => trim((string) $r->json('choices.0.message.content')), 'uso' => $uso];
+    }
+
+    /** Modelo padrão (barato) quando o cadastro do provedor não informa um. */
+    public const PADRAO = [
+        'deepseek' => ['deepseek-flash'],
+        'glm' => ['glm-4.7', 'glm-4.6'],
+    ];
+
+    /**
+     * DeepSeek e GLM (Z.ai): API no formato da OpenAI.
+     * - O "pensamento" (thinking) vem LIGADO por padrão nos dois e é cobrado como saída: aqui vai desligado,
+     *   porque atendimento é resposta curta — fica bem mais barato e rápido. Caso difícil sobe pro modelo de
+     *   escalonamento do agente.
+     * - Cache de prompt é automático nos dois (o system grande e igual é cobrado a uma fração nas próximas mensagens).
+     */
+    protected function compativel(string $provider, string $base, string $token, string $modelo, array $msgs, string $sistema, int $max): array
+    {
+        $url = ($base !== '' ? $base : ($provider === 'deepseek' ? 'https://api.deepseek.com' : 'https://api.z.ai/api/paas/v4')).'/chat/completions';
+        $mensagens = [];
+        if ($sistema !== '') $mensagens[] = ['role' => 'system', 'content' => $sistema];
+        foreach ($msgs as $m) {
+            $mensagens[] = ['role' => $m['role'] === 'assistant' ? 'assistant' : 'user', 'content' => (string) $m['content']];
+        }
+        $body = ['model' => $modelo, 'messages' => $mensagens, 'max_tokens' => $max, 'stream' => false];
+        // GLM-5.3 tem pensamento obrigatório (não aceita desligar): dá folga no limite pra resposta não vir cortada
+        $forcado = $provider === 'glm' && str_contains(mb_strtolower($modelo), 'glm-5.3');
+        if ($forcado) $body['max_tokens'] = $max + 3000;
+        else $body['thinking'] = ['type' => 'disabled'];
+
+        $r = Http::timeout(60)->withToken($token)->post($url, $body);
+        if (! $r->successful()) return ['ok' => false, 'status' => $r->status(), 'body' => $r->body()];
+
+        $txt = trim((string) $r->json('choices.0.message.content'));
+        $fim = (string) $r->json('choices.0.finish_reason', '');
+        // cortou no limite sem texto: falha de propósito pra cascata escalar pro modelo melhor
+        if ($txt === '') return ['ok' => false, 'status' => $fim === 'length' ? 'MAX_TOKENS' : 'VAZIO', 'body' => 'resposta vazia ('.$fim.')'];
+
+        // prompt_tokens INCLUI o que veio do cache -> separa (o cache custa uma fração)
+        $cache = (int) ($r->json('usage.prompt_tokens_details.cached_tokens') ?? $r->json('usage.prompt_cache_hit_tokens') ?? 0);
+        $uso = [
+            'in' => max(0, (int) $r->json('usage.prompt_tokens', 0) - $cache),
+            'out' => (int) $r->json('usage.completion_tokens', 0),
+            'cache_r' => $cache,
+            'cache_w' => 0,
+        ];
+        return ['ok' => true, 'texto' => $txt, 'fim' => $fim, 'uso' => $uso];
     }
 
     protected function gemini(string $token, string $modelo, array $msgs, string $sistema, int $max): array
