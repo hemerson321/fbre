@@ -152,6 +152,15 @@ class AgenteBot
                 }
             }
 
+            // relógio do sistema: o agente NÃO sabe que horas são sozinho (e inventava). Vai na última mensagem.
+            for ($ih = count($historico) - 1; $ih >= 0; $ih--) {
+                if ($historico[$ih]['role'] === 'user') {
+                    $agora = now();
+                    $historico[$ih]['content'] .= "\n\n[SISTEMA — agora são ".$agora->format('H:i').' de '.(\App\Models\Rota::DIAS[$agora->dayOfWeek] ?? '').', '.$agora->format('d/m/Y').". Saída com horário anterior a este JÁ PARTIU.]";
+                    break;
+                }
+            }
+
             $r = $this->conversarCascata($agente, $historico, $sistema, 1400);
             if (! $r['ok']) { Log::warning('Agente IA falhou: '.($r['erro'] ?? '')); return; }
 
@@ -291,6 +300,12 @@ class AgenteBot
         $pediuAjuda = $texto !== '' && preg_match('/\[\[ESCALAR[^\]]*\]\]/i', $texto);
         // modelo barato se enrolou: veio vazio, ou com marcador [[...]] aberto/cortado -> sobe pro modelo melhor
         if (($r['ok'] ?? false) && ($texto === '' || substr_count($texto, '[[') !== substr_count($texto, ']]'))) $pediuAjuda = true;
+        // disse que reservou poltrona / que mandou o PIX mas NÃO escreveu o comando (nada aconteceu de verdade) -> sobe pro modelo melhor
+        if (($r['ok'] ?? false) && ! $pediuAjuda) {
+            $temReserva = ! empty($this->convUso?->contexto['poltronas_agente']);
+            if (! $temReserva && preg_match('/\b(sua poltrona|suas poltronas|reservei|fechei a|garanti a|separei a)\b/iu', $texto) && ! preg_match('/\[\[(POLTRONA|ESCOLHER)\b/i', $texto)) $pediuAjuda = true;
+            if (preg_match('/\b(segue o pix|gerei o pix|aqui est[aá] o pix|pix copia e cola)\b/iu', $texto) && ! preg_match('/\[\[PIX\b/i', $texto)) $pediuAjuda = true;
+        }
 
         if ($esc && $esc->id !== ($prim->id ?? null) && ((! ($r['ok'] ?? false)) || $pediuAjuda)) {
             $r2 = $this->llm->chat($esc, $hist, $sistema, $max);
@@ -382,6 +397,7 @@ class AgenteBot
         $p[] = "5) Confirmando: nas lanchas com [poltrona], PRIMEIRO escolha a poltrona (pergunte janela/corredor/meio e reserve com [[POLTRONA:...]]) e SÓ DEPOIS gere o PIX. NUNCA gere o PIX antes de ter a poltrona reservada. Em lancha de rede, gere o PIX direto.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "POLTRONA SÓ DEPOIS DO 'QUERO FECHAR' (regra acima das de poltrona): NÃO ofereça poltrona, NÃO pergunte janela/corredor nem 'querem sentar juntos', e NÃO use [[POLTRONAS]]/[[POLTRONA]]/[[ESCOLHER]] enquanto o cliente não disser claramente que QUER COMPRAR (ex.: 'quero', 'pode fechar', 'vou querer', 'sim' respondendo a 'quer que eu garanta?'). Depois de passar o valor ou entregar um orçamento, pergunte APENAS: 'Quer que eu garanta pra você?'. Escolher data/lancha, tirar dúvida (horas de viagem, comida, horário) ou dizer 'ok/entendi' NÃO é fechar. Reservar poltrona tira o lugar de outro cliente — só reserve pra quem vai comprar.";
+        $p[] = "HORA CERTA E VIAGEM QUE JÁ SAIU: a hora de agora vem na última mensagem, na linha '[SISTEMA — agora são HH:MM ...]' — use SÓ ela; NUNCA invente que horas são nem mostre essa linha ao cliente. Se a saída de HOJE já passou (ou falta menos de 30 minutos), ela NÃO está mais à venda: não ofereça, não reserve poltrona, não gere PIX. Diga que a de hoje já saiu e ofereça a PRÓXIMA data da lista. Se o cliente perguntar 'já saiu?', compare a hora de agora com a hora da saída e responda a verdade.";
         $p[] = "CLIENTE QUE VOLTA (memória): se no histórico aparecer '[NOVO CONTATO — o atendimento acima já foi encerrado]', tudo que vem ANTES é a conversa anterior com esse mesmo cliente — você LEMBRA dela, como uma pessoa lembraria. Responda ao que ele disse AGORA: se for só agradecimento ou despedida ('tá bom', 'obrigado', 'boa noite', 'valeu'), responda curto e simpático e PARE — não pergunte pra onde ele quer viajar nem recomece o atendimento. Se ele retomar o assunto ('e aquela passagem?', 'pode fechar'), continue de onde parou usando o que já sabe (trecho, data, pessoas) e só confirme os dados; poltrona que estava reservada foi liberada, então reserve de novo se ele for comprar. Só cumprimente como cliente novo quem realmente não tem conversa anterior.";
         $p[] = "POLTRONA ANTES DO PIX: na lancha com poltrona, o PIX só sai DEPOIS que o cliente aceitar a poltrona. Ordem: 1) reserve com [[POLTRONA: ...]] e diga qual ficou; 2) pergunte se essa poltrona fica boa (ele pode pedir outra pelo número); 3) só quando ele confirmar ('pode ser', 'ok', 'sim') escreva o [[PIX: ...]]. NUNCA mande o marcador de poltrona e o de PIX na mesma resposta.";
         $p[] = "SEGUNDA VIA DO BILHETE: se o cliente que JÁ COMPROU pedir o bilhete/comprovante/passagem de novo ('manda de novo', 'perdi o bilhete', 'não recebi'), escreva numa linha isolada [[BILHETE]] — o sistema reenvia o PDF do bilhete aqui no WhatsApp. Diga só uma frase curta (ex.: 'Claro, tô te mandando de novo 👇'). Não use pra quem ainda não pagou.";
@@ -490,7 +506,7 @@ class AgenteBot
                     }
                     $diaN = \App\Models\Rota::DIAS[$pp->dia_semana] ?? '?';
                     $hora = $pp->hora ? substr($pp->hora, 0, 5) : '(hora não definida)';
-                    $prox = $this->proximasDatasDia((int) $pp->dia_semana, $meses);
+                    $prox = $this->proximasDatasDia((int) $pp->dia_semana, $meses, $pp->hora ? substr($pp->hora, 0, 5) : null);
                     $linhas[] = "   • ".$pp->localidade.": sai ".$diaN." ".$hora." pela lancha ".$lancha.($prox ? " — próximas: ".$prox : '');
                 }
             }
@@ -541,14 +557,39 @@ class AgenteBot
         return $linhas;
     }
 
+    /** A saída desse dia já passou? (dia anterior a hoje, ou hoje com a hora de saída já vencida — 30 min de folga). */
+    protected function jaPassou(\Carbon\CarbonInterface $dia, ?string $hora): bool
+    {
+        $hoje = now()->startOfDay();
+        if ($dia->copy()->startOfDay()->lt($hoje)) return true;
+        if (! $dia->copy()->startOfDay()->equalTo($hoje)) return false;
+        if (! $hora || ! preg_match('/^(\d{1,2}):(\d{2})/', $hora, $m)) return false; // sem hora cadastrada: não dá pra saber
+        return now()->gte($hoje->copy()->setTime((int) $m[1], (int) $m[2])->subMinutes(30));
+    }
+
+    /** Hora de saída (HH:MM) da lancha na cidade de origem do trecho, pela rota. */
+    protected function horaSaida(string $origem, string $destino, ?\Carbon\Carbon $data, ?string $lancha): ?string
+    {
+        try {
+            $vg = app(\App\Services\Vagas::class);
+            $r = $vg->resolver($origem, $destino, $data, $lancha);
+            if (! $r['rota']) return null;
+            $o = mb_strtolower($vg->canon($origem));
+            $par = $r['rota']->paradas->first(fn ($x) => mb_strtolower((string) $x->localidade) === $o);
+            return ($par && $par->hora) ? substr($par->hora, 0, 5) : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     /** Datas (dd/mm) de um dia-da-semana (0=Dom..6=Sáb), de hoje até a janela de venda (meses). */
-    protected function proximasDatasDia(int $dia, int $meses = 2): string
+    protected function proximasDatasDia(int $dia, int $meses = 2, ?string $hora = null): string
     {
         $d = now()->startOfDay();
         $limite = now()->startOfDay()->addMonths(max(1, $meses));
         $datas = [];
         while ($d->lte($limite) && count($datas) < 4) {
-            if ($d->dayOfWeek === $dia) $datas[] = $d->format('d/m');
+            if ($d->dayOfWeek === $dia && ! $this->jaPassou($d, $hora)) $datas[] = $d->format('d/m');
             $d->addDay();
         }
         return implode(', ', $datas);
@@ -565,7 +606,7 @@ class AgenteBot
         $datas = [];
         $d = $base->copy();
         for ($i = 0; $i < 70 && count($datas) < 3; $i++) {
-            if ($d->dayOfWeek === $dia) {
+            if ($d->dayOfWeek === $dia && ! $this->jaPassou($d, $p->hora ? substr($p->hora, 0, 5) : null)) {
                 $datas[] = $d->format('d/m').' ('.(\App\Models\Rota::DIAS_CURTO[$dia] ?? '').$hora.')';
             }
             $d->addDay();
@@ -946,6 +987,11 @@ class AgenteBot
         if ($origem === '' || $destino === '' || ! $data) {
             return 'Pra eu reservar as poltronas certinho, me confirma: vai sair de qual cidade, pra qual cidade e em que dia? 😊';
         }
+        // viagem que já partiu (ou parte em menos de 30 min) não se vende
+        if ($this->jaPassou($data, $this->horaSaida($origem, $destino, $data, $this->lanchaDaConversa($c, $partes[5] ?? null)))) {
+            Log::warning("Agente tentou reservar poltrona em viagem que já saiu (conversa {$c->id}): {$origem} > {$destino} ".$data->format('d/m/Y'));
+            return 'Essa saída de '.$data->format('d/m').' já partiu, não consigo mais vender nela. Quer que eu veja a próxima data pra você?';
+        }
         try {
             $r = app(\App\Services\Vagas::class)->atribuir($origem, $destino, $data, $tipo, $nq, $c->id, $this->lanchaDaConversa($c, $partes[5] ?? null));
             // não achou a viagem / lancha sem mapa: NÃO deixa o agente dizer que reservou
@@ -1127,6 +1173,15 @@ class AgenteBot
             return ['texto' => $texto, 'pix' => null];
         }
         $marcador = $m[0];
+
+        // viagem que já partiu (ou parte em menos de 30 min): não gera PIX
+        $vPre = $c->contexto['venda'] ?? [];
+        if (! empty($vPre['origem']) && ! empty($vPre['destino']) && ($dPre = $this->parseData((string) ($vPre['data'] ?? '')))
+            && $this->jaPassou($dPre, $this->horaSaida((string) $vPre['origem'], (string) $vPre['destino'], $dPre, $this->lanchaDaConversa($c)))) {
+            Log::warning("Agente tentou gerar PIX de viagem que já saiu (conversa {$c->id}).");
+            try { app(\App\Services\Vagas::class)->liberarConversa($c->id); } catch (\Throwable $e) {}
+            return ['texto' => 'Essa saída de '.$dPre->format('d/m').' já partiu, então não gero o PIX dela. Quer que eu veja a próxima data pra você?', 'pix' => null];
+        }
 
         // PADRÃO: lancha com poltrona exige assento ESCOLHIDO antes do PIX. Sem assento -> não gera PIX, pede a poltrona.
         $venda = $c->contexto['venda'] ?? [];
