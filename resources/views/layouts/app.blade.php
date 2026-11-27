@@ -453,16 +453,16 @@ document.addEventListener('alpine:init', () => {
     <button @click="menu=true" class="flex flex-col items-center gap-0.5 py-2"><span class="text-xl">☰</span>Menu</button>
   </div>
   {{-- rodapé fininho (celular): versão à esquerda, crédito à direita --}}
-  <div class="flex items-center justify-between px-3 pb-0.5 text-[9px] leading-none text-slate-400 border-t border-slate-100 pt-0.5">
+  <div class="flex items-center justify-between px-3 py-[3px] text-[9px] leading-none text-white/80" style="background: {{ $headerGrad }}">
     <span class="select-all">{{ \App\Support\Versao::ATUAL }}</span>
-    <a href="https://geratec.com.br/" target="_blank" rel="noopener">Desenvolvido por <b class="text-slate-500">geratec.com.br</b></a>
+    <a href="https://geratec.com.br/" target="_blank" rel="noopener">Desenvolvido por <b class="text-white">geratec.com.br</b></a>
   </div>
 </nav>
 
 {{-- ===== RODAPÉ FIXO fininho (desktop) ===== --}}
-<footer class="no-print hidden lg:flex fixed bottom-0 inset-x-0 z-20 h-6 items-center justify-between px-4 text-[10px] text-slate-400 bg-white/95 backdrop-blur border-t border-slate-200">
+<footer class="no-print hidden lg:flex fixed bottom-0 inset-x-0 z-20 h-6 items-center justify-between px-4 text-[10px] text-white/80 shadow-[0_-2px_8px_rgba(0,0,0,.12)]" style="background: {{ $headerGrad }}">
   <span class="select-all" title="Versão do sistema (muda a cada atualização)">{{ \App\Support\Versao::ATUAL }}</span>
-  <a href="https://geratec.com.br/" target="_blank" rel="noopener" class="hover:text-slate-600">Desenvolvido por <b class="text-slate-500">geratec.com.br</b></a>
+  <a href="https://geratec.com.br/" target="_blank" rel="noopener" class="hover:text-white">Desenvolvido por <b class="text-white">geratec.com.br</b></a>
 </footer>
 
 @if($previewAs)
