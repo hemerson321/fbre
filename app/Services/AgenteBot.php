@@ -244,6 +244,8 @@ class AgenteBot
         $t = preg_replace('/\[\[[^\]]*\]\]/', '', $t); // marcadores completos que sobraram
         $t = preg_replace('/\[\[[^\]]*$/s', '', $t);      // marcador aberto e cortado (ex.: "[[POLTRONA: ...")
         $t = preg_replace('/[ \t]+\n/', "\n", (string) $t);
+        $t = preg_replace('/\*\*(?=\S)(.+?)(?<=\S)\*\*/su', '*$1*', (string) $t); // **negrito** de markdown -> *negrito* do WhatsApp
+        $t = str_replace('**', '*', (string) $t);
         return trim((string) $t);
     }
 
@@ -306,6 +308,8 @@ class AgenteBot
         $p[] = "Se o cliente DESISTIR, mudar de ideia, disser que não vai mais viajar, que vai em outra data/viagem, ou cancelar a compra, LIBERE a poltrona escrevendo numa linha isolada que o cliente NÃO vê: [[LIBERAR]]. (A reserva também solta sozinha depois de ~5 min sem ele responder.)";
         $p[] = "5) Confirmando: nas lanchas com [poltrona], PRIMEIRO escolha a poltrona (pergunte janela/corredor/meio e reserve com [[POLTRONA:...]]) e SÓ DEPOIS gere o PIX. NUNCA gere o PIX antes de ter a poltrona reservada. Em lancha de rede, gere o PIX direto.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
+        $p[] = "DESPEDIDA: só deseje 'boa viagem' (ou fale como se ele fosse viajar) se a compra foi PAGA nesta conversa — ou seja, apareceu '✅ Pagamento confirmado'. Se o cliente só tirou dúvida, pediu orçamento ou parou antes de pagar ('tá ok', 'obrigado', 'boa noite', 'vou ver'), ele NÃO comprou: despeça-se sem 'boa viagem' e deixe a porta aberta, curto e sem insistir (ex.: 'Por nada! Quando quiser garantir sua passagem é só me chamar. Boa noite!').";
+        $p[] = "FORMATAÇÃO: é WhatsApp — negrito é com UM asterisco de cada lado (*assim*), nunca dois (**). Use pouco.";
         $p[] = "MEMÓRIA DA CONVERSA: trecho, data, lancha, quantidade e composição que o cliente já falou continuam valendo até ele mudar — mesmo que o assunto mude (ex.: virou orçamento). Se ele responder curto ('não', 'só adulto', 'isso'), interprete pela SUA última pergunta.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
 
@@ -1073,12 +1077,14 @@ class AgenteBot
             $motivo = trim((string) ($r['erro'] ?? '')) ?: 'erro desconhecido';
             Log::warning('Agente PIX falhou: '.$motivo);
             if ($a->regra('autonomo')) { // autônomo: não transfere — pede pra tentar de novo
+                try { $cx = $c->contexto ?? []; $cx['pix_erro'] = ['motivo' => mb_substr($motivo, 0, 300), 'em' => now()->format('d/m H:i')]; $c->forceFill(['contexto' => $cx])->save(); } catch (\Throwable $e) {}
                 return ['texto' => trim(str_replace($marcador, "\nDeu um probleminha pra gerar o PIX agora. Me chama de novo daqui a uns minutinhos que eu gero pra você, tá?", $texto)), 'pix' => null];
             }
             if (! $demo) { try { $this->atendimento->transferir($c, 'Falha ao gerar PIX: '.$motivo); } catch (\Throwable $e) {} }
             return ['texto' => trim(str_replace($marcador, "\nSó um instante que um atendente vai finalizar seu PIX aqui, tá?", $texto)), 'pix' => null];
         }
 
+        if (! empty($c->contexto['pix_erro'])) { $cx = $c->contexto; unset($cx['pix_erro']); $c->forceFill(['contexto' => $cx])->save(); } // PIX saiu: some o aviso de falha
         Cobranca::create([
             'empresa_id' => $c->empresa_id,
             'pagamento_api_id' => $api->id,
