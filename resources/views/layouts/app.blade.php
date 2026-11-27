@@ -441,6 +441,8 @@ document.addEventListener('alpine:init', () => {
 
 {{-- ===== BARRA INFERIOR (mobile / POS) ===== --}}
 <nav class="no-print fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 lg:hidden safe-b">
+  {{-- agente externo: sem botões embaixo no celular — ele usa só o menu ☰ do topo --}}
+  @unless($u->ehRevendedor())
   <div class="grid grid-cols-4 text-[11px] font-semibold text-slate-500">
     @php $tab = fn($r,$l,$i) => '<a href="'.$r.'" class="flex flex-col items-center gap-0.5 py-2 '.($ativo($r)?'text-[var(--cor1)]':'').'"><span class="text-xl">'.$i.'</span>'.$l.'</a>';
       $tabs = [];
@@ -452,6 +454,7 @@ document.addEventListener('alpine:init', () => {
       foreach(array_slice($tabs,0,3) as $t) echo $t; @endphp
     <button @click="menu=true" class="flex flex-col items-center gap-0.5 py-2"><span class="text-xl">☰</span>Menu</button>
   </div>
+  @endunless
   {{-- rodapé fininho (celular): versão à esquerda, crédito à direita --}}
   <div class="flex items-center justify-between px-3 py-[3px] text-[9px] leading-none text-white/80" style="background: {{ $headerGrad }}">
     <span class="select-all">{{ \App\Support\Versao::ATUAL }}</span>
