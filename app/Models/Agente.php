@@ -59,6 +59,9 @@ class Agente extends Model
         return trim((string) ($this->regras['limite_msg'] ?? '')) ?: 'Por hoje cheguei no limite de mensagens do nosso atendimento automático. 🙏 Se quiser fechar sua passagem, me chama amanhã ou procure nosso balcão.';
     }
 
+    /** O agente PARA de vender quantas horas antes da saída da viagem. Padrão 3h. 0 = vende até a hora da saída. */
+    public function vendaHorasAntes(): float { return max(0, min(72, (float) str_replace(',', '.', (string) ($this->regras['venda_horas_antes'] ?? 3)))); }
+
     /** Antecedência máxima de venda (meses à frente). Padrão 2. */
     public function mesesVenda(): int { return max(1, min(12, (int) ($this->regras['meses_venda'] ?? 2))); }
 
