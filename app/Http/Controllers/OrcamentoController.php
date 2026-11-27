@@ -190,6 +190,20 @@ class OrcamentoController extends Controller
         }, $itens)));
     }
 
+    /** Nome mostrado na lista quando o orçamento foi criado pelo agente de IA (ex.: "🤖 Agente IA · Ana"). */
+    protected function nomeAgente(): string
+    {
+        static $nome = null;
+        if ($nome === null) {
+            try {
+                $n = \App\Models\Agente::where('modulo', 'passagem')->orderByDesc('ativo')->orderBy('id')->value('nome')
+                    ?? \App\Models\Agente::orderByDesc('ativo')->orderBy('id')->value('nome');
+            } catch (\Throwable $e) { $n = null; }
+            $nome = '🤖 Agente IA'.($n ? ' · '.$n : '');
+        }
+        return $nome;
+    }
+
     protected function orcJson(Orcamento $o): array
     {
         return [
@@ -204,7 +218,7 @@ class OrcamentoController extends Controller
             'emb_id' => $o->embarcacao_id,
             'total' => (float) $o->total,
             'pax' => (int) $o->pax,
-            'operador' => $o->user?->name ?? (($o->conversa_id ?? null) ? '🤖 Agente IA' : '—'),
+            'operador' => $o->user?->name ?? (($o->conversa_id ?? null) ? $this->nomeAgente() : '—'),
             'quando' => $o->created_at?->format('d/m/Y H:i'),
             'itens' => $o->itens ?: [],
         ];
