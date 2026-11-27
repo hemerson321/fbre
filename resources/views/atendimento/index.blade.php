@@ -9,8 +9,8 @@
 @endphp
 
 <style>
-  .atd{--atd-h:calc(100vh - 8.5rem)}
-  @media(max-width:1023px){.atd{--atd-h:calc(100vh - 7rem)}}
+  .atd{--atd-h:calc(100vh - 10rem)}
+  @media(max-width:1023px){.atd{--atd-h:calc(100vh - 7.75rem)}}
   .atd-wall{background-color:#eae6df;background-image:radial-gradient(circle at 20% 15%,rgba(255,255,255,.55) 0,transparent 40%),radial-gradient(circle at 80% 70%,rgba(255,255,255,.4) 0,transparent 45%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52' viewBox='0 0 52 52'%3E%3Cpath fill='%23d6cfc4' fill-opacity='.35' d='M26 6c2 0 3 1 3 3s-1 3-3 3-3-1-3-3 1-3 3-3zM10 24c2 0 3 1 3 3s-1 3-3 3-3-1-3-3 1-3 3-3zm32 0c2 0 3 1 3 3s-1 3-3 3-3-1-3-3 1-3 3-3zM26 42c2 0 3 1 3 3s-1 3-3 3-3-1-3-3 1-3 3-3z'/%3E%3C/svg%3E")}
   .atd-scroll::-webkit-scrollbar{width:7px;height:7px}
   .atd-scroll::-webkit-scrollbar-thumb{background:rgba(100,116,139,.35);border-radius:9px}

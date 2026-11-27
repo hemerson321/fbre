@@ -418,7 +418,7 @@ document.addEventListener('alpine:init', () => {
 <div class="no-print fixed inset-0 z-30 bg-black/40 lg:hidden" x-show="menu" @click="menu=false" x-cloak></div>
 
 {{-- ===== CONTEÚDO ===== --}}
-<main class="mx-auto max-w-[1440px] p-3 sm:p-4 lg:p-4 pb-24 lg:pb-4">
+<main class="mx-auto max-w-[1440px] p-3 sm:p-4 lg:p-4 pb-28 lg:pb-10">
   @if(session('ok'))
     <div class="mb-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm no-print whitespace-pre-wrap">{{ session('ok') }}</div>
   @endif
@@ -437,8 +437,6 @@ document.addEventListener('alpine:init', () => {
     </div>
   @endif
   @yield('conteudo')
-  {{-- versão do sistema (atualiza a cada deploy — serve pra conferir se a atualização entrou) --}}
-  <div class="no-print text-center text-[10px] text-slate-400 py-4 mb-20 lg:mb-2"><a href="https://geratec.com.br/" target="_blank" rel="noopener" class="hover:underline">GERATEC</a> · <span class="select-all">{{ \App\Support\Versao::ATUAL }}</span></div>
 </main>
 
 {{-- ===== BARRA INFERIOR (mobile / POS) ===== --}}
@@ -454,7 +452,18 @@ document.addEventListener('alpine:init', () => {
       foreach(array_slice($tabs,0,3) as $t) echo $t; @endphp
     <button @click="menu=true" class="flex flex-col items-center gap-0.5 py-2"><span class="text-xl">☰</span>Menu</button>
   </div>
+  {{-- rodapé fininho (celular): versão à esquerda, crédito à direita --}}
+  <div class="flex items-center justify-between px-3 pb-0.5 text-[9px] leading-none text-slate-400 border-t border-slate-100 pt-0.5">
+    <span class="select-all">{{ \App\Support\Versao::ATUAL }}</span>
+    <a href="https://geratec.com.br/" target="_blank" rel="noopener">Desenvolvido por <b class="text-slate-500">geratec.com.br</b></a>
+  </div>
 </nav>
+
+{{-- ===== RODAPÉ FIXO fininho (desktop) ===== --}}
+<footer class="no-print hidden lg:flex fixed bottom-0 inset-x-0 z-20 h-6 items-center justify-between px-4 text-[10px] text-slate-400 bg-white/95 backdrop-blur border-t border-slate-200">
+  <span class="select-all" title="Versão do sistema (muda a cada atualização)">{{ \App\Support\Versao::ATUAL }}</span>
+  <a href="https://geratec.com.br/" target="_blank" rel="noopener" class="hover:text-slate-600">Desenvolvido por <b class="text-slate-500">geratec.com.br</b></a>
+</footer>
 
 @if($previewAs)
 <script>
