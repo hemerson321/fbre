@@ -374,8 +374,57 @@ def _img_from_b64(b64):
     return im.convert("RGB")
 
 
-def imprimir_imagem_driver(nome_windows, imagens, titulo="FBRE Etiqueta"):
+def _dc_papel(nome, mm_w, mm_h):
+    """DC da impressora com papel PERSONALIZADO (largura x comprimento em mm) e 1 copia.
+    Assim a via do passageiro sai curta e a etiqueta de bagagem comprida, cada uma no seu tamanho,
+    sem depender do tamanho fixo configurado no driver. Devolve None se o driver nao aceitar."""
+    try:
+        import win32print, win32gui, win32ui
+        hp = win32print.OpenPrinter(nome)
+        try:
+            dm = win32print.GetPrinter(hp, 2)["pDevMode"]
+            if dm is None:
+                return None
+            # DM_ORIENTATION | DM_PAPERSIZE | DM_PAPERLENGTH | DM_PAPERWIDTH | DM_COPIES
+            dm.Fields = dm.Fields | 0x1 | 0x2 | 0x4 | 0x8 | 0x100
+            dm.Orientation = 1                      # retrato: largura = largura do rolo
+            dm.PaperSize = 256                      # DMPAPER_USER (tamanho personalizado)
+            dm.PaperWidth = int(round(float(mm_w) * 10))    # decimos de mm
+            dm.PaperLength = int(round(float(mm_h) * 10))
+            dm.Copies = 1
+            try:
+                win32print.DocumentProperties(0, hp, nome, dm, dm, 8 | 2)   # DM_IN_BUFFER | DM_OUT_BUFFER
+            except Exception:
+                pass
+        finally:
+            win32print.ClosePrinter(hp)
+        return win32ui.CreateDCFromHandle(win32gui.CreateDC("WINSPOOL", nome, dm))
+    except Exception as ex:
+        log(f"Papel personalizado {mm_w}x{mm_h}mm nao aceito pelo driver ({ex}); usando o tamanho do driver")
+        return None
+
+
+def _desenhar_pagina(hDC, im):
+    HORZRES, VERTRES = 8, 10
+    pw = hDC.GetDeviceCaps(HORZRES); ph = hDC.GetDeviceCaps(VERTRES)
+    if pw <= 0 or ph <= 0:
+        pw, ph = 870, 2700
+    from PIL import ImageWin
+    hDC.StartPage()
+    iw, ih = im.size
+    if (pw >= ph) != (iw >= ih):
+        im = im.rotate(90, expand=True); iw, ih = im.size
+    r = min(pw / iw, ph / ih)
+    w = max(1, int(iw * r)); h = max(1, int(ih * r))
+    x = (pw - w) // 2; y = (ph - h) // 2
+    ImageWin.Dib(im).draw(hDC.GetHandleOutput(), (x, y, x + w, y + h))
+    hDC.EndPage()
+
+
+def imprimir_imagem_driver(nome_windows, imagens, titulo="FBRE Etiqueta", tamanhos=None):
     """Imprime imagens (1 por etiqueta/pagina) pelo DRIVER do Windows (GDI).
+    tamanhos = [(mm_largura, mm_comprimento) | None] por imagem: quando vem, cada etiqueta sai num
+    documento proprio com o papel do tamanho dela (via curta, bagagem comprida).
     Pra etiquetadoras que NAO falam ESC/POS: Brother QL-810W, Argox, Zebra GDI...
     O driver ja conhece a midia (ex. DK-1201 29x90). A imagem e orientada p/ casar
     com a pagina e encaixada preservando proporcao."""
@@ -384,6 +433,20 @@ def imprimir_imagem_driver(nome_windows, imagens, titulo="FBRE Etiqueta"):
     nome = (nome_windows or "").strip()
     if not nome or nome.lower() in ("padrao", "padr\u00e3o", "default", "auto"):
         nome = win32print.GetDefaultPrinter()
+    if tamanhos and any(t and t[0] and t[1] for t in tamanhos):
+        for i, im in enumerate(imagens):
+            t = tamanhos[i] if i < len(tamanhos) else None
+            dc = _dc_papel(nome, t[0], t[1]) if (t and t[0] and t[1]) else None
+            if dc is None:
+                dc = win32ui.CreateDC(); dc.CreatePrinterDC(nome)
+            try:
+                dc.StartDoc(titulo)
+                _desenhar_pagina(dc, im)
+                dc.EndDoc()
+            finally:
+                try: dc.DeleteDC()
+                except Exception: pass
+        return
     HORZRES, VERTRES = 8, 10
     hDC = win32ui.CreateDC()
     hDC.CreatePrinterDC(nome)
@@ -511,10 +574,11 @@ def loop(parar: threading.Event):
                                 api.done(job["id"]); log(f"{imp} ignorada (desativada)"); continue
                             modo_pad = "driver" if imp == "passagem" else "raw"
                             if (sec.get("modo", modo_pad) or modo_pad).lower() == "driver":
-                                imgs = [_img_from_b64(ln["data"]) for ln in dados.get("linhas", [])
-                                        if ln.get("op") == "img" and ln.get("data")]
+                                lns = [ln for ln in dados.get("linhas", []) if ln.get("op") == "img" and ln.get("data")]
+                                imgs = [_img_from_b64(ln["data"]) for ln in lns]
+                                tams = [(ln.get("mm_w"), ln.get("mm_h")) for ln in lns]   # papel de cada etiqueta (mm)
                                 if imgs:
-                                    imprimir_imagem_driver(sec.get("nome_windows", "padrao"), imgs)
+                                    imprimir_imagem_driver(sec.get("nome_windows", "padrao"), imgs, tamanhos=tams)
                                 else:
                                     enviar(sec, montar_generico(dados, col))
                             else:

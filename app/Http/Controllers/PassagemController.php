@@ -1589,6 +1589,12 @@ class PassagemController extends Controller
         $bagW = (int) Tenant::empresa()->config('etiqueta_bag_mm_w', 0);
         $wDotsBag = $bagW > 0 ? (int) round(max(10, min(120, $bagW)) / 25.4 * 300) : $wDots;
         $tipos = (array) $request->input('tipos', []);
+        // tamanho do papel de CADA etiqueta (mm): o agente imprime a via curta e a bagagem comprida, cada uma no seu
+        $emp = Tenant::empresa();
+        $viaH = max(20, min(300, (int) $emp->config('etiqueta_mm_h', 90)));
+        $bagWmm = $bagW > 0 ? max(10, min(120, $bagW)) : $mmW;
+        $bagH = (int) $emp->config('etiqueta_bag_mm_h', 0);
+        $bagHmm = $bagH > 0 ? max(20, min(400, $bagH)) : ($bagWmm >= 50 ? $viaH * 2 : $viaH);
         $n = 0;
         foreach ($imagens as $idx => $img) {
             if (! is_string($img) || $img === '') continue;
@@ -1599,7 +1605,9 @@ class PassagemController extends Controller
                 'tipo' => 'generico',
                 'dados' => [
                     'linhas' => [
-                        ['op' => 'img', 'data' => $img, 'w' => (($tipos[$idx] ?? '') === 'bag' ? $wDotsBag : $wDots)],
+                        (($tipos[$idx] ?? '') === 'bag')
+                            ? ['op' => 'img', 'data' => $img, 'w' => $wDotsBag, 'mm_w' => $bagWmm, 'mm_h' => $bagHmm]
+                            : ['op' => 'img', 'data' => $img, 'w' => $wDots, 'mm_w' => $mmW, 'mm_h' => $viaH],
                         ['op' => 'feed', 'n' => 2],
                         ['op' => 'cut'],
                     ],

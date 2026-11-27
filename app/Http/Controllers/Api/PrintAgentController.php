@@ -39,6 +39,20 @@ class PrintAgentController extends Controller
             ->limit(5)
             ->get(['id', 'tipo', 'dados', 'created_at']);
 
+        // Trava: cada impressão é entregue a UM pedido só. Se o programa de impressão estiver aberto duas vezes
+        // (ou em dois computadores com o mesmo token), o segundo não recebe a mesma impressão -> não sai em dobro.
+        // Se o agente travar no meio, a impressão volta pra fila depois de 2 minutos.
+        static $temTrava = null;
+        $temTrava ??= \Illuminate\Support\Facades\Schema::hasColumn('fila_impressao', 'pego_em');
+        if ($temTrava) {
+            $limite = now()->subMinutes(2);
+            $jobs = $jobs->filter(function ($j) use ($limite) {
+                return FilaImpressao::where('id', $j->id)->where('status', 'pendente')
+                    ->where(fn ($w) => $w->whereNull('pego_em')->orWhere('pego_em', '<', $limite))
+                    ->update(['pego_em' => now()]) === 1;
+            })->values();
+        }
+
         return ['jobs' => $jobs];
     }
 
