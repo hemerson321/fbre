@@ -44,6 +44,11 @@ class Agente extends Model
     /** Manda no WhatsApp a imagem do mapa da lancha com as poltronas do cliente? Padrão: sim. */
     public function enviaMapaPoltrona(): bool { return (bool) ($this->regras['mapa_imagem'] ?? true); }
 
+    /** Orçamento do agente: a partir de quantas pessoas vira orçamento. Padrão 8. */
+    public function orcMinPessoas(): int { return max(2, min(200, (int) ($this->regras['orc_min_pessoas'] ?? 8))); }
+    /** Orçamento do agente: desconto máximo (%) que ele pode dar pra fechar. Padrão 0 (sem desconto). */
+    public function orcDescontoMax(): int { return max(0, min(50, (int) ($this->regras['orc_desconto_max'] ?? 0))); }
+
     /** Antecedência máxima de venda (meses à frente). Padrão 2. */
     public function mesesVenda(): int { return max(1, min(12, (int) ($this->regras['meses_venda'] ?? 2))); }
 

@@ -153,6 +153,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/passagens/atendimento/{conversa}/assumir', [AtendimentoController::class, 'assumir'])->name('atendimento.assumir')->middleware('perm:passagem.atendimento');
     Route::post('/passagens/atendimento/{conversa}/fechar', [AtendimentoController::class, 'fechar'])->name('atendimento.fechar')->middleware('perm:passagem.atendimento');
     Route::post('/passagens/atendimento/{conversa}/reiniciar', [AtendimentoController::class, 'reiniciar'])->name('atendimento.reiniciar')->middleware('perm:passagem.atendimento');
+    // Atendimento — custo da IA por conversa + simulação mensal (só administrador; o controller confere)
+    Route::get('/passagens/atendimento-custos', [\App\Http\Controllers\AtendimentoCustoController::class, 'index'])->name('atendimento.custos')->middleware('perm:passagem.atendimento');
+    Route::post('/passagens/atendimento-custos', [\App\Http\Controllers\AtendimentoCustoController::class, 'salvar'])->name('atendimento.custos.salvar')->middleware('perm:passagem.atendimento');
     // Atendimento — modo operador: CRM Kanban, etiquetas, respostas rápidas/funil, agendamento, envio em massa e status
     Route::middleware('perm:passagem.atendimento')->group(function () {
         Route::get('/passagens/atendimento-kanban', [\App\Http\Controllers\AtendimentoCrmController::class, 'kanban'])->name('atendimento.kanban');

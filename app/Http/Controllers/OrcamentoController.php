@@ -204,7 +204,7 @@ class OrcamentoController extends Controller
             'emb_id' => $o->embarcacao_id,
             'total' => (float) $o->total,
             'pax' => (int) $o->pax,
-            'operador' => $o->user?->name ?? '—',
+            'operador' => $o->user?->name ?? (($o->conversa_id ?? null) ? '🤖 Agente IA' : '—'),
             'quando' => $o->created_at?->format('d/m/Y H:i'),
             'itens' => $o->itens ?: [],
         ];

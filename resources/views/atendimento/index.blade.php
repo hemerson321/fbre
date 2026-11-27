@@ -39,6 +39,7 @@
     <div class="flex gap-1.5 mb-2 text-xs">
       <a href="{{ route('atendimento.kanban') }}" class="flex-1 text-center rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-bold text-slate-700 hover:bg-slate-50">📋 CRM</a>
       <a href="{{ route('atendimento.ferramentas') }}" class="flex-1 text-center rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-bold text-slate-700 hover:bg-slate-50">🧰 Respostas · Etiquetas</a>
+      @if(auth()->user()->isAdmin() || auth()->user()->isSuper())<a href="{{ route('atendimento.custos') }}" title="Custo da IA por conversa (só administrador)" class="text-center rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-bold text-slate-700 hover:bg-slate-50">🧮 Custo IA</a>@endif
     </div>
     <div class="flex gap-1 mb-2 text-xs">
       @foreach(['ativas'=>'Ativas','aguardando'=>'Aguardando','humano'=>'Comigo','fechadas'=>'Fechadas'] as $k=>$l)

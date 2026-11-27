@@ -23,11 +23,42 @@ class AgenteBot
         protected MercadoPago $mp,
     ) {}
 
+    /** Conversa/agente do processamento atual — pra registrar o consumo de tokens de cada chamada à IA. */
+    protected ?Conversa $convUso = null;
+    protected ?Agente $agUso = null;
+
+    /** Grava o consumo de tokens de uma chamada (painel de custos do atendimento). Nunca derruba o atendimento. */
+    protected function registrarUso(?\App\Models\LlmProvedor $prov, array $r, string $tipo = 'chat'): void
+    {
+        try {
+            $u = $r['uso'] ?? null;
+            if (! is_array($u) || ! $this->convUso) return;
+            static $temTabela = null;
+            $temTabela ??= \Illuminate\Support\Facades\Schema::hasTable('agente_usos');
+            if (! $temTabela) return;
+            \App\Models\AgenteUso::create([
+                'empresa_id' => $this->convUso->empresa_id,
+                'conversa_id' => $this->convUso->id,
+                'agente_id' => $this->agUso?->id,
+                'provider' => (string) ($r['provider'] ?? $prov?->provider ?? ''),
+                'modelo' => mb_substr((string) ($r['modelo'] ?? $prov?->modelo ?? ''), 0, 80),
+                'tipo' => $tipo,
+                'tok_in' => (int) ($u['in'] ?? 0),
+                'tok_out' => (int) ($u['out'] ?? 0),
+                'tok_cache_r' => (int) ($u['cache_r'] ?? 0),
+                'tok_cache_w' => (int) ($u['cache_w'] ?? 0),
+            ]);
+        } catch (\Throwable $e) {
+            Log::info('registrarUso: '.$e->getMessage());
+        }
+    }
+
     public function processar(Conversa $conversa, ?Agente $agente = null, bool $demo = false, string $audioModo = 'texto'): void
     {
         try {
             $agente = $agente ?: Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
             if (! $agente) return;
+            $this->convUso = $conversa; $this->agUso = $agente;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
             if (! $demo && ($conversa->precisa_humano ?? false)) return; // já transferido pro humano: agente fica em silêncio
             try { app(\App\Services\Vagas::class)->renovarConversa($conversa->id, $agente->reservaMin()); } catch (\Throwable $e) {} // mantém a reserva enquanto o cliente responde
@@ -73,7 +104,8 @@ class AgenteBot
             if (! $this->pularGuardiao) $texto = $this->guardiaoPoltrona($conversa, $texto);
             $this->pularGuardiao = false;
             $texto = $this->tratarPax($conversa, $texto);
-            $texto = $this->tratarHumano($conversa, $texto, $demo);
+            $texto = $this->tratarOrcamento($agente, $conversa, $texto);
+            $texto = $this->tratarHumano($conversa, $texto, $demo, $agente);
             $res = $this->tratarPix($agente, $conversa, $texto, $demo);
             $res['texto'] = $this->limparMarcadores($res['texto']);
             if ($res['texto'] === '') $res['texto'] = 'Só um segundo…';
@@ -96,6 +128,7 @@ class AgenteBot
             $agente = $agente ?: Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
             if (! $agente) return;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
+            $this->convUso = $conversa; $this->agUso = $agente;
             $prov = $this->provedorVisao($agente); // imagem precisa de Claude/OpenAI (Gemini não entra aqui)
             if (! $prov) return;
 
@@ -138,6 +171,7 @@ class AgenteBot
             $hist[] = ['role' => 'user', 'content' => '(enviei a foto do meu documento)'];
 
             $rr = $this->llm->chat($prov, $hist, $sistema, 400);
+            $this->registrarUso($prov, $rr, 'foto');
             if ($rr['ok'] ?? false) {
                 $this->atendimento->registrarSaida($conversa, $this->limparMarcadores(trim((string) $rr['texto'])), 'ia', null, $agente?->nome);
             }
@@ -175,11 +209,13 @@ class AgenteBot
         $esc = $agente->llmEscalonar;
 
         $r = $prim ? $this->llm->chat($prim, $hist, $sistema, $max) : ['ok' => false, 'erro' => 'sem provedor principal'];
+        $this->registrarUso($prim, $r);
         $texto = ($r['ok'] ?? false) ? trim((string) $r['texto']) : '';
         $pediuAjuda = $texto !== '' && preg_match('/\[\[ESCALAR[^\]]*\]\]/i', $texto);
 
         if ($esc && $esc->id !== ($prim->id ?? null) && ((! ($r['ok'] ?? false)) || $pediuAjuda)) {
             $r2 = $this->llm->chat($esc, $hist, $sistema, $max);
+            $this->registrarUso($esc, $r2, 'escalonado');
             if ($r2['ok'] ?? false) { $r = $r2; $texto = trim((string) $r2['texto']); }
         }
 
@@ -210,6 +246,7 @@ class AgenteBot
         $empresa = Tenant::empresa();
         $nome = $empresa?->nomeExibicao() ?? 'a empresa';
 
+        $auto = $a->regra('autonomo'); // atende sozinho: nunca transfere pro atendimento humano
         $p = [];
         $p[] = "Você é o atendimento de vendas de passagem da {$nome} (transporte fluvial) no WhatsApp.";
         $hoje = now();
@@ -246,7 +283,9 @@ class AgenteBot
         $p[] = "3) QUANTAS pessoas vão. Se disser 'só eu', é 1 adulto. Se for MAIS DE 1 (ou se não estiver claro quem são), PERGUNTE a composição ANTES de falar qualquer valor: 'são todos adultos ou tem criança?'. Se tiver criança, pergunte a IDADE de cada uma. NUNCA assuma que são todos adultos nem jogue o total antes disso.";
         $p[] = "4) SÓ com a composição definida (quantos adultos, quantas crianças e idades), monte o VALOR TOTAL somando CADA passageiro pelo seu tipo/idade, de forma organizada. Ex.: '1 adulto R$ 560 + 1 criança (8 anos) R$ 280 = R$ 840'. Mande o resumo curto (trecho, data, lancha, total) e pergunte 'posso gerar o PIX?'. NÃO peça documento ainda.";
         $p[] = "VENDA NORMAL (1, 2, 3, 4 pessoas, família — ex.: 'eu, meu filho e minha filha') você resolve SOZINHO: cote o valor (preço do trecho × pessoas) e feche. NUNCA mande uma venda normal pro atendente, nem por causa da quantidade de pessoas. Se você tem o preço nos DADOS, PASSE o valor — não diga que vai confirmar com atendente.";
-        $p[] = "SÓ chame um atendente quando o cliente PEDIR DESCONTO ou preço especial por quantidade (ex.: 'tem desconto pra 7 pessoas?', 'faz um preço melhor pra 10?'). Fora isso, é venda normal: some e feche você mesmo.";
+        if (! $auto) {
+            $p[] = "SÓ chame um atendente quando o cliente PEDIR DESCONTO ou preço especial por quantidade (ex.: 'tem desconto pra 7 pessoas?', 'faz um preço melhor pra 10?'). Fora isso, é venda normal: some e feche você mesmo.";
+        }
         $p[] = "CRIANÇAS: se o cliente falar em filho(s)/criança(s), PERGUNTE quantas e a IDADE de cada uma (pergunta natural: 'quantos anos têm as crianças?'). Pela idade, escolha o tipo certo (veja TIPOS DE PASSAGEIRO e as faixas) e use o preço JÁ CALCULADO daquele tipo NA TABELA DE PREÇOS do trecho (você NÃO precisa de atendente pra isso — o valor está pronto). Bebê de colo é grátis e não ocupa assento. Monte o VALOR TOTAL = adulto(s) + cada criança pelo preço certo e mande o resumo.";
         $p[] = "DOCUMENTO DA CRIANÇA ANTES DO PIX: quando tiver criança (ou qualquer tarifa com desconto por idade), ANTES de gerar o PIX peça a FOTO ou ARQUIVO do documento da criança pra confirmar a idade. Só gere o PIX depois que o documento confirmar que a idade bate. Isso evita um adulto pagar como criança. (Venda só de adultos NÃO precisa disso — documento fica pro final.)";
         $p[] = "POLTRONA (só nas lanchas com [poltrona] nos DADOS): ANTES do PIX, veja os livres por tipo com [[POLTRONAS: origem; destino; data; LANCHA]] (LANCHA = nome da lancha daquela saída, igual está nos DADOS — obrigatório, porque mais de uma lancha faz o mesmo trecho) — o SISTEMA troca por QUANTIDADES (ex.: '29 de janela, 34 de corredor, 32 de meio'). ATENÇÃO: esses números são QUANTIDADE de lugares livres, NÃO são número de poltrona. Apresente natural (ex.: 'tem bastante: 29 de janela, 34 de corredor e 32 de meio — qual prefere?') e ofereça só os tipos com vaga.";
@@ -265,9 +304,28 @@ class AgenteBot
             $p[] = "Você é um atendente da empresa. NUNCA diga que é IA, robô, bot ou assistente virtual.";
         }
         $p[] = "SE A CONVERSA FICAR COMPLEXA e você ficar em dúvida da melhor resposta (pedido confuso, situação fora do comum, conta difícil, cliente insatisfeito), NÃO invente nem chame o humano direto: escreva numa linha isolada que o cliente NÃO vê: [[ESCALAR]] — o sistema passa pra um modelo mais forte continuar na hora. Use isso ANTES de pensar em humano.";
-        $p[] = "QUANDO PRECISAR DE UM ATENDENTE (desconto por quantidade, reclamação/reembolso/cancelamento, pergunta fora do sistema, ou algo que você não resolve): avise o cliente de forma curta e natural (ex.: 'Já vou chamar um atendente pra te ajudar com isso, só um instante 😊') E emita numa linha isolada (o cliente NÃO vê): [[HUMANO: motivo curto]]. Isso põe a conversa na fila do atendente com um alerta. Depois disso, PARE de responder — quem segue é o atendente.";
-        if ($a->regra('sensiveis_humano')) {
-            $p[] = "Se for reclamação, reembolso, cancelamento ou problema, não resolva: chame o atendente com [[HUMANO: ...]].";
+        if (! $auto) {
+            $p[] = "QUANDO PRECISAR DE UM ATENDENTE (desconto por quantidade, reclamação/reembolso/cancelamento, pergunta fora do sistema, ou algo que você não resolve): avise o cliente de forma curta e natural (ex.: 'Já vou chamar um atendente pra te ajudar com isso, só um instante 😊') E emita numa linha isolada (o cliente NÃO vê): [[HUMANO: motivo curto]]. Isso põe a conversa na fila do atendente com um alerta. Depois disso, PARE de responder — quem segue é o atendente.";
+            if ($a->regra('sensiveis_humano')) {
+                $p[] = "Se for reclamação, reembolso, cancelamento ou problema, não resolva: chame o atendente com [[HUMANO: ...]].";
+            }
+        }
+        if ($a->regra('faz_orcamento')) {
+            $minPes = $a->orcMinPessoas();
+            $desc = $a->orcDescontoMax();
+            $p[] = "ORÇAMENTO (EMPRESA / GRUPO GRANDE) — é VOCÊ quem monta e fecha o negócio: quando o cliente disser que é pra EMPRESA, órgão público, igreja, escola, equipe, excursão/evento, ou for um grupo de {$minPes} pessoas ou mais, ou PEDIR orçamento/cotação, trate como ORÇAMENTO. Colete, uma pergunta por vez: nome da empresa ou do responsável (CNPJ/CPF só se ele quiser que conste), trecho, data e quantas pessoas (adultos e crianças com idade). Use os preços dos DADOS, cada pessoa pelo seu tipo.";
+            $p[] = $desc > 0
+                ? "DESCONTO NO ORÇAMENTO: você PODE dar até {$desc}% de desconto no valor por pessoa pra fechar. Comece SEM desconto; ofereça só se o cliente pedir ou estiver em dúvida, e NUNCA passe de {$desc}%. Não fale o limite pro cliente."
+                : "DESCONTO NO ORÇAMENTO: você NÃO dá desconto. O valor é o da tabela pra qualquer quantidade — explique com simpatia que já é o melhor preço e siga pro fechamento.";
+            $p[] = "Com tudo definido, escreva numa linha isolada (o cliente NÃO vê): [[ORCAMENTO: cliente=<empresa ou responsável>; doc=<CNPJ/CPF ou vazio>; origem=<origem>; destino=<destino>; data=<dd/mm/aaaa ou vazio>; lancha=<nome da lancha>; itens=<QTD>x<descrição>@<valor unitário com ponto>, <QTD>x<descrição>@<valor>]]. Ex.: [[ORCAMENTO: cliente=Construtora Rio Negro; doc=; origem=Manaus; destino=Tefé; data=25/11/2026; lancha=Glória de Deus 7; itens=12xAdulto@560.00, 2xCriança@280.00]]. O SISTEMA grava o orçamento e troca o marcador pelo RESUMO pronto (número do orçamento, itens e total) — por isso NÃO escreva os valores por fora: mande só uma frase curta antes (ex.: 'Montei seu orçamento 👇') e pergunte depois se pode fechar.";
+            $p[] = "Se o cliente pedir ajuste (quantidade, data, trecho, desconto dentro do limite), emita o [[ORCAMENTO: ...]] DE NOVO com os dados novos — o sistema atualiza o mesmo orçamento. Quando ele APROVAR, feche você mesmo pelo fluxo normal: poltrona (se a lancha tiver) e PIX no valor TOTAL do orçamento. Orçamento é só pra empresa/grupo grande ou quando pedirem — venda normal de família continua direto, sem orçamento.";
+        }
+        if ($auto) {
+            $p[] = "MODO AUTÔNOMO (vale ACIMA de qualquer instrução anterior): você atende SOZINHO do começo ao fim. NÃO existe atendente humano pra transferir a conversa. NUNCA diga que vai chamar, passar ou confirmar com um atendente/colega/setor, e NUNCA escreva [[HUMANO]]. Onde as instruções falarem em 'chamar/confirmar com o atendente', resolva VOCÊ com o que está nos DADOS; se a informação não existir nos DADOS, diga com naturalidade que não tem essa informação e siga ajudando no que dá.";
+            $p[] = $a->regra('faz_orcamento')
+                ? "Pedido de desconto ou preço especial por quantidade: trate como ORÇAMENTO (regras acima) e feche você mesmo."
+                : "Pedido de desconto: você não dá desconto — o valor é o da tabela pra qualquer quantidade. Explique com simpatia e siga pro fechamento.";
+            $p[] = "Reclamação, reembolso ou cancelamento de passagem já comprada: ouça com atenção, peça os dados (nome, data da viagem, o que aconteceu) e diga que o pedido ficou REGISTRADO aqui na conversa pra análise da empresa. Não prometa valor nem prazo de devolução, e não invente regra.";
         }
         $p[] = "Use SOMENTE os trechos e preços dos DADOS abaixo. Se o cliente pedir um trecho que NÃO está nos DADOS, diga que não tem esse trecho e mostre os que existem — NUNCA invente cidade, rota ou preço.";
 
@@ -277,7 +335,9 @@ class AgenteBot
             $p[] = "\nPAGAMENTO: só quando o cliente confirmar a compra (trecho + data + nº de pessoas + dados do passageiro definidos) e quiser pagar, gere o PIX escrevendo numa linha isolada, exatamente: [[PIX:VALOR;DESCRICAO]] — valor total em reais com ponto decimal. Ex.: [[PIX:200.00;2 passagens Manaus-Coari 26/10]]. Nunca invente o valor.";
             $p[] = "NA MESMA MENSAGEM, antes do PIX, inclua numa linha isolada (o cliente NÃO vê, o sistema remove): [[VENDA: origem=<origem>; destino=<destino>; data=<dd/mm/aaaa>]]. Os dados dos passageiros são coletados DEPOIS do pagamento (via marcador [[PAX:...]]).";
         } else {
-            $p[] = "\nPAGAMENTO: combinado com o atendente/no balcão (não há PIX automático).";
+            $p[] = $auto
+                ? "\nPAGAMENTO: não há PIX automático configurado. Feche o pedido (trecho, data, pessoas, total) e informe que o pagamento é feito no balcão/embarque."
+                : "\nPAGAMENTO: combinado com o atendente/no balcão (não há PIX automático).";
         }
 
         return implode("\n", $p);
@@ -437,10 +497,132 @@ class AgenteBot
         return trim(str_replace($m[0], '', $texto));
     }
 
+    /**
+     * [[ORCAMENTO: cliente=..; doc=..; origem=..; destino=..; data=..; lancha=..; itens=12xAdulto@560.00, 2xCriança@280.00]]
+     * Grava (ou atualiza) o orçamento da conversa na tela de Orçamentos e troca o marcador pelo resumo pro cliente.
+     */
+    protected function tratarOrcamento(Agente $a, Conversa $c, string $texto): string
+    {
+        if (! preg_match('/\[\[ORCAMENTO:\s*([^\]]*)\]\]/iu', $texto, $m)) return $texto;
+        $limpo = fn (string $msg = '') => trim(str_replace($m[0], $msg, $texto));
+        try {
+            if (! $a->regra('faz_orcamento') || ! \Illuminate\Support\Facades\Schema::hasTable('orcamentos')) return $limpo();
+
+            $campos = [];
+            foreach (explode(';', $m[1]) as $par) {
+                if (! str_contains($par, '=')) continue;
+                [$k, $v] = explode('=', $par, 2);
+                $campos[mb_strtolower(trim($k))] = trim($v);
+            }
+            $num = function (string $raw): float {
+                $raw = preg_replace('/[^\d.,]/', '', $raw);
+                if (str_contains($raw, ',') && str_contains($raw, '.')) $raw = str_replace(['.', ','], ['', '.'], $raw);
+                elseif (str_contains($raw, ',')) $raw = str_replace(',', '.', $raw);
+                return round((float) $raw, 2);
+            };
+            $itens = [];
+            foreach (preg_split('/\s*,\s*(?=\d+\s*x)/iu', (string) ($campos['itens'] ?? '')) as $it) {
+                if (! preg_match('/^\s*(\d+)\s*x\s*(.+?)\s*@\s*R?\$?\s*([\d.,]+)\s*$/iu', $it, $mi)) continue;
+                $q = (int) $mi[1]; $u = $num($mi[3]);
+                if ($q <= 0 || $u < 0) continue;
+                $itens[] = ['d' => mb_substr(trim($mi[2]), 0, 60) ?: 'Passagem', 'q' => $q, 'u' => $u, 't' => round($q * $u, 2), 'tipo' => null];
+            }
+            if (! $itens) return $limpo();
+
+            $origem = (string) ($campos['origem'] ?? ''); $destino = (string) ($campos['destino'] ?? '');
+            $total = round(array_sum(array_column($itens, 't')), 2);
+            $pax = (int) array_sum(array_column($itens, 'q'));
+
+            // trava de preço: ninguém paga menos que o menor valor da tabela do trecho com o desconto máximo do agente
+            $piso = $this->pisoTrecho($origem, $destino);
+            if ($piso !== null) {
+                $minimo = round($piso * (1 - $a->orcDescontoMax() / 100), 2) - 0.01;
+                foreach ($itens as $it) {
+                    if ($it['u'] > 0 && $it['u'] < $minimo) {
+                        Log::warning("Orçamento do agente recusado (conversa {$c->id}): unitário {$it['u']} abaixo do piso {$minimo}.");
+                        return $limpo($a->orcDescontoMax() > 0
+                            ? 'Esse valor ficou abaixo do que eu consigo fazer. Posso montar o orçamento com o melhor desconto que tenho aqui?'
+                            : 'Esse valor ficou abaixo da nossa tabela, e não consigo baixar. Posso montar o orçamento com o valor da tabela?');
+                    }
+                }
+            }
+
+            $data = $this->parseData((string) ($campos['data'] ?? ''));
+            $lancha = trim((string) ($campos['lancha'] ?? '')) ?: (string) $this->lanchaDaConversa($c);
+            $emb = $lancha !== '' ? \App\Models\Embarcacao::where('empresa_id', $c->empresa_id)->whereRaw('LOWER(nome) = ?', [mb_strtolower($lancha)])->first() : null;
+            $dados = [
+                'cliente' => mb_substr(trim((string) ($campos['cliente'] ?? '')) ?: ($c->cliente_nome ?: 'Cliente'), 0, 120),
+                'documento' => mb_substr(trim((string) ($campos['doc'] ?? ($campos['documento'] ?? ''))), 0, 30) ?: null,
+                'origem' => $origem ?: null,
+                'destino' => $destino ?: null,
+                'data_viagem' => $data?->toDateString(),
+                'embarcacao_id' => $emb?->id,
+                'embarcacao_nome' => $emb?->nome ?: ($lancha ?: null),
+                'itens' => $itens,
+                'total' => $total,
+                'pax' => $pax,
+            ];
+            $temConv = \Illuminate\Support\Facades\Schema::hasColumn('orcamentos', 'conversa_id');
+            if ($temConv) $dados['conversa_id'] = $c->id;
+
+            $ctx = $c->contexto ?? [];
+            $o = ! empty($ctx['orcamento_id']) ? \App\Models\Orcamento::where('empresa_id', $c->empresa_id)->find($ctx['orcamento_id']) : null;
+            if ($o) {
+                $o->update($dados);
+            } else {
+                $dados['empresa_id'] = $c->empresa_id;
+                $dados['numero'] = (int) \App\Models\Orcamento::where('empresa_id', $c->empresa_id)->max('numero') + 1;
+                $o = \App\Models\Orcamento::create($dados);
+            }
+            $ctx['orcamento_id'] = $o->id;
+            $ctx['orcamento_total'] = $total;
+            $c->forceFill(['contexto' => $ctx])->save();
+
+            $br = fn (float $v) => 'R$ '.number_format($v, 2, ',', '.');
+            $l = ['📋 *Orçamento nº '.str_pad((string) ($o->numero ?: $o->id), 4, '0', STR_PAD_LEFT).'*', 'Cliente: '.$dados['cliente'].($dados['documento'] ? ' ('.$dados['documento'].')' : '')];
+            $rota = trim(($origem ?: '').($destino ? ' → '.$destino : ''));
+            if ($rota !== '') $l[] = 'Trecho: '.$rota;
+            if ($data) $l[] = 'Data: '.$data->format('d/m/Y');
+            if ($dados['embarcacao_nome']) $l[] = 'Lancha: '.$dados['embarcacao_nome'];
+            foreach ($itens as $it) $l[] = '• '.$it['q'].'x '.$it['d'].' — '.$br($it['u']).' = '.$br($it['t']);
+            $l[] = '*Total: '.$br($total).'* ('.$pax.' '.($pax === 1 ? 'passageiro' : 'passageiros').')';
+            return $limpo("\n".implode("\n", $l)."\n");
+        } catch (\Throwable $e) {
+            Log::warning('tratarOrcamento erro: '.$e->getMessage());
+            return $limpo();
+        }
+    }
+
+    /** Menor preço (> 0) da tabela pra um trecho, entre todos os tipos pagantes. null = trecho sem tabela. */
+    protected function pisoTrecho(string $origem, string $destino): ?float
+    {
+        if ($origem === '' || $destino === '') return null;
+        $precos = TrechoPreco::where('ativo', true)
+            ->whereRaw('LOWER(origem) = ?', [mb_strtolower($origem)])->whereRaw('LOWER(destino) = ?', [mb_strtolower($destino)])->get();
+        if ($precos->isEmpty()) return null;
+        $normal = TipoPassageiro::where('ativo', true)->where('eh_normal', true)->first();
+        $vals = $precos->map(fn ($tp) => (float) $tp->tarifa + (float) $tp->alimentacao)->filter(fn ($v) => $v > 0)->values()->all();
+        $adulto = $normal ? $precos->firstWhere('tipo_passageiro_id', $normal->id) : null;
+        if ($adulto) {
+            $base = (float) $adulto->tarifa + (float) $adulto->alimentacao;
+            foreach (TipoPassageiro::where('ativo', true)->get() as $t) { // tipos por porcentagem do adulto (ex.: criança 50%)
+                if ($t->colo || $t->gratuito || ($t->modo ?? 'valor') !== 'porcentagem') continue;
+                $v = round($base * ((int) $t->percentual) / 100, 2);
+                if ($v > 0) $vals[] = $v;
+            }
+        }
+        return $vals ? (float) min($vals) : null;
+    }
+
     /** Detecta [[HUMANO:motivo]]: transfere a conversa pro atendente (entra na fila com alerta) e limpa o marcador. */
-    protected function tratarHumano(Conversa $c, string $texto, bool $demo = false): string
+    protected function tratarHumano(Conversa $c, string $texto, bool $demo = false, ?Agente $a = null): string
     {
         if (! preg_match('/\[\[HUMANO:?\s*([^\]]*)\]\]/i', $texto, $m)) return $texto;
+        // agente autônomo: nunca vai pra fila do atendimento — só some com o marcador
+        if ($a && $a->regra('autonomo')) {
+            Log::info('Agente autônomo ignorou [[HUMANO]] na conversa '.$c->id.': '.trim($m[1]));
+            return trim(str_replace($m[0], '', $texto));
+        }
         if (! $demo) { try { $this->atendimento->transferir($c, trim($m[1]) ?: 'Transferido pelo agente'); } catch (\Throwable $e) {} }
         return trim(str_replace($m[0], '', $texto));
     }
@@ -815,6 +997,9 @@ class AgenteBot
         if (! $r['ok']) {
             $motivo = trim((string) ($r['erro'] ?? '')) ?: 'erro desconhecido';
             Log::warning('Agente PIX falhou: '.$motivo);
+            if ($a->regra('autonomo')) { // autônomo: não transfere — pede pra tentar de novo
+                return ['texto' => trim(str_replace($marcador, "\nDeu um probleminha pra gerar o PIX agora. Me chama de novo daqui a uns minutinhos que eu gero pra você, tá?", $texto)), 'pix' => null];
+            }
             if (! $demo) { try { $this->atendimento->transferir($c, 'Falha ao gerar PIX: '.$motivo); } catch (\Throwable $e) {} }
             return ['texto' => trim(str_replace($marcador, "\nSó um instante que um atendente vai finalizar seu PIX aqui, tá?", $texto)), 'pix' => null];
         }

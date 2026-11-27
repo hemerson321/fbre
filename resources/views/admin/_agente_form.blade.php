@@ -22,6 +22,14 @@
     <div class="text-xs font-bold text-slate-500 uppercase">Regras</div>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[desligado]" value="1" @checked($r['desligado'] ?? false) class="w-5 h-5 rounded"> Desligado (só humano atende)</label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[nao_revela_robo]" value="1" @checked($r['nao_revela_robo'] ?? true) class="w-5 h-5 rounded"> Não revela que é robô</label>
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-2">
+      <label class="flex items-start gap-2 text-sm font-semibold"><input type="checkbox" name="regras[autonomo]" value="1" @checked($r['autonomo'] ?? false) class="w-5 h-5 rounded mt-0.5"> <span>🤖 Atende sozinho — NUNCA transfere pro atendimento humano <span class="block font-normal text-xs text-slate-500">O agente resolve tudo e fecha a venda. A conversa não entra na fila do atendente (nem em reclamação, nem se o PIX falhar).</span></span></label>
+      <label class="flex items-start gap-2 text-sm font-semibold"><input type="checkbox" name="regras[faz_orcamento]" value="1" @checked($r['faz_orcamento'] ?? false) class="w-5 h-5 rounded mt-0.5"> <span>📋 Faz orçamento pra empresa / grupo grande e fecha o negócio <span class="block font-normal text-xs text-slate-500">O orçamento fica gravado na tela de Orçamentos, marcado como "Agente IA".</span></span></label>
+      <div class="grid grid-cols-2 gap-2 pl-7">
+        <div><label class="label text-xs">Orçamento a partir de (pessoas)</label><input type="number" min="2" max="200" name="regras[orc_min_pessoas]" value="{{ $r['orc_min_pessoas'] ?? 8 }}" class="input"></div>
+        <div><label class="label text-xs">Desconto máximo no orçamento (%)</label><input type="number" min="0" max="50" name="regras[orc_desconto_max]" value="{{ $r['orc_desconto_max'] ?? 0 }}" class="input"></div>
+      </div>
+    </div>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[sensiveis_humano]" value="1" @checked($r['sensiveis_humano'] ?? true) class="w-5 h-5 rounded"> Assunto sensível (reclamação/reembolso) → chama humano</label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[nunca_inventa]" value="1" @checked($r['nunca_inventa'] ?? true) class="w-5 h-5 rounded"> Nunca inventa preço/rota (só o que está no sistema)</label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="regras[mapa_imagem]" value="1" @checked($r['mapa_imagem'] ?? true) class="w-5 h-5 rounded"> 🖼️ Enviar imagem do mapa da lancha com as poltronas do cliente (passagem) — ele vê onde vai sentar e pode pedir outra pelo número</label>

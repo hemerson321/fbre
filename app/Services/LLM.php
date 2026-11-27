@@ -32,7 +32,7 @@ class LLM
                 'gemini' => $this->gemini($token, $modelo, $mensagens, $sistema, $maxTokens),
                 default  => $this->claude($token, $modelo, $mensagens, $sistema, $maxTokens),
             };
-            if ($r['ok']) return ['ok' => true, 'texto' => $r['texto'], 'modelo' => $modelo];
+            if ($r['ok']) return ['ok' => true, 'texto' => $r['texto'], 'modelo' => $modelo, 'provider' => $provider, 'uso' => $r['uso'] ?? null];
             $ultErro = 'HTTP '.$r['status'].' ('.$modelo.'): '.mb_substr($r['body'], 0, 200);
             $invalido = $r['status'] === 404 || str_contains(mb_strtolower($r['body']), 'model');
             if (! $invalido) break; // auth/cota: para
@@ -68,7 +68,14 @@ class LLM
         foreach ((array) $r->json('content') as $bloco) {
             if (($bloco['type'] ?? '') === 'text') $txt .= $bloco['text'] ?? '';
         }
-        return ['ok' => true, 'texto' => trim($txt)];
+        // consumo de tokens (input_tokens NÃO inclui o que veio do cache)
+        $uso = [
+            'in' => (int) $r->json('usage.input_tokens', 0),
+            'out' => (int) $r->json('usage.output_tokens', 0),
+            'cache_r' => (int) $r->json('usage.cache_read_input_tokens', 0),
+            'cache_w' => (int) $r->json('usage.cache_creation_input_tokens', 0),
+        ];
+        return ['ok' => true, 'texto' => trim($txt), 'uso' => $uso];
     }
 
     protected function openai(string $token, string $modelo, array $msgs, string $sistema, int $max): array
@@ -82,7 +89,15 @@ class LLM
             'model' => $modelo, 'max_tokens' => $max, 'messages' => $mensagens,
         ]);
         if (! $r->successful()) return ['ok' => false, 'status' => $r->status(), 'body' => $r->body()];
-        return ['ok' => true, 'texto' => trim((string) $r->json('choices.0.message.content'))];
+        // consumo de tokens (prompt_tokens INCLUI os tokens em cache -> separa)
+        $cache = (int) $r->json('usage.prompt_tokens_details.cached_tokens', 0);
+        $uso = [
+            'in' => max(0, (int) $r->json('usage.prompt_tokens', 0) - $cache),
+            'out' => (int) $r->json('usage.completion_tokens', 0),
+            'cache_r' => $cache,
+            'cache_w' => 0,
+        ];
+        return ['ok' => true, 'texto' => trim((string) $r->json('choices.0.message.content')), 'uso' => $uso];
     }
 
     protected function gemini(string $token, string $modelo, array $msgs, string $sistema, int $max): array
@@ -115,7 +130,15 @@ class LLM
         if (trim($txt) === '' && $fim === 'MAX_TOKENS') {
             return ['ok' => false, 'status' => 'MAX_TOKENS', 'erro' => 'gemini truncou a resposta (thinking)'];
         }
-        return ['ok' => true, 'texto' => trim($txt), 'fim' => $fim];
+        // consumo de tokens ('pensamento' do Gemini é cobrado como saída; promptTokenCount inclui o cache)
+        $cache = (int) $r->json('usageMetadata.cachedContentTokenCount', 0);
+        $uso = [
+            'in' => max(0, (int) $r->json('usageMetadata.promptTokenCount', 0) - $cache),
+            'out' => (int) $r->json('usageMetadata.candidatesTokenCount', 0) + (int) $r->json('usageMetadata.thoughtsTokenCount', 0),
+            'cache_r' => $cache,
+            'cache_w' => 0,
+        ];
+        return ['ok' => true, 'texto' => trim($txt), 'fim' => $fim, 'uso' => $uso];
     }
 
     /** Modelos de texto disponíveis na conta (fallback). */
