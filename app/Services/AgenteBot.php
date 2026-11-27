@@ -82,7 +82,7 @@ class AgenteBot
             // últimas 16 mensagens em ordem CRONOLÓGICA (mais antiga -> mais nova)
             $historico = $conversa->mensagens()->reorder()
                 ->when($reinicio > 0, fn ($q) => $q->where('id', '>=', $reinicio))
-                ->orderByDesc('id')->limit(12)->get()
+                ->orderByDesc('id')->limit(40)->get()
                 ->sortBy('id')->values()
                 ->map(fn ($m) => ['role' => $m->direcao === 'entrada' ? 'user' : 'assistant', 'content' => (string) $m->texto])
                 ->all();
@@ -170,7 +170,7 @@ class AgenteBot
             $sistema = $this->promptSistema($agente)."\n\n".$lido
                 ." Confirme esses dados com o cliente de forma natural (ex.: 'Peguei aqui: Fulano, nascimento tal, confere?') e siga a venda.";
 
-            $hist = $conversa->mensagens()->reorder()->orderByDesc('id')->limit(12)->get()
+            $hist = $conversa->mensagens()->reorder()->orderByDesc('id')->limit(40)->get()
                 ->sortBy('id')->values()
                 ->map(fn ($m) => ['role' => $m->direcao === 'entrada' ? 'user' : 'assistant', 'content' => (string) $m->texto])
                 ->all();
@@ -306,6 +306,7 @@ class AgenteBot
         $p[] = "Se o cliente DESISTIR, mudar de ideia, disser que não vai mais viajar, que vai em outra data/viagem, ou cancelar a compra, LIBERE a poltrona escrevendo numa linha isolada que o cliente NÃO vê: [[LIBERAR]]. (A reserva também solta sozinha depois de ~5 min sem ele responder.)";
         $p[] = "5) Confirmando: nas lanchas com [poltrona], PRIMEIRO escolha a poltrona (pergunte janela/corredor/meio e reserve com [[POLTRONA:...]]) e SÓ DEPOIS gere o PIX. NUNCA gere o PIX antes de ter a poltrona reservada. Em lancha de rede, gere o PIX direto.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
+        $p[] = "MEMÓRIA DA CONVERSA: trecho, data, lancha, quantidade e composição que o cliente já falou continuam valendo até ele mudar — mesmo que o assunto mude (ex.: virou orçamento). Se ele responder curto ('não', 'só adulto', 'isso'), interprete pela SUA última pergunta.";
         $p[] = "NUNCA repita uma pergunta já respondida. Avance sempre pro próximo passo. Não peça dados que o cliente já deu.";
 
         if ($a->regra('nao_revela_robo')) {
@@ -321,7 +322,7 @@ class AgenteBot
         if ($a->regra('faz_orcamento')) {
             $desc = $a->orcDescontoMax();
             $p[] = "ORÇAMENTO (SÓ PRA EMPRESA) — é VOCÊ quem monta e fecha o negócio: faça orçamento quando o cliente der a entender que a compra é por uma EMPRESA ou instituição — ex.: 'sou da empresa tal', 'é pros nossos funcionários', 'pra equipe', 'preciso de nota/CNPJ', órgão público, prefeitura, igreja, escola, ONG, ou quando ele PEDIR orçamento/cotação. Não precisa ser com essas palavras: perceba pelo contexto. A QUANTIDADE de pessoas NÃO decide: 'quanto é a passagem pra 3 pessoas?' (ou 10, ou família grande) sem falar de empresa é VENDA NORMAL — siga o fluxo normal, sem orçamento. Na dúvida se é empresa, pergunte uma vez: 'é pra empresa ou particular?'.";
-            $p[] = "No orçamento, colete uma pergunta por vez: nome da empresa (CNPJ só se ele quiser que conste), nome de quem está falando, trecho, data e quantas pessoas (adultos e crianças com idade). Use os preços dos DADOS, cada pessoa pelo seu tipo.";
+            $p[] = "No orçamento você precisa de: nome da empresa, trecho, data e quantas pessoas (adultos e crianças com idade). ANTES de perguntar, releia a conversa: tudo que o cliente JÁ informou (trecho, data, quantidade, só adultos...) VALE — NUNCA pergunte de novo. Pergunte só o que falta, uma coisa por vez. CNPJ e nome de quem está falando são OPCIONAIS: não peça; se ele não der, use o nome da empresa como cliente. Assim que tiver empresa + trecho + data + pessoas, emita o orçamento na hora, sem mais perguntas. Use os preços dos DADOS, cada pessoa pelo seu tipo.";
             $p[] = $desc > 0
                 ? "DESCONTO NO ORÇAMENTO: você PODE dar até {$desc}% de desconto no valor por pessoa pra fechar. Comece SEM desconto; ofereça só se o cliente pedir ou estiver em dúvida, e NUNCA passe de {$desc}%. Não fale o limite pro cliente."
                 : "DESCONTO NO ORÇAMENTO: você NÃO dá desconto. O valor é o da tabela pra qualquer quantidade — explique com simpatia que já é o melhor preço e siga pro fechamento.";
