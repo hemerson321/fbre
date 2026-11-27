@@ -1550,10 +1550,14 @@ class PassagemController extends Controller
         // Etiqueta de BAGAGEM pode ser mais comprida que a via. Vazio/0 = automático:
         // em papel contínuo (largura >= 50mm, ex.: 62mm) sai mais comprida; em die-cut (DK-1201 29x90) fica igual à via.
         $bagMmH = (int) $empresa->config('etiqueta_bag_mm_h', 0);
-        if ($bagMmH <= 0) { $bagMmH = $mmW >= 50 ? ($mmH * 2) : $mmH; } // papel continuo: bagagem ~2x a via
-        $bagMmH = max($mmH, min(400, $bagMmH));
-        $labWbag = $girar ? $bagMmH : $mmW;
-        $labHbag = $girar ? $mmW : $bagMmH;
+        // largura do papel da BAGAGEM: vazio/0 = a mesma da via
+        $bagMmW = (int) $empresa->config('etiqueta_bag_mm_w', 0);
+        $bagMmW = $bagMmW > 0 ? max(10, min(120, $bagMmW)) : $mmW;
+        $bagProprio = (int) $empresa->config('etiqueta_bag_mm_h', 0) > 0;
+        if ($bagMmH <= 0) { $bagMmH = $bagMmW >= 50 ? ($mmH * 2) : $mmH; } // papel continuo: bagagem ~2x a via
+        $bagMmH = $bagProprio ? max(20, min(400, $bagMmH)) : max($mmH, min(400, $bagMmH)); // tamanho informado vale (pode ser menor que a via)
+        $labWbag = $girar ? $bagMmH : $bagMmW;
+        $labHbag = $girar ? $bagMmW : $bagMmH;
         // observação do check-in: se veio no link (impressão na hora) ela vale e é salva; senão usa a já guardada
         $obs = request()->has('obs') ? trim((string) request('obs')) : (string) ($pax->obs_etiqueta ?? '');
         if (request()->has('obs') && $obs !== (string) ($pax->obs_etiqueta ?? '')) {
@@ -1581,8 +1585,12 @@ class PassagemController extends Controller
         }
         $mmW = max(10, min(120, (int) Tenant::empresa()->config('etiqueta_mm_w', 29)));
         $wDots = (int) round($mmW / 25.4 * 300); // Brother QL = 300 dpi
+        // etiqueta de bagagem pode ter largura de papel própria
+        $bagW = (int) Tenant::empresa()->config('etiqueta_bag_mm_w', 0);
+        $wDotsBag = $bagW > 0 ? (int) round(max(10, min(120, $bagW)) / 25.4 * 300) : $wDots;
+        $tipos = (array) $request->input('tipos', []);
         $n = 0;
-        foreach ($imagens as $img) {
+        foreach ($imagens as $idx => $img) {
             if (! is_string($img) || $img === '') continue;
             if (str_contains($img, ',')) $img = substr($img, strpos($img, ',') + 1);
             \App\Models\FilaImpressao::create([
@@ -1591,7 +1599,7 @@ class PassagemController extends Controller
                 'tipo' => 'generico',
                 'dados' => [
                     'linhas' => [
-                        ['op' => 'img', 'data' => $img, 'w' => $wDots],
+                        ['op' => 'img', 'data' => $img, 'w' => (($tipos[$idx] ?? '') === 'bag' ? $wDotsBag : $wDots)],
                         ['op' => 'feed', 'n' => 2],
                         ['op' => 'cut'],
                     ],

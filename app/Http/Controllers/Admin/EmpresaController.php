@@ -74,6 +74,7 @@ class EmpresaController extends Controller
         $config['idoso_meia_qtd'] = max(0, min(999, (int) $request->input('idoso_meia_qtd', 2)));
         $config['etiqueta_mm_w'] = max(10, min(120, (int) $request->input('etiqueta_mm_w', 29)));
         $config['etiqueta_mm_h'] = max(20, min(300, (int) $request->input('etiqueta_mm_h', 90)));
+        $config['etiqueta_bag_mm_w'] = max(0, min(120, (int) $request->input('etiqueta_bag_mm_w', 0))); // 0 = mesma largura da via
         $config['etiqueta_bag_mm_h'] = max(0, min(400, (int) $request->input('etiqueta_bag_mm_h', 0))); // 0 = automatico (bagagem mais comprida em papel continuo)
         $config['etiqueta_girar'] = ((int) $request->input('etiqueta_girar', 1)) === 1;
         $fusosOk = ['America/Manaus', 'America/Sao_Paulo', 'America/Belem', 'America/Rio_Branco', 'America/Boa_Vista', 'America/Porto_Velho', 'America/Cuiaba', 'America/Fortaleza', 'America/Recife'];

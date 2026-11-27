@@ -10,7 +10,7 @@
   $kh = max(0.6, $labH / 29);   // escala da ALTURA (coluna da poltrona, bordas) -> usa o espaco extra
   $px  = fn ($n) => (int) round($n * $kw);
   $pxh = fn ($n) => (int) round($n * $kh);
-  $kwBag = max($kw, ($labWbag ?? $labW) / 90);  // BAGAGEM: fonte maior (acompanha o comprimento proprio)
+  $kwBag = max(0.6, ($labWbag ?? $labW) / 90);  // BAGAGEM: fonte maior (acompanha o comprimento proprio)
   $pxB  = fn ($n) => (int) round($n * $kwBag);
   $bd = max(1, (int) round(1.4 * $kh));
   $nomeLines = $labH >= 45 ? 3 : 2;
@@ -135,9 +135,9 @@
     var h2c = window.html2canvas;
     if(!h2c){ try{ parent.postMessage({fbreRaster:true, imagens:[], erro:'sem html2canvas'}, '*'); }catch(e){} return; }
     var els = [].slice.call(document.querySelectorAll('.lbl'));
-    var out = [];
+    var out = [], tipos = [];
     (function next(i){
-      if(i>=els.length){ try{ parent.postMessage({fbreRaster:true, imagens:out}, '*'); }catch(e){} return; }
+      if(i>=els.length){ try{ parent.postMessage({fbreRaster:true, imagens:out, tipos:tipos}, '*'); }catch(e){} return; }
       h2c(els[i], {scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false}).then(function(cv){
         try{
           if(GIRAR){
@@ -146,6 +146,7 @@
             rx.drawImage(cv, -cv.width/2, -cv.height/2);
             out.push(rc.toDataURL('image/png'));
           } else { out.push(cv.toDataURL('image/png')); }
+          tipos.push(els[i].classList.contains('bag') ? 'bag' : 'via');
         }catch(e){} next(i+1);
       }).catch(function(){ next(i+1); });
     })(0);

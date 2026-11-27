@@ -599,7 +599,7 @@ document.addEventListener('alpine:init', () => {
         cleanup();
         if (!imgs.length) { abrir(); return; }
         try {
-          const r = await fetch(postUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': FBRE.csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ imagens: imgs }) });
+          const r = await fetch(postUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': FBRE.csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ imagens: imgs, tipos: d.tipos || [] }) });
           const j = await r.json().catch(() => null);
           if (r.ok && j && j.ok) { restore('✅'); } else { abrir(); }
         } catch (e) { abrir(); }
