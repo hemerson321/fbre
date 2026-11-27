@@ -53,6 +53,53 @@ class AgenteBot
         }
     }
 
+    /**
+     * Proteção contra abuso: o mesmo número não pode ficar conversando sem parar (curioso, concorrente, outro robô).
+     * Passou do limite de mensagens do agente em 24h -> manda UM aviso e fica em silêncio até a janela liberar.
+     * Também há um teto geral por dia (todos os clientes) contra ataque com vários números.
+     */
+    protected function limiteAtingido(Agente $a, Conversa $c): bool
+    {
+        try {
+            $ctx = $c->contexto ?? [];
+            // já bloqueado: silêncio total (nem conta, nem avisa de novo)
+            if (! empty($ctx['limite_ate']) && now()->lt(\Illuminate\Support\Carbon::parse($ctx['limite_ate']))) return true;
+
+            $max = $a->limiteClienteDia();
+            if ($max > 0) {
+                $n = $c->mensagens()->reorder()->where('direcao', 'saida')->where('origem', 'ia')->where('created_at', '>=', now()->subDay())
+                    ->where('id', '>=', (int) ($ctx['limite_zerado_id'] ?? 0))->count(); // operador clicou em 🔄: zera a contagem
+                if ($n >= $max) {
+                    // quem já pagou está terminando a compra (dados dos passageiros): triplo do limite
+                    $pagou = Cobranca::where('referencia_tipo', Conversa::class)->where('referencia_id', $c->id)
+                        ->where('status', 'pago')->where('updated_at', '>=', now()->subDays(2))->exists();
+                    if (! $pagou || $n >= $max * 3) {
+                        $ctx['limite_ate'] = now()->addDay()->toDateTimeString();
+                        $ctx['limite_motivo'] = $n.' mensagens do agente em 24h';
+                        $c->forceFill(['contexto' => $ctx])->save();
+                        try { app(\App\Services\Vagas::class)->liberarConversa($c->id); } catch (\Throwable $e) {}
+                        $this->atendimento->registrarSaida($c, $a->limiteMsg(), 'ia', null, $a->nome);
+                        Log::warning("Agente: limite por cliente atingido na conversa {$c->id} ({$n} msgs em 24h).");
+                        return true;
+                    }
+                }
+            }
+
+            $teto = $a->limiteTotalDia();
+            if ($teto > 0) {
+                $hoje = \App\Models\Mensagem::where('empresa_id', $c->empresa_id)->where('direcao', 'saida')->where('origem', 'ia')
+                    ->where('created_at', '>=', now()->startOfDay())->count();
+                if ($hoje >= $teto) {
+                    Log::warning("Agente: TETO GERAL do dia atingido ({$hoje}/{$teto}) — em silêncio até amanhã.");
+                    return true;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::info('limiteAtingido: '.$e->getMessage());
+        }
+        return false;
+    }
+
     public function processar(Conversa $conversa, ?Agente $agente = null, bool $demo = false, string $audioModo = 'texto'): void
     {
         try {
@@ -61,6 +108,7 @@ class AgenteBot
             $this->convUso = $conversa; $this->agUso = $agente;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
             if (! $demo && ($conversa->precisa_humano ?? false)) return; // já transferido pro humano: agente fica em silêncio
+            if (! $demo && $this->limiteAtingido($agente, $conversa)) return; // proteção contra abuso: não gasta mais token com esse número hoje
             try { app(\App\Services\Vagas::class)->renovarConversa($conversa->id, $agente->reservaMin()); } catch (\Throwable $e) {} // mantém a reserva enquanto o cliente responde
 
             $prov = $agente->llm;
@@ -135,6 +183,7 @@ class AgenteBot
             if (! $agente) return;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
             $this->convUso = $conversa; $this->agUso = $agente;
+            if (! $demo && $this->limiteAtingido($agente, $conversa)) return;
             $prov = $this->provedorVisao($agente); // imagem precisa de Claude/OpenAI (Gemini não entra aqui)
             if (! $prov) return;
 

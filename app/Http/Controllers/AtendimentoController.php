@@ -97,6 +97,7 @@ class AtendimentoController extends Controller
         // limpa TUDO que o agente guardou (venda, poltronas, passageiros, orçamento...) — só fica o que identifica a conversa de teste
         $ctx = array_intersect_key($conversa->contexto ?? [], ['demo' => 1, 'agente_id' => 1]);
         $ctx['reinicio_id'] = $ultimo + 1; // agente ignora tudo que veio ate aqui
+        $ctx['limite_zerado_id'] = $ultimo + 1; // libera o limite de mensagens (proteção contra abuso) — só um operador faz isso
         $conversa->forceFill([
             'contexto' => $ctx,
             'funil' => 'novo',

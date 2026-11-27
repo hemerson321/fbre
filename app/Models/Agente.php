@@ -49,6 +49,16 @@ class Agente extends Model
     /** Orçamento do agente: desconto máximo (%) que ele pode dar pra fechar. Padrão 0 (sem desconto). */
     public function orcDescontoMax(): int { return max(0, min(50, (int) ($this->regras['orc_desconto_max'] ?? 0))); }
 
+    /** Proteção: máximo de mensagens do agente pra um mesmo cliente em 24h. 0 = sem limite. Padrão 40. */
+    public function limiteClienteDia(): int { return max(0, min(1000, (int) ($this->regras['limite_cliente_dia'] ?? 40))); }
+    /** Proteção: máximo de mensagens do agente no dia, somando todos os clientes. 0 = sem limite (padrão). */
+    public function limiteTotalDia(): int { return max(0, min(200000, (int) ($this->regras['limite_total_dia'] ?? 0))); }
+    /** Mensagem enviada UMA vez quando o cliente atinge o limite. */
+    public function limiteMsg(): string
+    {
+        return trim((string) ($this->regras['limite_msg'] ?? '')) ?: 'Por hoje cheguei no limite de mensagens do nosso atendimento automático. 🙏 Se quiser fechar sua passagem, me chama amanhã ou procure nosso balcão.';
+    }
+
     /** Antecedência máxima de venda (meses à frente). Padrão 2. */
     public function mesesVenda(): int { return max(1, min(12, (int) ($this->regras['meses_venda'] ?? 2))); }
 

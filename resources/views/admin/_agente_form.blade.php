@@ -15,6 +15,17 @@
     <label class="flex items-end gap-2 text-sm pb-2"><input type="checkbox" name="ativo" value="1" @checked($a->ativo ?? true) class="w-5 h-5 rounded"> Agente ativo</label>
   </div>
 
+  <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-3 space-y-2">
+    <div class="font-bold text-sm">🛡️ Proteção contra abuso (economia de tokens)</div>
+    <p class="text-xs text-slate-600">Evita que alguém (um curioso, um concorrente ou outro robô) fique conversando sem parar só pra gastar a sua IA. Quando o cliente atinge o limite, o agente manda <b>um aviso</b> e <b>para de responder aquele número</b> até completar 24h — sem gastar mais nenhum token com ele. Uma venda normal usa de 10 a 20 mensagens, então 40 não atrapalha cliente de verdade. Quem <b>já pagou</b> nas últimas 48h ganha o triplo do limite (pra terminar de mandar os dados dos passageiros). A conversa fica marcada com <b>⛔ limite</b> na lista do Atendimento, e um atendente pode assumir normalmente.</p>
+    <div class="grid sm:grid-cols-2 gap-2">
+      <div><label class="label text-xs">Máx. de mensagens do agente por cliente em 24h <span class="font-normal text-slate-400">(0 = sem limite)</span></label><input type="number" min="0" max="1000" name="regras[limite_cliente_dia]" value="{{ $r['limite_cliente_dia'] ?? 40 }}" class="input"></div>
+      <div><label class="label text-xs">Teto geral do agente por dia, somando todos os clientes <span class="font-normal text-slate-400">(0 = sem teto)</span></label><input type="number" min="0" max="200000" name="regras[limite_total_dia]" value="{{ $r['limite_total_dia'] ?? 0 }}" class="input" title="Trava de segurança contra ataque com vários números ao mesmo tempo. Ao atingir, o agente fica em silêncio pra todo mundo até o dia seguinte."></div>
+    </div>
+    <div><label class="label text-xs">Aviso enviado ao cliente quando atinge o limite <span class="font-normal text-slate-400">(em branco = texto padrão)</span></label><input name="regras[limite_msg]" maxlength="300" value="{{ $r['limite_msg'] ?? '' }}" class="input" placeholder="Por hoje cheguei no limite de mensagens do nosso atendimento automático. 🙏 Se quiser fechar sua passagem, me chama amanhã ou procure nosso balcão."></div>
+    <p class="text-[11px] text-slate-500">O <b>teto geral</b> protege contra ataque com muitos números diferentes: se usar, coloque bem acima do seu movimento normal (ex.: 3.000). Ao atingir, o agente silencia pra todos até o dia seguinte — os atendentes humanos continuam vendo as conversas.</p>
+  </div>
+
   <div><label class="label">Persona / instruções</label>
     <textarea name="persona" class="input" rows="3" placeholder="Como o agente deve atender: tom, o que oferecer, como fechar a venda...">{{ $a->persona ?? '' }}</textarea></div>
 

@@ -87,6 +87,9 @@ class AgenteController extends Controller
                 'ocioso_aviso_min' => $request->filled('ocioso_aviso_min') ? max(0, (int) $request->input('ocioso_aviso_min')) : 2,
                 'ocioso_encerrar_min' => max(1, (int) ($request->input('ocioso_encerrar_min') ?: 1)),
                 'ocioso_pix_min' => max(1, (int) ($request->input('ocioso_pix_min') ?: 30)),
+                'limite_cliente_dia' => $request->filled('regras.limite_cliente_dia') ? max(0, min(1000, (int) $request->input('regras.limite_cliente_dia'))) : 40,
+                'limite_total_dia' => max(0, min(200000, (int) $request->input('regras.limite_total_dia'))),
+                'limite_msg' => mb_substr(trim((string) $request->input('regras.limite_msg')), 0, 300),
             ],
             'horario' => [
                 'modo' => $data['hr_modo'],
