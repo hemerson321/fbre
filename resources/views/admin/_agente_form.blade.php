@@ -16,6 +16,23 @@
     <label class="flex items-end gap-2 text-sm pb-2"><input type="checkbox" name="ativo" value="1" @checked($a->ativo ?? true) class="w-5 h-5 rounded"> Agente ativo</label>
   </div>
 
+  @php $hDias = array_map('intval', (array) ($r['humano_dias'] ?? [1, 2, 3, 4, 5])); @endphp
+  <div class="rounded-xl border border-sky-200 bg-sky-50/60 p-3 space-y-2">
+    <div class="font-bold text-sm">👤 Atendimento humano</div>
+    <label class="flex items-start gap-2 text-sm font-semibold"><input type="checkbox" name="regras[nao_entendeu_humano]" value="1" @checked($r['nao_entendeu_humano'] ?? false) class="w-5 h-5 rounded mt-0.5"> <span>Se o agente NÃO ENTENDER o cliente, passa a conversa pro atendente humano <span class="block font-normal text-xs text-slate-500">Se ele pedir pra explicar de novo e continuar sem entender, ele avisa o cliente e a conversa entra na fila do atendimento (🔔). Vale mesmo com "Atende sozinho" marcado. Desmarcado, o agente continua tentando sozinho.</span></span></label>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="label text-xs">Atendente humano atende das</label><input type="time" name="regras[humano_inicio]" value="{{ $r['humano_inicio'] ?? '' }}" class="input"></div>
+      <div><label class="label text-xs">até as</label><input type="time" name="regras[humano_fim]" value="{{ $r['humano_fim'] ?? '' }}" class="input"></div>
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      @foreach([1=>'Seg',2=>'Ter',3=>'Qua',4=>'Qui',5=>'Sex',6=>'Sáb',7=>'Dom'] as $dn => $dl)
+        <label class="flex items-center gap-1 text-sm px-2 py-1 rounded-lg border bg-white"><input type="checkbox" name="regras[humano_dias][]" value="{{ $dn }}" @checked(in_array($dn, $hDias, true))> {{ $dl }}</label>
+      @endforeach
+    </div>
+    <div><label class="label text-xs">Como dizer o horário ao cliente <span class="font-normal text-slate-400">(opcional — em branco o sistema monta: "de segunda a sexta, das 08:00 às 17:00")</span></label><input name="regras[humano_texto]" maxlength="160" value="{{ $r['humano_texto'] ?? '' }}" class="input" placeholder="Ex.: de segunda a sexta das 8h às 17h e sábado das 8h às 12h"></div>
+    <p class="text-[11px] text-slate-500">Com o horário preenchido: ao encerrar por falta de resposta, o agente avisa que durante o dia tem atendimento humano; e se ele passar a conversa fora desse horário, avisa o cliente quando alguém vai responder. Em branco, o agente não fala de horário humano.</p>
+  </div>
+
   <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-3 space-y-2">
     <div class="font-bold text-sm">🛡️ Proteção contra abuso (economia de tokens)</div>
     <p class="text-xs text-slate-600">Evita que alguém (um curioso, um concorrente ou outro robô) fique conversando sem parar só pra gastar a sua IA. Quando o cliente atinge o limite, o agente manda <b>um aviso</b> e <b>para de responder aquele número</b> até completar 24h — sem gastar mais nenhum token com ele. Uma venda normal usa de 10 a 20 mensagens, então 40 não atrapalha cliente de verdade. Quem <b>já pagou</b> nas últimas 48h ganha o triplo do limite (pra terminar de mandar os dados dos passageiros). A conversa fica marcada com <b>⛔ limite</b> na lista do Atendimento, e um atendente pode assumir normalmente.</p>

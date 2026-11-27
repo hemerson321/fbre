@@ -62,6 +62,40 @@ class Agente extends Model
     /** O agente PARA de vender quantas horas antes da saída da viagem. Padrão 3h. 0 = vende até a hora da saída. */
     public function vendaHorasAntes(): float { return max(0, min(72, (float) str_replace(',', '.', (string) ($this->regras['venda_horas_antes'] ?? 3)))); }
 
+    /** Horário do atendimento HUMANO configurado? (início, fim e dias) */
+    public function humanoConfigurado(): bool
+    {
+        $r = $this->regras ?? [];
+        return ! empty($r['humano_inicio']) && ! empty($r['humano_fim']);
+    }
+
+    /** Tem atendente humano AGORA? Sem horário configurado = considera que sim (comportamento antigo). */
+    public function humanoAtendeAgora(?\DateTimeInterface $agora = null): bool
+    {
+        if (! $this->humanoConfigurado()) return true;
+        $r = $this->regras ?? [];
+        $agora = $agora ? \Illuminate\Support\Carbon::instance($agora) : now();
+        $dias = array_map('intval', (array) ($r['humano_dias'] ?? [1, 2, 3, 4, 5]));
+        if ($dias && ! in_array((int) $agora->isoWeekday(), $dias, true)) return false;
+        $hm = $agora->format('H:i');
+        return $hm >= substr((string) $r['humano_inicio'], 0, 5) && $hm < substr((string) $r['humano_fim'], 0, 5);
+    }
+
+    /** Como dizer ao cliente quando tem atendente humano. '' = não configurado. */
+    public function humanoHorarioTexto(): string
+    {
+        $r = $this->regras ?? [];
+        $livre = trim((string) ($r['humano_texto'] ?? ''));
+        if ($livre !== '') return $livre;
+        if (! $this->humanoConfigurado()) return '';
+        $nomes = [1 => 'segunda', 2 => 'terça', 3 => 'quarta', 4 => 'quinta', 5 => 'sexta', 6 => 'sábado', 7 => 'domingo'];
+        $dias = array_values(array_intersect(array_keys($nomes), array_map('intval', (array) ($r['humano_dias'] ?? [1, 2, 3, 4, 5]))));
+        if (! $dias) $dias = [1, 2, 3, 4, 5];
+        $seguidos = count($dias) > 2 && ($dias[count($dias) - 1] - $dias[0] === count($dias) - 1);
+        $txtDias = count($dias) === 7 ? 'todos os dias' : ($seguidos ? 'de '.$nomes[$dias[0]].' a '.$nomes[$dias[count($dias) - 1]] : implode(', ', array_map(fn ($d) => $nomes[$d], $dias)));
+        return $txtDias.', das '.substr((string) $r['humano_inicio'], 0, 5).' às '.substr((string) $r['humano_fim'], 0, 5);
+    }
+
     /** Antecedência máxima de venda (meses à frente). Padrão 2. */
     public function mesesVenda(): int { return max(1, min(12, (int) ($this->regras['meses_venda'] ?? 2))); }
 

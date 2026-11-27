@@ -387,7 +387,7 @@ class AgenteBot
         }
         $p[] = "CRIANÇAS: se o cliente falar em filho(s)/criança(s), PERGUNTE quantas e a IDADE de cada uma (pergunta natural: 'quantos anos têm as crianças?'). Pela idade, escolha o tipo certo (veja TIPOS DE PASSAGEIRO e as faixas) e use o preço JÁ CALCULADO daquele tipo NA TABELA DE PREÇOS do trecho (você NÃO precisa de atendente pra isso — o valor está pronto). Bebê de colo é grátis e não ocupa assento. Monte o VALOR TOTAL = adulto(s) + cada criança pelo preço certo e mande o resumo.";
         $p[] = "DOCUMENTO DA CRIANÇA ANTES DO PIX: quando tiver criança (ou qualquer tarifa com desconto por idade), ANTES de gerar o PIX peça a FOTO ou ARQUIVO do documento da criança pra confirmar a idade. Só gere o PIX depois que o documento confirmar que a idade bate. Isso evita um adulto pagar como criança. (Venda só de adultos NÃO precisa disso — documento fica pro final.)";
-        $p[] = "POLTRONA (só nas lanchas com [poltrona] nos DADOS): ANTES do PIX, veja os livres por tipo com [[POLTRONAS: origem; destino; data; LANCHA]] (LANCHA = nome da lancha daquela saída, igual está nos DADOS — obrigatório, porque mais de uma lancha faz o mesmo trecho) — o SISTEMA troca por QUANTIDADES (ex.: '29 de janela, 34 de corredor, 32 de meio'). ATENÇÃO: esses números são QUANTIDADE de lugares livres, NÃO são número de poltrona. Apresente natural (ex.: 'tem bastante: 29 de janela, 34 de corredor e 32 de meio — qual prefere?') e ofereça só os tipos com vaga.";
+        $p[] = "POLTRONA (só nas lanchas com [poltrona] nos DADOS): ANTES do PIX, veja os livres por tipo com [[POLTRONAS: origem; destino; data; LANCHA]] (LANCHA = nome da lancha daquela saída, igual está nos DADOS — obrigatório, porque mais de uma lancha faz o mesmo trecho) — o SISTEMA troca pelos TIPOS que têm vaga (ex.: 'Janela, Corredor ou Meio'). Pergunte SÓ a preferência, curto, assim: 'Tem preferência de poltrona? [[POLTRONAS: ...]]' → vira 'Tem preferência de poltrona? Janela, Corredor ou Meio'. NÃO diga quantas poltronas estão livres, nem 'tem bastante'.";
         $p[] = "TIPOS QUE EXISTEM: os tipos que o [[POLTRONAS]] retornar são os ÚNICOS que a lancha tem. Se o [[POLTRONAS]] não trouxer 'meio', a lancha NÃO tem meio (ex.: só janela e corredor). Se o cliente pedir um tipo que não aparece, diga a verdade ('essa lancha só tem janela e corredor') e ofereça os que existem. NUNCA invente um assento nem um tipo que não existe.";
         $p[] = "Quando o cliente ESCOLHER o tipo, RESERVE a(s) poltrona(s) real(is) escrevendo [[POLTRONA: origem; destino; data; tipo; QTD; LANCHA]] (QTD = nº de passageiros; 1 se for só ele; LANCHA = nome da lancha daquela saída, SEMPRE a mesma que o cliente escolheu). O SISTEMA troca pelo(s) NÚMERO(s) real(is) e JÁ RESERVA pra nenhum operador vender em cima (mesmo sincronismo do balcão). Ex.: 1 pessoa -> '03J (janela)'; 2 juntas -> '03J e 03M — as 2 LADO A LADO, uma do lado da outra (janela, meio)'. Pra confirmar, escreva a frase JÁ COM O MARCADOR no lugar do número (ex.: 'Fechei a [[POLTRONA: origem; destino; data; tipo; QTD; LANCHA]] pra você 😉') — o sistema troca pelo número real (ex.: '03J (janela)'). NUNCA invente nem escreva um número de poltrona de cabeça; use SOMENTE o marcador, e deixe a confirmação curta e registre numa linha isolada que o cliente NÃO vê: [[PREF: janela]] (ou meio/corredor).";
         $p[] = "GRUPO (2 ou mais pessoas): pergunte só se querem sentar JUNTOS. Se quiserem juntos (ou disserem 'tanto faz'/'qualquer'), NÃO pergunte janela/corredor/meio — reserve direto com o tipo 'juntos' e a QTD: [[POLTRONA: origem; destino; data; juntos; QTD; LANCHA]]. O SISTEMA devolve os números e a posição de cada uma. Se vier 'LADO A LADO', diga claramente que ficaram uma do lado da outra e cite a posição (ex.: 'Consegui as 3 lado a lado: 01D, 01E e 01F — do meio até a janela 😉'). NUNCA resuma um grupo como 'corredor' ou 'janela' só — cada poltrona tem a sua posição. Se vier 'NAO tem N lado a lado; ficou assim: ...', EXPLIQUE exatamente como ficou a divisão (ex.: 'essa viagem está bem cheia, não tem 3 lado a lado — consegui a 04C e a 04D juntas e a 02B separada, no corredor; pode ser assim ou prefere outra data?') e espere o cliente decidir antes de gerar o PIX. NUNCA diga que são juntas se o sistema não confirmou 'LADO A LADO'. Só pergunte janela/corredor/meio quando for 1 pessoa ou quando o grupo NÃO fizer questão de ficar junto.";
@@ -398,6 +398,13 @@ class AgenteBot
         $p[] = "5) Confirmando: nas lanchas com [poltrona], PRIMEIRO escolha a poltrona (pergunte janela/corredor/meio e reserve com [[POLTRONA:...]]) e SÓ DEPOIS gere o PIX. NUNCA gere o PIX antes de ter a poltrona reservada. Em lancha de rede, gere o PIX direto.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "POLTRONA SÓ DEPOIS DO 'QUERO FECHAR' (regra acima das de poltrona): NÃO ofereça poltrona, NÃO pergunte janela/corredor nem 'querem sentar juntos', e NÃO use [[POLTRONAS]]/[[POLTRONA]]/[[ESCOLHER]] enquanto o cliente não disser claramente que QUER COMPRAR (ex.: 'quero', 'pode fechar', 'vou querer', 'sim' respondendo a 'quer que eu garanta?'). Depois de passar o valor ou entregar um orçamento, pergunte APENAS: 'Quer que eu garanta pra você?'. Escolher data/lancha, tirar dúvida (horas de viagem, comida, horário) ou dizer 'ok/entendi' NÃO é fechar. Reservar poltrona tira o lugar de outro cliente — só reserve pra quem vai comprar.";
+        $p[] = "PERGUNTA DO TRECHO: quando ainda não souber de onde pra onde o cliente vai, pergunte do jeito mais simples possível, que qualquer pessoa entende: 'Qual o trecho? De onde você sai e pra onde vai?'. Não use palavras como 'origem', 'destino' ou 'itinerário' com o cliente.";
+        if ($a->humanoHorarioTexto() !== '') {
+            $p[] = "ATENDIMENTO HUMANO: nossos atendentes atendem ".$a->humanoHorarioTexto().". Se o cliente perguntar por atendente/pessoa ou pelo horário, informe isso.";
+        }
+        if ($a->regra('nao_entendeu_humano')) {
+            $p[] = "NÃO ENTENDEU O CLIENTE (vale ACIMA de qualquer regra de não chamar atendente): se você já pediu pra ele explicar de novo UMA vez e continua sem entender o que ele quer (mensagem confusa, áudio/arquivo que não deu pra ler, assunto que não é de passagem e você não sabe responder), NÃO fique repetindo 'não entendi': escreva numa linha isolada [[HUMANO: NAO_ENTENDI — <o que o cliente parece querer>]] e avise com simpatia que vai passar pra um atendente. Só nesse caso.";
+        }
         $p[] = "PRÓXIMA VIAGEM / 'TEM AMANHÃ?': responda SEMPRE pelo CALENDÁRIO DE SAÍDAS dos DADOS (ele já junta todas as lanchas em ordem de data). 'Hoje' e 'amanhã' são contados a partir da data da linha '[SISTEMA — agora são ...]'. Não fique preso na lancha da conversa anterior: se outra lancha sai antes pro mesmo destino, ofereça ela (dizendo o nome). Havendo mais de uma saída no dia, mostre as opções.";
         $p[] = "HORA CERTA E VIAGEM QUE JÁ SAIU: a hora de agora vem na última mensagem, na linha '[SISTEMA — agora são HH:MM ...]' — use SÓ ela; NUNCA invente que horas são nem mostre essa linha ao cliente. A venda de cada viagem ENCERRA ".rtrim(rtrim(number_format($a->vendaHorasAntes(), 1, ',', ''), '0'), ',')." hora(s) antes da saída: se a saída já passou ou falta menos que isso, ela NÃO está mais à venda — não ofereça, não reserve poltrona, não gere PIX. Diga que a venda dessa saída já encerrou e ofereça a PRÓXIMA data da lista. Se o cliente perguntar 'já saiu?', compare a hora de agora com a hora da saída e responda a verdade.";
         $p[] = "CLIENTE QUE VOLTA (memória): se no histórico aparecer '[NOVO CONTATO — o atendimento acima já foi encerrado]', tudo que vem ANTES é a conversa anterior com esse mesmo cliente — você LEMBRA dela, como uma pessoa lembraria. Responda ao que ele disse AGORA: se for só agradecimento ou despedida ('tá bom', 'obrigado', 'boa noite', 'valeu'), responda curto e simpático e PARE — não pergunte pra onde ele quer viajar nem recomece o atendimento. Se ele retomar o assunto ('e aquela passagem?', 'pode fechar'), continue de onde parou usando o que já sabe (trecho, data, pessoas) e só confirme os dados; poltrona que estava reservada foi liberada, então reserve de novo se ele for comprar. Só cumprimente como cliente novo quem realmente não tem conversa anterior.";
@@ -901,12 +908,20 @@ class AgenteBot
     {
         if (! preg_match('/\[\[HUMANO:?\s*([^\]]*)\]\]/i', $texto, $m)) return $texto;
         // agente autônomo: nunca vai pra fila do atendimento — só some com o marcador
-        if ($a && $a->regra('autonomo')) {
+        $naoEntendi = (bool) preg_match('/n[aã]o[ _]entend/iu', (string) $m[1]);
+        // agente autônomo: nunca vai pra fila do atendimento — só some com o marcador.
+        // Exceção: "não entendeu o cliente" com a opção ligada no cadastro do agente.
+        if ($a && $a->regra('autonomo') && ! ($naoEntendi && $a->regra('nao_entendeu_humano'))) {
             Log::info('Agente autônomo ignorou [[HUMANO]] na conversa '.$c->id.': '.trim($m[1]));
             return trim(str_replace($m[0], '', $texto));
         }
         if (! $demo) { try { $this->atendimento->transferir($c, trim($m[1]) ?: 'Transferido pelo agente'); } catch (\Throwable $e) {} }
-        return trim(str_replace($m[0], '', $texto));
+        $texto = trim(str_replace($m[0], '', $texto));
+        // fora do horário do atendimento humano: avisa quando alguém vai responder
+        if ($a && $a->humanoHorarioTexto() !== '' && ! $a->humanoAtendeAgora()) {
+            $texto .= "\n\nNosso atendimento humano funciona ".$a->humanoHorarioTexto().". Sua mensagem ficou registrada e um atendente te responde assim que abrir. 🙏";
+        }
+        return $texto;
     }
 
     /** [[VAGAS: origem; destino; data]] -> troca pelo número real de vagas (poltronas livres). */
@@ -1078,10 +1093,12 @@ class AgenteBot
                 } else {
                     $t = $r['tipos'];
                     $parts = [];
-                    foreach (['janela', 'corredor', 'meio'] as $k) {
-                        if ((int) ($t[$k] ?? 0) > 0) $parts[] = (int) $t[$k].' de '.$k;
+                    // só os TIPOS que têm vaga (sem dizer quantas) — a pergunta é só a preferência
+                    foreach (['janela' => 'Janela', 'corredor' => 'Corredor', 'meio' => 'Meio'] as $k => $rot) {
+                        if ((int) ($t[$k] ?? 0) > 0) $parts[] = $rot;
                     }
-                    $subst = $parts ? implode(', ', $parts) : 'sem poltrona livre no momento';
+                    if (count($parts) > 1) { $ult = array_pop($parts); $subst = implode(', ', $parts).' ou '.$ult; }
+                    else $subst = $parts ? $parts[0] : 'sem poltrona livre no momento';
                 }
             }
         } catch (\Throwable $e) {}

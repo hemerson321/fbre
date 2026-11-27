@@ -82,6 +82,7 @@ class EncerrarConversasOciosas extends Command
                         $txt = $tinhaReserva
                             ? 'Como não tive retorno, liberei a poltrona que estava reservada e vou encerrar por aqui. Obrigado pelo contato! Quando precisar, é só chamar que estou à disposição. 🙏'
                             : 'Vou encerrar nosso atendimento por aqui. Obrigado pelo contato! Quando precisar, é só chamar que estou à disposição. 🙏';
+                        if ($agente->humanoHorarioTexto() !== '') $txt .= "\n\nSe preferir falar com uma pessoa, nosso atendimento humano funciona ".$agente->humanoHorarioTexto().'.';
                         $atendimento->registrarSaida($c, $txt, 'ia', null, $agente->nome);
                         $c->forceFill(['status' => 'fechada', 'ia_ativa' => false, 'atendida' => true, 'nao_lidas' => 0])->save();
                         $fechadas++;
