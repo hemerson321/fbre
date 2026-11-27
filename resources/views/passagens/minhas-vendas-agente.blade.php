@@ -5,7 +5,7 @@
 <div class="max-w-3xl mx-auto space-y-3">
   <div class="flex items-center justify-between gap-2">
     <h1 class="text-xl font-bold leading-tight">Minhas vendas <span class="block text-slate-400 font-normal text-sm">{{ auth()->user()->name }}</span></h1>
-    <a href="{{ route('meus-acertos') }}" class="btn btn-ghost btn-sm whitespace-nowrap no-print">🤝 Acertos</a>
+    @if($ehAgente)<a href="{{ route('meus-acertos') }}" class="btn btn-ghost btn-sm whitespace-nowrap no-print">🤝 Acertos</a>@endif
   </div>
 
   {{-- filtros: lancha + viagem --}}
@@ -15,9 +15,9 @@
         <option value="">Todos</option>
         @foreach($transportes as $t)<option value="{{ $t->id }}" @selected($transporteId === $t->id)>{{ $t->nome }}</option>@endforeach
       </select></div>
-    <div><label class="label">Viagem</label>
+    <div><label class="label">Data da viagem</label>
       <select name="viagem" class="input !min-h-[42px] w-full" onchange="this.form.submit()">
-        <option value="">Todas</option>
+        <option value="">Último mês (todas)</option>
         @foreach($viagens as $v)<option value="{{ $v['valor'] }}" @selected($viagemSel === $v['valor'])>{{ $v['rotulo'] }}</option>@endforeach
       </select></div>
   </form>
@@ -25,7 +25,7 @@
   {{-- resumo: vendi / minha comissão / devo repassar --}}
   <div class="grid grid-cols-2 gap-2">
     <div class="card p-3">
-      <div class="text-[11px] font-bold text-slate-500 uppercase">🎟️ Vendi</div>
+      <div class="text-[11px] font-bold text-slate-500 uppercase">🎟️ Vendi <span class="font-normal normal-case text-slate-400">· {{ $resumo['periodo'] }}</span></div>
       <div class="text-xl font-extrabold leading-tight">{{ $br($resumo['vendi']) }}</div>
       <div class="text-[11px] text-slate-400">{{ $resumo['qtd'] }} passagem(ns) · {{ $resumo['passageiros'] }} passageiro(s)</div>
     </div>
@@ -37,13 +37,15 @@
     <div class="card p-3 col-span-2 {{ $resumo['devo'] > 0 ? 'border-rose-300 bg-rose-50' : 'border-emerald-300 bg-emerald-50' }}">
       <div class="flex items-end justify-between gap-2">
         <div>
-          <div class="text-[11px] font-bold uppercase {{ $resumo['devo'] > 0 ? 'text-rose-700' : 'text-emerald-700' }}">{{ $resumo['devo'] > 0 ? '🔴 Devo repassar (em aberto)' : '✅ Tudo repassado' }}</div>
+          <div class="text-[11px] font-bold uppercase {{ $resumo['devo'] > 0 ? 'text-rose-700' : 'text-emerald-700' }}">{{ $resumo['devo'] > 0 ? '🔴 Devo repassar (tudo em aberto)' : '✅ Tudo repassado' }}</div>
           <div class="text-2xl font-extrabold leading-tight {{ $resumo['devo'] > 0 ? 'text-rose-700' : 'text-emerald-700' }}">{{ $br($resumo['devo']) }}</div>
         </div>
-        <div class="text-right text-[11px] text-slate-500">Já repassei<br><b class="text-sm text-slate-700">{{ $br($resumo['repassado']) }}</b></div>
       </div>
       @if($resumo['devo'] > 0)
       <div class="mt-2 pt-2 border-t border-rose-200 space-y-1 text-sm">
+        @if($resumo['devoAgente'] > 0)
+          <div class="flex justify-between gap-2"><span>🤝 Para o agente</span><b>{{ $br($resumo['devoAgente']) }}</b></div>
+        @endif
         @if($resumo['devoEmpresa'] > 0)
           <div class="flex justify-between gap-2"><span>🏢 Para a empresa</span><b>{{ $br($resumo['devoEmpresa']) }}</b></div>
         @endif
@@ -68,8 +70,7 @@
   {{-- vendas --}}
   <div class="card overflow-hidden">
     <div class="p-3 font-bold text-sm text-slate-500 uppercase border-b flex items-center justify-between">
-      <span>Vendas ({{ $resumo['qtd'] }})</span>
-      <button onclick="window.print()" class="text-xs font-semibold normal-case text-slate-500 no-print">🖨 Imprimir</button>
+      <span>Vendas · {{ $resumo['periodo'] }} ({{ $resumo['qtd'] }})</span>
     </div>
     @forelse($vendas as $v)
       <a href="{{ route('passagens.show', $v['id']) }}" class="flex items-center justify-between gap-3 px-3 py-2 border-b last:border-0 hover:bg-slate-50">
