@@ -76,7 +76,27 @@ class UsuarioController extends Controller
         if (empty($data['password'])) unset($data['password']);
         if (empty($data['prefixo'])) $data['prefixo'] = $usuario->prefixo ?: $this->gerarPrefixo($data['papel'] ?? null);
         $usuario->update($data);
-        return redirect()->route('admin.usuarios.index')->with('ok', 'Usuário atualizado.');
+
+        // Agente externo: ao salvar, o repasse das vendas dele que AINDA NÃO foram acertadas passa a seguir a comissão
+        // atual (o valor fica gravado em cada passagem na hora da venda; sem isso as vendas antigas continuavam "cheias").
+        // Vendas já acertadas não mudam.
+        $msg = 'Usuário atualizado.';
+        $agora = [(string) ($usuario->modo_acerto ?? 'cheio'), (int) ($usuario->comissao_pct ?? 0)];
+        if ($usuario->is_revendedor) {
+            try {
+                $pct = max(0, min(100, $agora[1]));
+                $expr = $agora[0] === 'comissao' ? 'ROUND(total * (100 - '.$pct.') / 100, 2)' : 'total';
+                $n = \App\Models\Passagem::where('revendedor_id', $usuario->id)->where('cancelada', false)
+                    ->where('acerto_empresa', false)->where('acerto_dono', false)->where('transferida', false)
+                    ->whereRaw('COALESCE(acerto_empresa_valor, -1) <> '.$expr)
+                    ->update(['acerto_empresa_valor' => \Illuminate\Support\Facades\DB::raw($expr)]);
+                if ($n) $msg .= ' Comissão atual aplicada em '.$n.' venda(s) ainda não acertada(s) desse agente.';
+            } catch (\Throwable $e) {
+                report($e);
+                $msg .= ' (Não consegui recalcular as vendas em aberto: '.$e->getMessage().')';
+            }
+        }
+        return redirect()->route('admin.usuarios.index')->with('ok', $msg);
     }
 
     public function destroy(User $usuario)
