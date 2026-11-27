@@ -261,7 +261,8 @@
   </select>
   @endif
   <button type="submit" class="rounded-lg text-white px-3 py-1 text-[13px] font-semibold" style="background:var(--cor2)">Ver</button>
-  @if(($periodo ?? 'hoje') !== 'hoje' || $transporteId)<a href="{{ route('caixa.index') }}" class="underline text-slate-400 ml-1">voltar p/ hoje</a>@endif
+  @if(($periodo ?? '30d') !== '30d' || $transporteId)<a href="{{ route('caixa.index') }}" class="underline text-slate-400 ml-1">voltar p/ últimos 30 dias</a>@endif
+  @if(($periodo ?? '30d') !== 'hoje')<a href="{{ route('caixa.index', array_filter(['periodo' => 'hoje', 'transporte_id' => $transporteId])) }}" class="underline text-slate-400 ml-1">só hoje</a>@endif
 </form>
 @endif
 @unless($ehRel)

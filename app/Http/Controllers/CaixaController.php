@@ -70,6 +70,10 @@ class CaixaController extends Controller
     public function index(Request $request)
     {
         [$inicio, $fim, $periodo] = $this->periodo($request);
+        // Caixa abre nos ÚLTIMOS 30 DIAS (de 30 dias atrás até agora) quando nenhum período foi escolhido. Relatório segue no padrão dele.
+        if (! $request->filled('periodo') && ! $request->boolean('__relatorio')) {
+            $inicio = now()->subDays(30)->startOfDay(); $fim = now()->endOfDay(); $periodo = '30d';
+        }
         // escopo: quem não vê "de todos" fica travado no próprio
         $ehRelatorio = $request->boolean('__relatorio');
         $verTodos = $ehRelatorio ? auth()->user()->relatorioTodos() : auth()->user()->caixaTodos();
