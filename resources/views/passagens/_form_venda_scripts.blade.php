@@ -6,7 +6,7 @@
 
   function novaPassagem(){
     return {
-      salvando:false, edMode:false, edUrl:'', edNumero:'', edFila:0, tipoPag:'balcao', metodosAtivos:['dinheiro'], credParcel:false, dividir:false, pag:{dinheiro:null,pix:null,debito:null,credito:null}, proprietarioMaq:false, parcelas:1, imprimir:'direto',
+      salvando:false, edMode:false, edUrl:'', edNumero:'', edFila:0, tipoPag:'balcao', metodosAtivos:['dinheiro'], credParcel:false, dividir:false, pag:{dinheiro:null,pix:null,debito:null,credito:null}, proprietarioMaq:false, parcelas:1, imprimir:@json(auth()->user()?->ehRevendedor() ? 'nao' : 'direto'),
       agenteId:'', agenteAcerto:false,
       fatBusca:'', fatResultados:[], fatSel:null, fatNome:'', fatEmpresa:'', fatDoc:'', fatDocTipo:'', clienteFaturadoId:null, cobrarDias:30,
       pixManual: {{ auth()->user()->podePixManual() ? 'true':'false' }},

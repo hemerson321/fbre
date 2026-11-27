@@ -182,8 +182,8 @@
                 <input x-show="p.modo==='manual'" x-money="p.valor_passagem" inputmode="decimal" placeholder="0,00" class="field !min-h-0 py-1 text-sm w-full text-right font-extrabold" style="color:var(--cor1)" x-cloak></div>
             </div>
             {{-- linha 3: documento + poltrona --}}
-            <div class="flex items-end gap-2 mt-1.5">
-              <div class="flex-1"><label class="lbl">Documento</label>
+            <div class="flex flex-col sm:flex-row sm:items-end gap-2 mt-1.5">
+              <div class="flex-1 min-w-0"><label class="lbl">Documento</label>
                 <div class="flex gap-1.5">
                   <select class="field !min-h-0 py-1 text-sm !w-auto shrink-0" x-model="p.doc_tipo" title="Tipo de documento">
                     <option value="">Tipo</option>
@@ -193,25 +193,30 @@
                     <option value="Certidão">Certidão nasc.</option>
                     <option value="Passaporte">Passaporte</option>
                   </select>
-                  <input class="field !min-h-0 py-1 text-sm flex-1 w-full" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(p.documento)}" placeholder="número do documento" x-model="p.documento" title="Número do documento. Se for CPF, precisa ser válido.">
+                  <input class="field !min-h-0 py-1 text-sm flex-1 min-w-0 w-full" :class="{'!border-red-400 !ring-1 !ring-red-300':!FBRE.docOk(p.documento)}" placeholder="número do documento" x-model="p.documento" title="Número do documento. Se for CPF, precisa ser válido.">
                 </div>
                 <div x-show="!FBRE.docOk(p.documento)" x-cloak class="text-[10px] text-red-500 mt-0.5">CPF inválido</div></div>
-              <div x-show="usaPoltrona" x-cloak class="flex gap-1 shrink-0">
-                <button type="button" class="rounded-lg border-2 px-3 py-1.5 text-sm font-bold whitespace-nowrap" :style="!p.livre ? 'border-color:var(--cor1);background:var(--cor1);color:#fff' : 'border-color:#cbd5e1;color:#94a3b8'" @click="p.livre=false; abrirMapa(i)" title="Escolher poltrona (F2)">
-                  <span x-text="(!p.livre && p.poltrona) ? ('💺 '+p.poltrona) : '💺'"></span>
+              <div x-show="usaPoltrona" x-cloak class="shrink-0">
+                <div class="sm:hidden"><label class="lbl">Poltrona</label></div>
+                <div class="flex gap-1.5">
+                <button type="button" class="flex-1 sm:flex-none rounded-lg border-2 px-3 py-2 sm:py-1.5 text-sm font-bold whitespace-nowrap" :style="!p.livre ? 'border-color:var(--cor1);background:var(--cor1);color:#fff' : 'border-color:#cbd5e1;color:#94a3b8'" @click="p.livre=false; abrirMapa(i)" title="Escolher poltrona (F2)">
+                  <span x-text="(!p.livre && p.poltrona) ? ('💺 '+p.poltrona) : '💺'"></span><span class="sm:hidden" x-text="(!p.livre && p.poltrona) ? ' · trocar' : ' Escolher poltrona'"></span>
                 </button>
-                <button type="button" class="rounded-lg border-2 px-3 py-1.5 text-sm font-extrabold whitespace-nowrap" :style="p.livre ? 'border-color:#059669;background:#059669;color:#fff' : 'border-color:#cbd5e1;color:#94a3b8'" @click="marcarLivre(i)" title="Poltrona livre (sem assento fixo)">L</button>
+                <button type="button" class="rounded-lg border-2 px-4 sm:px-3 py-2 sm:py-1.5 text-sm font-extrabold whitespace-nowrap" :style="p.livre ? 'border-color:#059669;background:#059669;color:#fff' : 'border-color:#cbd5e1;color:#94a3b8'" @click="marcarLivre(i)" title="Poltrona livre (sem assento fixo)">L<span class="sm:hidden font-bold"> · livre</span></button>
+                </div>
               </div>
             </div>
             {{-- linha final: telefone + nacionalidade + check-in/bebê + anexos --}}
-            <div class="flex items-end gap-2 mt-2 pt-1.5 border-t border-slate-100">
-              <div class="flex-1 min-w-0"><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" @input="p.telefone=FBRE.foneMask($event.target.value)" inputmode="tel" maxlength="16" placeholder="(00) 00000-0000"></div>
-              <div class="flex-1 min-w-0"><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.nacionalidade" placeholder="Brasileira"></div>
-              <div class="flex flex-col gap-1 shrink-0 pb-1">
-                <label class="flex items-center gap-1 text-[11px] font-semibold whitespace-nowrap cursor-pointer"><input type="checkbox" x-model="p.checkin" class="w-4 h-4 rounded"> Check-in</label>
-                <label class="flex items-center gap-1 text-[11px] font-semibold text-sky-700 whitespace-nowrap cursor-pointer"><input type="checkbox" x-model="p.temColo" class="w-4 h-4 rounded"> 👶 Bebê de colo</label>
+            <div class="grid grid-cols-2 sm:flex sm:items-end gap-2 mt-2 pt-1.5 border-t border-slate-100">
+              <div class="sm:flex-1 min-w-0"><label class="lbl">Telefone</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.telefone" @input="p.telefone=FBRE.foneMask($event.target.value)" inputmode="tel" maxlength="16" placeholder="(00) 00000-0000"></div>
+              <div class="sm:flex-1 min-w-0"><label class="lbl">Nacionalidade</label><input class="field !min-h-0 py-1 text-sm w-full" x-model="p.nacionalidade" placeholder="Brasileira"></div>
+              <div class="col-span-2 sm:col-span-1 flex items-center justify-between sm:contents gap-2 pt-1 sm:pt-0">
+              <div class="flex flex-row sm:flex-col gap-4 sm:gap-1 shrink-0 sm:pb-1">
+                <label class="flex items-center gap-1.5 sm:gap-1 text-[13px] sm:text-[11px] font-semibold whitespace-nowrap cursor-pointer"><input type="checkbox" x-model="p.checkin" class="w-5 h-5 sm:w-4 sm:h-4 rounded"> Check-in</label>
+                <label class="flex items-center gap-1.5 sm:gap-1 text-[13px] sm:text-[11px] font-semibold text-sky-700 whitespace-nowrap cursor-pointer"><input type="checkbox" x-model="p.temColo" class="w-5 h-5 sm:w-4 sm:h-4 rounded"> 👶 Bebê de colo</label>
               </div>
-              <label class="shrink-0 pb-1 text-[12px] font-semibold flex items-center gap-1 cursor-pointer whitespace-nowrap" style="color:var(--cor1)" title="Anexar documentos">📎 Anexos<input type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple class="hidden" @change="anexarDocs(i,$event)"></label>
+              <label class="shrink-0 sm:pb-1 text-[13px] sm:text-[12px] font-semibold flex items-center gap-1 cursor-pointer whitespace-nowrap" style="color:var(--cor1)" title="Anexar documentos">📎 Anexos<input type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple class="hidden" @change="anexarDocs(i,$event)"></label>
+              </div>
             </div>
 
             {{-- bebê de colo: carrega logo após a nacionalidade --}}
@@ -411,10 +416,12 @@
 
     <section class="sec shrink-0">
       <div class="p-2.5 space-y-2">
+        @unless(auth()->user()->ehRevendedor())
         <div class="flex gap-x-3 text-[13px] text-slate-600" x-show="!edMode">
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="direto" x-model="imprimir" class="accent-[var(--cor1)]"> Imprimir</label>
           <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" value="nao" x-model="imprimir" class="accent-[var(--cor1)]"> Não imprimir</label>
         </div>
+        @endunless
 
         <div class="hidden lg:block">
           <button x-show="total>0 || forma!=='avista' || abas.length>1" class="w-full rounded-xl py-3 text-base font-extrabold text-slate-900 shadow-lg transition hover:brightness-105 active:scale-[.98] disabled:opacity-40" style="background:var(--cor2)" :disabled="salvando || (!passageiros.length && abas.length<=1)">
