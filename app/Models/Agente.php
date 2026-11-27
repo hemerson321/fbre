@@ -51,8 +51,8 @@ class Agente extends Model
 
     /** Proteção: máximo de mensagens do agente pra um mesmo cliente em 24h. 0 = sem limite. Padrão 40. */
     public function limiteClienteDia(): int { return max(0, min(1000, (int) ($this->regras['limite_cliente_dia'] ?? 40))); }
-    /** Proteção: máximo de mensagens do agente no dia, somando todos os clientes. 0 = sem limite (padrão). */
-    public function limiteTotalDia(): int { return max(0, min(200000, (int) ($this->regras['limite_total_dia'] ?? 0))); }
+    /** Proteção: máximo de mensagens do agente no dia, somando todos os clientes. 0 = sem teto. Padrão 2000. */
+    public function limiteTotalDia(): int { return max(0, min(200000, (int) ($this->regras['limite_total_dia'] ?? 2000))); }
     /** Mensagem enviada UMA vez quando o cliente atinge o limite. */
     public function limiteMsg(): string
     {
