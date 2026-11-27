@@ -448,7 +448,9 @@ document.addEventListener('alpine:init', () => {
       $tabs = [];
       if(!$semBemVindo) $tabs[] = $tab(route('inicio'), 'Início', '🏠');
       if($u->podeVerCaixa()) $tabs[] = $tab(route('caixa.index'), 'Caixa', '💰');
-      if($u->podeRelatorio()) $tabs[] = $tab(route('relatorio.meu'), 'Relatório', '📋');
+      // agente externo: o "Relatório" de baixo abre a MESMA página do menu lateral (Minhas vendas)
+      if($u->ehRevendedor()) $tabs[] = $tab(route('passagens.minhas-vendas'), 'Relatório', '📋');
+      elseif($u->podeRelatorio()) $tabs[] = $tab(route('relatorio.meu'), 'Relatório', '📋');
       foreach(array_slice($tabs,0,3) as $t) echo $t; @endphp
     <button @click="menu=true" class="flex flex-col items-center gap-0.5 py-2"><span class="text-xl">☰</span>Menu</button>
   </div>
