@@ -19,6 +19,7 @@ class Vagas
      */
     public function disponiveis(string $origem, string $destino, ?Carbon $data = null, ?string $lancha = null): array
     {
+        [$origem, $destino] = [$this->canon($origem), $this->canon($destino)]; // 'Tefé' -> 'Tefe' (nome exato do cadastro)
         $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
         if (! $rota || ! $rota->embarcacao) return ['ok' => false];
         $emb = $rota->embarcacao;
@@ -41,6 +42,7 @@ class Vagas
      */
     public function tiposDisponiveis(string $origem, string $destino, ?Carbon $data = null, ?string $lancha = null): array
     {
+        [$origem, $destino] = [$this->canon($origem), $this->canon($destino)]; // 'Tefé' -> 'Tefe' (nome exato do cadastro)
         $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
         if (! $rota || ! $rota->embarcacao) return ['ok' => false];
         $emb = $rota->embarcacao;
@@ -63,6 +65,7 @@ class Vagas
     /** Primeira poltrona LIVRE de um tipo (janela/meio/corredor) no trecho/data. Retorna o nome (ex.: 03J) ou null. */
     public function primeiraLivre(string $origem, string $destino, ?Carbon $data, string $tipo, ?string $lancha = null): ?string
     {
+        [$origem, $destino] = [$this->canon($origem), $this->canon($destino)]; // 'Tefé' -> 'Tefe' (nome exato do cadastro)
         $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
         if (! $rota || ! $rota->embarcacao || ! $rota->embarcacao->usa_poltrona) return null;
         $emb = $rota->embarcacao;
@@ -130,12 +133,14 @@ class Vagas
      */
     public function atribuir(string $origem, string $destino, ?Carbon $data, string $tipo, int $n, ?int $conversaId, ?string $lancha = null): array
     {
+        [$origem, $destino] = [$this->canon($origem), $this->canon($destino)]; // 'Tefé' -> 'Tefe' (nome exato do cadastro)
         $n = max(1, min(8, $n));
         $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
-        if (! $rota || ! $rota->embarcacao || ! $rota->embarcacao->usa_poltrona) return ['ok' => false];
+        if (! $rota || ! $rota->embarcacao) return ['ok' => false, 'motivo' => 'sem_rota'];
+        if (! $rota->embarcacao->usa_poltrona) return ['ok' => false, 'motivo' => 'sem_poltrona'];
         $emb = $rota->embarcacao;
         $blocos = $this->blocosOrdenados((string) ($emb->poltronas_lista ?? ''));
-        if (! $blocos) return ['ok' => false];
+        if (! $blocos) return ['ok' => false, 'motivo' => 'sem_mapa'];
 
         $tipo = mb_strtolower(trim($tipo)) ?: 'janela';
         if (! in_array($tipo, ['janela', 'meio', 'corredor'], true)) $tipo = 'janela'; // 'juntos'/'qualquer' = tanto faz; prefere pegar a janela
@@ -199,11 +204,13 @@ class Vagas
      */
     public function atribuirEspecificas(string $origem, string $destino, ?Carbon $data, array $pedidas, int $conversaId, ?string $lancha = null): array
     {
+        [$origem, $destino] = [$this->canon($origem), $this->canon($destino)]; // 'Tefé' -> 'Tefe' (nome exato do cadastro)
         $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
-        if (! $rota || ! $rota->embarcacao || ! $rota->embarcacao->usa_poltrona) return ['ok' => false];
+        if (! $rota || ! $rota->embarcacao) return ['ok' => false, 'motivo' => 'sem_rota'];
+        if (! $rota->embarcacao->usa_poltrona) return ['ok' => false, 'motivo' => 'sem_poltrona'];
         $emb = $rota->embarcacao;
         $blocos = $this->blocosOrdenados((string) ($emb->poltronas_lista ?? ''));
-        if (! $blocos) return ['ok' => false];
+        if (! $blocos) return ['ok' => false, 'motivo' => 'sem_mapa'];
         $norm = fn ($x) => mb_strtolower(preg_replace('/\s+/', '', (string) $x));
         $canon = []; $tipoDe = [];
         foreach ($blocos as $bl) foreach ($bl as $sx) { $canon[$norm($sx['sel'])] = $sx['sel']; $tipoDe[$sx['sel']] = $sx['tipo']; }
@@ -238,6 +245,7 @@ class Vagas
     /** A reserva ativa da conversa é mesmo dessa lancha/data? (o cliente pode ter mudado trecho/data depois de reservar) */
     public function reservaConfere(string $origem, string $destino, ?Carbon $data, ?string $lancha, int $conversaId): bool
     {
+        [$origem, $destino] = [$this->canon($origem), $this->canon($destino)]; // 'Tefé' -> 'Tefe' (nome exato do cadastro)
         $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
         if (! $rota || ! $rota->embarcacao) return true; // sem como conferir: não mexe
         if (! $rota->embarcacao->usa_poltrona) return true;
@@ -253,6 +261,7 @@ class Vagas
     /** Dados pra desenhar o mapa (imagem) que o agente manda no WhatsApp: fileiras, ocupadas e as poltronas da conversa. */
     public function mapaDados(string $origem, string $destino, ?Carbon $data, ?string $lancha, int $conversaId): ?array
     {
+        [$origem, $destino] = [$this->canon($origem), $this->canon($destino)]; // 'Tefé' -> 'Tefe' (nome exato do cadastro)
         $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
         if (! $rota || ! $rota->embarcacao || ! $rota->embarcacao->usa_poltrona) return null;
         $emb = $rota->embarcacao;
@@ -403,11 +412,30 @@ class Vagas
      * desempata por: nome da lancha informado > dia da semana da saída na cidade de origem > sentido da viagem.
      * (Antes pegava sempre a primeira rota do trecho, e o agente só acertava a poltrona de uma lancha.)
      */
+    /**
+     * Nome EXATO da cidade como está cadastrado nas rotas, ignorando acento/maiúscula/espaço
+     * (a IA costuma escrever 'Tefé' quando o cadastro é 'Tefe' — sem isso a reserva não achava a rota).
+     */
+    public function canon(string $loc): string
+    {
+        static $mapa = [];
+        $chave = fn ($x) => preg_replace('/[^a-z0-9]+/', '', mb_strtolower(\Illuminate\Support\Str::ascii(trim((string) $x))));
+        $emp = (int) (\App\Support\Tenant::id() ?? 0);
+        if (! isset($mapa[$emp])) {
+            $mapa[$emp] = [];
+            foreach (Rota::with('paradas')->where('ativo', true)->get() as $r) {
+                foreach ($r->localidades() as $l) { $k = $chave($l); if ($k !== '' && ! isset($mapa[$emp][$k])) $mapa[$emp][$k] = (string) $l; }
+            }
+        }
+        $loc = trim($loc);
+        return $mapa[$emp][$chave($loc)] ?? $loc;
+    }
+
     protected function rotaDoTrecho(string $origem, string $destino, ?Carbon $data = null, ?string $lancha = null): ?Rota
     {
         $norm = fn ($x) => preg_replace('/[^a-z0-9]+/', '', mb_strtolower(\Illuminate\Support\Str::ascii(trim((string) $x))));
-        $o = mb_strtolower(trim($origem));
-        $d = mb_strtolower(trim($destino));
+        $o = mb_strtolower(trim($this->canon($origem)));
+        $d = mb_strtolower(trim($this->canon($destino)));
         $ln = $lancha !== null ? $norm($lancha) : '';
         $melhor = null; $melhorPts = -1;
         foreach (Rota::with('paradas', 'embarcacao')->where('ativo', true)->get() as $r) {

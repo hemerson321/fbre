@@ -518,6 +518,10 @@ class AgenteBot
         foreach (['origem', 'destino', 'data'] as $k) {
             if (preg_match('/'.$k.'\s*=\s*([^;]+)/i', $corpo, $mm)) $venda[$k] = trim($mm[1]);
         }
+        try { // 'Tefé' -> 'Tefe': o nome da cidade tem que ser o do cadastro, senão a reserva/passagem não acha a rota
+            $vg = app(\App\Services\Vagas::class);
+            foreach (['origem', 'destino'] as $k) if (! empty($venda[$k])) $venda[$k] = $vg->canon((string) $venda[$k]);
+        } catch (\Throwable $e) {}
         if (preg_match('/passageiros\s*=\s*(.+)$/is', $corpo, $mm)) {
             $pax = [];
             foreach (preg_split('/\s*;;\s*/', trim($mm[1])) as $linha) {
@@ -814,6 +818,11 @@ class AgenteBot
         }
         try {
             $r = app(\App\Services\Vagas::class)->atribuir($origem, $destino, $data, $tipo, $nq, $c->id, $this->lanchaDaConversa($c, $partes[5] ?? null));
+            // não achou a viagem / lancha sem mapa: NÃO deixa o agente dizer que reservou
+            if (! ($r['ok'] ?? false) && in_array($r['motivo'] ?? '', ['sem_rota', 'sem_mapa'], true)) {
+                Log::warning("Agente NÃO reservou poltrona (conversa {$c->id}): {$r['motivo']} — {$origem} > {$destino} ".$data->format('d/m/Y').' lancha='.($partes[5] ?? ''));
+                return 'Não consegui reservar a poltrona nessa viagem agora. Me confirma a cidade de saída, o destino, o dia e a lancha, que eu tento de novo?';
+            }
             if (($r['ok'] ?? false)) {
                 if (! empty($r['esgotado'])) {
                     $subst = 'esgotada';
@@ -879,7 +888,9 @@ class AgenteBot
      */
     protected function guardiaoPoltrona(Conversa $c, string $texto): string
     {
-        if (! preg_match_all('/(?<![\w\/])(\d{1,3})\s?([JMC])(?![\w])/u', $texto, $ms, PREG_SET_ORDER)) return $texto;
+        // lanchas novas numeram 01A..01F (não só J/M/C): se o texto fala em reservar/garantir, confere qualquer letra
+        $letras = preg_match('/reserv|garant|separei|segurei|guardei/iu', $texto) ? 'A-Z' : 'JMC';
+        if (! preg_match_all('/(?<![\w\/])(\d{1,3})\s?(['.$letras.'])(?![\w])/u', $texto, $ms, PREG_SET_ORDER)) return $texto;
         $ctx = $c->contexto ?? [];
         $norm = fn ($x) => mb_strtoupper(preg_replace('/\s+/', '', (string) $x));
         $assign = array_map($norm, (array) ($ctx['poltronas_agente'] ?? []));
