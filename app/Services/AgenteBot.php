@@ -136,6 +136,22 @@ class AgenteBot
                 ->all();
             if (! $historico) return;
 
+            // MEMÓRIA: o cliente voltou depois do atendimento encerrado -> o agente ainda lembra do que foi falado
+            // (as últimas mensagens de até 2 dias atrás), pra não tratar "obrigado, boa noite" como cliente novo.
+            // Reinício manual do operador (🔄) continua apagando tudo.
+            if ($reinicio > 0) {
+                $piso = (int) ($conversa->contexto['limite_zerado_id'] ?? 0);
+                $antes = $conversa->mensagens()->reorder()->where('id', '<', $reinicio)->where('id', '>=', $piso)
+                    ->where('created_at', '>=', now()->subDays(2))
+                    ->orderByDesc('id')->limit(14)->get()->sortBy('id')->values()
+                    ->map(fn ($m) => ['role' => $m->direcao === 'entrada' ? 'user' : 'assistant', 'content' => (string) $m->texto])
+                    ->all();
+                if ($antes) {
+                    $historico[0]['content'] = "[NOVO CONTATO — o atendimento acima já foi encerrado]\n".$historico[0]['content'];
+                    $historico = array_merge($antes, $historico);
+                }
+            }
+
             $r = $this->conversarCascata($agente, $historico, $sistema, 1400);
             if (! $r['ok']) { Log::warning('Agente IA falhou: '.($r['erro'] ?? '')); return; }
 
@@ -360,6 +376,7 @@ class AgenteBot
         $p[] = "5) Confirmando: nas lanchas com [poltrona], PRIMEIRO escolha a poltrona (pergunte janela/corredor/meio e reserve com [[POLTRONA:...]]) e SÓ DEPOIS gere o PIX. NUNCA gere o PIX antes de ter a poltrona reservada. Em lancha de rede, gere o PIX direto.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "POLTRONA SÓ DEPOIS DO 'QUERO FECHAR' (regra acima das de poltrona): NÃO ofereça poltrona, NÃO pergunte janela/corredor nem 'querem sentar juntos', e NÃO use [[POLTRONAS]]/[[POLTRONA]]/[[ESCOLHER]] enquanto o cliente não disser claramente que QUER COMPRAR (ex.: 'quero', 'pode fechar', 'vou querer', 'sim' respondendo a 'quer que eu garanta?'). Depois de passar o valor ou entregar um orçamento, pergunte APENAS: 'Quer que eu garanta pra você?'. Escolher data/lancha, tirar dúvida (horas de viagem, comida, horário) ou dizer 'ok/entendi' NÃO é fechar. Reservar poltrona tira o lugar de outro cliente — só reserve pra quem vai comprar.";
+        $p[] = "CLIENTE QUE VOLTA (memória): se no histórico aparecer '[NOVO CONTATO — o atendimento acima já foi encerrado]', tudo que vem ANTES é a conversa anterior com esse mesmo cliente — você LEMBRA dela, como uma pessoa lembraria. Responda ao que ele disse AGORA: se for só agradecimento ou despedida ('tá bom', 'obrigado', 'boa noite', 'valeu'), responda curto e simpático e PARE — não pergunte pra onde ele quer viajar nem recomece o atendimento. Se ele retomar o assunto ('e aquela passagem?', 'pode fechar'), continue de onde parou usando o que já sabe (trecho, data, pessoas) e só confirme os dados; poltrona que estava reservada foi liberada, então reserve de novo se ele for comprar. Só cumprimente como cliente novo quem realmente não tem conversa anterior.";
         $p[] = "DESPEDIDA: só deseje 'boa viagem' (ou fale como se ele fosse viajar) se a compra foi PAGA nesta conversa — ou seja, apareceu '✅ Pagamento confirmado'. Se o cliente só tirou dúvida, pediu orçamento ou parou antes de pagar ('tá ok', 'obrigado', 'boa noite', 'vou ver'), ele NÃO comprou: despeça-se sem 'boa viagem' e deixe a porta aberta, curto e sem insistir (ex.: 'Por nada! Quando quiser garantir sua passagem é só me chamar. Boa noite!').";
         $p[] = "FORMATAÇÃO: é WhatsApp — negrito é com UM asterisco de cada lado (*assim*), nunca dois (**). Use pouco.";
         $p[] = "MEMÓRIA DA CONVERSA: trecho, data, lancha, quantidade e composição que o cliente já falou continuam valendo até ele mudar — mesmo que o assunto mude (ex.: virou orçamento). Se ele responder curto ('não', 'só adulto', 'isso'), interprete pela SUA última pergunta.";
