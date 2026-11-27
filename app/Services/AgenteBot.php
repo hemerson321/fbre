@@ -398,6 +398,7 @@ class AgenteBot
         $p[] = "5) Confirmando: nas lanchas com [poltrona], PRIMEIRO escolha a poltrona (pergunte janela/corredor/meio e reserve com [[POLTRONA:...]]) e SÓ DEPOIS gere o PIX. NUNCA gere o PIX antes de ter a poltrona reservada. Em lancha de rede, gere o PIX direto.";
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "POLTRONA SÓ DEPOIS DO 'QUERO FECHAR' (regra acima das de poltrona): NÃO ofereça poltrona, NÃO pergunte janela/corredor nem 'querem sentar juntos', e NÃO use [[POLTRONAS]]/[[POLTRONA]]/[[ESCOLHER]] enquanto o cliente não disser claramente que QUER COMPRAR (ex.: 'quero', 'pode fechar', 'vou querer', 'sim' respondendo a 'quer que eu garanta?'). Depois de passar o valor ou entregar um orçamento, pergunte APENAS: 'Quer que eu garanta pra você?'. Escolher data/lancha, tirar dúvida (horas de viagem, comida, horário) ou dizer 'ok/entendi' NÃO é fechar. Reservar poltrona tira o lugar de outro cliente — só reserve pra quem vai comprar.";
+        $p[] = "PRÓXIMA VIAGEM / 'TEM AMANHÃ?': responda SEMPRE pelo CALENDÁRIO DE SAÍDAS dos DADOS (ele já junta todas as lanchas em ordem de data). 'Hoje' e 'amanhã' são contados a partir da data da linha '[SISTEMA — agora são ...]'. Não fique preso na lancha da conversa anterior: se outra lancha sai antes pro mesmo destino, ofereça ela (dizendo o nome). Havendo mais de uma saída no dia, mostre as opções.";
         $p[] = "HORA CERTA E VIAGEM QUE JÁ SAIU: a hora de agora vem na última mensagem, na linha '[SISTEMA — agora são HH:MM ...]' — use SÓ ela; NUNCA invente que horas são nem mostre essa linha ao cliente. A venda de cada viagem ENCERRA ".rtrim(rtrim(number_format($a->vendaHorasAntes(), 1, ',', ''), '0'), ',')." hora(s) antes da saída: se a saída já passou ou falta menos que isso, ela NÃO está mais à venda — não ofereça, não reserve poltrona, não gere PIX. Diga que a venda dessa saída já encerrou e ofereça a PRÓXIMA data da lista. Se o cliente perguntar 'já saiu?', compare a hora de agora com a hora da saída e responda a verdade.";
         $p[] = "CLIENTE QUE VOLTA (memória): se no histórico aparecer '[NOVO CONTATO — o atendimento acima já foi encerrado]', tudo que vem ANTES é a conversa anterior com esse mesmo cliente — você LEMBRA dela, como uma pessoa lembraria. Responda ao que ele disse AGORA: se for só agradecimento ou despedida ('tá bom', 'obrigado', 'boa noite', 'valeu'), responda curto e simpático e PARE — não pergunte pra onde ele quer viajar nem recomece o atendimento. Se ele retomar o assunto ('e aquela passagem?', 'pode fechar'), continue de onde parou usando o que já sabe (trecho, data, pessoas) e só confirme os dados; poltrona que estava reservada foi liberada, então reserve de novo se ele for comprar. Só cumprimente como cliente novo quem realmente não tem conversa anterior.";
         $p[] = "POLTRONA ANTES DO PIX: na lancha com poltrona, o PIX só sai DEPOIS que o cliente aceitar a poltrona. Ordem: 1) reserve com [[POLTRONA: ...]] e diga qual ficou; 2) pergunte se essa poltrona fica boa (ele pode pedir outra pelo número); 3) só quando ele confirmar ('pode ser', 'ok', 'sim') escreva o [[PIX: ...]]. NUNCA mande o marcador de poltrona e o de PIX na mesma resposta.";
@@ -495,6 +496,44 @@ class AgenteBot
 
         // horários/dias de saída (rotas) — a saída de CADA cidade é o dia/hora da parada DELA
         $rotas = \App\Models\Rota::with('paradas', 'embarcacao')->get();
+        // CALENDÁRIO: próximas saídas de cada cidade em ORDEM DE DATA, juntando TODAS as lanchas.
+        // (antes o modelo tinha que varrer rota por rota e pulava saída — ex.: dizia que não tinha viagem amanhã tendo)
+        try {
+            $cal = [];
+            foreach ($rotas as $r) {
+                if (isset($r->ativo) && ! $r->ativo) continue;
+                $nomeL = $r->embarcacao?->nome ? strtoupper($r->embarcacao->nome) : null;
+                if (! $nomeL) continue;
+                $ps = $r->paradas->values();
+                foreach ($ps as $i => $pp) {
+                    if ($pp->dia_semana === null || $i >= $ps->count() - 1) continue;
+                    $dest = $ps->slice($i + 1)->pluck('localidade')->implode(', ');
+                    $hora = $pp->hora ? substr($pp->hora, 0, 5) : null;
+                    $d = now()->startOfDay(); $lim = now()->startOfDay()->addMonths(max(1, $meses)); $n = 0;
+                    while ($d->lte($lim) && $n < 3) {
+                        if ($d->dayOfWeek === (int) $pp->dia_semana && ! $this->jaPassou($d, $hora)) {
+                            $cal[(string) $pp->localidade][] = [
+                                'ts' => $d->format('Ymd').($hora ?: '99:99'),
+                                'txt' => (\App\Models\Rota::DIAS_CURTO[$d->dayOfWeek] ?? '').' '.$d->format('d/m').' '.($hora ?: 's/hora').' '.$nomeL.' (vai pra: '.$dest.')',
+                            ];
+                            $n++;
+                        }
+                        $d->addDay();
+                    }
+                }
+            }
+            if ($cal) {
+                $linhas[] = "\nCALENDÁRIO DE SAÍDAS — próximas saídas de cada cidade, JÁ EM ORDEM DE DATA e com TODAS as lanchas. É AQUI que você responde 'qual a próxima viagem', 'tem amanhã?', 'que dia tem?': ache a cidade de saída, e pegue a PRIMEIRA linha cuja lista 'vai pra' tenha o destino do cliente. Se o cliente não escolheu lancha, vale qualquer lancha. Só diga que não tem saída num dia depois de conferir TODAS as linhas da cidade:";
+                foreach ($cal as $cidade => $its) {
+                    usort($its, fn ($a, $b) => strcmp($a['ts'], $b['ts']));
+                    $linhas[] = '- Saindo de '.$cidade.':';
+                    foreach (array_slice($its, 0, 10) as $it) $linhas[] = '   · '.$it['txt'];
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::info('calendario de saidas: '.$e->getMessage());
+        }
+
         if ($rotas->isNotEmpty()) {
             $linhas[] = "\nROTAS E SAÍDAS (use EXATAMENTE estes dias/horas — a saída de uma cidade é o dia e a hora da parada DELA; não use a de outra cidade/rota):";
             foreach ($rotas as $r) {
