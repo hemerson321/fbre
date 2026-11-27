@@ -11,5 +11,5 @@
     <button class="btn btn-primary btn-sm">Aplicar</button>
   </div>
   {{ $slot ?? '' }}
-  <span class="text-xs text-slate-500 ml-auto">{{ $inicio->format('d/m/Y H:i') }} → {{ $fim->format('d/m/Y H:i') }}</span>
+  <span class="text-xs text-slate-500 ml-auto w-full sm:w-auto text-right">{{ $inicio->format('d/m/Y H:i') }} → {{ $fim->format('d/m/Y H:i') }}</span>
 </form>

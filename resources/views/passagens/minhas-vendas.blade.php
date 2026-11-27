@@ -2,18 +2,18 @@
 @section('titulo','Minhas vendas')
 @section('conteudo')
 <div class="space-y-4">
-  <div class="flex items-center justify-between">
-    <h1 class="text-xl font-bold">Minhas vendas <span class="text-slate-400 font-normal text-base">· {{ auth()->user()->name }}</span></h1>
-    <div class="flex items-center gap-2 no-print">
-      <a href="{{ route('passagens.minhas-vendas.exportar', request()->query()) }}" class="btn btn-ghost btn-sm">⬇️ Exportar CSV</a>
-      <a href="{{ route('passagens.caixa-viagem', array_merge(request()->only(['inicio','fim']), ['user_id'=>auth()->id()])) }}" target="_blank" class="btn btn-ghost btn-sm">📄 Prestação (PDF)</a>
-      <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Imprimir</button>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <h1 class="text-xl font-bold leading-tight">Minhas vendas <span class="block sm:inline text-slate-400 font-normal text-sm sm:text-base"><span class="hidden sm:inline">· </span>{{ auth()->user()->name }}</span></h1>
+    <div class="grid grid-cols-3 sm:flex sm:items-center gap-2 no-print">
+      <a href="{{ route('passagens.minhas-vendas.exportar', request()->query()) }}" class="btn btn-ghost btn-sm justify-center whitespace-nowrap !px-2 sm:!px-3">⬇️ <span class="hidden sm:inline">Exportar&nbsp;</span>CSV</a>
+      <a href="{{ route('passagens.caixa-viagem', array_merge(request()->only(['inicio','fim']), ['user_id'=>auth()->id()])) }}" target="_blank" class="btn btn-ghost btn-sm justify-center whitespace-nowrap !px-2 sm:!px-3">📄 Prestação<span class="hidden sm:inline">&nbsp;(PDF)</span></a>
+      <button onclick="window.print()" class="btn btn-ghost btn-sm justify-center whitespace-nowrap !px-2 sm:!px-3">🖨 Imprimir</button>
     </div>
   </div>
 
   <x-periodo :periodo="$periodo" :inicio="$inicio" :fim="$fim">
-    <div><label class="label">Forma</label>
-      <select name="canal" class="input !min-h-[38px]" onchange="this.form.submit()"><option value="">Todas as formas</option>
+    <div class="w-full sm:w-auto"><label class="label">Forma</label>
+      <select name="canal" class="input !min-h-[38px] w-full" onchange="this.form.submit()"><option value="">Todas as formas</option>
         @foreach(\App\Models\Pagamento::CANAIS as $ck=>$cv)<option value="{{ $ck }}" @selected(($canal ?? '')===$ck)>{{ $cv }}</option>@endforeach</select></div>
   </x-periodo>
 
