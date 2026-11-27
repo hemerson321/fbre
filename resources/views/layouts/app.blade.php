@@ -191,11 +191,11 @@ document.addEventListener('alpine:init', () => {
       $cadast[] = ['r'=>route('admin.transportes'), 'l'=>'Transportes', 'i'=>'⛴️'];
       if ($u->temModulo('passagem')) $cadast[] = ['r'=>route('admin.rotas'), 'l'=>'Rotas e horários', 'i'=>'🗺️'];
       if ($modOn('camarote')) $cadast[] = ['r'=>route('admin.camarotes'), 'l'=>'Suítes / Camarotes', 'i'=>'🛏️'];
-      $subAdmin['Cadastros'] = $cadast;
       $subAdmin['Usuários & Empresa'] = [
           ['r'=>route('admin.usuarios.index'), 'l'=>'Usuários', 'i'=>'👥'],
           ['r'=>route('admin.empresa'), 'l'=>'Minha empresa', 'i'=>'🏢'],
       ];
+      $subAdmin['Cadastros'] = $cadast;
       $subAdmin['Integrações'] = [
           ['r'=>route('admin.whatsapp'), 'l'=>'WhatsApp', 'i'=>'💬'],
           ['r'=>route('admin.pagamentos'), 'l'=>'Pagamentos (APIs)', 'i'=>'💳'],
