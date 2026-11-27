@@ -116,6 +116,7 @@ class AgenteBot
             if ($res['texto'] === '') $res['texto'] = 'Só um segundo…';
             $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia', null, $agente?->nome, $audioModo);
             if (! $demo) $this->enviarMapaPoltronas($conversa, $agente);
+            $this->enviarOrcamentoPdf($conversa);
             if (! empty($res['pix'])) {
                 $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
             }
@@ -324,7 +325,7 @@ class AgenteBot
             $p[] = $desc > 0
                 ? "DESCONTO NO ORÇAMENTO: você PODE dar até {$desc}% de desconto no valor por pessoa pra fechar. Comece SEM desconto; ofereça só se o cliente pedir ou estiver em dúvida, e NUNCA passe de {$desc}%. Não fale o limite pro cliente."
                 : "DESCONTO NO ORÇAMENTO: você NÃO dá desconto. O valor é o da tabela pra qualquer quantidade — explique com simpatia que já é o melhor preço e siga pro fechamento.";
-            $p[] = "Com tudo definido, escreva numa linha isolada (o cliente NÃO vê): [[ORCAMENTO: cliente=<empresa ou responsável>; doc=<CNPJ/CPF ou vazio>; origem=<origem>; destino=<destino>; data=<dd/mm/aaaa ou vazio>; lancha=<nome da lancha>; itens=<QTD>x<descrição>@<valor unitário com ponto>, <QTD>x<descrição>@<valor>]]. Ex.: [[ORCAMENTO: cliente=Construtora Rio Negro; doc=; origem=Manaus; destino=Tefé; data=25/11/2026; lancha=Glória de Deus 7; itens=12xAdulto@560.00, 2xCriança@280.00]]. O SISTEMA grava o orçamento e troca o marcador pelo RESUMO pronto (número do orçamento, itens e total) — por isso NÃO escreva os valores por fora: mande só uma frase curta antes (ex.: 'Montei seu orçamento 👇') e pergunte depois se pode fechar.";
+            $p[] = "Com tudo definido, escreva numa linha isolada (o cliente NÃO vê): [[ORCAMENTO: cliente=<empresa ou responsável>; doc=<CNPJ/CPF ou vazio>; origem=<origem>; destino=<destino>; data=<dd/mm/aaaa ou vazio>; lancha=<nome da lancha>; itens=<QTD>x<descrição>@<valor unitário com ponto>, <QTD>x<descrição>@<valor>]]. Ex.: [[ORCAMENTO: cliente=Construtora Rio Negro; doc=; origem=Manaus; destino=Tefé; data=25/11/2026; lancha=Glória de Deus 7; itens=12xAdulto@560.00, 2xCriança@280.00]]. O SISTEMA grava o orçamento e troca o marcador pelo RESUMO pronto (número do orçamento, itens e total) — por isso NÃO escreva os valores por fora: mande só uma frase curta antes (ex.: 'Montei seu orçamento 👇') e pergunte depois se ficou bom. O SISTEMA também envia sozinho, logo em seguida, o PDF do orçamento aqui no WhatsApp — pode avisar que o PDF está indo; não diga que não consegue mandar arquivo.";
             $p[] = "ORÇAMENTO É SÓ PREÇO: enquanto estiver montando ou enviando orçamento, NÃO fale de poltrona/assento, NÃO pergunte janela/corredor, NÃO use [[POLTRONAS]], [[POLTRONA]], [[ESCOLHER]] nem [[PIX]] e NÃO reserve nada. Entregue o orçamento e pergunte só se ficou bom ou se quer ajustar. Poltrona e PIX SÓ depois, se o cliente disser claramente que QUER FECHAR/COMPRAR as passagens — aí sim siga o fluxo normal de venda (poltrona, se a lancha tiver, e PIX no total do orçamento).";
             $p[] = "Se o cliente pedir ajuste (quantidade, data, trecho, desconto dentro do limite), emita o [[ORCAMENTO: ...]] DE NOVO com os dados novos — o sistema atualiza o mesmo orçamento. Orçamento é só pra empresa/instituição ou quando pedirem — venda normal (qualquer quantidade de pessoas) continua direto, sem orçamento.";
         }
@@ -611,6 +612,7 @@ class AgenteBot
             }
             $ctx['orcamento_id'] = $o->id;
             $ctx['orcamento_total'] = $total;
+            $ctx['orcamento_pdf_pendente'] = $o->id; // o PDF vai logo depois da mensagem de texto
             $c->forceFill(['contexto' => $ctx])->save();
 
             $br = fn (float $v) => 'R$ '.number_format($v, 2, ',', '.');
@@ -625,6 +627,32 @@ class AgenteBot
         } catch (\Throwable $e) {
             Log::warning('tratarOrcamento erro: '.$e->getMessage());
             return $limpo();
+        }
+    }
+
+    /** Depois do resumo em texto, manda o PDF do orçamento no WhatsApp (e deixa registrado na conversa). */
+    protected function enviarOrcamentoPdf(Conversa $c): void
+    {
+        try {
+            $c->refresh();
+            $ctx = $c->contexto ?? [];
+            $id = (int) ($ctx['orcamento_pdf_pendente'] ?? 0);
+            if (! $id) return;
+            unset($ctx['orcamento_pdf_pendente']);
+            $c->forceFill(['contexto' => $ctx])->save();
+
+            $o = \App\Models\Orcamento::where('empresa_id', $c->empresa_id)->find($id);
+            if (! $o) return;
+            $pdf = app(\App\Services\PdfOrcamento::class)->gerar($o);
+            if (! $pdf) { Log::warning('Orçamento '.$id.': PDF não gerado (conversa '.$c->id.').'); return; }
+
+            $num = str_pad((string) ($o->numero ?: $o->id), 4, '0', STR_PAD_LEFT);
+            $rel = 'atendimento/'.$c->empresa_id.'/orcamento-'.$num.'-'.$o->id.'.pdf';
+            \Illuminate\Support\Facades\Storage::disk('public')->put($rel, $pdf);
+            $r = $this->atendimento->registrarSaidaMidia($c, 'storage/'.$rel, 'application/pdf', 'Orcamento-'.$num.'.pdf', '📄 Orçamento nº '.$num.' em PDF', 'ia');
+            if (! ($r['ok'] ?? false)) Log::warning('Orçamento '.$id.': falha ao enviar o PDF na conversa '.$c->id.': '.($r['erro'] ?? ''));
+        } catch (\Throwable $e) {
+            Log::warning('enviarOrcamentoPdf erro: '.$e->getMessage());
         }
     }
 
