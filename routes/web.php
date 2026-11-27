@@ -170,6 +170,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/passagens/atendimento/{conversa}/agendar', [\App\Http\Controllers\AtendimentoCrmController::class, 'agendar'])->name('atendimento.agendar');
         Route::post('/passagens/atendimento/{conversa}/usar/{resposta}', [\App\Http\Controllers\AtendimentoCrmController::class, 'respostaUsar'])->name('atendimento.resposta.usar');
         Route::post('/passagens/atendimento-ferramentas/resposta/{resposta?}', [\App\Http\Controllers\AtendimentoCrmController::class, 'respostaSalvar'])->name('atendimento.resposta.salvar');
+        Route::post('/passagens/atendimento-ferramentas/importar-respostas', [\App\Http\Controllers\AtendimentoCrmController::class, 'respostaImportar'])->name('atendimento.resposta.importar');
         Route::delete('/passagens/atendimento-ferramentas/resposta/{resposta}', [\App\Http\Controllers\AtendimentoCrmController::class, 'respostaExcluir'])->name('atendimento.resposta.excluir');
         Route::post('/passagens/atendimento-ferramentas/etiqueta/{etiqueta?}', [\App\Http\Controllers\AtendimentoCrmController::class, 'etiquetaSalvar'])->name('atendimento.etiqueta.salvar');
         Route::delete('/passagens/atendimento-ferramentas/etiqueta/{etiqueta}', [\App\Http\Controllers\AtendimentoCrmController::class, 'etiquetaExcluir'])->name('atendimento.etiqueta.excluir');

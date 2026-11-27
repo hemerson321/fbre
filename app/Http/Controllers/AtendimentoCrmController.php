@@ -148,6 +148,107 @@ class AtendimentoCrmController extends Controller
         return $n > 1 ? back()->with('ok', 'Funil iniciado: '.$n.' mensagens (as próximas saem sozinhas).') : back();
     }
 
+    // ---------------- Importar respostas rápidas de um backup (.json) ----------------
+    /**
+     * Converte o backup da extensão de atendimento (chave "respostasRapidasAcao") em respostas do sistema.
+     * Cada item vira uma resposta; item com várias ações vira funil. Devolve [['titulo','passos'=>[['texto','espera','img'=>dataURI|null]]]].
+     * Os NOMES/atalhos originais ficam criptografados no backup — o título é montado com o começo da mensagem.
+     */
+    public static function converterBackup(array $d): array
+    {
+        $out = []; $usados = []; $semTexto = 0;
+        foreach ((array) ($d['respostasRapidasAcao'] ?? []) as $item) {
+            $passos = [];
+            foreach ((array) ($item['acao'] ?? []) as $a) {
+                $pr = $a['propriedades'] ?? [];
+                if (is_string($pr)) { $j = json_decode($pr, true); $pr = is_array($j) ? $j : []; }
+                $espera = max(0, min(3600, (int) ($pr['aguarde'] ?? 0)));
+                $tipo = (string) ($a['type'] ?? '');
+                if ($tipo === 'txt') {
+                    $t = trim((string) ($pr['mensagem'] ?? ''));
+                    if ($t !== '') $passos[] = ['texto' => mb_substr($t, 0, 4000), 'espera' => $espera, 'img' => null];
+                } elseif ($tipo === 'image') {
+                    $b = (string) ($pr['base64'] ?? '');
+                    if (str_starts_with($b, 'data:image/')) $passos[] = ['texto' => mb_substr(trim((string) ($pr['mensagem'] ?? '')), 0, 4000), 'espera' => $espera, 'img' => $b];
+                } elseif ($tipo === 'pix') {
+                    $k = trim((string) ($pr['key'] ?? ''));
+                    if ($k !== '') $passos[] = ['texto' => "*PIX*\nChave: ".$k.(! empty($pr['name']) ? "\nFavorecido: ".trim((string) $pr['name']) : ''), 'espera' => $espera, 'img' => null];
+                } elseif ($tipo === 'linkPreview') {
+                    $t = trim(implode("\n", array_filter([trim((string) ($pr['title'] ?? '')), trim((string) ($pr['description'] ?? '')), trim((string) ($pr['link'] ?? ''))])));
+                    if ($t !== '') $passos[] = ['texto' => $t, 'espera' => $espera, 'img' => null];
+                }
+                // demais tipos (ex.: mover no CRM da extensão) não têm equivalente aqui
+            }
+            $passos = array_slice($passos, 0, 12);
+            if (! $passos) continue;
+
+            // título: 1ª linha com letras/números da 1ª mensagem, sem os * _ ~ do WhatsApp
+            // (se a 1ª linha for curta/genérica — "SAIDA DAS LANCHAS" — junta a 2ª pra dar pra diferenciar: "... · MANAUS X TEFÉ")
+            $titulo = ''; $pegas = 0;
+            foreach ($passos as $p) {
+                foreach (preg_split('/\R/u', (string) $p['texto']) as $ln) {
+                    $ln = trim(preg_replace('/\s+/u', ' ', preg_replace('/[*_~`]+/u', '', $ln)));
+                    if (! preg_match('/[\p{L}\p{N}]/u', $ln)) continue;
+                    $titulo = $titulo === '' ? $ln : $titulo.' · '.$ln;
+                    if (++$pegas >= 2 || mb_strlen($titulo) >= 30) break 2;
+                }
+            }
+            if ($titulo === '') $titulo = 'Imagem '.(++$semTexto);
+            $titulo = mb_substr($titulo, 0, 70);
+            $base = $titulo; $n = 1;
+            while (isset($usados[mb_strtolower($titulo)])) $titulo = mb_substr($base, 0, 64).' ('.(++$n).')';
+            $usados[mb_strtolower($titulo)] = true;
+
+            $out[] = ['titulo' => $titulo, 'passos' => $passos];
+        }
+        return $out;
+    }
+
+    public function respostaImportar(Request $request)
+    {
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403);
+        $request->validate(['backup' => 'required|file|max:61440']);
+        $d = json_decode((string) file_get_contents($request->file('backup')->getRealPath()), true);
+        if (! is_array($d) || empty($d['respostasRapidasAcao'])) {
+            return back()->with('erro', 'Não reconheci o arquivo. Envie o backup .json da extensão de atendimento (precisa ter as respostas rápidas).');
+        }
+        $itens = self::converterBackup($d);
+        if (! $itens) return back()->with('erro', 'O backup não tem nenhuma resposta rápida que eu consiga importar.');
+
+        // não duplica: pula o que já existe com o mesmo conteúdo (texto de cada passo)
+        $assinatura = fn (array $passos) => md5(json_encode(array_map(fn ($p) => trim((string) ($p['texto'] ?? '')).'|'.(! empty($p['img'] ?? ($p['arquivo'] ?? null)) ? 'A' : ''), $passos)));
+        $existentes = [];
+        foreach (AtendResposta::get(['passos']) as $r) $existentes[$assinatura((array) $r->passos)] = true;
+
+        $ordem = (int) AtendResposta::max('ordem');
+        $novas = 0; $puladas = 0; $imgs = 0;
+        foreach ($itens as $it) {
+            $sig = $assinatura($it['passos']);
+            if (isset($existentes[$sig])) { $puladas++; continue; }
+            $existentes[$sig] = true;
+            $passos = [];
+            foreach ($it['passos'] as $p) {
+                $arq = ['arquivo' => null, 'mime' => null, 'nome' => null];
+                if (! empty($p['img']) && preg_match('#^data:(image/(jpeg|png|gif|webp));base64,(.+)$#s', $p['img'], $m)) {
+                    $bin = base64_decode($m[3], true);
+                    if ($bin !== false && strlen($bin) > 0 && strlen($bin) <= 16 * 1024 * 1024) {
+                        $ext = $m[2] === 'jpeg' ? 'jpg' : $m[2];
+                        $rel = 'atendimento/'.Tenant::id().'/imp-'.Str::uuid().'.'.$ext;
+                        \Illuminate\Support\Facades\Storage::disk('public')->put($rel, $bin);
+                        $arq = ['arquivo' => 'storage/'.$rel, 'mime' => $m[1], 'nome' => 'imagem.'.$ext];
+                        $imgs++;
+                    }
+                }
+                if (trim((string) $p['texto']) === '' && ! $arq['arquivo']) continue;
+                $passos[] = ['texto' => (string) $p['texto'], 'espera' => (int) $p['espera']] + $arq;
+            }
+            if (! $passos) continue;
+            AtendResposta::create(['empresa_id' => Tenant::id(), 'titulo' => $it['titulo'], 'categoria' => 'Importadas', 'passos' => $passos, 'ordem' => ++$ordem, 'ativo' => true]);
+            $novas++;
+        }
+        return back()->with('ok', $novas.' resposta(s) importada(s)'.($imgs ? ' ('.$imgs.' com imagem)' : '').($puladas ? ' · '.$puladas.' já existiam e foram puladas' : '').'. Ficaram na categoria "Importadas" — o nome de cada uma é o começo da mensagem; renomeie as que quiser.');
+    }
+
     // ---------------- Etiquetas ----------------
     public function etiquetaSalvar(Request $request, ?AtendEtiqueta $etiqueta = null)
     {

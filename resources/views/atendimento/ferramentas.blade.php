@@ -26,6 +26,17 @@
 
   {{-- ===== respostas rápidas / funil ===== --}}
   <div x-show="aba==='respostas'" class="space-y-3">
+    @if($adm)
+    <details class="card p-4">
+      <summary class="font-bold cursor-pointer select-none">📥 Importar respostas rápidas de um backup (.json)</summary>
+      <form method="post" action="{{ route('atendimento.resposta.importar') }}" enctype="multipart/form-data" class="mt-3 space-y-2" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Importando…'">
+        @csrf
+        <p class="text-xs text-slate-500">Envie o arquivo de backup da extensão de atendimento do WhatsApp (ex.: <b>ATENDIMENTO_backup_….json</b>). Cada resposta rápida vira uma resposta aqui, com o texto e a imagem; as que têm vários passos viram funil. Todas entram na categoria <b>Importadas</b>. O nome original de cada resposta vem criptografado no backup, então o nome aqui é o começo da mensagem — renomeie as que quiser. Importar o mesmo arquivo de novo não duplica.</p>
+        <input type="file" name="backup" accept=".json,application/json" required class="input">
+        <button class="btn btn-primary btn-sm">Importar</button>
+      </form>
+    </details>
+    @endif
     <div class="card p-4">
       <div class="flex items-center justify-between gap-2 mb-3">
         <div class="font-bold" x-text="rz.id ? 'Editar' : 'Nova resposta rápida ou funil'"></div>
