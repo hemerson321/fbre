@@ -42,7 +42,7 @@
       <div class="flex justify-between py-1.5"><span>Total vendas de Passagens</span><b>{{ $moeda($bruto) }}</b></div>
       <div class="flex justify-between py-1.5"><span>Comissão de Agência ({{ number_format((float)$pct,2,',','.') }}%)</span><b class="text-rose-600">− {{ $moeda($comissao) }}</b></div>
       <div class="flex justify-between py-1.5"><span>Cancelamento / devolução a descontar</span><b class="text-rose-600">− {{ $moeda($debitoProp) }}</b></div>
-      <div class="flex justify-between py-1.5"><span>Cartão de crédito</span><b class="text-rose-600">− {{ $moeda($cartaoCredito) }}</b></div>
+      <div class="flex justify-between py-1.5"><span>Cartão (crédito e débito)</span><b class="text-rose-600">− {{ $moeda($cartaoCredito) }}</b></div>
       <div class="flex justify-between py-1.5"><span>Crédito Prop. (Entradas)</span><b class="text-rose-600">− {{ $moeda($creditoProp) }}</b></div>
       <div class="flex justify-between py-2 border-t-2 border-slate-300 font-bold text-amber-700"><span>Total Geral de Despesas</span><b>{{ $moeda($despesas) }}</b></div>
     </div>

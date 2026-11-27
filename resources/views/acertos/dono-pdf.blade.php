@@ -62,7 +62,7 @@
     <div class="prest-row"><span>Total vendas de Passagens</span><b>R$ {{ $moeda($bruto) }}</b></div>
     <div class="prest-row"><span>Comissão de Agência ({{ number_format((float)$pct,2,',','.') }}%)</span><b>− R$ {{ $moeda($comissao) }}</b></div>
     <div class="prest-row"><span>Cancelamento / devolução a descontar</span><b>− R$ {{ $moeda($debitoProp) }}</b></div>
-    <div class="prest-row"><span>Cartão de crédito</span><b>− R$ {{ $moeda($cartaoCredito) }}</b></div>
+    <div class="prest-row"><span>Cartão (crédito e débito)</span><b>− R$ {{ $moeda($cartaoCredito) }}</b></div>
     <div class="prest-row"><span>Crédito Prop. (Entradas)</span><b>− R$ {{ $moeda($creditoProp) }}</b></div>
     <div class="prest-row tot"><span>Total Geral de Despesas</span><b>R$ {{ $moeda($despesas) }}</b></div>
     <div class="prest-row liq"><span>TOTAL GERAL LÍQUIDO</span><b>R$ {{ $moeda($liquido) }}</b></div>
