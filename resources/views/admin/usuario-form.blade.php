@@ -195,6 +195,10 @@
     <input type="checkbox" name="perm_marketing" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('perm_marketing', $u->exists ? $u->perm_marketing : false))>
     <span><span class="font-semibold text-sm">Mídia Indoor</span><br><span class="text-xs text-slate-500">Libera o menu Mídia Indoor: Tela indoor (propagandas nas telas) e Áudio indoor (áudio terminal — criar, programar e tocar áudios).</span></span>
   </label>
+  <label class="flex items-start gap-3 py-2 cursor-pointer">
+    <input type="checkbox" name="perm_custo_ia" value="1" class="w-5 h-5 rounded mt-0.5" @checked(old('perm_custo_ia', $u->exists ? ($u->perm_custo_ia ?? false) : false))>
+    <span><span class="font-semibold text-sm">Custo da IA (atendimento)</span><br><span class="text-xs text-slate-500">Mostra o botão 🧮 Custo IA no Atendimento: tokens e R$ gastos por conversa e a simulação do mês. Só aparece pra quem tiver esta opção marcada (nem administrador vê sem ela).</span></span>
+  </label>
 
   <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 mt-2 border-t pt-2">Administrativo</div>
   @php $admPerms = [

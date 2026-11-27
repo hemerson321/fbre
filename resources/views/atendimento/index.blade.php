@@ -36,10 +36,21 @@
         <span id="badgePrecisa" class="chip bg-rose-100 text-rose-700 text-xs font-bold" style="{{ ($precisaHumano ?? 0) ? '' : 'display:none' }}">🔔 {{ $precisaHumano ?? 0 }}</span>
       </div>
     </div>
+    @php $telasAtd = \App\Models\AtendTela::doUsuario(auth()->user()); $telaAtual = \App\Models\AtendTela::atualId(auth()->user()); $admTelas = auth()->user()->isAdmin() || auth()->user()->isSuper(); @endphp
+    @if(count($telasAtd) > 1 || $admTelas)
+    <div class="flex items-center gap-1 mb-2 text-xs overflow-x-auto pb-0.5">
+      @if(count($telasAtd) > 1)
+        @foreach($telasAtd as $tid => $tnome)
+          <a href="{{ route('atendimento.index', ['tela' => $tid]) }}" class="shrink-0 px-2.5 py-1 rounded-lg font-bold border {{ $telaAtual === $tid ? 'text-white border-transparent' : 'bg-white text-slate-600 border-slate-200' }}" @if($telaAtual === $tid) style="background:var(--cor1)" @endif>🖥️ {{ $tnome }}</a>
+        @endforeach
+      @endif
+      @if($admTelas)<a href="{{ route('atendimento.telas') }}" class="shrink-0 px-2 py-1 rounded-lg font-bold border border-dashed border-slate-300 text-slate-500 hover:bg-slate-50" title="Criar e configurar telas de atendimento">⚙️ Telas</a>@endif
+    </div>
+    @endif
     <div class="flex gap-1.5 mb-2 text-xs">
       <a href="{{ route('atendimento.kanban') }}" class="flex-1 text-center rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-bold text-slate-700 hover:bg-slate-50">📋 CRM</a>
       <a href="{{ route('atendimento.ferramentas') }}" class="flex-1 text-center rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-bold text-slate-700 hover:bg-slate-50">🧰 Respostas · Etiquetas</a>
-      @if(auth()->user()->isAdmin() || auth()->user()->isSuper())<a href="{{ route('atendimento.custos') }}" title="Custo da IA por conversa (só administrador)" class="text-center rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-bold text-slate-700 hover:bg-slate-50">🧮 Custo IA</a>@endif
+      @if(auth()->user()->podeCustoIa())<a href="{{ route('atendimento.custos') }}" title="Custo da IA por conversa" class="text-center rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-bold text-slate-700 hover:bg-slate-50">🧮 Custo IA</a>@endif
     </div>
     <div class="flex gap-1 mb-2 text-xs">
       @foreach(['ativas'=>'Ativas','aguardando'=>'Aguardando','humano'=>'Comigo','fechadas'=>'Fechadas'] as $k=>$l)

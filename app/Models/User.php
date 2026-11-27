@@ -57,6 +57,7 @@ class User extends Authenticatable
             'perm_avulso' => 'boolean',
             'perm_recibo' => 'boolean',
             'perm_marketing' => 'boolean',
+            'perm_custo_ia' => 'boolean',
             'perm_financeiro' => 'boolean',
             'perm_pix_manual' => 'boolean',
             'perm_pix_dinamico' => 'boolean',
@@ -144,6 +145,8 @@ class User extends Authenticatable
     public function podeAcerto(): bool { return $this->super_admin || $this->admin || $this->gerente() || (bool) $this->perm_acerto; }
     public function podeRelatorio(): bool { return $this->admin || $this->perm_relatorio || $this->financeiro(); }
     public function podeImprimir(): bool  { return $this->permite('encomenda', 'imprimir'); }
+    /** Vê o Custo da IA no atendimento: só quem tem a permissão marcada no cadastro (ou o super admin). */
+    public function podeCustoIa(): bool { return $this->super_admin || (bool) ($this->perm_custo_ia ?? false); }
     public function podeMarketing(): bool { return $this->admin || $this->super_admin || (bool) $this->perm_marketing; }
     public function isAdmin(): bool       { return $this->admin; }
     public function isSuper(): bool       { return $this->super_admin; }

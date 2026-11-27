@@ -32,7 +32,7 @@ class AtendimentoCrmController extends Controller
     public function kanban(Request $request)
     {
         $etq = $request->integer('etiqueta') ?: null;
-        $conversas = Conversa::with('atendente')
+        $conversas = \App\Models\AtendTela::filtrar(Conversa::with('atendente'), \App\Models\AtendTela::atualId(auth()->user()), \App\Support\Tenant::id())
             ->where(fn ($q) => $q->where('status', '!=', 'fechada')->orWhere('updated_at', '>=', now()->subDays(7)))
             ->orderByRaw('COALESCE(ultima_msg_em, created_at) desc')->limit(400)->get()
             ->filter(fn ($c) => ! $etq || in_array($etq, array_map('intval', (array) $c->etiquetas), true));

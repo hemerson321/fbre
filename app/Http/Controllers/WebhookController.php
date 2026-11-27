@@ -60,7 +60,7 @@ class WebhookController extends Controller
                     if (($mid['ok'] ?? false)) {
                         $b64   = $mid['base64'];
                         $mmime = (string) ($mid['mime'] ?? $mime);
-                        $agente = \App\Models\Agente::where('modulo', $msg->conversa->modulo)->where('ativo', true)->first();
+                        $agente = \App\Models\AtendTela::agentePara($msg->conversa);
                         $agNome = optional($agente)->nome;
 
                         // ÁUDIO -> transcreve e processa como se fosse texto do cliente

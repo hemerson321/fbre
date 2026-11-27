@@ -203,7 +203,7 @@ class ConfirmaPagamento
             if (! $venda || empty($venda['origem']) || empty($venda['destino'])) return;
 
             $agente = (! empty($ctx['agente_id']) ? \App\Models\Agente::find($ctx['agente_id']) : null)
-                ?: \App\Models\Agente::where('modulo', $conv->modulo)->where('ativo', true)->first();
+                ?: \App\Models\AtendTela::agentePara($conv);
             $checkinAuto = $agente ? (bool) ($agente->regras['checkin_auto'] ?? false) : false;
             $op = $agente ? $this->operadorDoAgente($agente)
                 : \App\Models\User::withoutGlobalScopes()->where('empresa_id', $conv->empresa_id)->orderByDesc('admin')->first();

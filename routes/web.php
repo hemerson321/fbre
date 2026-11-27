@@ -153,6 +153,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/passagens/atendimento/{conversa}/assumir', [AtendimentoController::class, 'assumir'])->name('atendimento.assumir')->middleware('perm:passagem.atendimento');
     Route::post('/passagens/atendimento/{conversa}/fechar', [AtendimentoController::class, 'fechar'])->name('atendimento.fechar')->middleware('perm:passagem.atendimento');
     Route::post('/passagens/atendimento/{conversa}/reiniciar', [AtendimentoController::class, 'reiniciar'])->name('atendimento.reiniciar')->middleware('perm:passagem.atendimento');
+    // Atendimento — telas de atendimento (cada tela = números de WhatsApp + quem atende); só administrador
+    Route::get('/passagens/atendimento-telas', [\App\Http\Controllers\AtendTelaController::class, 'index'])->name('atendimento.telas')->middleware('perm:passagem.atendimento');
+    Route::post('/passagens/atendimento-telas/{tela?}', [\App\Http\Controllers\AtendTelaController::class, 'salvar'])->name('atendimento.telas.salvar')->middleware('perm:passagem.atendimento');
+    Route::delete('/passagens/atendimento-telas/{tela}', [\App\Http\Controllers\AtendTelaController::class, 'excluir'])->name('atendimento.telas.excluir')->middleware('perm:passagem.atendimento');
     // Atendimento — custo da IA por conversa + simulação mensal (só administrador; o controller confere)
     Route::get('/passagens/atendimento-custos', [\App\Http\Controllers\AtendimentoCustoController::class, 'index'])->name('atendimento.custos')->middleware('perm:passagem.atendimento');
     Route::post('/passagens/atendimento-custos', [\App\Http\Controllers\AtendimentoCustoController::class, 'salvar'])->name('atendimento.custos.salvar')->middleware('perm:passagem.atendimento');

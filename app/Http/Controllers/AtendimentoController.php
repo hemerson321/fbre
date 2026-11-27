@@ -13,10 +13,17 @@ use Illuminate\Support\Facades\Schema;
  */
 class AtendimentoController extends Controller
 {
+    /** Restringe a consulta às conversas da TELA de atendimento em que o usuário está. */
+    protected function naTela($q)
+    {
+        return \App\Models\AtendTela::filtrar($q, \App\Models\AtendTela::atualId(auth()->user()), Tenant::id());
+    }
+
     public function index(Request $request)
     {
+        if ($request->has('tela')) \App\Models\AtendTela::escolher(auth()->user(), (int) $request->query('tela'));
         $filtro = $request->query('status', 'ativas');
-        $q = Conversa::query()->with('atendente');
+        $q = $this->naTela(Conversa::query()->with('atendente'));
         $q = match ($filtro) {
             'aguardando' => $q->where('status', 'aguardando'),
             'humano'     => $q->where('status', 'humano'),
@@ -28,7 +35,7 @@ class AtendimentoController extends Controller
         return view('atendimento.index', [
             'conversas' => $conversas,
             'filtro' => $filtro,
-            'aguardando' => Conversa::where('status', 'aguardando')->count(),
+            'aguardando' => $this->naTela(Conversa::where('status', 'aguardando'))->count(),
             'precisaHumano' => $this->precisaHumanoCount(),
             'conversa' => null,
             'vendaResumo' => null,
@@ -38,16 +45,20 @@ class AtendimentoController extends Controller
     public function show(Conversa $conversa)
     {
         abort_unless($conversa->empresa_id === Tenant::id(), 404);
+        // a conversa pertence a uma tela: só entra quem atende nela, e a lista ao lado passa a ser a dessa tela
+        $telaConv = \App\Models\AtendTela::daConversa($conversa);
+        abort_if($telaConv && ! $telaConv->permite(auth()->user()), 403, 'Você não atende na tela "'.($telaConv->nome ?? '').'".');
+        \App\Models\AtendTela::escolher(auth()->user(), (int) ($telaConv->id ?? 0));
         $conversa->update(['nao_lidas' => 0]);
         $conversa->load('mensagens.autor', 'atendente');
 
-        $lista = Conversa::where('status', '!=', 'fechada')
+        $lista = $this->naTela(Conversa::where('status', '!=', 'fechada'))
             ->orderByRaw('COALESCE(ultima_msg_em, created_at) desc')->limit(100)->get();
 
         return view('atendimento.index', [
             'conversas' => $lista,
             'filtro' => 'ativas',
-            'aguardando' => Conversa::where('status', 'aguardando')->count(),
+            'aguardando' => $this->naTela(Conversa::where('status', 'aguardando'))->count(),
             'precisaHumano' => $this->precisaHumanoCount(),
             'conversa' => $conversa,
             'vendaResumo' => $this->resumoVenda($conversa),
@@ -122,13 +133,13 @@ class AtendimentoController extends Controller
     protected function precisaHumanoCount(): int
     {
         if (! Schema::hasColumn('conversas', 'precisa_humano')) return 0;
-        return Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada')->count();
+        return $this->naTela(Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada'))->count();
     }
 
     public function alertas()
     {
         if (! Schema::hasColumn('conversas', 'precisa_humano')) return response()->json(['precisa' => 0, 'itens' => [], 'hash' => $this->listaHash()]);
-        $itens = Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada')
+        $itens = $this->naTela(Conversa::where('precisa_humano', true)->where('status', '!=', 'fechada'))
             ->orderByDesc('transferida_em')->limit(50)->get()
             ->map(fn ($c) => [
                 'id' => $c->id,
@@ -142,7 +153,7 @@ class AtendimentoController extends Controller
     /** Impressão digital barata da lista (muda quando chega msg, assume, lê, abre/fecha conversa). */
     protected function listaHash(): string
     {
-        $a = Conversa::where('status', '!=', 'fechada')
+        $a = $this->naTela(Conversa::where('status', '!=', 'fechada'))
             ->selectRaw("COUNT(*) c, COALESCE(MAX(ultima_msg_em), '') m, COALESCE(SUM(nao_lidas), 0) n, COALESCE(MAX(updated_at), '') u")
             ->first();
         return md5(($a->c ?? 0).'|'.($a->m ?? '').'|'.($a->n ?? 0).'|'.($a->u ?? ''));
@@ -152,7 +163,7 @@ class AtendimentoController extends Controller
     public function lista(Request $request)
     {
         $filtro = $request->query('status', 'ativas');
-        $q = Conversa::query()->with('atendente');
+        $q = $this->naTela(Conversa::query()->with('atendente'));
         $q = match ($filtro) {
             'aguardando' => $q->where('status', 'aguardando'),
             'humano'     => $q->where('status', 'humano'),

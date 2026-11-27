@@ -17,7 +17,7 @@ class AtendimentoCustoController extends Controller
 
     protected function soAdmin(): void
     {
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isSuper(), 403, 'Só o administrador vê o custo da IA.');
+        abort_unless(auth()->user()->podeCustoIa(), 403, 'Seu usuário não tem a permissão "Custo da IA".');
     }
 
     public function index(Request $request)

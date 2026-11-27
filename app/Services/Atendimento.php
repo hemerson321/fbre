@@ -90,7 +90,7 @@ class Atendimento
 
         // Responder em áudio (ex.: cliente mandou áudio). A voz lê o texto limpo, sem o nome em asterisco.
         if ($querAudio && $conexao) {
-            $ag  = \App\Models\Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
+            $ag  = \App\Models\AtendTela::agentePara($conversa);
             $tok = $ag ? trim((string) ($ag->regras['audio_token'] ?? '')) : '';
             $voz = $ag ? (string) ($ag->regras['audio_voz'] ?? 'alloy') : 'alloy';
             $b64 = app(\App\Services\SinteseVoz::class)->sintetizar($texto, $voz ?: 'alloy', $tok ?: null);

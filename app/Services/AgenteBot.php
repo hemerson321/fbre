@@ -103,7 +103,7 @@ class AgenteBot
     public function processar(Conversa $conversa, ?Agente $agente = null, bool $demo = false, string $audioModo = 'texto'): void
     {
         try {
-            $agente = $agente ?: Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
+            $agente = $agente ?: \App\Models\AtendTela::agentePara($conversa);
             if (! $agente) return;
             $this->convUso = $conversa; $this->agUso = $agente;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
@@ -195,7 +195,7 @@ class AgenteBot
     public function processarFoto(Conversa $conversa, string $base64, string $mime = 'image/jpeg', ?Agente $agente = null, bool $demo = false): void
     {
         try {
-            $agente = $agente ?: Agente::where('modulo', $conversa->modulo)->where('ativo', true)->first();
+            $agente = $agente ?: \App\Models\AtendTela::agentePara($conversa);
             if (! $agente) return;
             if (! $demo && ($agente->regra('desligado') || ! $this->deveResponder($agente, $conversa))) return;
             $this->convUso = $conversa; $this->agUso = $agente;
