@@ -185,7 +185,7 @@
             <div class="flex flex-col sm:flex-row sm:items-end gap-2 mt-1.5">
               <div class="flex-1 min-w-0"><label class="lbl">Documento</label>
                 <div class="flex gap-1.5">
-                  <select class="field !min-h-0 py-1 text-sm !w-auto shrink-0" x-model="p.doc_tipo" title="Tipo de documento">
+                  <select class="field !min-h-0 py-1 text-sm !w-[86px] sm:!w-auto !px-2 sm:!px-3 shrink-0" x-model="p.doc_tipo" title="Tipo de documento">
                     <option value="">Tipo</option>
                     <option value="RG">RG</option>
                     <option value="CPF">CPF</option>
