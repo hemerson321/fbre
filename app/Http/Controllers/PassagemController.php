@@ -1561,6 +1561,7 @@ class PassagemController extends Controller
         }
         return view('passagens.etiqueta', [
             'p' => $passagem, 'pax' => $pax, 'volumes' => $vol, 'soVia' => request()->boolean('so_via'),
+            'soBag' => request()->boolean('so_bag') && ! request()->boolean('so_via'), 'vias' => max(1, min(10, (int) request('vias', 1))),
             'empresa' => $empresa, 'labW' => $labW, 'labH' => $labH, 'labWbag' => $labWbag, 'labHbag' => $labHbag, 'girar' => $girar, 'obs' => $obs,
         ]);
     }

@@ -96,6 +96,9 @@
 </div>
 @endfor
 @endif
+{{-- via do passageiro: não sai quando o operador pediu SÓ etiqueta de bagagem; sai na quantidade pedida ($vias) --}}
+@if(!($soBag ?? false))
+@for($vv = 1; $vv <= max(1, (int) ($vias ?? 1)); $vv++)
 <div class="lbl">
   <div class="hdr">
     <span class="lch">{{ strtoupper($lancha) }}</span>
@@ -120,6 +123,8 @@
     </div>
   </div>
 </div>
+@endfor
+@endif
 <script>
 (function(){
   var RASTER = new URLSearchParams(location.search).has('raster');
