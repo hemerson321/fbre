@@ -996,7 +996,7 @@ class PassagemController extends Controller
             $debProp = $somaProp('debito'); $pixProp = $somaProp('pix'); $credProp = $somaProp('credito'); $dinProp = $somaProp('dinheiro');
             $maqProp = round($debProp + $pixProp + $credProp + $dinProp, 2);
             // Cartão de crédito da EMPRESA (cai depois → abate)
-            $cartaoEmpresa = round((float) $pgs->filter(fn ($pg) => ! (bool) ($pg->pago_proprietario ?? false) && in_array($pg->meio, ['credito', 'debito'], true))->sum('valor'), 2);
+            $cartaoEmpresa = round((float) $pgs->filter(fn ($pg) => ! (bool) ($pg->pago_proprietario ?? false) && $pg->meio === 'credito')->sum('valor'), 2);
             // Saídas operacionais (despesas) no período do filtro
             $saidasF = $avSaidas; $entradasF = $avEntradas; // só os avulsos deste modo (antes somava toda saída do período)
             $liquidoF = round($brutoF - $comissaoF - $maqProp - $cartaoEmpresa - $saidasF + $entradasF, 2);

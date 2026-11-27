@@ -184,7 +184,7 @@ class AcertoController extends Controller
         // --- Prestação de contas (breakdown p/ o proprietário) ---
         $ids = $passagens->pluck('id')->all();
         // Cartão de crédito recebido nessas passagens (informativo).
-        $cartao = $ids ? round((float) Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $ids)->where('estornado', false)->whereIn('meio', ['credito', 'debito'])->sum('valor'), 2) : 0.0;
+        $cartao = $ids ? round((float) Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $ids)->where('estornado', false)->where('meio', 'credito')->sum('valor'), 2) : 0.0;
         // Crédito do proprietário = pagamentos feitos pelo próprio proprietário (ele já recebeu direto).
         $creditoProp = $ids ? round((float) Pagamento::where('modulo', 'passagem')->whereIn('origem_id', $ids)->where('estornado', false)->where('pago_proprietario', true)->sum('valor'), 2) : 0.0;
         // Débito do proprietário = devoluções já acertadas que ele deve.

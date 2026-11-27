@@ -150,7 +150,7 @@
     <div class="lin"><span>Comissão {{ $nomeEmp }}{{ $pctTxt }}</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->comissao,2,',','.') }}</b></div>
     @endif
     @if($prestacao->cartao > 0.009)
-    <div class="lin"><span>Cartão (crédito e débito)</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
+    <div class="lin"><span>Cartão de crédito</span><b style="color:#b91c1c">- R$ {{ number_format($prestacao->cartao,2,',','.') }}</b></div>
     @endif
     @if(($prestacao->entradas ?? 0) > 0.009)
     <div class="lin"><span>Entradas avulsas</span><b style="color:#067d3b">+ R$ {{ number_format($prestacao->entradas,2,',','.') }}</b></div>
