@@ -229,9 +229,26 @@ class ConfirmaPagamento
                 ];
             }
 
+            // lancha / rota / viagem em que o agente vendeu (sem isso a passagem ficava sem lancha e a poltrona não
+            // aparecia ocupada no mapa do operador)
+            $viag = ['rota' => null, 'embarcacao' => null, 'viagem_id' => null];
+            try {
+                $vg = app(\App\Services\Vagas::class);
+                $venda['origem'] = $vg->canon((string) $venda['origem']);
+                $venda['destino'] = $vg->canon((string) $venda['destino']);
+                $dIso = $this->dataIso($venda['data'] ?? null);
+                $lanchaCtx = trim((string) ($ctx['lancha_agente'] ?? ($venda['lancha'] ?? ''))) ?: null;
+                $viag = $vg->resolver($venda['origem'], $venda['destino'], $dIso ? \Carbon\Carbon::parse($dIso) : null, $lanchaCtx);
+            } catch (\Throwable $e) { Log::warning('criarPassagem: não achei a viagem — '.$e->getMessage()); }
+            $embAg = $viag['embarcacao'];
+
             $dados = [
                 'origem' => $venda['origem'],
                 'destino' => $venda['destino'],
+                'embarcacao_id' => $embAg?->id,
+                'rota_id' => $viag['rota']?->id,
+                'viagem_id' => $viag['viagem_id'],
+                'tipo' => ($embAg && $embAg->usa_poltrona) ? 'poltrona' : 'rede',
                 'data_viagem' => $this->dataIso($venda['data'] ?? null),
                 'comprador_nome' => $conv->cliente_nome,
                 'comprador_telefone' => $conv->cliente_telefone,
@@ -249,6 +266,7 @@ class ConfirmaPagamento
             $p->recalcular();
 
             $ctx['passagem_id'] = $p->id;
+            unset($ctx['poltronas_agente'], $ctx['poltrona_agente'], $ctx['ocioso_aviso_em']); // a reserva virou venda
             $conv->forceFill(['contexto' => $ctx])->save();
             $cob->forceFill(['referencia_tipo' => \App\Models\Passagem::class, 'referencia_id' => $p->id])->save();
 
@@ -257,7 +275,7 @@ class ConfirmaPagamento
                 $num = $p->numeroFormatado();
                 $quando = $p->data_viagem ? \Carbon\Carbon::parse($p->data_viagem)->format('d/m/Y') : '';
                 $nomes = collect($passageiros)->pluck('nome')->implode(', ');
-                $msg = "🎫 Passagem emitida!\nNº *{$num}*\n{$venda['origem']} → {$venda['destino']}".($quando ? "\nData: {$quando}" : '')."\nPassageiro(s): {$nomes}\n\nGuarde esse número — no embarque é só apresentar.";
+                $msg = "🎫 Passagem emitida!\nNº *{$num}*\n{$venda['origem']} → {$venda['destino']}".($quando ? "\nData: {$quando}" : '')."\nPassageiro(s): {$nomes}".(($p->embarcacao?->nome) ? "\nLancha: {$p->embarcacao->nome}" : '').(collect($poltronas)->filter()->isNotEmpty() ? "\nPoltrona(s): ".collect($poltronas)->filter()->implode(', ') : '')."\n\nGuarde esse número — no embarque é só apresentar. Boa viagem! 🚤";
                 $this->at->registrarSaida($conv, $msg, 'sistema');
             } catch (\Throwable $e) {}
 
@@ -268,7 +286,7 @@ class ConfirmaPagamento
                     if ($pdf) {
                         app(\App\Services\WhatsApp::class)->enviarDocumento(
                             $conv->conexao, $conv->cliente_telefone, base64_encode($pdf),
-                            'passagem-'.$p->numeroFormatado().'.pdf', 'Seu comprovante em PDF 📄'
+                            'bilhete-'.$p->numeroFormatado().'.pdf', 'Seu bilhete em PDF 📄'
                         );
                     }
                 }

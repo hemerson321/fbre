@@ -163,6 +163,10 @@ class AgenteBot
                 $texto = preg_replace('/\[\[(POLTRONAS?|ESCOLHER|PIX|VENDA)\b[^\]]*\]\]/i', '', $texto);
                 $this->pularGuardiao = true;
             }
+            // PIX só DEPOIS que o cliente aceitar a poltrona: reservou/trocou a poltrona e mandou PIX na mesma resposta -> segura o PIX
+            if (preg_match('/\[\[(POLTRONA|ESCOLHER):/i', $texto) && preg_match('/\[\[PIX\b[^\]]*\]\]/i', $texto)) {
+                $texto = trim(preg_replace('/\[\[PIX\b[^\]]*\]\]/i', '', $texto))."\n\nEssa poltrona fica boa pra você? Confirmando, eu já gero o PIX. 😉";
+            }
             $texto = $this->tratarVenda($conversa, $texto);
             $texto = $this->tratarVagas($conversa, $texto);
             $texto = $this->tratarPoltronas($conversa, $texto);
@@ -173,6 +177,7 @@ class AgenteBot
             if (! $this->pularGuardiao) $texto = $this->guardiaoPoltrona($conversa, $texto);
             $this->pularGuardiao = false;
             $texto = $this->tratarPax($conversa, $texto);
+            $texto = $this->tratarBilhete($conversa, $texto);
             $texto = $this->tratarOrcamento($agente, $conversa, $texto);
             $texto = $this->tratarHumano($conversa, $texto, $demo, $agente);
             $res = $this->tratarPix($agente, $conversa, $texto, $demo);
@@ -181,6 +186,7 @@ class AgenteBot
             $this->atendimento->registrarSaida($conversa, $res['texto'], 'ia', null, $agente?->nome, $audioModo);
             if (! $demo) $this->enviarMapaPoltronas($conversa, $agente);
             $this->enviarOrcamentoPdf($conversa);
+            $this->enviarBilhetePdf($conversa);
             if (! empty($res['pix'])) {
                 $this->atendimento->registrarSaida($conversa, $res['pix'], 'ia'); // PIX em mensagem separada (copiar fácil)
             }
@@ -377,6 +383,9 @@ class AgenteBot
         $p[] = "6) SÓ DEPOIS que o sistema confirmar o pagamento (vai aparecer '✅ Pagamento confirmado' na conversa), aí sim peça os dados de TODOS os passageiros (o responsável E cada criança): NOME COMPLETO, DOCUMENTO (RG/CPF) e DATA DE NASCIMENTO. O jeito mais fácil: diga que ele pode mandar aqui a FOTO ou o ARQUIVO do documento do responsável e de cada criança, que você cadastra na hora. Quando tiver os dados de um passageiro, emita numa linha isolada (o cliente não vê): [[PAX: Nome|documento|nascimento dd/mm/aaaa]] — vários passageiros separados por ' ;; '.";
         $p[] = "POLTRONA SÓ DEPOIS DO 'QUERO FECHAR' (regra acima das de poltrona): NÃO ofereça poltrona, NÃO pergunte janela/corredor nem 'querem sentar juntos', e NÃO use [[POLTRONAS]]/[[POLTRONA]]/[[ESCOLHER]] enquanto o cliente não disser claramente que QUER COMPRAR (ex.: 'quero', 'pode fechar', 'vou querer', 'sim' respondendo a 'quer que eu garanta?'). Depois de passar o valor ou entregar um orçamento, pergunte APENAS: 'Quer que eu garanta pra você?'. Escolher data/lancha, tirar dúvida (horas de viagem, comida, horário) ou dizer 'ok/entendi' NÃO é fechar. Reservar poltrona tira o lugar de outro cliente — só reserve pra quem vai comprar.";
         $p[] = "CLIENTE QUE VOLTA (memória): se no histórico aparecer '[NOVO CONTATO — o atendimento acima já foi encerrado]', tudo que vem ANTES é a conversa anterior com esse mesmo cliente — você LEMBRA dela, como uma pessoa lembraria. Responda ao que ele disse AGORA: se for só agradecimento ou despedida ('tá bom', 'obrigado', 'boa noite', 'valeu'), responda curto e simpático e PARE — não pergunte pra onde ele quer viajar nem recomece o atendimento. Se ele retomar o assunto ('e aquela passagem?', 'pode fechar'), continue de onde parou usando o que já sabe (trecho, data, pessoas) e só confirme os dados; poltrona que estava reservada foi liberada, então reserve de novo se ele for comprar. Só cumprimente como cliente novo quem realmente não tem conversa anterior.";
+        $p[] = "POLTRONA ANTES DO PIX: na lancha com poltrona, o PIX só sai DEPOIS que o cliente aceitar a poltrona. Ordem: 1) reserve com [[POLTRONA: ...]] e diga qual ficou; 2) pergunte se essa poltrona fica boa (ele pode pedir outra pelo número); 3) só quando ele confirmar ('pode ser', 'ok', 'sim') escreva o [[PIX: ...]]. NUNCA mande o marcador de poltrona e o de PIX na mesma resposta.";
+        $p[] = "SEGUNDA VIA DO BILHETE: se o cliente que JÁ COMPROU pedir o bilhete/comprovante/passagem de novo ('manda de novo', 'perdi o bilhete', 'não recebi'), escreva numa linha isolada [[BILHETE]] — o sistema reenvia o PDF do bilhete aqui no WhatsApp. Diga só uma frase curta (ex.: 'Claro, tô te mandando de novo 👇'). Não use pra quem ainda não pagou.";
+        $p[] = "DEPOIS DA COMPRA: quando aparecer '✅ Pagamento confirmado' / 'Passagem emitida', o cliente COMPROU — agradeça, diga que o bilhete foi enviado e deseje boa viagem. Não ofereça outra passagem nem pergunte pra onde ele quer ir.";
         $p[] = "DESPEDIDA: só deseje 'boa viagem' (ou fale como se ele fosse viajar) se a compra foi PAGA nesta conversa — ou seja, apareceu '✅ Pagamento confirmado'. Se o cliente só tirou dúvida, pediu orçamento ou parou antes de pagar ('tá ok', 'obrigado', 'boa noite', 'vou ver'), ele NÃO comprou: despeça-se sem 'boa viagem' e deixe a porta aberta, curto e sem insistir (ex.: 'Por nada! Quando quiser garantir sua passagem é só me chamar. Boa noite!').";
         $p[] = "FORMATAÇÃO: é WhatsApp — negrito é com UM asterisco de cada lado (*assim*), nunca dois (**). Use pouco.";
         $p[] = "MEMÓRIA DA CONVERSA: trecho, data, lancha, quantidade e composição que o cliente já falou continuam valendo até ele mudar — mesmo que o assunto mude (ex.: virou orçamento). Se ele responder curto ('não', 'só adulto', 'isso'), interprete pela SUA última pergunta.";
@@ -706,6 +715,53 @@ class AgenteBot
         } catch (\Throwable $e) {
             Log::warning('tratarOrcamento erro: '.$e->getMessage());
             return $limpo();
+        }
+    }
+
+    /** [[BILHETE]] -> o cliente pediu a 2ª via: acha a passagem dele e marca pra reenviar o PDF depois do texto. */
+    protected function tratarBilhete(Conversa $c, string $texto): string
+    {
+        if (! preg_match('/\[\[BILHETE[^\]]*\]\]/i', $texto, $m)) return $texto;
+        $limpo = fn (string $msg = '') => trim(str_replace($m[0], $msg, $texto));
+        try {
+            $ctx = $c->contexto ?? [];
+            $p = ! empty($ctx['passagem_id']) ? \App\Models\Passagem::find($ctx['passagem_id']) : null;
+            if (! $p) {
+                $p = \App\Models\Passagem::where('empresa_id', $c->empresa_id)->where('comprador_telefone', $c->cliente_telefone)
+                    ->where('cancelada', false)->where('created_at', '>=', now()->subDays(60))->latest('id')->first();
+            }
+            if (! $p) return 'Não encontrei passagem comprada por este número. Me diz o número do bilhete ou o nome do passageiro que eu procuro?';
+            $ctx['bilhete_pdf_pendente'] = $p->id;
+            $c->forceFill(['contexto' => $ctx])->save();
+            return $limpo();
+        } catch (\Throwable $e) {
+            Log::warning('tratarBilhete erro: '.$e->getMessage());
+            return $limpo();
+        }
+    }
+
+    /** Reenvia o PDF do bilhete (mesmo modelo do operador) no WhatsApp e deixa registrado na conversa. */
+    protected function enviarBilhetePdf(Conversa $c): void
+    {
+        try {
+            $c->refresh();
+            $ctx = $c->contexto ?? [];
+            $id = (int) ($ctx['bilhete_pdf_pendente'] ?? 0);
+            if (! $id) return;
+            unset($ctx['bilhete_pdf_pendente']);
+            $c->forceFill(['contexto' => $ctx])->save();
+
+            $p = \App\Models\Passagem::where('empresa_id', $c->empresa_id)->find($id);
+            if (! $p) return;
+            $pdf = app(\App\Services\PdfComprovante::class)->gerar($p);
+            if (! $pdf) { Log::warning('Bilhete '.$id.': PDF não gerado (conversa '.$c->id.').'); return; }
+            $num = $p->numeroFormatado();
+            $rel = 'atendimento/'.$c->empresa_id.'/bilhete-'.preg_replace('/[^A-Za-z0-9_-]/', '', $num).'-'.$p->id.'.pdf';
+            \Illuminate\Support\Facades\Storage::disk('public')->put($rel, $pdf);
+            $r = $this->atendimento->registrarSaidaMidia($c, 'storage/'.$rel, 'application/pdf', 'bilhete-'.$num.'.pdf', '🎫 Bilhete nº '.$num, 'ia');
+            if (! ($r['ok'] ?? false)) Log::warning('Bilhete '.$id.': falha ao reenviar na conversa '.$c->id.': '.($r['erro'] ?? ''));
+        } catch (\Throwable $e) {
+            Log::warning('enviarBilhetePdf erro: '.$e->getMessage());
         }
     }
 

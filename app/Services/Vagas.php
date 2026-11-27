@@ -314,7 +314,9 @@ class Vagas
     {
         $layout = str_replace("\r", '', trim($layout));
         if ($layout === '') return [];
-        $blocos = [];
+        // O agente oferece primeiro as poltronas NUMERADAS (01A, 05J...). Assento só com letra (áreas "A B C | D E F")
+        // fica por último: só é usado quando as numeradas acabarem ou se o cliente pedir pelo nome.
+        $numeradas = []; $areas = [];
         foreach (preg_split('/\n[ \t]*\n/', $layout) as $b) {
             foreach (preg_split('/\n/', $b) as $linha) {
                 if (trim($linha) === '') continue;
@@ -322,16 +324,17 @@ class Vagas
                 if (! $cols) continue;
                 $tipoMap = [];
                 $this->classFileira($cols, $tipoMap);
+                $temNumero = (bool) preg_match('/\d/', $linha);
                 foreach ($cols as $ci => $seats) {
                     $linhaBloco = [];
                     foreach ($seats as $sel) {
                         $linhaBloco[] = ['sel' => (string) $sel, 'tipo' => $tipoMap[$sel] ?? 'meio', 'lado' => $ci === 0 ? 'esq' : 'dir', 'inicio' => $ci === 0];
                     }
-                    $blocos[] = $linhaBloco;
+                    if ($temNumero) $numeradas[] = $linhaBloco; else $areas[] = $linhaBloco;
                 }
             }
         }
-        return $blocos;
+        return array_merge($numeradas, $areas);
     }
 
     /** Acha n assentos CONSECUTIVOS livres num mesmo bloco (preferindo um bloco que tenha o tipo pedido). */
@@ -429,6 +432,17 @@ class Vagas
         }
         $loc = trim($loc);
         return $mapa[$emp][$chave($loc)] ?? $loc;
+    }
+
+    /** Lancha/rota/viagem de um trecho numa data (pra gravar a passagem do agente na viagem certa). */
+    public function resolver(string $origem, string $destino, ?Carbon $data, ?string $lancha = null): array
+    {
+        [$origem, $destino] = [$this->canon($origem), $this->canon($destino)];
+        $rota = $this->rotaDoTrecho($origem, $destino, $data, $lancha);
+        if (! $rota) return ['rota' => null, 'embarcacao' => null, 'viagem_id' => null];
+        $viagemId = null;
+        try { $viagemId = optional($rota->viagemPara($data ?: now()))->id; } catch (\Throwable $e) {}
+        return ['rota' => $rota, 'embarcacao' => $rota->embarcacao, 'viagem_id' => $viagemId];
     }
 
     protected function rotaDoTrecho(string $origem, string $destino, ?Carbon $data = null, ?string $lancha = null): ?Rota

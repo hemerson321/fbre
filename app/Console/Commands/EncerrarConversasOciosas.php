@@ -52,6 +52,17 @@ class EncerrarConversasOciosas extends Command
                             continue;
                         }
 
+                        // cliente já COMPROU nesta conversa: encerra direto, agradecendo e desejando boa viagem
+                        if (! empty($ctx['passagem_id'])) {
+                            if ($c->ultima_msg_em->gt(now()->subMinutes($avisoMin))) continue;
+                            unset($ctx['poltronas_agente'], $ctx['poltrona_agente'], $ctx['pref_poltrona'], $ctx['lancha_agente'], $ctx['ocioso_aviso_em']);
+                            $c->forceFill(['contexto' => $ctx])->save();
+                            $atendimento->registrarSaida($c, 'Sua passagem está garantida ✅ Vou encerrar nosso atendimento por aqui. Se precisar do bilhete de novo ou de qualquer coisa, é só chamar. Obrigado pela preferência e boa viagem! 🚤', 'ia', null, $agente->nome);
+                            $c->forceFill(['status' => 'fechada', 'ia_ativa' => false, 'atendida' => true, 'nao_lidas' => 0])->save();
+                            $fechadas++;
+                            continue;
+                        }
+
                         if (! $avisoEm) {
                             if ($c->ultima_msg_em->gt(now()->subMinutes($avisoMin))) continue; // ainda não deu o tempo de espera
                             $ctx['ocioso_aviso_em'] = now()->toDateTimeString();
