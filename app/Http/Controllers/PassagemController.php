@@ -1130,9 +1130,108 @@ class PassagemController extends Controller
         ]);
     }
 
+    /**
+     * Minhas vendas do AGENTE EXTERNO — tela simples: filtra por transporte e viagem e mostra
+     * o que ele vendeu, a comissão dele e o que ainda deve repassar (empresa / donos das lanchas).
+     */
+    protected function minhasVendasAgente(Request $request, $u)
+    {
+        $transporteId = (int) $request->input('transporte_id') ?: null;
+        $viagem = (string) $request->input('viagem', '');           // "AAAA-MM-DD" ou "AAAA-MM-DD|id da lancha"
+        $dataViagem = null;
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})(?:\|(\d+))?$/', $viagem, $mv)) {
+            $dataViagem = $mv[1];
+            if (! empty($mv[2])) $transporteId = (int) $mv[2];
+        }
+
+        $todas = fn () => Passagem::where('revendedor_id', $u->id)->where('cancelada', false);
+        $base = fn () => $todas()
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->when($dataViagem, fn ($q) => $q->whereDate('data_viagem', $dataViagem));
+
+        // quanto de cada passagem vai pra frente (o resto é a comissão do agente) — mesma conta do Acerto
+        $pct = max(0, min(100, (int) ($u->comissao_pct ?? 0)));
+        $repasse = 'COALESCE(acerto_empresa_valor, '.((($u->modo_acerto ?? 'cheio') === 'comissao') ? 'ROUND(total * (100 - '.$pct.') / 100, 2)' : 'total').')';
+        $comDono = \App\Models\Embarcacao::whereNotNull('dono_id')->select('id');
+
+        $tot = $base()->selectRaw('COUNT(*) as qtd, COALESCE(SUM(total),0) as vendi, COALESCE(SUM('.$repasse.'),0) as repasse')->first();
+        $vendi = (float) $tot->vendi;
+        $repasseTotal = (float) $tot->repasse;
+
+        $devoEmpresa = (float) $base()->whereNotIn('embarcacao_id', $comDono)->where('acerto_empresa', false)
+            ->selectRaw('COALESCE(SUM('.$repasse.'),0) as v')->value('v');
+        $nomes = \App\Models\Embarcacao::with('dono:id,name')->get(['id', 'nome', 'dono_id', 'dono_nome'])->keyBy('id');
+        $devoDonos = $base()->whereIn('embarcacao_id', $comDono)->where('acerto_dono', false)->where('transferida', false)
+            ->selectRaw('embarcacao_id, COUNT(*) as qtd, COALESCE(SUM('.$repasse.'),0) as valor')
+            ->groupBy('embarcacao_id')->get()
+            ->map(fn ($r) => [
+                'lancha' => $nomes->get($r->embarcacao_id)?->nome ?? 'Lancha',
+                'dono' => $nomes->get($r->embarcacao_id)?->dono?->name ?? $nomes->get($r->embarcacao_id)?->dono_nome,
+                'qtd' => (int) $r->qtd, 'valor' => round((float) $r->valor, 2),
+            ])->filter(fn ($x) => $x['valor'] > 0)->sortByDesc('valor')->values()->all();
+        $devoDonosTotal = round(array_sum(array_column($devoDonos, 'valor')), 2);
+        $devoTotal = round($devoEmpresa + $devoDonosTotal, 2);
+
+        $resumo = [
+            'qtd' => (int) $tot->qtd,
+            'passageiros' => (int) \App\Models\PassagemPassageiro::whereIn('passagem_id', $base()->select('id'))->count(),
+            'vendi' => round($vendi, 2),
+            'comissao' => round($vendi - $repasseTotal, 2),
+            'devo' => $devoTotal,
+            'devoEmpresa' => round($devoEmpresa, 2),
+            'devoDonos' => $devoDonos,
+            'repassado' => round(max(0, $repasseTotal - $devoTotal), 2),
+        ];
+
+        // filtros: lanchas e viagens em que ele vendeu
+        $transportes = \App\Models\Embarcacao::whereIn('id', $todas()->whereNotNull('embarcacao_id')->select('embarcacao_id'))->orderBy('nome')->get(['id', 'nome']);
+        $viagens = $todas()->whereNotNull('data_viagem')
+            ->when($transporteId, fn ($q) => $q->where('embarcacao_id', $transporteId))
+            ->selectRaw('data_viagem, embarcacao_id, COUNT(*) as qtd')
+            ->groupBy('data_viagem', 'embarcacao_id')->orderByDesc('data_viagem')->limit(80)->get()
+            ->map(function ($r) use ($nomes) {
+                $d = \Carbon\Carbon::parse($r->data_viagem);
+                return [
+                    'valor' => $d->toDateString().'|'.(int) $r->embarcacao_id,
+                    'rotulo' => $d->format('d/m/Y').' · '.($nomes->get($r->embarcacao_id)?->nome ?? 'Lancha').' ('.(int) $r->qtd.')',
+                ];
+            })->all();
+        $viagemSel = $dataViagem ? $dataViagem.'|'.(int) $transporteId : '';
+
+        // lista: cada venda com o que é dele e o que vai pra frente
+        $limite = 200;
+        $vendas = $base()->select('*')->selectRaw($repasse.' as repasse_valor')
+            ->withCount('passageiros')->with('embarcacao:id,nome,dono_id')
+            ->orderByDesc('id')->limit($limite)->get()
+            ->map(function ($p) {
+                $temDono = (bool) ($p->embarcacao?->dono_id);
+                $quitado = $temDono ? ((bool) $p->acerto_dono || (bool) $p->transferida) : (bool) $p->acerto_empresa;
+                return [
+                    'id' => $p->id,
+                    'numero' => $p->numeroFormatado(),
+                    'quando' => $p->created_at?->format('d/m H:i'),
+                    'trecho' => $p->origem.' → '.$p->destino,
+                    'viagem' => $p->data_viagem ? \Carbon\Carbon::parse($p->data_viagem)->format('d/m') : '',
+                    'lancha' => (string) ($p->embarcacao?->nome ?? ''),
+                    'pax' => (int) $p->passageiros_count,
+                    'total' => (float) $p->total,
+                    'repasse' => (float) $p->repasse_valor,
+                    'comissao' => round((float) $p->total - (float) $p->repasse_valor, 2),
+                    'para' => $temDono ? 'dono' : 'empresa',
+                    'quitado' => $quitado,
+                ];
+            })->all();
+
+        $painelAgente = \App\Http\Controllers\AcertoController::dadosAgente($u, null, $dataViagem);
+
+        return view('passagens.minhas-vendas-agente', compact('resumo', 'transportes', 'viagens', 'transporteId', 'viagemSel', 'vendas', 'limite', 'painelAgente'));
+    }
+
     public function minhasVendas(Request $request)
     {
         $u = auth()->user();
+        // agente externo: tela simples (vendi / minha comissão / devo repassar), filtrada por transporte e viagem
+        if ($u->ehRevendedor() && ! $request->boolean('pdf')) return $this->minhasVendasAgente($request, $u);
         [$inicio, $fim, $periodo] = \App\Http\Controllers\CaixaController::periodo($request);
 
         $canal = $request->input('canal'); // dinheiro|pix_manual|pix_auto|debito|credito
