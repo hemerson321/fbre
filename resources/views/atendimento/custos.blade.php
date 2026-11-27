@@ -13,7 +13,10 @@
       <h1 class="text-xl font-extrabold">🧮 Custo da IA no atendimento</h1>
       <p class="text-sm text-slate-500">Tokens gastos pelo agente em cada conversa, quanto isso custa em reais e a simulação do mês. Só o administrador vê esta tela.</p>
     </div>
-    <div class="flex gap-2"><a href="{{ route('atendimento.index') }}" class="btn btn-sm">💬 Conversas</a></div>
+    <div class="flex gap-2">
+      <form method="post" action="{{ route('atendimento.custos.zerar') }}" onsubmit="return confirm('Zerar todas as medições de tokens? Isso apaga o histórico de custo desta tela (as conversas não são apagadas).')">@csrf<button class="btn btn-sm">🧹 Zerar medições</button></form>
+      <a href="{{ route('atendimento.index') }}" class="btn btn-sm">💬 Conversas</a>
+    </div>
   </div>
 
   @if(! $migrado)

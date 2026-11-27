@@ -120,6 +120,15 @@ class AtendimentoCustoController extends Controller
         ]);
     }
 
+    /** Zera as medições de tokens da empresa (pra começar um teste do zero). */
+    public function zerar()
+    {
+        $this->soAdmin();
+        abort_unless(Tenant::id(), 404);
+        $n = Schema::hasTable('agente_usos') ? AgenteUso::where('empresa_id', Tenant::id())->delete() : 0;
+        return back()->with('ok', 'Medições zeradas ('.$n.' registros apagados). A contagem recomeça na próxima resposta do agente.');
+    }
+
     /** Salva a cotação do dólar e os preços corrigidos por modelo. */
     public function salvar(Request $request)
     {

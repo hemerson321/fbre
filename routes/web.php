@@ -156,6 +156,7 @@ Route::middleware('auth')->group(function () {
     // Atendimento — custo da IA por conversa + simulação mensal (só administrador; o controller confere)
     Route::get('/passagens/atendimento-custos', [\App\Http\Controllers\AtendimentoCustoController::class, 'index'])->name('atendimento.custos')->middleware('perm:passagem.atendimento');
     Route::post('/passagens/atendimento-custos', [\App\Http\Controllers\AtendimentoCustoController::class, 'salvar'])->name('atendimento.custos.salvar')->middleware('perm:passagem.atendimento');
+    Route::post('/passagens/atendimento-custos/zerar', [\App\Http\Controllers\AtendimentoCustoController::class, 'zerar'])->name('atendimento.custos.zerar')->middleware('perm:passagem.atendimento');
     // Atendimento — modo operador: CRM Kanban, etiquetas, respostas rápidas/funil, agendamento, envio em massa e status
     Route::middleware('perm:passagem.atendimento')->group(function () {
         Route::get('/passagens/atendimento-kanban', [\App\Http\Controllers\AtendimentoCrmController::class, 'kanban'])->name('atendimento.kanban');

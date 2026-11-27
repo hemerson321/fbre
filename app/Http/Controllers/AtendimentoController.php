@@ -94,7 +94,8 @@ class AtendimentoController extends Controller
     {
         abort_unless($conversa->empresa_id === Tenant::id(), 404);
         $ultimo = (int) $conversa->mensagens()->max('id');
-        $ctx = $conversa->contexto ?? [];
+        // limpa TUDO que o agente guardou (venda, poltronas, passageiros, orçamento...) — só fica o que identifica a conversa de teste
+        $ctx = array_intersect_key($conversa->contexto ?? [], ['demo' => 1, 'agente_id' => 1]);
         $ctx['reinicio_id'] = $ultimo + 1; // agente ignora tudo que veio ate aqui
         $conversa->forceFill([
             'contexto' => $ctx,
