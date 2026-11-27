@@ -260,10 +260,17 @@
     @foreach($transportes as $t)<option value="{{ $t->id }}" @selected((string)$transporteId===(string)$t->id)>{{ $t->nome }}</option>@endforeach
   </select>
   @endif
+  @if($verTodos)
+  <span class="font-semibold text-slate-400 ml-1">👤 Operador</span>
+  <select name="user_id" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[13px]" onchange="this.form.submit()">
+    <option value="">Todos</option>
+    @foreach($usuarios as $us)<option value="{{ $us->id }}" @selected((string)$userId===(string)$us->id)>{{ $us->name }}</option>@endforeach
+  </select>
+  @endif
   <button type="submit" class="rounded-lg text-white px-3 py-1 text-[13px] font-semibold" style="background:var(--cor2)">Ver</button>
   @php $pAt = $periodo ?? '30d'; $pBtn = 'rounded-lg px-3 py-1 text-[13px] font-semibold border'; @endphp
-  <a href="{{ route('caixa.index', array_filter(['periodo' => 'hoje', 'transporte_id' => $transporteId])) }}" class="{{ $pBtn }} {{ $pAt === 'hoje' ? 'text-white border-transparent' : 'bg-white text-slate-600 border-slate-200' }}" @if($pAt === 'hoje') style="background:var(--cor2)" @endif>Hoje</a>
-  <a href="{{ route('caixa.index', array_filter(['transporte_id' => $transporteId])) }}" class="{{ $pBtn }} {{ $pAt === '30d' ? 'text-white border-transparent' : 'bg-white text-slate-600 border-slate-200' }}" @if($pAt === '30d') style="background:var(--cor2)" @endif>30 dias</a>
+  <a href="{{ route('caixa.index', array_filter(['periodo' => 'hoje', 'transporte_id' => $transporteId, 'user_id' => $verTodos ? $userId : null])) }}" class="{{ $pBtn }} {{ $pAt === 'hoje' ? 'text-white border-transparent' : 'bg-white text-slate-600 border-slate-200' }}" @if($pAt === 'hoje') style="background:var(--cor2)" @endif>Hoje</a>
+  <a href="{{ route('caixa.index', array_filter(['transporte_id' => $transporteId, 'user_id' => $verTodos ? $userId : null])) }}" class="{{ $pBtn }} {{ $pAt === '30d' ? 'text-white border-transparent' : 'bg-white text-slate-600 border-slate-200' }}" @if($pAt === '30d') style="background:var(--cor2)" @endif>30 dias</a>
 </form>
 @endif
 @unless($ehRel)
