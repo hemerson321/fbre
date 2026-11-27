@@ -261,8 +261,9 @@
   </select>
   @endif
   <button type="submit" class="rounded-lg text-white px-3 py-1 text-[13px] font-semibold" style="background:var(--cor2)">Ver</button>
-  @if(($periodo ?? '30d') !== '30d' || $transporteId)<a href="{{ route('caixa.index') }}" class="underline text-slate-400 ml-1">voltar p/ últimos 30 dias</a>@endif
-  @if(($periodo ?? '30d') !== 'hoje')<a href="{{ route('caixa.index', array_filter(['periodo' => 'hoje', 'transporte_id' => $transporteId])) }}" class="underline text-slate-400 ml-1">só hoje</a>@endif
+  @php $pAt = $periodo ?? '30d'; $pBtn = 'rounded-lg px-3 py-1 text-[13px] font-semibold border'; @endphp
+  <a href="{{ route('caixa.index', array_filter(['periodo' => 'hoje', 'transporte_id' => $transporteId])) }}" class="{{ $pBtn }} {{ $pAt === 'hoje' ? 'text-white border-transparent' : 'bg-white text-slate-600 border-slate-200' }}" @if($pAt === 'hoje') style="background:var(--cor2)" @endif>Hoje</a>
+  <a href="{{ route('caixa.index', array_filter(['transporte_id' => $transporteId])) }}" class="{{ $pBtn }} {{ $pAt === '30d' ? 'text-white border-transparent' : 'bg-white text-slate-600 border-slate-200' }}" @if($pAt === '30d') style="background:var(--cor2)" @endif>30 dias</a>
 </form>
 @endif
 @unless($ehRel)
