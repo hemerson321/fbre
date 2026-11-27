@@ -164,33 +164,41 @@
           <input x-model="busca" class="input flex-1 !min-h-[36px] py-1.5 text-sm" placeholder="🔎 Buscar resposta…">
           <label class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 text-lg" title="Enviar imagem ou vídeo">📷<input type="file" accept="image/*,video/*" class="hidden" @change="pegarArqEnviar($event)"></label>
         </div>
-        {{-- categorias: barra que rola na horizontal (aguenta muitas) --}}
-        <div class="px-2 pb-1.5 flex gap-1 overflow-x-auto atd-scroll" style="scrollbar-width:thin">
-          <button type="button" class="atd-cat shrink-0 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap" :class="catSel==='Todas' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'" @click="catSel='Todas'">Todas</button>
-          @foreach($cats as $c)
-            <button type="button" class="atd-cat shrink-0 rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap" :class="catSel===@js($c) ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'" @click="catSel=@js($c)">{{ $c }}</button>
-          @endforeach
-        </div>
-        {{-- lista enxuta: 1 clique na resposta = envia --}}
-        <div class="flex-1 overflow-y-auto atd-scroll px-1.5 pb-2">
-          @forelse($respostas as $rz)
+        {{-- categorias em SANFONA (uma embaixo da outra): clica na categoria e abre as respostas dela. Buscando, abre tudo que casar. --}}
+        <div class="flex-1 overflow-y-auto atd-scroll px-1.5 pb-2 space-y-1">
+          @forelse($cats as $cat)
             @php
-              $rp = (array) $rz->passos;
-              $cat = trim((string) $rz->categoria) ?: 'Geral';
-              $prev = \Illuminate\Support\Str::limit((string) ($rp[0]['texto'] ?? ''), 70) ?: ('📎 '.($rp[0]['nome'] ?? 'arquivo'));
-              $temMidia = !empty($rp[0]['arquivo']);
-              $busStr = \Illuminate\Support\Str::lower($rz->titulo.' '.$cat.' '.($rp[0]['texto'] ?? ''));
+              $lista = $grupos[$cat];
+              $catBus = \Illuminate\Support\Str::lower($cat.' '.$lista->map(fn ($r) => $r->titulo.' '.(((array) $r->passos)[0]['texto'] ?? ''))->implode(' '));
             @endphp
-            <button type="button" @click="enviarResposta({{ $rz->id }}, $el)"
-                 x-show="(catSel==='Todas' || catSel===@js($cat)) && (busca==='' || @js($busStr).includes(busca.toLowerCase()))"
-                 class="atd-row group w-full text-left flex items-center gap-2 rounded-lg px-2 py-1.5 border border-transparent hover:bg-emerald-50 hover:border-emerald-200 transition">
-              <span class="shrink-0 text-base leading-none">{{ count($rp) > 1 ? '🔀' : '⚡' }}</span>
-              <span class="min-w-0 flex-1">
-                <span class="block font-semibold text-[13px] truncate leading-tight">{{ $rz->titulo }}@if($temMidia)<span class="text-sky-500 ml-1 text-[11px]">📎</span>@endif @if(count($rp) > 1)<span class="text-violet-500 text-[10px] ml-1 font-bold">{{ count($rp) }}×</span>@endif</span>
-                <span class="block text-[11px] text-slate-400 truncate leading-tight">{{ $prev }}</span>
-              </span>
-              <span class="shrink-0 text-emerald-500 opacity-0 group-hover:opacity-100 transition font-bold">➤</span>
-            </button>
+            <div x-show="busca==='' || @js($catBus).includes(busca.toLowerCase())">
+              <button type="button" @click="catSel = (catSel===@js($cat) ? '' : @js($cat))"
+                      class="w-full flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-bold border transition"
+                      :class="catSel===@js($cat) ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'">
+                <span class="min-w-0 truncate">📁 {{ $cat }}</span>
+                <span class="shrink-0 flex items-center gap-1.5"><span class="rounded-full px-1.5 text-[10px]" :class="catSel===@js($cat) ? 'bg-white/20' : 'bg-white text-slate-500'">{{ $lista->count() }}</span><span x-text="(catSel===@js($cat) || busca!=='') ? '▾' : '▸'"></span></span>
+              </button>
+              <div x-show="catSel===@js($cat) || busca!==''" x-cloak class="pl-1.5 pt-1 border-l-2 border-slate-200 ml-2 mt-1">
+                @foreach($lista as $rz)
+                  @php
+                    $rp = (array) $rz->passos;
+                    $prev = \Illuminate\Support\Str::limit((string) ($rp[0]['texto'] ?? ''), 70) ?: ('📎 '.($rp[0]['nome'] ?? 'arquivo'));
+                    $temMidia = !empty($rp[0]['arquivo']);
+                    $busStr = \Illuminate\Support\Str::lower($rz->titulo.' '.$cat.' '.($rp[0]['texto'] ?? ''));
+                  @endphp
+                  <button type="button" @click="enviarResposta({{ $rz->id }}, $el)"
+                       x-show="busca==='' || @js($busStr).includes(busca.toLowerCase())"
+                       class="atd-row group w-full text-left flex items-center gap-2 rounded-lg px-2 py-1.5 border border-transparent hover:bg-emerald-50 hover:border-emerald-200 transition">
+                    <span class="shrink-0 text-base leading-none">{{ count($rp) > 1 ? '🔀' : '⚡' }}</span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block font-semibold text-[13px] truncate leading-tight">{{ $rz->titulo }}@if($temMidia)<span class="text-sky-500 ml-1 text-[11px]">📎</span>@endif @if(count($rp) > 1)<span class="text-violet-500 text-[10px] ml-1 font-bold">{{ count($rp) }}×</span>@endif</span>
+                      <span class="block text-[11px] text-slate-400 truncate leading-tight">{{ $prev }}</span>
+                    </span>
+                    <span class="shrink-0 text-emerald-500 opacity-0 group-hover:opacity-100 transition font-bold">➤</span>
+                  </button>
+                @endforeach
+              </div>
+            </div>
           @empty
             <div class="p-5 text-center text-sm text-slate-500">Nenhuma resposta ainda.<br><a href="{{ route('atendimento.ferramentas') }}" class="underline font-semibold">Criar respostas e funis</a></div>
           @endforelse
@@ -295,7 +303,7 @@ function atd(id, ultimoId, vendaIni){
     sending: false,
     tab: 'rapidas',
     painel: false,
-    catSel: 'Todas',
+    catSel: '',
     busca: '',
     vendaSrc: '',
 

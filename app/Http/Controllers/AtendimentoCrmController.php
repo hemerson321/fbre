@@ -199,9 +199,52 @@ class AtendimentoCrmController extends Controller
             while (isset($usados[mb_strtolower($titulo)])) $titulo = mb_substr($base, 0, 64).' ('.(++$n).')';
             $usados[mb_strtolower($titulo)] = true;
 
-            $out[] = ['titulo' => $titulo, 'passos' => $passos];
+            $todoTexto = implode("\n", array_column($passos, 'texto'));
+            $out[] = ['titulo' => $titulo, 'categoria' => self::categoriaAuto($todoTexto), 'passos' => $passos];
         }
+        // mesma cidade escrita com e sem acento ("Tefe"/"Tefé") vira UMA categoria (fica a grafia com acento)
+        $melhor = [];
+        foreach ($out as $it) {
+            $k = mb_strtolower(\Illuminate\Support\Str::ascii($it['categoria']));
+            if (! isset($melhor[$k]) || strlen($it['categoria']) > strlen($melhor[$k])) $melhor[$k] = $it['categoria'];
+        }
+        foreach ($out as $i => $it) $out[$i]['categoria'] = $melhor[mb_strtolower(\Illuminate\Support\Str::ascii($it['categoria']))];
         return $out;
+    }
+
+    /**
+     * Categoria sugerida pelo ASSUNTO da mensagem (as categorias originais vêm criptografadas no backup).
+     * Regras simples por palavra-chave; o operador pode trocar depois.
+     */
+    public static function categoriaAuto(string $texto): string
+    {
+        $t = mb_strtolower(\Illuminate\Support\Str::ascii($texto));
+        if (trim($t) === '') return 'Imagens';
+        $tem = fn (array $ps) => (bool) array_filter($ps, fn ($p) => str_contains($t, $p));
+        if ($tem(['compra confirmada', 'compra foi concluida', 'compra concluida', 'pagamento confirmado', 'passagem emitida'])) return 'Compra confirmada';
+        if ($tem(['festival', 'bumbodromo', 'caprichoso', 'garantido'])) return 'Festival de Parintins';
+        if ($tem(['nome completo', 'rg ou cpf', 'd.nasc', 'dados do passageiro', 'data de nascimento'])) return 'Dados do passageiro';
+        if ($tem(['pix', 'forma de pagamento', 'cartao', 'chave:', 'transferencia', 'comprovante de pagamento'])) return 'Pagamento';
+        if ($tem(['urna', 'esquife', 'pets', ' pet ', 'animal', 'encomenda', 'bagagem', 'carga', 'volume'])) return 'Encomendas, bagagem e pets';
+        if ($tem(['saida das lanchas', 'saidas das lanchas', 'primeiro horario', 'horarios de saida'])) {
+            // separa por trecho: "MANAUS X TEFÉ" -> "Saídas · Manaus x Tefé"
+            if (preg_match('/([\p{Lu}][\p{Lu}. ]{2,24}?)\s+X\s+([\p{Lu}][\p{Lu}. ]{2,24})/u', preg_replace('/[*_~]+/u', '', $texto), $m)) {
+                // agrupa pela cidade de ORIGEM (o destino já aparece no nome da resposta)
+                $o = mb_convert_case(mb_strtolower(trim(preg_replace('/\s+/u', ' ', str_replace('.', '', $m[1])))), MB_CASE_TITLE, 'UTF-8');
+                $k = mb_strtolower(\Illuminate\Support\Str::ascii($o));
+                if (str_starts_with($k, 'benj')) $o = 'Benjamin Constant';
+                elseif (str_starts_with($k, 'santo ant') || str_starts_with($k, 'sto ant')) $o = 'Santo Antônio do Içá';
+                elseif (str_starts_with($k, 'sao paulo') || str_starts_with($k, 's paulo')) $o = 'São Paulo de Olivença';
+                return mb_substr('Saídas · de '.$o, 0, 60);
+            }
+            return 'Saídas das lanchas';
+        }
+        if (preg_match('/manaus\s*(x|➝|-|→|>|para)\s*\w+/u', $t) || $tem(['r$', ',00', 'valor da passagem', 'tarifa'])) return 'Rotas e preços';
+        if ($tem(['horario de atendimento', 'estamos fechados', 'seg a sex', 'segunda a sexta', 'feriado'])) return 'Horário de atendimento';
+        if ($tem(['avenida', 'endereco', 'localizacao', 'em frente', 'porto do ajato', 'manaus moderna', 'maps'])) return 'Endereço';
+        if ($tem(['atencao', 'importante', 'informamos', 'aviso', 'comunicado'])) return 'Avisos';
+        if (mb_strlen($t) <= 120 && $tem(['ola', 'bom dia', 'boa tarde', 'boa noite', 'obrigad', 'como podemos ajudar', 'tudo bem', 'aguarde', 'um momento', 'qual ', 'para qual'])) return 'Saudações e perguntas';
+        return 'Geral';
     }
 
     public function respostaImportar(Request $request)
@@ -243,10 +286,10 @@ class AtendimentoCrmController extends Controller
                 $passos[] = ['texto' => (string) $p['texto'], 'espera' => (int) $p['espera']] + $arq;
             }
             if (! $passos) continue;
-            AtendResposta::create(['empresa_id' => Tenant::id(), 'titulo' => $it['titulo'], 'categoria' => 'Importadas', 'passos' => $passos, 'ordem' => ++$ordem, 'ativo' => true]);
+            AtendResposta::create(['empresa_id' => Tenant::id(), 'titulo' => $it['titulo'], 'categoria' => $it['categoria'] ?? 'Geral', 'passos' => $passos, 'ordem' => ++$ordem, 'ativo' => true]);
             $novas++;
         }
-        return back()->with('ok', $novas.' resposta(s) importada(s)'.($imgs ? ' ('.$imgs.' com imagem)' : '').($puladas ? ' · '.$puladas.' já existiam e foram puladas' : '').'. Ficaram na categoria "Importadas" — o nome de cada uma é o começo da mensagem; renomeie as que quiser.');
+        return back()->with('ok', $novas.' resposta(s) importada(s)'.($imgs ? ' ('.$imgs.' com imagem)' : '').($puladas ? ' · '.$puladas.' já existiam e foram puladas' : '').'. Elas já entraram separadas por categoria (pelo assunto da mensagem) — o nome de cada uma é o começo da mensagem; renomeie ou troque de categoria as que quiser.');
     }
 
     // ---------------- Etiquetas ----------------

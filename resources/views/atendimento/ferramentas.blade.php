@@ -31,7 +31,7 @@
       <summary class="font-bold cursor-pointer select-none">📥 Importar respostas rápidas de um backup (.json)</summary>
       <form method="post" action="{{ route('atendimento.resposta.importar') }}" enctype="multipart/form-data" class="mt-3 space-y-2" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Importando…'">
         @csrf
-        <p class="text-xs text-slate-500">Envie o arquivo de backup da extensão de atendimento do WhatsApp (ex.: <b>ATENDIMENTO_backup_….json</b>). Cada resposta rápida vira uma resposta aqui, com o texto e a imagem; as que têm vários passos viram funil. Todas entram na categoria <b>Importadas</b>. O nome original de cada resposta vem criptografado no backup, então o nome aqui é o começo da mensagem — renomeie as que quiser. Importar o mesmo arquivo de novo não duplica.</p>
+        <p class="text-xs text-slate-500">Envie o arquivo de backup da extensão de atendimento do WhatsApp (ex.: <b>ATENDIMENTO_backup_….json</b>). Cada resposta rápida vira uma resposta aqui, com o texto e a imagem; as que têm vários passos viram funil. O nome e a categoria originais vêm criptografados no backup, então aqui o nome é o começo da mensagem e a categoria é montada pelo assunto (Pagamento, Avisos, Saídas · de Manaus…) — renomeie ou troque as que quiser. Importar o mesmo arquivo de novo não duplica.</p>
         <input type="file" name="backup" accept=".json,application/json" required class="input">
         <button class="btn btn-primary btn-sm">Importar</button>
       </form>
@@ -76,8 +76,12 @@
         <p class="text-[11px] text-slate-400">Com 1 mensagem é uma resposta rápida. Com 2 ou mais vira um <b>funil</b>: um clique no atendimento e todas saem em sequência, respeitando a espera de cada uma.</p>
       </form>
     </div>
-    <div class="card divide-y">
-      @forelse($respostas as $r)
+    @php $rzGrupos = $respostas->groupBy(fn ($r) => trim((string) $r->categoria) ?: 'Geral')->sortKeys(); @endphp
+    @forelse($rzGrupos as $rzCat => $rzLista)
+    <details class="card overflow-hidden">
+      <summary class="px-3 py-2.5 font-bold text-sm cursor-pointer select-none flex items-center justify-between bg-slate-50"><span>📁 {{ $rzCat }}</span><span class="chip bg-white text-slate-500 text-[11px]">{{ $rzLista->count() }}</span></summary>
+      <div class="divide-y">
+      @foreach($rzLista as $r)
       @php $ps = (array) $r->passos; @endphp
       <div class="p-3 flex items-center gap-3">
         <div class="min-w-0 flex-1">
@@ -87,10 +91,12 @@
         <button type="button" class="btn btn-sm" @click="editarResposta(@js(['id' => $r->id, 'titulo' => $r->titulo, 'categoria' => $r->categoria, 'passos' => $ps]))">✏️</button>
         <form method="post" action="{{ route('atendimento.resposta.excluir', $r) }}" onsubmit="return confirm('Excluir?')">@csrf @method('DELETE')<button class="btn btn-sm" style="color:#b91c1c">🗑</button></form>
       </div>
-      @empty
-      <div class="p-6 text-center text-slate-400 text-sm">Nenhuma resposta cadastrada ainda.</div>
-      @endforelse
-    </div>
+      @endforeach
+      </div>
+    </details>
+    @empty
+    <div class="card p-6 text-center text-slate-400 text-sm">Nenhuma resposta cadastrada ainda.</div>
+    @endforelse
   </div>
 
   {{-- ===== etiquetas ===== --}}
