@@ -94,6 +94,11 @@ class AgenteBot
             $texto = trim((string) $r['texto']);
             if ($texto === '') return;
 
+            // resposta com orçamento não mexe em poltrona nem PIX (isso só quando o cliente fechar a compra)
+            if (preg_match('/\[\[ORCAMENTO:/i', $texto)) {
+                $texto = preg_replace('/\[\[(POLTRONAS?|ESCOLHER|PIX|VENDA)\b[^\]]*\]\]/i', '', $texto);
+                $this->pularGuardiao = true;
+            }
             $texto = $this->tratarVenda($conversa, $texto);
             $texto = $this->tratarVagas($conversa, $texto);
             $texto = $this->tratarPoltronas($conversa, $texto);
@@ -320,7 +325,8 @@ class AgenteBot
                 ? "DESCONTO NO ORÇAMENTO: você PODE dar até {$desc}% de desconto no valor por pessoa pra fechar. Comece SEM desconto; ofereça só se o cliente pedir ou estiver em dúvida, e NUNCA passe de {$desc}%. Não fale o limite pro cliente."
                 : "DESCONTO NO ORÇAMENTO: você NÃO dá desconto. O valor é o da tabela pra qualquer quantidade — explique com simpatia que já é o melhor preço e siga pro fechamento.";
             $p[] = "Com tudo definido, escreva numa linha isolada (o cliente NÃO vê): [[ORCAMENTO: cliente=<empresa ou responsável>; doc=<CNPJ/CPF ou vazio>; origem=<origem>; destino=<destino>; data=<dd/mm/aaaa ou vazio>; lancha=<nome da lancha>; itens=<QTD>x<descrição>@<valor unitário com ponto>, <QTD>x<descrição>@<valor>]]. Ex.: [[ORCAMENTO: cliente=Construtora Rio Negro; doc=; origem=Manaus; destino=Tefé; data=25/11/2026; lancha=Glória de Deus 7; itens=12xAdulto@560.00, 2xCriança@280.00]]. O SISTEMA grava o orçamento e troca o marcador pelo RESUMO pronto (número do orçamento, itens e total) — por isso NÃO escreva os valores por fora: mande só uma frase curta antes (ex.: 'Montei seu orçamento 👇') e pergunte depois se pode fechar.";
-            $p[] = "Se o cliente pedir ajuste (quantidade, data, trecho, desconto dentro do limite), emita o [[ORCAMENTO: ...]] DE NOVO com os dados novos — o sistema atualiza o mesmo orçamento. Quando ele APROVAR, feche você mesmo pelo fluxo normal: poltrona (se a lancha tiver) e PIX no valor TOTAL do orçamento. Orçamento é só pra empresa/instituição ou quando pedirem — venda normal (qualquer quantidade de pessoas) continua direto, sem orçamento.";
+            $p[] = "ORÇAMENTO É SÓ PREÇO: enquanto estiver montando ou enviando orçamento, NÃO fale de poltrona/assento, NÃO pergunte janela/corredor, NÃO use [[POLTRONAS]], [[POLTRONA]], [[ESCOLHER]] nem [[PIX]] e NÃO reserve nada. Entregue o orçamento e pergunte só se ficou bom ou se quer ajustar. Poltrona e PIX SÓ depois, se o cliente disser claramente que QUER FECHAR/COMPRAR as passagens — aí sim siga o fluxo normal de venda (poltrona, se a lancha tiver, e PIX no total do orçamento).";
+            $p[] = "Se o cliente pedir ajuste (quantidade, data, trecho, desconto dentro do limite), emita o [[ORCAMENTO: ...]] DE NOVO com os dados novos — o sistema atualiza o mesmo orçamento. Orçamento é só pra empresa/instituição ou quando pedirem — venda normal (qualquer quantidade de pessoas) continua direto, sem orçamento.";
         }
         if ($auto) {
             $p[] = "MODO AUTÔNOMO (vale ACIMA de qualquer instrução anterior): você atende SOZINHO do começo ao fim. NÃO existe atendente humano pra transferir a conversa. NUNCA diga que vai chamar, passar ou confirmar com um atendente/colega/setor, e NUNCA escreva [[HUMANO]]. Onde as instruções falarem em 'chamar/confirmar com o atendente', resolva VOCÊ com o que está nos DADOS; se a informação não existir nos DADOS, diga com naturalidade que não tem essa informação e siga ajudando no que dá.";
@@ -365,7 +371,8 @@ class AgenteBot
                 foreach ($precos as $tp) {
                     $own[$tp->origem.'|'.$tp->destino][$tp->tipo_passageiro_id] = (float) $tp->tarifa + (float) $tp->alimentacao;
                 }
-                $linhas[] = "PREÇOS POR TRECHO (valor JÁ CALCULADO por pessoa, por tipo — é só usar, some conforme quem vai):";
+                $linhas[] = "PREÇOS POR TRECHO em REAIS (R$) por pessoa, por tipo — valor JÁ CALCULADO, é só usar e somar conforme quem vai. '↔' = mesmo preço nos DOIS sentidos; '→' = só naquele sentido:";
+                $porTrecho = [];
                 foreach ($own as $key => $byTipo) {
                     [$o, $d] = explode('|', $key);
                     $adulto = $byTipo[$normal->id] ?? null;
@@ -376,10 +383,11 @@ class AgenteBot
                         if ($v === null && ($t->modo ?? 'valor') === 'porcentagem' && $adulto !== null) {
                             $v = round($adulto * ((int) $t->percentual) / 100, 2); // ex.: criança 50% do adulto
                         }
-                        if ($v !== null && $v >= 0) $parts[] = $t->nome.' R$ '.number_format($v, 2, ',', '.');
+                        if ($v !== null && $v >= 0) $parts[] = $t->nome.' '.self::valorCurto((float) $v);
                     }
-                    if ($parts) $linhas[] = "- {$o} → {$d}: ".implode(' · ', $parts);
+                    if ($parts) $porTrecho[$key] = implode(' · ', $parts);
                 }
+                foreach (self::juntarIdaVolta($porTrecho) as $l) $linhas[] = $l;
             }
         }
 
@@ -421,6 +429,31 @@ class AgenteBot
         }
 
         return $linhas ? implode("\n", $linhas) : "Sem tabela de preços cadastrada ainda.";
+    }
+
+    /** 560.0 -> "560" ; 560.5 -> "560,50" (menos tokens no prompt, mesmo valor). */
+    public static function valorCurto(float $v): string
+    {
+        return abs($v - round($v)) < 0.005 ? number_format($v, 0, ',', '') : number_format($v, 2, ',', '');
+    }
+
+    /** ['A|B' => 'Adulto 560 · ...'] -> linhas; ida e volta com o MESMO preço viram uma linha só ("A ↔ B"). */
+    public static function juntarIdaVolta(array $porTrecho): array
+    {
+        $linhas = []; $feito = [];
+        foreach ($porTrecho as $key => $txt) {
+            if (isset($feito[$key])) continue;
+            [$o, $d] = explode('|', $key, 2);
+            $volta = $d.'|'.$o;
+            if ($volta !== $key && ! isset($feito[$volta]) && ($porTrecho[$volta] ?? null) === $txt) {
+                $feito[$volta] = true;
+                $linhas[] = "- {$o} ↔ {$d}: {$txt}";
+            } else {
+                $linhas[] = "- {$o} → {$d}: {$txt}";
+            }
+            $feito[$key] = true;
+        }
+        return $linhas;
     }
 
     /** Datas (dd/mm) de um dia-da-semana (0=Dom..6=Sáb), de hoje até a janela de venda (meses). */
