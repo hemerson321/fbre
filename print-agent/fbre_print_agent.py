@@ -375,33 +375,62 @@ def _img_from_b64(b64):
 
 
 def _dc_papel(nome, mm_w, mm_h):
-    """DC da impressora com papel PERSONALIZADO (largura x comprimento em mm) e 1 copia.
+    """DC da impressora com o COMPRIMENTO do papel desta etiqueta (mm) e 1 copia.
     Assim a via do passageiro sai curta e a etiqueta de bagagem comprida, cada uma no seu tamanho,
-    sem depender do tamanho fixo configurado no driver. Devolve None se o driver nao aceitar."""
+    sem depender do comprimento fixo digitado no driver (ex.: Brother QL "62mm" continuo com 280mm).
+    Tenta 2 jeitos e CONFERE se o driver obedeceu; devolve None se nenhum der certo (usa o do driver)."""
     try:
         import win32print, win32gui, win32ui
+    except Exception:
+        return None
+    alvo = float(mm_h)
+
+    def tentar(personalizado):
         hp = win32print.OpenPrinter(nome)
         try:
             dm = win32print.GetPrinter(hp, 2)["pDevMode"]
             if dm is None:
                 return None
-            # DM_ORIENTATION | DM_PAPERSIZE | DM_PAPERLENGTH | DM_PAPERWIDTH | DM_COPIES
-            dm.Fields = dm.Fields | 0x1 | 0x2 | 0x4 | 0x8 | 0x100
-            dm.Orientation = 1                      # retrato: largura = largura do rolo
-            dm.PaperSize = 256                      # DMPAPER_USER (tamanho personalizado)
-            dm.PaperWidth = int(round(float(mm_w) * 10))    # decimos de mm
-            dm.PaperLength = int(round(float(mm_h) * 10))
+            dm.Orientation = 1                      # retrato: largura = largura do rolo, altura = comprimento
             dm.Copies = 1
+            dm.PaperLength = int(round(alvo * 10))  # decimos de mm
+            campos = 0x1 | 0x4 | 0x100              # DM_ORIENTATION | DM_PAPERLENGTH | DM_COPIES
+            if personalizado:
+                dm.PaperSize = 256                  # DMPAPER_USER
+                dm.PaperWidth = int(round(float(mm_w) * 10))
+                campos |= 0x2 | 0x8                 # DM_PAPERSIZE | DM_PAPERWIDTH
+            # senao: mantem o papel escolhido no driver (ex.: "62mm" continuo) e muda so o comprimento
+            dm.Fields = dm.Fields | campos
             try:
                 win32print.DocumentProperties(0, hp, nome, dm, dm, 8 | 2)   # DM_IN_BUFFER | DM_OUT_BUFFER
             except Exception:
                 pass
         finally:
             win32print.ClosePrinter(hp)
-        return win32ui.CreateDCFromHandle(win32gui.CreateDC("WINSPOOL", nome, dm))
-    except Exception as ex:
-        log(f"Papel personalizado {mm_w}x{mm_h}mm nao aceito pelo driver ({ex}); usando o tamanho do driver")
+        dc = win32ui.CreateDCFromHandle(win32gui.CreateDC("WINSPOOL", nome, dm))
+        # confere: altura fisica da pagina (em mm) tem que bater com o pedido (tolerancia p/ margens do driver)
+        try:
+            ph = dc.GetDeviceCaps(111) or dc.GetDeviceCaps(10)     # PHYSICALHEIGHT / VERTRES (pixels)
+            dpi = dc.GetDeviceCaps(90) or 300                       # LOGPIXELSY
+            real = ph / float(dpi) * 25.4
+            if abs(real - alvo) <= max(8.0, alvo * 0.15):
+                return dc
+            log(f"Driver nao obedeceu o comprimento ({'personalizado' if personalizado else 'papel do driver'}): pedi {alvo:.0f}mm, veio {real:.0f}mm")
+        except Exception:
+            return dc
+        try: dc.DeleteDC()
+        except Exception: pass
         return None
+
+    for modo in (False, True):
+        try:
+            dc = tentar(modo)
+            if dc is not None:
+                return dc
+        except Exception as ex:
+            log(f"Papel {mm_w}x{mm_h}mm: {ex}")
+    log(f"Comprimento {alvo:.0f}mm nao aceito pelo driver; usando o tamanho configurado no driver")
+    return None
 
 
 def _desenhar_pagina(hDC, im):
