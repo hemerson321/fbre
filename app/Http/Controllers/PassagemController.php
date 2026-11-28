@@ -1438,14 +1438,28 @@ class PassagemController extends Controller
         $diaSem = ['Domingo', 'Segunda-feira', 'Terca-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sabado'];
         $n = 0;
 
+        // Dados de empresa NO BILHETE (igual ao comprovante/PDF): transporte tem os proprios? usa; senao, da empresa.
+        $emb = $passagem->embarcacao;
+        $embEmp = $emb && (trim((string) ($emb->cnpj ?? '')) !== '' || trim((string) ($emb->razao_social ?? '')) !== '' || trim((string) ($emb->nome_fantasia ?? '')) !== '');
+        $bNomeFant = $embEmp ? (trim((string) $emb->nome_fantasia) ?: $emb->nome) : $empresa->nomeExibicao();
+        $bRazao = $embEmp ? trim((string) $emb->razao_social) : '';
+        $bCnpj = $embEmp ? trim((string) $emb->cnpj) : trim((string) ($empresa->cnpj ?? ''));
+        $bIe = $embEmp ? trim((string) $emb->ie) : trim((string) ($empresa->config('ie') ?? ''));
+        $bFisc = trim(($bCnpj ? 'CNPJ '.$bCnpj : '').($bIe ? ($bCnpj ? ' - ' : '').'IE '.$bIe : ''));
+        $bContato = $embEmp ? trim((string) $emb->contato) : trim((string) ($empresa->whatsapp ?: $empresa->telefone));
+        $bEnd = $embEmp ? trim((string) $emb->endereco.(trim((string) ($emb->cep ?? '')) !== '' ? ' - CEP '.$emb->cep : '')) : '';
+        $bEmail = $embEmp ? trim((string) $emb->email_bilhete) : '';
+
         foreach ($pax as $i => $pz) {
             // o LAYOUT do bilhete vive aqui (servidor). O agente só executa as linhas.
             $doc = new \App\Support\Recibo;
             if ($logoEmp) $doc->img($logoEmp);
-            $doc->txt(mb_strtoupper($empresa->nomeExibicao()), 'c', true, 2);
-            if ($empresa->cnpj) $doc->txt('CNPJ '.$empresa->cnpj, 'c');
-            $contato = trim((string) ($empresa->whatsapp ?: $empresa->telefone));
-            if ($contato !== '') $doc->txt($contato, 'c');
+            $doc->txt(mb_strtoupper($bNomeFant), 'c', true, 2);
+            if ($bRazao !== '') $doc->txt(mb_strtoupper($bRazao), 'c');
+            if ($bFisc !== '') $doc->txt($bFisc, 'c');
+            if ($bContato !== '') $doc->txt($bContato, 'c');
+            if ($bEnd !== '') $doc->txt($bEnd, 'c');
+            if ($bEmail !== '') $doc->txt(mb_strtolower($bEmail), 'c');
             $doc->linha('=');
             $doc->txt('BILHETE DE PASSAGEM', 'c', true, 1);
             $doc->linha('=');
