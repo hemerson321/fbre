@@ -16,15 +16,21 @@
   $tot = $pagantes->count();
   $titulo = $ehCam ? 'BILHETE · CAMAROTE' : 'BILHETE DE PASSAGEM';
   $emb = $p->embarcacao;
-  $embEmp = $emb && (trim((string)($emb->cnpj ?? '')) !== '' || trim((string)($emb->razao_social ?? '')) !== '' || trim((string)($emb->nome_fantasia ?? '')) !== '');
-  $bNomeFant = $embEmp ? (trim((string)$emb->nome_fantasia) ?: $emb->nome) : ($e?->nomeExibicao() ?? 'FBRE');
-  $bRazao = $embEmp ? trim((string)$emb->razao_social) : (($e?->config('comprovante_dados_completos') && $e && $e->nome && mb_strtoupper(trim($e->nome)) !== mb_strtoupper(trim($e->nomeExibicao()))) ? $e->nome : '');
-  $bCnpj = $embEmp ? trim((string)$emb->cnpj) : trim((string)($e?->cnpj ?? ''));
-  $bIe   = $embEmp ? trim((string)$emb->ie) : trim((string)($e?->config('ie') ?? ''));
-  $bFisc = trim(($bCnpj ? 'CNPJ '.$bCnpj : '').($bIe ? ($bCnpj ? ' · ' : '').'IE '.$bIe : ''));
-  $bFone = $embEmp ? trim((string)$emb->contato) : trim(((string)($e?->telefone ?? '')).((($e?->telefone) && ($e?->whatsapp)) ? ' · ' : '').((string)($e?->whatsapp ?? '')));
-  $bEnd  = $embEmp ? trim((string)$emb->endereco.(trim((string)($emb->cep ?? '')) !== '' ? ' · CEP '.$emb->cep : '')) : (($e?->config('comprovante_dados_completos') && ($e?->endereco || $e?->cidade)) ? trim(((string)($e->endereco ?? '')).((($e->endereco) && ($e->cidade)) ? ' · ' : '').((string)($e->cidade ?? '')).($e->uf ? '/'.$e->uf : '')) : '');
-  $bEmail = $embEmp ? trim((string)$emb->email_bilhete) : '';
+  // TOPO = dados do sistema/empresa (enxuto): nome + CNPJ + telefone.
+  $topNome = $e?->nomeExibicao() ?? 'FBRE';
+  $topCnpj = trim((string) ($e?->cnpj ?? ''));
+  $topFone = trim((string) ($e?->whatsapp ?: ($e?->telefone ?? '')));
+  // MEIO = dados da empresa transportadora (do transporte), letra um pouco maior.
+  $embEmp = $emb && (trim((string)($emb->cnpj ?? '')) !== '' || trim((string)($emb->razao_social ?? '')) !== '' || trim((string)($emb->nome_fantasia ?? '')) !== '' || trim((string)($emb->endereco ?? '')) !== '' || trim((string)($emb->contato ?? '')) !== '');
+  $tRazao = $embEmp ? (trim((string)$emb->razao_social) ?: trim((string)$emb->nome_fantasia)) : '';
+  $tCnpj  = $embEmp ? trim((string)$emb->cnpj) : '';
+  $tIe    = $embEmp ? trim((string)$emb->ie) : '';
+  $tFisc  = trim(($tCnpj ? 'CNPJ '.$tCnpj : '').($tIe ? ($tCnpj ? ' · ' : '').'IE '.$tIe : ''));
+  $tEnd   = $embEmp ? trim((string)$emb->endereco.(trim((string)($emb->cep ?? '')) !== '' ? ' · CEP '.$emb->cep : '')) : '';
+  $tCont  = $embEmp ? trim((string)$emb->contato) : '';
+  $tEmail = $embEmp ? mb_strtolower(trim((string)$emb->email_bilhete)) : '';
+  $tLinhaContato = trim($tCont.(($tCont !== '' && $tEmail !== '') ? ' · ' : '').$tEmail);
+  $temTransp = $embEmp && ($tRazao !== '' || $tFisc !== '' || $tEnd !== '' || $tLinhaContato !== '');
   $br = fn ($v) => 'R$ '.number_format((float) $v, 2, ',', '.');
   // linha "rótulo ........ valor"
   $row = fn ($k, $v, $cls = '') => '<table class="row '.$cls.'"><tr><td class="k">'.e($k).'</td><td class="vv">'.$v.'</td></tr></table>';
@@ -90,12 +96,9 @@
 <div class="ticket {{ $loop->last ? 'ult' : '' }}">
   <div class="hdr">
     @if($logo)<img src="{{ $logo }}">@endif
-    <div class="emp">{{ mb_strtoupper($bNomeFant) }}</div>
-    @if($bRazao)<div class="cnpj">{{ mb_strtoupper($bRazao) }}</div>@endif
-    @if($bFisc)<div class="cnpj">{{ $bFisc }}</div>@endif
-    @if($bFone)<div class="cnpj">{{ $bFone }}</div>@endif
-    @if($bEnd)<div class="cnpj">{{ $bEnd }}</div>@endif
-    @if($bEmail)<div class="cnpj">{{ mb_strtolower($bEmail) }}</div>@endif
+    <div class="emp">{{ mb_strtoupper($topNome) }}</div>
+    @php $topLinha = trim(($topCnpj ? 'CNPJ '.$topCnpj : '').(($topCnpj && $topFone) ? ' · ' : '').$topFone); @endphp
+    @if($topLinha)<div class="cnpj">{{ $topLinha }}</div>@endif
   </div>
   <div class="band">{{ $titulo }}</div>
   @if($tarja)<div class="canc">{{ $tarja }}</div>@endif
@@ -119,6 +122,16 @@
   </tr></table>
 
   @if($p->embarcacao)<div class="lancha">{{ mb_strtoupper($p->embarcacao->nome) }}</div>@endif
+
+  @if($temTransp)
+  <div style="border:1.5px solid {{ $cor }};border-radius:10px;padding:5px 8px;margin:4px 0 2px;text-align:center;line-height:1.3">
+    <div style="font-size:7.5px;text-transform:uppercase;letter-spacing:.5px;color:{{ $cor }};font-weight:bold;margin-bottom:1px">Empresa responsável pelo transporte</div>
+    @if($tRazao)<div style="font-size:13px;font-weight:bold;color:#111">{{ mb_strtoupper($tRazao) }}</div>@endif
+    @if($tFisc)<div style="font-size:11px;color:#1f2937">{{ $tFisc }}</div>@endif
+    @if($tEnd)<div style="font-size:11px;color:#1f2937">{{ $tEnd }}</div>@endif
+    @if($tLinhaContato)<div style="font-size:11px;color:#1f2937">{{ $tLinhaContato }}</div>@endif
+  </div>
+  @endif
   <div class="trecho">{{ $p->origem }} <span style="color:{{ $cor }}">→</span> {{ $p->destino }}</div>
 
   @if($p->data_viagem || $hora)

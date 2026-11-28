@@ -1438,28 +1438,29 @@ class PassagemController extends Controller
         $diaSem = ['Domingo', 'Segunda-feira', 'Terca-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sabado'];
         $n = 0;
 
-        // Dados de empresa NO BILHETE (igual ao comprovante/PDF): transporte tem os proprios? usa; senao, da empresa.
+        // TOPO = empresa (sistema): nome + CNPJ + telefone. MEIO (VIAGEM) = empresa transportadora.
         $emb = $passagem->embarcacao;
-        $embEmp = $emb && (trim((string) ($emb->cnpj ?? '')) !== '' || trim((string) ($emb->razao_social ?? '')) !== '' || trim((string) ($emb->nome_fantasia ?? '')) !== '');
-        $bNomeFant = $embEmp ? (trim((string) $emb->nome_fantasia) ?: $emb->nome) : $empresa->nomeExibicao();
-        $bRazao = $embEmp ? trim((string) $emb->razao_social) : '';
-        $bCnpj = $embEmp ? trim((string) $emb->cnpj) : trim((string) ($empresa->cnpj ?? ''));
-        $bIe = $embEmp ? trim((string) $emb->ie) : trim((string) ($empresa->config('ie') ?? ''));
-        $bFisc = trim(($bCnpj ? 'CNPJ '.$bCnpj : '').($bIe ? ($bCnpj ? ' - ' : '').'IE '.$bIe : ''));
-        $bContato = $embEmp ? trim((string) $emb->contato) : trim((string) ($empresa->whatsapp ?: $empresa->telefone));
-        $bEnd = $embEmp ? trim((string) $emb->endereco.(trim((string) ($emb->cep ?? '')) !== '' ? ' - CEP '.$emb->cep : '')) : '';
-        $bEmail = $embEmp ? trim((string) $emb->email_bilhete) : '';
+        $embEmp = $emb && (trim((string) ($emb->cnpj ?? '')) !== '' || trim((string) ($emb->razao_social ?? '')) !== '' || trim((string) ($emb->nome_fantasia ?? '')) !== '' || trim((string) ($emb->endereco ?? '')) !== '' || trim((string) ($emb->contato ?? '')) !== '');
+        $topNome = $empresa->nomeExibicao();
+        $topCnpj = trim((string) ($empresa->cnpj ?? ''));
+        $topFone = trim((string) ($empresa->whatsapp ?: $empresa->telefone));
+        $topLinha = trim(($topCnpj ? 'CNPJ '.$topCnpj : '').(($topCnpj && $topFone) ? ' - ' : '').$topFone);
+        $tRazao = $embEmp ? (trim((string) $emb->razao_social) ?: trim((string) $emb->nome_fantasia)) : '';
+        $tCnpj = $embEmp ? trim((string) $emb->cnpj) : '';
+        $tIe = $embEmp ? trim((string) $emb->ie) : '';
+        $tFisc = trim(($tCnpj ? 'CNPJ '.$tCnpj : '').($tIe ? ($tCnpj ? ' - ' : '').'IE '.$tIe : ''));
+        $tEnd = $embEmp ? trim((string) $emb->endereco.(trim((string) ($emb->cep ?? '')) !== '' ? ' - CEP '.$emb->cep : '')) : '';
+        $tCont = $embEmp ? trim((string) $emb->contato) : '';
+        $tEmail = $embEmp ? mb_strtolower(trim((string) $emb->email_bilhete)) : '';
+        $tContatoLinha = trim($tCont.(($tCont !== '' && $tEmail !== '') ? ' - ' : '').$tEmail);
+        $temTransp = $embEmp && ($tRazao !== '' || $tFisc !== '' || $tEnd !== '' || $tContatoLinha !== '');
 
         foreach ($pax as $i => $pz) {
             // o LAYOUT do bilhete vive aqui (servidor). O agente só executa as linhas.
             $doc = new \App\Support\Recibo;
             if ($logoEmp) $doc->img($logoEmp);
-            $doc->txt(mb_strtoupper($bNomeFant), 'c', true, 2);
-            if ($bRazao !== '') $doc->txt(mb_strtoupper($bRazao), 'c');
-            if ($bFisc !== '') $doc->txt($bFisc, 'c');
-            if ($bContato !== '') $doc->txt($bContato, 'c');
-            if ($bEnd !== '') $doc->txt($bEnd, 'c');
-            if ($bEmail !== '') $doc->txt(mb_strtolower($bEmail), 'c');
+            $doc->txt(mb_strtoupper($topNome), 'c', true, 2);
+            if ($topLinha !== '') $doc->txt($topLinha, 'c');
             $doc->linha('=');
             $doc->txt('BILHETE DE PASSAGEM', 'c', true, 1);
             $doc->linha('=');
@@ -1470,6 +1471,12 @@ class PassagemController extends Controller
             $doc->txt('VIAGEM', 'l', true);
             if ($logoBarco) $doc->img($logoBarco);
             if ($passagem->embarcacao?->nome) $doc->lr('Embarcacao', $passagem->embarcacao->nome);
+            if ($temTransp) {
+                if ($tRazao !== '') $doc->txt(mb_strtoupper($tRazao), 'l', true);
+                if ($tFisc !== '') $doc->txt($tFisc, 'l');
+                if ($tEnd !== '') $doc->txt($tEnd, 'l');
+                if ($tContatoLinha !== '') $doc->txt($tContatoLinha, 'l');
+            }
             if ($passagem->data_viagem) $doc->lr('Saida', $passagem->data_viagem->format('d/m/Y').($hora ? ' '.$hora : '').' '.($diaSem[(int) $passagem->data_viagem->dayOfWeek] ?? ''));
             if ($passagem->viagem_id) $doc->lr('No da viagem', (string) $passagem->viagem_id);
             $doc->linha();
